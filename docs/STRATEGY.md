@@ -211,7 +211,7 @@ EPA reporting lag on audit day: about five weeks.
 
 ### §4.2 Live pipeline (required change)
 
-Switch from AirNow observation/zipCode/current to the AirNow data endpoint (bounding box, explicit parameters O3, PM2.5, NO2, hourly, last 24 hours, per monitoring site). This gives real per-site readings, real NO2 where it exists, and the hourly contour Listen mode needs. Sites are assigned to boroughs by county. Vercel serverless route api/aqi/current.ts, CDN cache s-maxage 1800.
+Switch from AirNow observation/zipCode/current to the AirNow data endpoint (bounding box, explicit parameters O3, PM2.5, NO2, hourly, last 24 hours, per monitoring site, filtered to state 36 and the five NYC counties; the box also captures New Jersey sites). This gives real per-site readings and the hourly contour Listen mode needs. New York does not publish NO2 to AirNow's real-time feed (verified over a 7-day window: every NO2 row was New Jersey), so live NO2 is filled from a typical profile (D-18). Vercel serverless route api/aqi/current.ts, CDN cache s-maxage 1800. Whole-response fallback to the zip-code endpoint only if the data endpoint returns zero New York rows; the response then carries fallback: 'zipcode' and every channel is flagged citywide.
 
 ### §4.3 Historical pipeline (required change)
 
@@ -229,6 +229,8 @@ A borough that does not monitor a pollutant uses the citywide value for that pol
 Citywide, one rule for live and historical: per-hour mean of the reporting boroughs' concentrations; AQI computed from that mean. If no borough reports a pollutant for an hour, that hour is null for everyone and the affected voice rests.
 
 Known weakness, for copy: O3 is regional and citywide is a close proxy. NO2 is traffic-local, so a borrowed NO2 pulse is the city's rush hour, not the borough's.
+
+Borrowing across time (D-18). When a pollutant is not published live for New York at all, the live route fills it from the borough's own archive: the mean hourly contour for the current month and day type (weekday/weekend) over 2020 to 2025, stored in public/data/typical-no2.json, flagged source = 'typical'. Precedence: own reading beats citywide beats typical. The historical route never fills from typical. Source line copy: "NO2 is a typical profile from the archive; New York does not publish live NO2." This is the one place the live piece plays something not happening right now, which is why it is stated in plain words on the page. If it ever reads as dishonest, the fallback is a rest, and it is one flag.
 
 ### §4.5 Counterfactual data
 
@@ -359,6 +361,7 @@ Code
 | D-15 | 2026-08-26 | Bass pitch follows the bed; NO2 drives bass density and grit only | NO2-driven bass root motion | The bed is the fixed identity; a bass that wanders against it breaks the same-piece test. Caught by Claude Code in the Phase 0 plan |
 | D-16 | 2026-08-26 | Unmonitored pollutants substitute the citywide value, disclosed in the source line | Null channel (voice absent); one-lung rendering | Phase 0 listening: Brooklyn with two voices missing was more alarming than the wildfire day itself, so absence was carrying meaning the data hadn't earned. Citywide is a measurement with provenance; the substitution is stated on the page |
 | D-17 | 2026-08-27 | Phase 0 closed on the author's verdict; three-listener test skipped | Run the test before Phase 1 | Shoro judged the sound good after V4. The stranger-recognition question stays open and should be asked informally during Phase 1 with the real bed |
+| D-18 | 2026-08-27 | Live NO2 uses a typical archive profile per borough, month, and day type, flagged 'typical' and disclosed | Pulse rests in Listen (§4.4 null rule); most-recent EPA NO2 (5 weeks stale) | AirNow carries no New York NO2 (BUG-25). Listen is the landing state; a landing state without its pulse is the no-hook version as the default. Same logic as D-16 applied across time instead of across boroughs: same pollutant, measured, provenance stated |
 | D-14 | 2026-08-26 | The 24-hour graphic score is the primary visual; all controls are typographic | Orbs as centerpiece; dashboard controls; typography-only page | The visual must be the thing being played; chrome reads as SaaS; type alone leaves playback inert |
 
 ---
@@ -378,6 +381,8 @@ Code
 | O-09 | Closed. Fixed clock with density/articulation held up in Phase 0; stepped fallback not needed | — | — |
 | O-11 | Stranger-recognition: does someone who hasn't heard Oct 29 recognize Jun 7 as the same piece? Ask informally once the real bed exists | Shoro | Phase 1 copy claims |
 | O-10 | Hourly vs 24-hour mean as the displayed number when they disagree | Shoro | Pin labels |
+| O-12 | Historical route edge days: EPA bounds requests in standard time, so converting to wall clock leaves the first and last day of any range one hour short. Pad the request window by an hour each side or trim edge days | Sprint 3 cleanup | Pin playback of range-edge days |
+| O-13 | git push without explicit remote reported "up-to-date" while pushing nothing; explicit `git push origin main` worked. Check upstream tracking config | Shoro | Nothing |
 
 ---
 

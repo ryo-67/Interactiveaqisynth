@@ -30,6 +30,10 @@ export interface BeatInfo {
   pm25: number | null;
   o3: number | null;
   no2: number | null;
+  // Normalized values against the engine's anchors, so the page (mood clause, score) reads the same normalization the sound plays — one source of truth (§3.10).
+  pm25n: number | null;
+  o3n: number | null;
+  no2n: number | null;
 }
 
 const BEAT_S = 60 / 90; // one beat = one hour = 0.667 s; every parameter ramp uses this (never jump)
@@ -121,7 +125,8 @@ export class SynthEngine {
   }
 
   // Precompute per-bar Euclidean state from the day's NO2. Rotation = bar-start hour mod 16 (§3.5).
-  setDay(day: Day, anchors?: PollutantAnchors): void {
+  // keepPosition (borough switch, §2.1): the phrase continues from the current beat in the new day — same hour, different air. Without it (dev select, timeline scrub) the phrase restarts at the start hour.
+  setDay(day: Day, anchors?: PollutantAnchors, opts?: { keepPosition?: boolean }): void {
     if (anchors) this.anchors = anchors;
     this.day = day;
     this.bars = [];
@@ -129,10 +134,15 @@ export class SynthEngine {
       const no2n = day.slice(b * 4, b * 4 + 4).map((h) => normalize(h.no2, this.anchors.no2));
       this.bars.push({ k: barK(no2n), rotation: (b * 4) % 16 });
     }
-    const wasPlaying = Tone.getTransport().state === "started";
-    Tone.getTransport().stop();
-    this.smoother.reset(); // new day = new seed (raw AQI at the start hour); within a day the state carries across the wrap
-    if (wasPlaying) this.startTransport();
+    const transport = Tone.getTransport();
+    const wasPlaying = transport.state === "started";
+    const heldPosition = opts?.keepPosition ? transport.position.toString() : null;
+    transport.stop();
+    this.smoother.reset(); // new day (or new borough's air) = new seed; within a day the state carries across the wrap
+    if (wasPlaying) {
+      this.lastBeatTime = this.lastStepTime = -1;
+      transport.start("+0.05", heldPosition ?? `${Math.floor(this.startHour / 4)}:${this.startHour % 4}:0`);
+    }
   }
 
   setBed(degrees: number[]): void {
@@ -254,6 +264,9 @@ export class SynthEngine {
       pm25: reading.pm25,
       o3: reading.o3,
       no2: reading.no2,
+      pm25n,
+      o3n,
+      no2n,
     });
   }
 

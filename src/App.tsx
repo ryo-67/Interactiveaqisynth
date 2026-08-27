@@ -1,114 +1,51 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
-import { Sun, Moon } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { AQIVisualizer } from "./components/AQIVisualizer";
-import { TimelineScrubber } from "./components/TimelineScrubber";
-import { SynthEngine } from "./engine/SynthEngine";
+// App — orchestrator for the Listen page (sprint 3a, STRATEGY §5). One column, no dashboard chrome: controls are words, the score is the picture. State: borough, day, playing, and the engine's beat report. The timeline (3b) and footer lines one–two (3c) land in the reserved space below the score.
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { BoroughToggle } from "./components/BoroughToggle";
+import { AQINumber } from "./components/AQINumber";
+import { MoodLine } from "./components/MoodLine";
+import { Score } from "./components/Score";
+import { SourceLine } from "./components/SourceLine";
+import { SynthEngine, type BeatInfo, type Day } from "./engine/SynthEngine";
+import { normalize, pm25ToAQI, type PollutantAnchors } from "./engine/contour";
+import { tierIndexOf } from "./engine/scales";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "./fixtures/phase0-days";
-import { AQIInfo } from "./components/AQIInfo";
-import { ShareModal } from "./components/ShareModal";
-import { RecordButton } from "./components/RecordButton";
 import {
-  generateMockAQIData,
-  type AQIDataPoint,
-} from "./utils/mockData";
-import {
-  ThemeContext,
-  themeColors,
-  type Theme,
-} from "./utils/theme";
-import {
-  getLast24h,
+  getCurrentAll,
   getAnchors,
+  clientSeriesAQI,
   type Borough,
-  type DataSource,
-  type DaySeries,
+  type CurrentSnapshot,
 } from "./utils/nycOpenData";
-import type { PollutantAnchors } from "./engine/contour";
+import { ThemeContext, themeColors, space, type Theme } from "./utils/theme";
+import { STATUS_LIVE, STATUS_ARCHIVE } from "./content";
+
+// Dev-only fixture select (?dev=1): never renders for a visitor.
+const DEV = new URLSearchParams(window.location.search).has("dev");
 
 export default function App() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isTimelapse, setIsTimelapse] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
-  const [theme, setTheme] = useState<Theme>("dark");
-  const [volume, setVolume] = useState(0.65);
-  const [showShare, setShowShare] = useState(false);
+  const [theme] = useState<Theme>("dark"); // dark is the default; light stays reachable through tokens (DSN-06 is Phase 2)
+  const [borough, setBorough] = useState<Borough>("Citywide");
+  const [snapshot, setSnapshot] = useState<CurrentSnapshot | null>(null);
+  const [anchors, setAnchors] = useState<PollutantAnchors | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [beat, setBeat] = useState<BeatInfo | null>(null);
+  const [devDayKey, setDevDayKey] = useState<string>("live");
 
-  // Phase 0 engine behind the existing play/pause, fed by hardcoded fixture days until the sprint-2 data pipeline lands. Queens 2023 anchors apply to all six fixtures (known gap to SON-03).
   const engineRef = useRef<SynthEngine | null>(null);
-  if (engineRef.current === null) {
-    engineRef.current = new SynthEngine(QUEENS_2023_ANCHORS);
-  }
-  const [selectedDayKey, setSelectedDayKey] = useState("live");
+  if (engineRef.current === null) engineRef.current = new SynthEngine(QUEENS_2023_ANCHORS);
+  const prevBoroughRef = useRef<Borough>(borough);
 
-  useEffect(() => {
-    const engine = engineRef.current;
-    if (!engine) return;
-    if (isPlaying) void engine.play();
-    else engine.stop();
-  }, [isPlaying]);
-
-  useEffect(() => {
-    // App volume is 0..1; the engine speaks dB at the destination.
-    engineRef.current?.setVolume(20 * Math.log10(Math.max(0.001, volume)));
-  }, [volume]);
-
-  useEffect(() => {
-    // Dev-only handle for headless verification of the per-beat callback; not UI.
-    if (import.meta.env.DEV) {
-      (window as unknown as Record<string, unknown>).__engine = engineRef.current;
-    }
-  }, []);
-
-  // NYC borough data
-  const [selectedBorough, setSelectedBorough] =
-    useState<Borough>("Citywide");
-  const [dataSource, setDataSource] =
-    useState<DataSource>("loading");
-
-  // Live last-24h series + archive anchors for the engine (sprint 2). Nothing else loads until asked (BUG-20).
-  const [liveSeries, setLiveSeries] = useState<DaySeries | null>(null);
-  const [liveAnchors, setLiveAnchors] = useState<PollutantAnchors | null>(null);
-
-  // Feed the engine: live last-24h (with archive anchors, §3.10) by default; the Phase 0 fixtures stay as a dev convenience with their Queens 2023 anchors.
-  useEffect(() => {
-    const engine = engineRef.current;
-    if (!engine) return;
-    if (selectedDayKey === "live") {
-      if (liveSeries && liveAnchors) engine.setDay(liveSeries.hours, liveAnchors);
-    } else {
-      const fixture = PHASE0_DAYS.find((d) => d.key === selectedDayKey);
-      if (fixture) engine.setDay(fixture.day, QUEENS_2023_ANCHORS);
-    }
-  }, [selectedDayKey, liveSeries, liveAnchors]);
-
-
-  // Fallback mock data
-  const mockData = useRef(generateMockAQIData());
-
-  // ——— First paint loads only the last 24 hours (UX-01, fixes BUG-20). The page renders immediately; the engine gets real data when it lands.
+  // First paint loads only the last 24 hours (UX-01); the page renders immediately and fills when it lands.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [series, anchors] = await Promise.all([
-          getLast24h("Citywide"),
-          getAnchors("Citywide"),
-        ]);
+        const [snap, a] = await Promise.all([getCurrentAll(), getAnchors("Citywide")]);
         if (cancelled) return;
-        setLiveSeries(series);
-        setLiveAnchors(anchors);
-        setDataSource("live");
+        setSnapshot(snap);
+        setAnchors(a);
       } catch (err) {
-        console.warn("[App] Live fetch failed, engine stays on fixtures:", err);
-        if (!cancelled) setDataSource("mock");
+        console.warn("[App] Live fetch failed:", err);
       }
     })();
     return () => {
@@ -116,298 +53,160 @@ export default function App() {
     };
   }, []);
 
-  // ——— Timeline and map still render the mock flow; the real page is sprint 3. The engine, not these visuals, carries the live data this sprint.
-  const timelineData = useMemo(() => mockData.current, []);
+  const devFixture = DEV && devDayKey !== "live" ? PHASE0_DAYS.find((d) => d.key === devDayKey) : undefined;
+  const day: Day | null = devFixture ? devFixture.day : (snapshot?.series[borough].hours ?? null);
+  const live = !devFixture;
 
-  const latestByBorough = useMemo(() => {
-    const latest = mockData.current[mockData.current.length - 1];
-    return {
-      Citywide: latest,
-      Manhattan: null,
-      Brooklyn: null,
-      Queens: null,
-      Bronx: null,
-      "Staten Island": null,
-    } as Record<Borough, AQIDataPoint | null>;
-  }, []);
-
-  const currentData =
-    timelineData[
-      Math.min(currentIndex, timelineData.length - 1)
-    ] || timelineData[0];
-  const c = themeColors(theme);
-
-  const ensureInteracted = useCallback(() => {
-    // Tone.start() must run inside the user-gesture call stack, not in the effect that reacts to isPlaying — init here, play there.
-    void engineRef.current?.init();
-    if (!hasInteracted) {
-      setHasInteracted(true);
-      setIsPlaying(true);
-    }
-  }, [hasInteracted]);
-
-  const handlePlayToggle = useCallback(() => {
-    void engineRef.current?.init();
-    if (!hasInteracted) {
-      setHasInteracted(true);
-      setIsPlaying(true);
-      return;
-    }
-    setIsPlaying((prev) => !prev);
-  }, [hasInteracted]);
-
-  const handleTimelapseToggle = useCallback(() => {
-    ensureInteracted();
-    setIsTimelapse((prev) => !prev);
-    if (!isPlaying) setIsPlaying(true);
-  }, [ensureInteracted, isPlaying]);
-
-  const handleIndexChange = useCallback(
-    (index: number) => {
-      ensureInteracted();
-      setCurrentIndex(index);
-    },
-    [ensureInteracted],
-  );
-
-  const handleBoroughSelect = useCallback((b: Borough) => {
-    setSelectedBorough(b);
-  }, []);
-
-  // Keyboard shortcuts
+  // Feed the engine. A borough switch keeps the phrase position (§2.1: same hour, different air); a dev fixture switch restarts.
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      )
+    const engine = engineRef.current;
+    if (!engine || !day) return;
+    (async () => {
+      if (devFixture) {
+        engine.setDay(devFixture.day, QUEENS_2023_ANCHORS);
         return;
-      switch (e.code) {
-        case "Space":
-          e.preventDefault();
-          handlePlayToggle();
-          break;
-        case "ArrowLeft":
-          e.preventDefault();
-          setCurrentIndex((prev) => {
-            ensureInteracted();
-            return Math.max(0, prev - 1);
-          });
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          setCurrentIndex((prev) => {
-            ensureInteracted();
-            return Math.min(timelineData.length - 1, prev + 1);
-          });
-          break;
-        case "KeyT":
-          handleTimelapseToggle();
-          break;
+      }
+      const a = await getAnchors(borough);
+      const keepPosition = prevBoroughRef.current !== borough;
+      prevBoroughRef.current = borough;
+      engine.setDay(day, a, { keepPosition });
+      setAnchors(a);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day, borough, devDayKey]);
+
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    if (playing) void engine.play();
+    else {
+      engine.stop();
+      setBeat(null);
+    }
+  }, [playing]);
+
+  useEffect(() => {
+    engineRef.current?.onBeat(setBeat);
+    return () => engineRef.current?.onBeat(null);
+  }, []);
+
+  // Play/pause: the score click and Space. Tone.start() must begin inside the gesture's call stack.
+  const togglePlay = useCallback(() => {
+    void engineRef.current?.init();
+    setPlaying((p) => !p);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Space" && !(e.target instanceof HTMLSelectElement)) {
+        e.preventDefault();
+        togglePlay();
       }
     };
-    window.addEventListener("keydown", handleKey);
-    return () =>
-      window.removeEventListener("keydown", handleKey);
-  }, [
-    handlePlayToggle,
-    handleTimelapseToggle,
-    ensureInteracted,
-    timelineData.length,
-  ]);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [togglePlay]);
 
-  // Data source label for UI
-  const sourceLabel = useMemo(() => {
-    if (dataSource === "loading") return "Connecting...";
-    if (dataSource === "mock") return "Demo data";
-    if (liveSeries?.fallback === "zipcode") return "AirNow area reading";
-    return "AirNow (live)";
-  }, [dataSource, liveSeries]);
+  // ——— Derived display state ———
+  const c = themeColors(theme);
+  const series = devFixture ? null : (snapshot?.series[borough] ?? null);
+  const displayAqi = devFixture
+    ? (day ? clientSeriesAQI(day).daily : null) // archive semantics for fixture days
+    : (series?.aqi.latestHour ?? null);
+
+  // Latest non-null hour of the loaded day — the resting state before playback.
+  const latest = (() => {
+    if (!day) return null;
+    for (let i = day.length - 1; i >= 0; i--) {
+      if (day[i].pm25 != null || day[i].o3 != null || day[i].no2 != null) return { reading: day[i], hour: Number(day[i].ts.slice(11, 13)) };
+    }
+    return null;
+  })();
+
+  // Mood inputs: the beat report while playing (it describes what you are hearing); the latest hour at rest.
+  const a = anchors ?? QUEENS_2023_ANCHORS;
+  const moodTier = beat
+    ? beat.tierIndex
+    : latest?.reading.pm25 != null
+      ? tierIndexOf(pm25ToAQI(Math.max(0, latest.reading.pm25))!)
+      : 0;
+  const moodHour = beat ? beat.hour : (latest?.hour ?? 0);
+  const dominant = (() => {
+    const vals = beat
+      ? { pm25: beat.pm25n, o3: beat.o3n, no2: beat.no2n }
+      : latest
+        ? {
+            pm25: normalize(latest.reading.pm25 == null ? null : Math.max(0, latest.reading.pm25), a.pm25),
+            o3: normalize(latest.reading.o3, a.o3),
+            no2: normalize(latest.reading.no2, a.no2),
+          }
+        : { pm25: null, o3: null, no2: null };
+    let best: "pm25" | "o3" | "no2" | null = null;
+    for (const ch of ["pm25", "o3", "no2"] as const) {
+      const v = vals[ch];
+      if (v != null && (best === null || v > (vals[best] ?? -1))) best = ch;
+    }
+    return best;
+  })();
+
+  const lastTs = day?.[day.length - 1]?.ts ?? null;
+  const dateLabel = lastTs
+    ? new Date(lastTs).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "—";
+  const hourLabel = lastTs ? lastTs.slice(11, 16) : "—";
 
   return (
     <ThemeContext.Provider value={theme}>
-      {/* ——— Main App ——— */}
-      <div
-        className="min-h-screen flex flex-col transition-colors duration-700"
-        style={{ background: c.bg, color: c.textPrimary }}
-      >
-        {/* Hero Visualization — canvas + AQI number + borough map */}
-        <div className="relative flex-1">
-          <AQIVisualizer
-            aqi={currentData.aqi}
-            isPlaying={isPlaying || !hasInteracted}
-            selectedBorough={selectedBorough}
-            onSelectBorough={handleBoroughSelect}
-            latestData={latestByBorough}
+      <div style={{ minHeight: "100vh", background: c.bg, color: c.textPrimary }}>
+        <div style={{ maxWidth: "720px", margin: "0 auto", padding: `${space.lg} ${space.md}` }}>
+          <BoroughToggle
+            selected={borough}
+            onSelect={setBorough}
+            dateLabel={dateLabel}
+            hourLabel={hourLabel}
+            status={live ? STATUS_LIVE : STATUS_ARCHIVE}
           />
 
-          {/* Header overlay */}
-          <div className="absolute top-0 left-0 right-0 p-5 pointer-events-none">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1
-                  style={{
-                    fontFamily:
-                      'Georgia, "Times New Roman", serif',
-                    fontStyle: "italic",
-                    fontSize: "14px",
-                    fontWeight: 400,
-                    letterSpacing: "0.02em",
-                    color: c.canvasOverlaySub,
-                  }}
-                >
-                  {selectedBorough !== "Citywide"
-                    ? `${selectedBorough}, `
-                    : ""}
-                  NYC Air Quality
-                </h1>
-                <p
-                  style={{
-                    fontSize: "10px",
-                    color: c.canvasOverlaySub,
-                    marginTop: "2px",
-                    opacity: 0.6,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Sonification{" "}
-                  {dataSource === "live" ? "\u00b7 Live data" : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 pointer-events-auto">
-                <button
-                  onClick={() =>
-                    setTheme((t) =>
-                      t === "dark" ? "light" : "dark",
-                    )
-                  }
-                  className="p-2 rounded-full transition-all duration-300"
-                  style={{
-                    background: c.btnBg,
-                    border: `1px solid ${c.border}`,
-                    backdropFilter: "blur(8px)",
-                  }}
-                  title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                >
-                  {theme === "dark" ? (
-                    <Sun
-                      className="w-3.5 h-3.5"
-                      style={{ color: c.canvasOverlaySub }}
-                    />
-                  ) : (
-                    <Moon
-                      className="w-3.5 h-3.5"
-                      style={{ color: c.canvasOverlaySub }}
-                    />
-                  )}
-                </button>
-                {!hasInteracted && (
-                  <div
-                    className="cursor-pointer animate-pulse"
-                    onClick={() => {
-                      setHasInteracted(true);
-                      setIsPlaying(true);
-                    }}
-                    style={{
-                      fontSize: "11px",
-                      fontFamily: "Georgia, serif",
-                      fontStyle: "italic",
-                      color: c.canvasOverlaySub,
-                    }}
-                  >
-                    click to listen
-                  </div>
-                )}
-              </div>
-            </div>
+          <div style={{ marginTop: space.xl }}>
+            <AQINumber value={displayAqi} />
           </div>
 
-          {/* Pollutant info at bottom of hero */}
-          <div className="absolute bottom-0 left-0 right-0 p-5 pointer-events-none">
-            <AQIInfo data={currentData} />
+          <div style={{ marginTop: space.lg }}>
+            <MoodLine tierIndex={moodTier} hour={moodHour} dominant={dominant} />
           </div>
-        </div>
 
-        {/* Control panel */}
-        <div
-          className="relative z-10 transition-colors duration-700"
-          style={{
-            background: c.bgPanel,
-            backdropFilter: "blur(30px)",
-            borderTop: `1px solid ${c.borderSubtle}`,
-          }}
-        >
-          <div className="max-w-2xl mx-auto px-5 pt-6 pb-4 space-y-5">
-            {/* Temporary fixture selector so the Phase 0 engine port can be heard in the app (sprint 1). Replaced by real data flow in sprint 2; no styling by design. */}
-            <select
-              value={selectedDayKey}
-              onChange={(e) => setSelectedDayKey(e.target.value)}
-            >
-              <option value="live">
-                {liveSeries
-                  ? "Live: NYC (last 24 h)"
-                  : dataSource === "mock"
-                    ? "Live: NYC (unavailable)"
-                    : "Live: NYC (loading...)"}
-              </option>
-              {PHASE0_DAYS.map((d) => (
-                <option key={d.key} value={d.key}>
-                  {d.label} (fixture)
-                </option>
-              ))}
-            </select>
-
-            <div
-              style={{
-                height: "1px",
-                background: c.borderSubtle,
-              }}
-            />
-
-            {/* Timeline + controls */}
-            <div className="space-y-3">
-              <TimelineScrubber
-                data={timelineData}
-                currentIndex={currentIndex}
-                onIndexChange={handleIndexChange}
-                isPlaying={isPlaying}
-                onPlayToggle={handlePlayToggle}
-                isTimelapse={isTimelapse}
-                onTimelapseToggle={handleTimelapseToggle}
-                onShare={() => setShowShare(true)}
+          <div style={{ marginTop: space.xl }}>
+            {day && (
+              <Score
+                day={day}
+                anchors={a}
+                tierIndex={moodTier}
+                playheadHour={beat ? beat.hour : null}
+                live={live}
+                onToggle={togglePlay}
               />
-
-              <div className="flex items-center justify-between">
-                <RecordButton
-                  isPlaying={isPlaying}
-                  durationSec={12}
-                />
-                <div className="flex items-center gap-2">
-                  <span
-                    style={{
-                      fontSize: "9px",
-                      color: c.textFaint,
-                      opacity: 0.6,
-                    }}
-                  >
-                    {sourceLabel}
-                  </span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
-        </div>
 
-        {/* Share modal */}
-        {showShare && (
-          <ShareModal
-            data={currentData}
-            isTimelapse={isTimelapse}
-            onClose={() => setShowShare(false)}
-            borough={selectedBorough}
-          />
-        )}
+          {/* Timeline (3b) and footer lines one–two (3c) land here; the space is reserved, not stubbed. */}
+          <div style={{ height: space.xl }} />
+          <div style={{ height: space.xl }} />
+
+          {day && <SourceLine borough={borough} hours={day} fallback={snapshot?.fallback ?? null} />}
+
+          {DEV && (
+            <div style={{ marginTop: space.lg }}>
+              <select value={devDayKey} onChange={(e) => setDevDayKey(e.target.value)}>
+                <option value="live">Live: NYC (last 24 h)</option>
+                {PHASE0_DAYS.map((d) => (
+                  <option key={d.key} value={d.key}>
+                    {d.label} (fixture)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
     </ThemeContext.Provider>
   );

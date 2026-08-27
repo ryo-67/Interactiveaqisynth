@@ -49,3 +49,45 @@ export function tzOffsetFromTs(ts: string): number {
   const sign = m[1] === "-" ? -1 : 1;
   return sign * (Number(m[2]) + Number(m[3]) / 60);
 }
+
+// Sun azimuth and elevation for a fractional local hour (NOAA hour-angle form, same equations as above). Elevation is degrees above the horizon (negative at night); azimuth is degrees clockwise from north.
+export interface SunAngles {
+  azimuthDeg: number;
+  elevationDeg: number;
+}
+
+export function sunAnglesAt(dateIso: string, hourFloat: number, lat: number, lon: number, tzOffsetHours: number): SunAngles {
+  const d = new Date(dateIso + "T12:00:00Z");
+  const start = Date.UTC(d.getUTCFullYear(), 0, 0);
+  const dayOfYear = Math.floor((d.getTime() - start) / 86400000);
+  const g = ((2 * Math.PI) / 365) * (dayOfYear - 1);
+  const eqTime =
+    229.18 *
+    (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+  const decl =
+    0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) +
+    0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+
+  // True solar time → hour angle (degrees; 0 at solar noon, negative in the morning).
+  const trueSolarMin = hourFloat * 60 + eqTime + 4 * lon - 60 * tzOffsetHours;
+  const ha = ((trueSolarMin / 4) - 180) * (Math.PI / 180);
+
+  const latRad = (lat * Math.PI) / 180;
+  const sinEl = Math.sin(latRad) * Math.sin(decl) + Math.cos(latRad) * Math.cos(decl) * Math.cos(ha);
+  const elevation = Math.asin(Math.max(-1, Math.min(1, sinEl)));
+  const cosAz =
+    (Math.sin(decl) - Math.sin(elevation) * Math.sin(latRad)) / (Math.cos(elevation) * Math.cos(latRad));
+  let azimuth = Math.acos(Math.max(-1, Math.min(1, cosAz)));
+  if (ha > 0) azimuth = 2 * Math.PI - azimuth; // afternoon: sun west of south
+
+  return { azimuthDeg: (azimuth * 180) / Math.PI, elevationDeg: (elevation * 180) / Math.PI };
+}
+
+// The three.js Sky shader wants a direction vector. +Y is up, and the camera looks toward -Z, so north sits at -Z and east at +X.
+export function sunPositionVector(angles: SunAngles, distance = 1): [number, number, number] {
+  const el = (angles.elevationDeg * Math.PI) / 180;
+  const az = (angles.azimuthDeg * Math.PI) / 180;
+  const cosEl = Math.cos(el);
+  return [distance * cosEl * Math.sin(az), distance * Math.sin(el), -distance * cosEl * Math.cos(az)];
+}
+

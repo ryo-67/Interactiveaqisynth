@@ -1,9 +1,16 @@
+import { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import ScenePage from "./scene/ScenePage";
 import "./index.css";
 
-// /scene is the D-19 scene prototype; it replaces / in a later sprint. One path, no router.
-const Root = window.location.pathname === "/scene" ? ScenePage : App;
+// The three.js routes are lazy so their bundle never ships to /.
+// /scene itself is being rebuilt on the physically based sky (D-19); the Canvas-2D version that failed review is deleted, so only the test harness exists right now.
+const SceneTestPage = lazy(() => import("./scene/SceneTestPage"));
 
-createRoot(document.getElementById("root")!).render(<Root />);
+const Root = window.location.pathname === "/scene-test" ? SceneTestPage : App;
+
+createRoot(document.getElementById("root")!).render(
+  <Suspense fallback={<div style={{ background: "#05050a", position: "fixed", inset: 0 }} />}>
+    <Root />
+  </Suspense>,
+);

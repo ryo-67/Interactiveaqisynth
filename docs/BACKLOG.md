@@ -42,32 +42,32 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | INF-01 | P0 | DONE 2026-05 | Migrate off Supabase to Vercel serverless | Commit 6e5bb35. Four routes under `api/`, shared `_lib/aqi.ts`, CDN caching |
 | INF-02 | P0 | DONE 2026-05 | GitHub repo and Vercel project | ryo-67/Interactiveaqisynth → interactive-aqi-synth.vercel.app, env vars set |
 | INF-03 | P0 | TODO | Verify/set `maxDuration` for historical route | `_lib/aqi.ts` assumes a 90 s deadline; vercel.json sets none. Check plan limits, set explicitly. O-06, BUG-23 |
-| INF-04 | P1 | TODO | Remove `hono` and other server leftovers from package.json | Leftover from the Deno server. BUG-22 |
+| INF-04 | P1 | DONE 2026-08-27 | Remove `hono` and other server leftovers from package.json | Leftover from the Deno server. BUG-22 |
 | INF-05 | P2 | TODO | Cron or on-deploy warm of the historical route | Only if cold EPA fetch is still visible after UX-01 defers historical load |
 
 ## Code cleanup
 
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
-| CLN-01 | P0 | TODO | Delete `src/components/ui/` (48 files) | Zero imports from live code. BUG-05 |
-| CLN-02 | P0 | TODO | Delete `src/imports/` (Make export, 2,295 lines) and `src/components/figma/` | Zero imports. BUG-07 |
-| CLN-03 | P0 | TODO | Remove 33 unused dependencies | All @radix-ui/*, class-variance-authority, cmdk, embla-carousel-react, hono, input-otp, next-themes, react-day-picker, react-hook-form, react-resizable-panels, recharts, sonner, vaul, tailwind-merge (verify), clsx (verify). Keep: react, react-dom, tone, motion, lucide-react |
-| CLN-04 | P0 | TODO | Clean vite.config.ts aliases | Remove versioned package aliases and `figma:asset` alias once assets are gone. BUG-08 |
-| CLN-05 | P1 | TODO | Delete `src/assets/*.png`, `src/Attributions.md`, `src/guidelines/` | Make scaffold |
+| CLN-01 | P0 | DONE 2026-08-27 | Delete `src/components/ui/` (48 files) | Zero imports from live code. BUG-05 |
+| CLN-02 | P0 | DONE 2026-08-27 | Delete `src/imports/` (Make export, 2,295 lines) and `src/components/figma/` | Zero imports. BUG-07 |
+| CLN-03 | P0 | DONE 2026-08-27 | Remove 33 unused dependencies | All @radix-ui/*, class-variance-authority, cmdk, embla-carousel-react, hono, input-otp, next-themes, react-day-picker, react-hook-form, react-resizable-panels, recharts, sonner, vaul, tailwind-merge (verify), clsx (verify). Keep: react, react-dom, tone, motion, lucide-react |
+| CLN-04 | P0 | DONE 2026-08-27 | Clean vite.config.ts aliases | Remove versioned package aliases and `figma:asset` alias once assets are gone. BUG-08 |
+| CLN-05 | P1 | DONE 2026-08-27 | Delete `src/assets/*.png`, `src/Attributions.md`, `src/guidelines/` | Make scaffold |
 | CLN-06 | P1 | TODO | Replace README | Currently Make boilerplate. One paragraph, link to STRATEGY.md. BUG-24 |
-| CLN-07 | P1 | TODO | Remove `console.warn` monkey-patch in SynthEngine | Address polyphony/scheduling at root once the engine is replaced. BUG-04 |
+| CLN-07 | P1 | DONE 2026-08-27 | Remove `console.warn` monkey-patch in SynthEngine | Address polyphony/scheduling at root once the engine is replaced. BUG-04 |
 | CLN-08 | P2 | TODO | Remove `warmupEdgeFunction`, `runDiagnostic` from load path | Diagnostic route can stay; it should not run on first paint |
 
 ## Sonification (STRATEGY §3)
 
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
-| SON-01 | P0 | TODO | Port prototype/phase0.html V4 into src/engine/ | Delete PolySynth voices, PROG array, random-walk melody, texture controls. Carry: transport offset start, loop-boundary dedup, two-reverb crossfade, private bass lowpass |
-| SON-02 | P0 | TODO | Uniform effects chain | Every voice through the same filter and reverb. BUG-17 |
+| SON-01 | P0 | DONE 2026-08-27 | Port prototype/phase0.html V4 into src/engine/ | Delete PolySynth voices, PROG array, random-walk melody, texture controls. Carry: transport offset start, loop-boundary dedup, two-reverb crossfade, private bass lowpass |
+| SON-02 | P0 | DONE 2026-08-27 | Uniform effects chain | Every voice through the same filter and reverb. BUG-17 |
 | SON-03 | P0 | TODO | Corpus normalization per pollutant per borough | Computed from loaded archive. §3.10 |
 | SON-04 | P0 | TODO | Virtual AQI wiring | Slider/counterfactual → AQI via `pm25ToAQI`, `o3ToAQI`, `no2ToAQI` → tier → everything. Today's contours scaled to new levels. §3.7 |
-| SON-05 | P1 | TODO | Rest handling | Null hour → melody rest, pulse hit skipped. §3.3, §4.4 |
-| SON-06 | P1 | TODO | Borrowed-channel flag in the engine | Engine reads per-channel provenance (own vs citywide) so the source line and readout can state it. No sonic difference |
+| SON-05 | P1 | DONE 2026-08-27 (code paths ported; no fixture exercises a true null hour) | Rest handling | Null hour → melody rest, pulse hit skipped. §3.3, §4.4 |
+| SON-06 | P1 | DONE 2026-08-27 | Borrowed-channel flag in the engine | Engine reads per-channel provenance (own vs citywide) so the source line and readout can state it. No sonic difference |
 | SON-07 | P2 | TODO | Phrase-boundary behavior in Listen | What happens at the top of each 16 s loop as the hour rolls over |
 | SON-08 | P3 | TODO | Timelapse clock and accumulation model | Own compression ratio. Reverb bleed across days. O-01 |
 | SON-09 | PARKED | WONTFIX 2026-08-27 | Stepped tempo fallback | Fixed clock held up in Phase 0 (O-09 closed) |

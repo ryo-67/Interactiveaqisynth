@@ -92,6 +92,9 @@ Code
 - TypeScript strict. Functional components. No component libraries. Tokens from `theme.ts` only. All prose from `content.ts`.
 - Delete, don't disable. Dead code goes.
 - Architectural problems get architectural fixes. The timeline gap (BUG-03) is two sources in one array; fix the structure, not the scrubber.
+- api/ has its own CommonJS tsconfig; the root tsconfig scopes to src/. Vercel's function builder uses the nearest tsconfig.
+- vercel dev does not reproduce the production function build; after every push that touches api/, hit /api/health and /api/aqi/current on the deployed URL before calling it done.
+- Archive data comes from public/data/; the EPA API is only ever asked about the current year.
 - Mobile-first layout, two breakpoints (laptop 1024+, phone <768).
 
 Docs

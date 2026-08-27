@@ -23,11 +23,11 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
-| DAT-01 | P0 | TODO | Live route on AirNow data endpoint | Replace observation/zipCode/current with the data endpoint: NYC bounding box, parameters O3,PM25,NO2, hourly, last 24 h, per site. Map sites to boroughs by county. Keep s-maxage=1800. Fixes BUG-11, BUG-12, BUG-13 |
-| DAT-02 | P0 | TODO | Bulk-file archive script | Local script: download EPA AirData hourly zips for 88101, 88502, 44201, 42602 for 2020 to last complete year; filter state 36, counties 005/047/061/081/085; per-hour max across sites; write `public/data/{borough}-{year}.json`. No API key needed |
-| DAT-03 | P0 | TODO | Live-year historical route on hourly EPA endpoint | `api/aqi/historical.ts` → AQS sampleData (hourly), params 88101,88502,44201,42602, window Jan 1 of current year to yesterday. Fixes BUG-15, BUG-16 |
-| DAT-04 | P0 | TODO | Missing-data policy in `_lib/aqi.ts` and client | Per §4.4 as amended (D-16): unmonitored pollutant → citywide value, flagged as borrowed in the record. Remove PM10 estimator and field. Citywide = per-hour mean of reporting boroughs. Null only when no borough reports. Fixes BUG-13, BUG-14 |
-| DAT-05 | P0 | TODO | Daily AQI from 24-h mean, not hourly max | Use EPA daily AQI where present; else compute from 24-h mean. Keep hourly max available for the phrase and pin labels (O-10). Fixes BUG-18, BUG-19 |
+| DAT-01 | P0 | DONE 2026-08-27 (see BUG-25: AirNow carries no live NY NO2) | Live route on AirNow data endpoint | Replace observation/zipCode/current with the data endpoint: NYC bounding box, parameters O3,PM25,NO2, hourly, last 24 h, per site. Map sites to boroughs by county. Keep s-maxage=1800. Fixes BUG-11, BUG-12, BUG-13 |
+| DAT-02 | P0 | DONE 2026-08-27 | Bulk-file archive script | Local script: download EPA AirData hourly zips for 88101, 88502, 44201, 42602 for 2020 to last complete year; filter state 36, counties 005/047/061/081/085; per-hour max across sites; write `public/data/{borough}-{year}.json`. No API key needed |
+| DAT-03 | P0 | DONE 2026-08-27 | Live-year historical route on hourly EPA endpoint | `api/aqi/historical.ts` → AQS sampleData (hourly), params 88101,88502,44201,42602, window Jan 1 of current year to yesterday. Fixes BUG-15, BUG-16 |
+| DAT-04 | P0 | DONE 2026-08-27 | Missing-data policy in `_lib/aqi.ts` and client | Per §4.4 as amended (D-16): unmonitored pollutant → citywide value, flagged as borrowed in the record. Remove PM10 estimator and field. Citywide = per-hour mean of reporting boroughs. Null only when no borough reports. Fixes BUG-13, BUG-14 |
+| DAT-05 | P0 | DONE 2026-08-27 | Daily AQI from 24-h mean, not hourly max | Use EPA daily AQI where present; else compute from 24-h mean. Keep hourly max available for the phrase and pin labels (O-10). Fixes BUG-18, BUG-19 |
 | DAT-06 | P1 | TODO | Find and pin notable days 2024 to 2026 | Script: top PM2.5, top O3, top NO2, cleanest per year. Propose to Shoro; only Shoro pins |
 | DAT-07 | P1 | TODO | Source Delhi winter mean | WHO Ambient Air Quality Database or CPCB annual report. PM2.5, O3, NO2 with citation in content.ts. O-03 |
 | DAT-08 | P1 | TODO | Lockdown: measured or counterfactual | Pull April 2020 from bulk files. If coverage is good, it's a pin; else a sourced counterfactual. O-04 |
@@ -41,7 +41,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 |---|---|---|---|---|
 | INF-01 | P0 | DONE 2026-05 | Migrate off Supabase to Vercel serverless | Commit 6e5bb35. Four routes under `api/`, shared `_lib/aqi.ts`, CDN caching |
 | INF-02 | P0 | DONE 2026-05 | GitHub repo and Vercel project | ryo-67/Interactiveaqisynth → interactive-aqi-synth.vercel.app, env vars set |
-| INF-03 | P0 | TODO | Verify/set `maxDuration` for historical route | `_lib/aqi.ts` assumes a 90 s deadline; vercel.json sets none. Check plan limits, set explicitly. O-06, BUG-23 |
+| INF-03 | P0 | DONE 2026-08-27 | Verify/set `maxDuration` for historical route | `_lib/aqi.ts` assumes a 90 s deadline; vercel.json sets none. Check plan limits, set explicitly. O-06, BUG-23 |
 | INF-04 | P1 | DONE 2026-08-27 | Remove `hono` and other server leftovers from package.json | Leftover from the Deno server. BUG-22 |
 | INF-05 | P2 | TODO | Cron or on-deploy warm of the historical route | Only if cold EPA fetch is still visible after UX-01 defers historical load |
 
@@ -64,7 +64,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 |---|---|---|---|---|
 | SON-01 | P0 | DONE 2026-08-27 | Port prototype/phase0.html V4 into src/engine/ | Delete PolySynth voices, PROG array, random-walk melody, texture controls. Carry: transport offset start, loop-boundary dedup, two-reverb crossfade, private bass lowpass |
 | SON-02 | P0 | DONE 2026-08-27 | Uniform effects chain | Every voice through the same filter and reverb. BUG-17 |
-| SON-03 | P0 | TODO | Corpus normalization per pollutant per borough | Computed from loaded archive. §3.10 |
+| SON-03 | P0 | DONE 2026-08-27 | Corpus normalization per pollutant per borough | Computed from loaded archive. §3.10 |
 | SON-04 | P0 | TODO | Virtual AQI wiring | Slider/counterfactual → AQI via `pm25ToAQI`, `o3ToAQI`, `no2ToAQI` → tier → everything. Today's contours scaled to new levels. §3.7 |
 | SON-05 | P1 | DONE 2026-08-27 (code paths ported; no fixture exercises a true null hour) | Rest handling | Null hour → melody rest, pulse hit skipped. §3.3, §4.4 |
 | SON-06 | P1 | DONE 2026-08-27 | Borrowed-channel flag in the engine | Engine reads per-channel provenance (own vs citywide) so the source line and readout can state it. No sonic difference |
@@ -77,7 +77,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
-| UX-01 | P0 | TODO | Load sequence: Listen needs only the last 24 h | Remove health warmup and five sequential historical fetches from first paint. Historical loads when the timeline opens. Fixes BUG-20 |
+| UX-01 | P0 | DONE 2026-08-27 | Load sequence: Listen needs only the last 24 h | Remove health warmup and five sequential historical fetches from first paint. Historical loads when the timeline opens. Fixes BUG-20 |
 | UX-02 | P0 | TODO | Entry moment | Framing copy, first-listen, Tone.start() gesture. Covers any live-fetch latency |
 | UX-03 | P0 | TODO | Timeline with pins and lag gap | Dashed gap from last EPA day to today, label with weeks computed at load. Pins from §2.2. Replaces stitched timeline. Fixes BUG-02, BUG-03 |
 | UX-04 | P0 | TODO | Counterfactual selector | WHO, Delhi, Lockdown. Visually distinct from pins. §2.3 |

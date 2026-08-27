@@ -2,6 +2,11 @@
 
 Why, not just what. Newest first.
 
+## 2026-08-27 — Phase 1 sprint 2: the data pipeline
+
+Commits 6473a4a, 8d4573f, c8aaf4f. The engine can now play any borough, any day since 2020, from real hourly data. One transform implements §4.4 for every source and is pinned by unit tests, because the substitution and citywide rules are the kind of logic that silently rots when reimplemented per route. The archive is committed static JSON (36 borough-year files, ≤79 KB gzipped each) because 2020–2025 never changes and the EPA API should only ever be asked about the current year. Timestamps are true America/New_York wall clock derived from GMT everywhere — EPA reports Standard Time year-round, which would have shifted every summer hour label by one against AirNow's live labels; DST days keep their real 23/25 hours per the Phase 0 ruling. First paint now loads one 24-hour fetch instead of five sequential 150-second historical calls. Found and filed in the process: AirNow's real-time feed carries no New York NO2 at all (BUG-25) — live Listen plays with the pulse voice resting, which §4.4 anticipated, and a source decision is open.
+
+
 ## 2026-08-27 — Phase 1 sprint 1: cleanup and engine port
 
 Commits e5e2d2c, 48762f4, 52bf7f3. The Figma Make scaffold went first (9,761 lines, 39 dependencies, the alias table) so the port landed in a repo where everything present is real. The Phase 0 engine moved from prototype/phase0.html V4 into src/engine/ unchanged in behavior — the prototype is the spec's reference implementation, so the port is deliberately a transcription, not a redesign. The app now plays the six fixture days through the real engine behind the existing play/pause; the random-walk PolySynth engine and the v1 mood copy are gone because two sonification vocabularies in one repo would drift. Strict tsconfig added because the TypeScript-strict rule previously had nothing enforcing it.

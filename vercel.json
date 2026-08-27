@@ -1,4 +1,9 @@
 {
   "framework": "vite",
-  "outputDirectory": "build"
+  "outputDirectory": "build",
+  "functions": {
+    "api/aqi/historical.ts": {
+      "maxDuration": 300
+    }
+  }
 }

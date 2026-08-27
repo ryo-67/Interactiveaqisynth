@@ -5,7 +5,8 @@
       "name": "app-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--no-open"],
-      "port": 55128
+      "port": 55128,
+      "autoPort": true
     },
     {
       "name": "phase0-static",

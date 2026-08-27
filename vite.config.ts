@@ -15,7 +15,8 @@ export default defineConfig({
     outDir: 'build',
   },
   server: {
-    port: 55128,
+    // PORT env (set by tooling like the Claude Code preview) wins; 55128 is the default dev port.
+    port: Number(process.env.PORT) || 55128,
     open: true,
   },
 });

@@ -1,572 +1,232 @@
-// AQI data service — proxies AirNow (current) and EPA AQS (historical).
-// Ported from the original Supabase Edge Function (src/supabase/functions/server/aqi-service.tsx).
-// Caching is handled by Vercel's CDN via Cache-Control headers on the route
-// responses, so this module is pure fetch + transform with no storage layer.
+// api/_lib/aqi.ts — shared data layer: borough maps, the site-hour → HourReading transform (§4.4, D-16), and AQI math (DAT-04, DAT-05).
+// One transform for every source (AirNow live, EPA AQS live-year, EPA bulk archive). Nothing here estimates a missing value from a different pollutant; missing is null, never zero. There is no PM10 anywhere (D-07).
+// All timestamps are America/New_York local hours with UTC offset (e.g. "2023-06-07T13:00:00-04:00"). DST days genuinely have 23 or 25 local hours; the offset keeps the fall-back duplicate 1 AMs distinct.
 
-// ——— Borough mappings ———
+export type Borough = "Bronx" | "Brooklyn" | "Manhattan" | "Queens" | "Staten Island";
 
-export type Borough =
-  | "Citywide"
-  | "Bronx"
-  | "Brooklyn"
-  | "Manhattan"
-  | "Queens"
-  | "Staten Island";
-export const BOROUGHS: Borough[] = [
-  "Citywide",
-  "Manhattan",
-  "Brooklyn",
-  "Queens",
-  "Bronx",
-  "Staten Island",
+export const BOROUGHS: Borough[] = ["Bronx", "Brooklyn", "Manhattan", "Queens", "Staten Island"];
+
+// NYC county FIPS (state 36). The AirNow bbox also catches New Jersey (state 34) sites; the transform drops any row whose state is not 36 — a correctness rule, not a nicety.
+export const NY_STATE_FIPS = "36";
+export const COUNTY_TO_BOROUGH: Record<string, Borough> = {
+  "005": "Bronx",
+  "047": "Brooklyn",
+  "061": "Manhattan",
+  "081": "Queens",
+  "085": "Staten Island",
+};
+
+export type Pollutant = "pm25" | "o3" | "no2";
+export const POLLUTANTS: Pollutant[] = ["pm25", "o3", "no2"];
+
+export type SourceTag = "own" | "citywide";
+
+export interface HourReading {
+  ts: string; // ISO local hour with offset
+  pm25: number | null; // µg/m³, max across sites
+  o3: number | null; // ppb
+  no2: number | null; // ppb
+  source: { pm25: SourceTag; o3: SourceTag; no2: SourceTag };
+}
+
+// One raw observation: a site, an hour, a pollutant, a concentration in canonical units (pm25 µg/m³, o3 ppb, no2 ppb).
+export interface SiteHourRow {
+  stateFips: string;
+  countyFips: string;
+  pollutant: Pollutant;
+  ts: string; // ISO local hour with offset
+  value: number;
+}
+
+export interface SeriesAQI {
+  daily: number | null; // AQI of the 24-h mean PM2.5 (one rule everywhere; EPA's own daily value waits for O-10)
+  hourlyMax: number | null; // max hourly PM2.5 AQI — for pin labels only, never the displayed number (BUG-18)
+  latestHour: number | null; // AQI of the most recent non-null hour — the Listen-mode number, so the number and the tier agree. AirNow's displayed number is NowCast and may differ; we are not reproducing NowCast.
+}
+
+export interface BoroughSeries {
+  hours: HourReading[];
+  aqi: SeriesAQI;
+}
+
+// ——— AQI breakpoint math ———
+
+type Band = readonly [number, number, number, number];
+
+function piecewise(value: number, bands: readonly Band[]): number {
+  for (const [cLo, cHi, iLo, iHi] of bands) {
+    if (value <= cHi) return Math.round(iLo + ((value - cLo) / (cHi - cLo)) * (iHi - iLo));
+  }
+  return 500;
+}
+
+// EPA PM2.5 breakpoints (24-h averaging basis; we apply them to hourly values for the phrase and to the 24-h mean for the daily number).
+const PM25_BANDS: readonly Band[] = [
+  [0.0, 12.0, 0, 50],
+  [12.1, 35.4, 51, 100],
+  [35.5, 55.4, 101, 150],
+  [55.5, 150.4, 151, 200],
+  [150.5, 250.4, 201, 300],
+  [250.5, 500.4, 301, 500],
 ];
 
-// NYC county FIPS codes (state 36 = New York)
-const BOROUGH_FIPS: Record<Exclude<Borough, "Citywide">, string> = {
-  Manhattan: "061", // New York County
-  Bronx: "005", // Bronx County
-  Brooklyn: "047", // Kings County
-  Queens: "081", // Queens County
-  "Staten Island": "085", // Richmond County
-};
-
-// Representative zip codes for AirNow current observations
-const BOROUGH_ZIPS: Record<Exclude<Borough, "Citywide">, string> = {
-  Manhattan: "10001",
-  Brooklyn: "11201",
-  Queens: "11101",
-  Bronx: "10451",
-  "Staten Island": "10301",
-};
-
-// EPA AQS pollutant parameter codes
-const EPA_PARAM_PM25 = "88101";
-const EPA_PARAM_PM10 = "81102";
-const EPA_PARAM_O3 = "44201";
-const EPA_PARAM_NO2 = "42602";
-const EPA_ALL_PARAMS = [
-  EPA_PARAM_PM25,
-  EPA_PARAM_PM10,
-  EPA_PARAM_O3,
-  EPA_PARAM_NO2,
-].join(",");
-
-// ——— Shared types ———
-
-export interface AQIDataPoint {
-  date: string; // "Jan 15, 2024"
-  aqi: number;
-  category: string;
-  mainPollutant: string;
-  pm25: number;
-  pm10: number;
-  o3: number; // ppb
-  no2: number; // ppb
+export function pm25ToAQI(conc: number | null): number | null {
+  if (conc == null) return null;
+  return piecewise(Math.max(0, conc), PM25_BANDS);
 }
 
-// ——— AQI breakpoint conversions ———
+// O3 sub-index: EPA 8-hour breakpoints (ppb) against the max 8-h rolling mean. Display only; the phrase always plays raw hourly concentrations (BUG-19).
+const O3_8H_BANDS: readonly Band[] = [
+  [0, 54, 0, 50],
+  [55, 70, 51, 100],
+  [71, 85, 101, 150],
+  [86, 105, 151, 200],
+  [106, 200, 201, 300],
+];
 
-function pollutantAQI(
-  value: number,
-  breakpoints: number[][],
-  aqiRanges: number[][],
-): number {
-  for (let i = 0; i < breakpoints.length; i++) {
-    const [cLo, cHi] = breakpoints[i];
-    const [iLo, iHi] = aqiRanges[i];
-    if (value <= cHi) {
-      return Math.round(((iHi - iLo) / (cHi - cLo)) * (value - cLo) + iLo);
-    }
+export function o3SubIndexAQI(hourly: ReadonlyArray<number | null>): number | null {
+  let maxMean: number | null = null;
+  for (let i = 0; i < hourly.length; i++) {
+    const window = hourly.slice(Math.max(0, i - 7), i + 1).filter((v): v is number => v != null);
+    if (window.length === 0) continue;
+    const mean = window.reduce((s, v) => s + v, 0) / window.length;
+    if (maxMean == null || mean > maxMean) maxMean = mean;
   }
-  return 300;
+  return maxMean == null ? null : piecewise(maxMean, O3_8H_BANDS);
 }
 
-function pm25ToAQI(conc: number): number {
-  return pollutantAQI(
-    conc,
-    [
-      [0, 12],
-      [12.1, 35.4],
-      [35.5, 55.4],
-      [55.5, 150.4],
-      [150.5, 250.4],
-    ],
-    [
-      [0, 50],
-      [51, 100],
-      [101, 150],
-      [151, 200],
-      [201, 300],
-    ],
-  );
+// NO2 sub-index: EPA 1-hour breakpoints (ppb) against the max hourly value. Display only.
+const NO2_1H_BANDS: readonly Band[] = [
+  [0, 53, 0, 50],
+  [54, 100, 51, 100],
+  [101, 360, 101, 150],
+  [361, 649, 151, 200],
+  [650, 1249, 201, 300],
+];
+
+export function no2SubIndexAQI(hourly: ReadonlyArray<number | null>): number | null {
+  const vals = hourly.filter((v): v is number => v != null);
+  if (vals.length === 0) return null;
+  return piecewise(Math.max(...vals), NO2_1H_BANDS);
 }
 
-function o3ToAQI(ppb: number): number {
-  return pollutantAQI(
-    ppb,
-    [
-      [0, 54],
-      [55, 70],
-      [71, 85],
-      [86, 105],
-      [106, 200],
-    ],
-    [
-      [0, 50],
-      [51, 100],
-      [101, 150],
-      [151, 200],
-      [201, 300],
-    ],
-  );
-}
-
-function no2ToAQI(ppb: number): number {
-  return pollutantAQI(
-    ppb,
-    [
-      [0, 53],
-      [54, 100],
-      [101, 360],
-      [361, 649],
-      [650, 1249],
-    ],
-    [
-      [0, 50],
-      [51, 100],
-      [101, 150],
-      [151, 200],
-      [201, 300],
-    ],
-  );
-}
-
-function aqiCategory(aqi: number): string {
-  if (aqi <= 50) return "Good";
-  if (aqi <= 100) return "Moderate";
-  if (aqi <= 150) return "Unhealthy for Sensitive Groups";
-  if (aqi <= 200) return "Unhealthy";
-  return "Very Unhealthy";
-}
-
-function mainPollutant(
-  pm25: number,
-  pm10: number,
-  o3: number,
-  no2: number,
-): string {
-  const ratios = [
-    { name: "PM2.5", ratio: pm25 / 35 },
-    { name: "PM10", ratio: pm10 / 150 },
-    { name: "O3", ratio: o3 / 70 },
-    { name: "NO2", ratio: no2 / 53 },
-  ];
-  return ratios.sort((a, b) => b.ratio - a.ratio)[0].name;
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00"); // noon to avoid timezone issues
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getYesterdayYMD(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}${m}${day}`;
-}
-
-// ——— EPA AQS: Historical daily data ———
-
-interface EPARawRecord {
-  parameter_code: string;
-  date_local: string;
-  first_max_value: number;
-  aqi: number | null;
-  arithmetic_mean: number;
-  units_of_measure: string;
-}
-
-interface EPAResponse {
-  Header: Array<{ status: string; rows: number }>;
-  Data: EPARawRecord[];
-}
-
-function processEPAData(records: EPARawRecord[]): AQIDataPoint[] {
-  // Group by date → aggregate across sites, keep max per pollutant
-  const byDate = new Map<
-    string,
-    {
-      pm25: number[];
-      pm10: number[];
-      o3: number[];
-      no2: number[];
-      aqis: number[];
-    }
-  >();
-
-  for (const r of records) {
-    if (r.first_max_value == null) continue;
-    const date = r.date_local;
-    if (!byDate.has(date)) {
-      byDate.set(date, { pm25: [], pm10: [], o3: [], no2: [], aqis: [] });
-    }
-    const day = byDate.get(date)!;
-
-    switch (r.parameter_code) {
-      case EPA_PARAM_PM25:
-        day.pm25.push(r.first_max_value);
-        break;
-      case EPA_PARAM_PM10:
-        day.pm10.push(r.first_max_value);
-        break;
-      case EPA_PARAM_O3:
-        // EPA reports O3 in ppm, convert to ppb
-        day.o3.push(r.first_max_value * 1000);
-        break;
-      case EPA_PARAM_NO2:
-        day.no2.push(r.first_max_value);
-        break;
-    }
-    if (r.aqi != null && r.aqi >= 0) {
-      day.aqis.push(r.aqi);
-    }
-  }
-
-  const result: AQIDataPoint[] = [];
-  const sortedDates = [...byDate.keys()].sort();
-
-  for (const date of sortedDates) {
-    const vals = byDate.get(date)!;
-
-    const pm25 = vals.pm25.length ? Math.max(...vals.pm25) : 0;
-    // PM10 often missing in NYC — estimate from PM2.5 if absent
-    const pm10 = vals.pm10.length
-      ? Math.max(...vals.pm10)
-      : Math.round(pm25 * 1.6 + 5);
-    const o3 = vals.o3.length ? Math.max(...vals.o3) : 0;
-    const no2 = vals.no2.length ? Math.max(...vals.no2) : 0;
-
-    // Use EPA-provided AQI if available, otherwise compute from concentrations
-    const aqi = vals.aqis.length
-      ? Math.max(...vals.aqis)
-      : Math.max(pm25ToAQI(pm25), o3ToAQI(o3), no2ToAQI(no2));
-
-    result.push({
-      date: formatDate(date),
-      aqi,
-      category: aqiCategory(aqi),
-      mainPollutant: mainPollutant(pm25, pm10, o3, no2),
-      pm25: Math.round(pm25 * 10) / 10,
-      pm10: Math.round(pm10),
-      o3: Math.round(o3 * 10) / 10,
-      no2: Math.round(no2 * 10) / 10,
-    });
-  }
-
-  return result;
-}
-
-async function fetchEPAYear(
-  borough: Exclude<Borough, "Citywide">,
-  year: number,
-  email: string,
-  apiKey: string,
-): Promise<AQIDataPoint[]> {
-  const county = BOROUGH_FIPS[borough];
-  const bdate = `${year}0101`;
-  // For current year, fetch up to yesterday; for past years, full year
-  const currentYear = new Date().getFullYear();
-  const edate = year === currentYear ? getYesterdayYMD() : `${year}1231`;
-
-  const url =
-    `https://aqs.epa.gov/data/api/dailyData/byCounty` +
-    `?email=${encodeURIComponent(email)}` +
-    `&key=${encodeURIComponent(apiKey)}` +
-    `&param=${EPA_ALL_PARAMS}` +
-    `&bdate=${bdate}&edate=${edate}` +
-    `&state=36&county=${county}`;
-
-  console.log(`[EPA AQS] Fetching ${borough} (county ${county}) year ${year}...`);
-
-  // Per-request timeout: 25 seconds (prevents a single slow EPA call from eating the budget)
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
-  let response: Response;
-  try {
-    response = await fetch(url, { signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    const text = await response.text();
-    console.log(
-      `[EPA AQS] HTTP ${response.status} for ${borough}/${year}: ${text.slice(0, 200)}`,
-    );
-    throw new Error(`EPA AQS returned HTTP ${response.status} for ${borough} ${year}`);
-  }
-
-  const json: EPAResponse = await response.json();
-  if (!json.Data || !Array.isArray(json.Data)) {
-    console.log(
-      `[EPA AQS] No Data array for ${borough}/${year}. Header: ${JSON.stringify(json.Header)}`,
-    );
-    return [];
-  }
-
-  console.log(`[EPA AQS] Got ${json.Data.length} records for ${borough}/${year}`);
-  return processEPAData(json.Data);
-}
-
-/**
- * Fetch 3 years of historical daily data for a borough from EPA AQS.
- * No storage cache — the route sets a long s-maxage so Vercel's CDN
- * serves this at most once a day per borough.
- */
-export async function fetchHistorical(borough: Borough): Promise<AQIDataPoint[]> {
-  const email = process.env.EPA_AQS_EMAIL;
-  const apiKey = process.env.EPA_AQS_API_KEY;
-
-  if (!email || !apiKey) {
-    throw new Error(
-      "EPA_AQS_EMAIL and EPA_AQS_API_KEY environment variables are required",
-    );
-  }
-
-  const currentYear = new Date().getFullYear();
-  const startYear = currentYear - 2;
-  const allData: AQIDataPoint[] = [];
-
-  // Deadline: stay well under the function's execution limit and the
-  // client's timeout — return whatever we have by then.
-  const deadline = Date.now() + 90000;
-
-  // For "Citywide", use Manhattan as a representative proxy
-  // (fetching all 5 boroughs × 3 years per request is needlessly slow)
-  const boroughToFetch: Exclude<Borough, "Citywide"> =
-    borough === "Citywide" ? "Manhattan" : borough;
-
-  for (let year = startYear; year <= currentYear; year++) {
-    if (Date.now() > deadline) {
-      console.log(
-        `[fetchHistorical] Deadline reached at ${boroughToFetch}/${year}, returning ${allData.length} points so far`,
-      );
+export function seriesAQI(hours: HourReading[]): SeriesAQI {
+  const pm25Vals = hours.map((h) => h.pm25).filter((v): v is number => v != null);
+  const daily = pm25Vals.length ? pm25ToAQI(pm25Vals.reduce((s, v) => s + v, 0) / pm25Vals.length) : null;
+  const hourlyAQIs = hours.map((h) => pm25ToAQI(h.pm25)).filter((v): v is number => v != null);
+  const hourlyMax = hourlyAQIs.length ? Math.max(...hourlyAQIs) : null;
+  let latestHour: number | null = null;
+  for (let i = hours.length - 1; i >= 0; i--) {
+    const a = pm25ToAQI(hours[i].pm25);
+    if (a != null) {
+      latestHour = a;
       break;
     }
+  }
+  return { daily, hourlyMax, latestHour };
+}
 
-    try {
-      const yearData = await fetchEPAYear(boroughToFetch, year, email, apiKey);
-      allData.push(...yearData);
-      // Rate limit: wait 1s between EPA requests
-      if (year < currentYear) await delay(1000);
-    } catch (e) {
-      console.log(`[EPA AQS] Error fetching ${boroughToFetch}/${year}: ${e}`);
-      // Continue with other years — partial data is better than none
+// ——— The transform (§4.4 as amended, D-16) ———
+// Per hour, per borough, per pollutant: max across that borough's sites. Citywide: per-hour mean of the boroughs that have their own reading. A borough with no reading for a pollutant takes the citywide value with source = 'citywide'. If no borough reports, the hour is null for everyone and the affected voice rests.
+
+export interface TransformResult {
+  boroughs: Record<Borough, BoroughSeries>;
+  citywide: BoroughSeries;
+}
+
+export function toBoroughHours(rows: SiteHourRow[], hoursAxis: string[]): TransformResult {
+  // own[borough][ts][pollutant] = max across sites
+  const own = new Map<Borough, Map<string, Partial<Record<Pollutant, number>>>>();
+  for (const b of BOROUGHS) own.set(b, new Map());
+
+  for (const row of rows) {
+    if (row.stateFips !== NY_STATE_FIPS) continue; // NJ and everyone else out (see COUNTY_TO_BOROUGH note)
+    const borough = COUNTY_TO_BOROUGH[row.countyFips];
+    if (!borough) continue;
+    const byTs = own.get(borough)!;
+    const rec = byTs.get(row.ts) ?? {};
+    const prev = rec[row.pollutant];
+    if (prev == null || row.value > prev) rec[row.pollutant] = row.value;
+    byTs.set(row.ts, rec);
+  }
+
+  // citywide mean per hour per pollutant over boroughs with own readings
+  const citywideByTs = new Map<string, Partial<Record<Pollutant, number>>>();
+  for (const ts of hoursAxis) {
+    const rec: Partial<Record<Pollutant, number>> = {};
+    for (const p of POLLUTANTS) {
+      const vals: number[] = [];
+      for (const b of BOROUGHS) {
+        const v = own.get(b)!.get(ts)?.[p];
+        if (v != null) vals.push(v);
+      }
+      if (vals.length) rec[p] = vals.reduce((s, v) => s + v, 0) / vals.length;
     }
+    citywideByTs.set(ts, rec);
   }
 
-  allData.sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-  );
-  return allData;
-}
-
-// ——— AirNow: Current observations ———
-
-interface AirNowObservation {
-  DateObserved: string;
-  HourObserved: number;
-  LocalTimeZone: string;
-  ReportingArea: string;
-  StateCode: string;
-  ParameterName: string;
-  AQI: number;
-  Category: { Number: number; Name: string };
-}
-
-async function fetchAirNowForZip(
-  zip: string,
-  apiKey: string,
-): Promise<AirNowObservation[]> {
-  const url =
-    `https://www.airnowapi.org/aq/observation/zipCode/current/` +
-    `?format=application/json` +
-    `&zipCode=${zip}` +
-    `&distance=15` +
-    `&API_KEY=${encodeURIComponent(apiKey)}`;
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    const text = await response.text();
-    console.log(
-      `[AirNow] HTTP ${response.status} for zip ${zip}: ${text.slice(0, 200)}`,
-    );
-    return [];
+  const boroughs = {} as Record<Borough, BoroughSeries>;
+  for (const b of BOROUGHS) {
+    const hours: HourReading[] = hoursAxis.map((ts) => {
+      const mine = own.get(b)!.get(ts) ?? {};
+      const city = citywideByTs.get(ts) ?? {};
+      const reading: HourReading = {
+        ts,
+        pm25: null,
+        o3: null,
+        no2: null,
+        source: { pm25: "own", o3: "own", no2: "own" },
+      };
+      for (const p of POLLUTANTS) {
+        if (mine[p] != null) {
+          reading[p] = round1(mine[p]!);
+        } else if (city[p] != null) {
+          reading[p] = round1(city[p]!); // D-16: substitution with provenance, not estimation
+          reading.source[p] = "citywide";
+        }
+        // else: null — no borough reports this pollutant this hour
+      }
+      return reading;
+    });
+    boroughs[b] = { hours, aqi: seriesAQI(hours) };
   }
 
-  return await response.json();
-}
-
-function airNowToDataPoint(
-  observations: AirNowObservation[],
-): AQIDataPoint | null {
-  if (!observations || observations.length === 0) return null;
-
-  let pm25 = 0,
-    pm10 = 0,
-    o3 = 0,
-    no2 = 0,
-    maxAqi = 0;
-  let dateStr = "";
-
-  for (const obs of observations) {
-    if (!dateStr) dateStr = obs.DateObserved;
-    if (obs.AQI > maxAqi) maxAqi = obs.AQI;
-
-    // AirNow reports AQI per parameter — we reverse-engineer approximate concentrations
-    // This is imprecise but sufficient for sound mapping
-    switch (obs.ParameterName) {
-      case "PM2.5":
-        pm25 = reverseAQI_PM25(obs.AQI);
-        break;
-      case "PM10":
-        pm10 = reverseAQI_PM10(obs.AQI);
-        break;
-      case "O3":
-      case "OZONE":
-        o3 = reverseAQI_O3(obs.AQI);
-        break;
-      case "NO2":
-        no2 = reverseAQI_NO2(obs.AQI);
-        break;
-    }
-  }
-
-  // Estimate PM10 from PM2.5 if not reported
-  if (pm10 === 0 && pm25 > 0) {
-    pm10 = Math.round(pm25 * 1.6 + 5);
-  }
-
-  const d = new Date(dateStr.trim() + "T12:00:00");
-  const formattedDate = d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+  const citywideHours: HourReading[] = hoursAxis.map((ts) => {
+    const city = citywideByTs.get(ts) ?? {};
+    return {
+      ts,
+      pm25: city.pm25 != null ? round1(city.pm25) : null,
+      o3: city.o3 != null ? round1(city.o3) : null,
+      no2: city.no2 != null ? round1(city.no2) : null,
+      source: { pm25: "own", o3: "own", no2: "own" }, // the citywide series IS the citywide value
+    } as HourReading;
   });
 
-  return {
-    date: formattedDate,
-    aqi: maxAqi,
-    category: aqiCategory(maxAqi),
-    mainPollutant: mainPollutant(pm25, pm10, o3, no2),
-    pm25: Math.round(pm25 * 10) / 10,
-    pm10: Math.round(pm10),
-    o3: Math.round(o3 * 10) / 10,
-    no2: Math.round(no2 * 10) / 10,
-  };
+  return { boroughs, citywide: { hours: citywideHours, aqi: seriesAQI(citywideHours) } };
 }
 
-// Approximate reverse AQI → concentration for sound mapping
-function reverseAQI_PM25(aqi: number): number {
-  if (aqi <= 50) return (aqi / 50) * 12;
-  if (aqi <= 100) return 12.1 + ((aqi - 51) / 49) * 23.3;
-  if (aqi <= 150) return 35.5 + ((aqi - 101) / 49) * 19.9;
-  return 55.5 + ((aqi - 151) / 49) * 94.9;
+function round1(v: number): number {
+  return Math.round(v * 10) / 10;
 }
 
-function reverseAQI_PM10(aqi: number): number {
-  if (aqi <= 50) return (aqi / 50) * 54;
-  if (aqi <= 100) return 55 + ((aqi - 51) / 49) * 99;
-  return 155 + ((aqi - 101) / 49) * 199;
-}
+// ——— America/New_York timestamps ———
+// AirNow reports UTC; EPA bulk files and AQS carry local time directly. This converts a UTC instant to the local ISO hour with offset, so DST fall-back duplicate 1 AMs stay distinct.
+const NY_PARTS = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZoneName: "longOffset",
+});
 
-function reverseAQI_O3(aqi: number): number {
-  if (aqi <= 50) return (aqi / 50) * 54;
-  if (aqi <= 100) return 55 + ((aqi - 51) / 49) * 15;
-  return 71 + ((aqi - 101) / 49) * 14;
-}
-
-function reverseAQI_NO2(aqi: number): number {
-  if (aqi <= 50) return (aqi / 50) * 53;
-  if (aqi <= 100) return 54 + ((aqi - 51) / 49) * 46;
-  return 101 + ((aqi - 101) / 49) * 259;
-}
-
-/**
- * Fetch current AQI for all boroughs from AirNow.
- * No storage cache — the route sets s-maxage=1800 so Vercel's CDN
- * serves this at most once per 30 minutes.
- */
-export async function fetchCurrent(): Promise<Record<string, AQIDataPoint | null>> {
-  const apiKey = process.env.AIRNOW_API_KEY;
-  if (!apiKey) {
-    throw new Error("AIRNOW_API_KEY environment variable is required");
-  }
-
-  const result: Record<string, AQIDataPoint | null> = {
-    Citywide: null,
-  };
-  const boroughs = Object.keys(BOROUGH_ZIPS) as Exclude<Borough, "Citywide">[];
-
-  // Fetch all boroughs in parallel (5 requests, within AirNow limits)
-  const promises = boroughs.map(async (b) => {
-    try {
-      const obs = await fetchAirNowForZip(BOROUGH_ZIPS[b], apiKey);
-      const point = airNowToDataPoint(obs);
-      return { borough: b, point };
-    } catch (e) {
-      console.log(`[AirNow] Error fetching ${b}: ${e}`);
-      return { borough: b, point: null };
-    }
-  });
-
-  const results = await Promise.all(promises);
-  for (const { borough, point } of results) {
-    result[borough] = point;
-  }
-
-  // Citywide = average of all boroughs that have data
-  const withData = results.filter((r) => r.point !== null).map((r) => r.point!);
-  if (withData.length > 0) {
-    const pm25 =
-      Math.round(
-        (withData.reduce((s, p) => s + p.pm25, 0) / withData.length) * 10,
-      ) / 10;
-    const pm10 = Math.round(
-      withData.reduce((s, p) => s + p.pm10, 0) / withData.length,
-    );
-    const o3 =
-      Math.round(
-        (withData.reduce((s, p) => s + p.o3, 0) / withData.length) * 10,
-      ) / 10;
-    const no2 =
-      Math.round(
-        (withData.reduce((s, p) => s + p.no2, 0) / withData.length) * 10,
-      ) / 10;
-    const aqi = Math.max(...withData.map((p) => p.aqi));
-
-    result.Citywide = {
-      date: withData[0].date,
-      aqi,
-      category: aqiCategory(aqi),
-      mainPollutant: mainPollutant(pm25, pm10, o3, no2),
-      pm25,
-      pm10,
-      o3,
-      no2,
-    };
-  }
-
-  return result;
+export function utcToNyIso(utc: Date): string {
+  const parts: Record<string, string> = {};
+  for (const p of NY_PARTS.formatToParts(utc)) parts[p.type] = p.value;
+  // Intl longOffset renders "GMT−04:00" with a Unicode minus (U+2212); normalize to ASCII so offsets match the archive's.
+  const offset = (parts.timeZoneName!.replace("GMT", "") || "+00:00").replace("−", "-");
+  const hour = parts.hour === "24" ? "00" : parts.hour;
+  return `${parts.year}-${parts.month}-${parts.day}T${hour}:${parts.minute}:00${offset}`;
 }

@@ -4,7 +4,6 @@
 // Clock → sunPosition, star visibility (handled by the caller from solar.ts).
 
 import { SKY_RANGES } from "../utils/theme";
-import type { SkyRanges } from "./skyStore";
 
 export interface SkyParams {
   turbidity: number;
@@ -25,7 +24,18 @@ export function nightExposureFactor(sunElevationDeg: number): number {
 }
 
 // pm25n and o3n are the engine's normalized values (p05 → 0, p95 → 1). Both saturate above 1: an extreme day sits at the ceiling rather than running away. sunElevationDeg, when given, applies the night falloff.
-// `r` overrides the compiled ranges: the test harness passes its tuned copy so the real-day rows re-render through whatever ends are currently set.
+// The shape of SKY_RANGES, so a caller can pass a tuned copy instead of the compiled one.
+export interface SkyRanges {
+  turbidity: { clear: number; suffocating: number };
+  mieCoefficient: { clear: number; high: number };
+  mieDirectionalG: number;
+  rayleigh: { lowO3: number; highO3: number };
+  bloomIntensity: { lowO3: number; highO3: number };
+  discBrightness: { lowO3: number; highO3: number };
+  exposure: { lowO3: number; highO3: number };
+}
+
+// `r` overrides the compiled ranges.
 export function skyParamsFor(
   pm25n: number | null,
   o3n: number | null,

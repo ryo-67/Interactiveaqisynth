@@ -35,7 +35,7 @@ function Exposure({ value }: { value: number }) {
   return null;
 }
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = false, model = "preetham" }: Props) {
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "preetham" }: Props) {
   // "above": tilt the camera up so only sky above the horizon is in frame. "edge"/"fade": horizon sits at the vertical middle.
   const cameraRotationX = groundMode === "above" ? 0.32 : 0;
   const stars = Math.round(SKY_RANGES.starsCount * starOpacity);
@@ -45,8 +45,8 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
       <Canvas
         camera={{ position: [0, 0, 0], fov: 62, rotation: [cameraRotationX, 0, 0] }}
         gl={{ antialias: true }}
-        // Cap device pixel ratio: at DPR 2 the bloom pass costs four times the pixels for no visible gain at these sizes.
-        dpr={live ? [1, 1.75] : 1}
+        // Cap device pixel ratio: at DPR 2 the bloom pass costs four times the pixels for no visible gain.
+        dpr={[1, 1.75]}
         frameloop={live ? "always" : "demand"}
         style={{ width: "100%", height: "100%", display: "block" }}
       >

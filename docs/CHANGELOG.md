@@ -2,6 +2,11 @@
 
 Why, not just what. Newest first.
 
+## 2026-08-27 — Scene prototype (D-19 task 2)
+
+Commits b43f1aa, 9ef3a27, and the scene commit. The visual direction reversed to the immersive register (D-19), and this is its Phase 0: one full-bleed scene at /scene where everything drawn is a channel — the sun rides the real solar arc for the day's date with its apex scaled by O3, the haze is PM2.5 with the tier's own smoothing, the city band is NO2's pulse made light. The sun was moved from phrase position to the clock because a sun that teleports at the loop seam breaks the sky illusion the register depends on; the clock puts it in the same place on both sides of the wrap. June 7 renders orange because that is what the sky did. Canvas 2D passes the phone budget with 2.4x headroom at 4x CPU throttle, so WebGL stays unnecessary (O-14).
+
+
 ## 2026-08-27 — Phase 1 sprint 3a: the Listen page
 
 Commits 2b3114e, 0c9a731, f6e7606. The page now is the design: one column, controls as words, the score as the picture, per §5. The chrome that made the old build read as a settings page — orbs, map, pills, sliders, icon buttons, the loading overlay's last remnants — is deleted, not hidden, because chrome kept in reserve gets remounted. The mood sentence names the playhead hour and the dominant channel so the static latest-hour number and the moving mood describe different things on purpose and say so. Tier color appears in exactly four places at tokened opacities; measured contrast on the dark ground is 5.7:1 or better at full strength. The historical route pads its EPA window a day each side (O-12) because EPA bounds requests in standard time and summer edge days were arriving an hour short.

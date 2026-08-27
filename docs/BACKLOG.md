@@ -107,9 +107,10 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
-| VIZ-01 | P1 | TODO | Orbs respond to virtual AQI in Imagine | |
-| VIZ-02 | P1 | TODO | Orbs clear correctly on theme switch | BUG-10 |
-| VIZ-03 | P2 | TODO | Orb behavior by mode | Present breathing, past settled |
+| VIZ-01 | P1 | SUPERSEDED 2026-08-27 by D-19 (orbs deleted; the scene is the visual) | Orbs respond to virtual AQI in Imagine | |
+| VIZ-02 | P1 | SUPERSEDED 2026-08-27 by D-19 | Orbs clear correctly on theme switch | BUG-10 |
+| VIZ-03 | P2 | SUPERSEDED 2026-08-27 by D-19 | Orb behavior by mode | Present breathing, past settled |
+| SCN-01 | P0 | DONE 2026-08-27 | Scene prototype at /scene: sky, solar-arc sun, haze, city band, first glass control | D-19 task 2. Canvas 2D holds 60 fps at 4x CPU throttle, 375 px, Suffocating haze (O-14: p99 6.9 ms; no WebGL). Register review pending |
 
 ## Polish
 

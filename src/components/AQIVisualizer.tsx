@@ -23,7 +23,7 @@ export function AQIVisualizer({ aqi, isPlaying, selectedBorough, onSelectBorough
   const c = themeColors(theme);
   const isDark = theme === 'dark';
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const orbsRef = useRef<Orb[]>([]);
   const timeRef = useRef(0);
   const targetAqiRef = useRef(aqi);

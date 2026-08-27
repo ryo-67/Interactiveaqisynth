@@ -9,7 +9,8 @@ import { Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { AQIVisualizer } from "./components/AQIVisualizer";
 import { TimelineScrubber } from "./components/TimelineScrubber";
-import { SynthEngine } from "./components/SynthEngine";
+import { SynthEngine } from "./engine/SynthEngine";
+import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "./fixtures/phase0-days";
 import { AQIInfo } from "./components/AQIInfo";
 import { ShareModal } from "./components/ShareModal";
 import { RecordButton } from "./components/RecordButton";
@@ -39,6 +40,37 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [volume, setVolume] = useState(0.65);
   const [showShare, setShowShare] = useState(false);
+
+  // Phase 0 engine behind the existing play/pause, fed by hardcoded fixture days until the sprint-2 data pipeline lands. Queens 2023 anchors apply to all six fixtures (known gap to SON-03).
+  const engineRef = useRef<SynthEngine | null>(null);
+  if (engineRef.current === null) {
+    engineRef.current = new SynthEngine(QUEENS_2023_ANCHORS);
+  }
+  const [fixtureKey, setFixtureKey] = useState(PHASE0_DAYS[0].key);
+
+  useEffect(() => {
+    const fixture = PHASE0_DAYS.find((d) => d.key === fixtureKey);
+    if (fixture) engineRef.current?.setDay(fixture.day);
+  }, [fixtureKey]);
+
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    if (isPlaying) void engine.play();
+    else engine.stop();
+  }, [isPlaying]);
+
+  useEffect(() => {
+    // App volume is 0..1; the engine speaks dB at the destination.
+    engineRef.current?.setVolume(20 * Math.log10(Math.max(0.001, volume)));
+  }, [volume]);
+
+  useEffect(() => {
+    // Dev-only handle for headless verification of the per-beat callback; not UI.
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__engine = engineRef.current;
+    }
+  }, []);
 
   // NYC borough data
   const [selectedBorough, setSelectedBorough] =
@@ -220,6 +252,8 @@ export default function App() {
   const c = themeColors(theme);
 
   const ensureInteracted = useCallback(() => {
+    // Tone.start() must run inside the user-gesture call stack, not in the effect that reacts to isPlaying — init here, play there.
+    void engineRef.current?.init();
     if (!hasInteracted) {
       setHasInteracted(true);
       setIsPlaying(true);
@@ -227,6 +261,7 @@ export default function App() {
   }, [hasInteracted]);
 
   const handlePlayToggle = useCallback(() => {
+    void engineRef.current?.init();
     if (!hasInteracted) {
       setHasInteracted(true);
       setIsPlaying(true);
@@ -557,20 +592,17 @@ export default function App() {
           }}
         >
           <div className="max-w-2xl mx-auto px-5 pt-6 pb-4 space-y-5">
-            {/* Synth engine — mood, prose, scale, volume */}
-            <SynthEngine
-              aqi={currentData.aqi}
-              isPlaying={isPlaying}
-              isTimelapse={isTimelapse}
-              pollutantData={{
-                pm25: currentData.pm25,
-                pm10: currentData.pm10,
-                o3: currentData.o3,
-                no2: currentData.no2,
-              }}
-              volume={volume}
-              onVolumeChange={setVolume}
-            />
+            {/* Temporary fixture selector so the Phase 0 engine port can be heard in the app (sprint 1). Replaced by real data flow in sprint 2; no styling by design. */}
+            <select
+              value={fixtureKey}
+              onChange={(e) => setFixtureKey(e.target.value)}
+            >
+              {PHASE0_DAYS.map((d) => (
+                <option key={d.key} value={d.key}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
 
             <div
               style={{

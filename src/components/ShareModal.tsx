@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { X, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AQIDataPoint, getAQIColor, getMusicMapping, getEffectProse, getAQILabel } from '../utils/mockData';
+import { AQIDataPoint, getAQIColor, getEffectProse, getAQILabel } from '../utils/mockData';
 import { useTheme, themeColors } from '../utils/theme';
+import { TIERS, tierIndexOf } from '../engine/scales';
+import { TIER_NAMES } from '../content';
 
 interface ShareModalProps {
   data: AQIDataPoint;
@@ -16,13 +18,15 @@ export function ShareModal({ data, isTimelapse, onClose, borough }: ShareModalPr
   const c = themeColors(theme);
   const [copied, setCopied] = useState(false);
 
-  const mapping = getMusicMapping(data.aqi, isTimelapse);
+  // Tier from the scale ladder (STRATEGY §3.4); the clock is fixed at 90 BPM and never encodes data (D-12).
+  const tierIdx = tierIndexOf(data.aqi);
+  const tierName = TIER_NAMES[tierIdx];
+  const scaleName = TIERS[tierIdx].scaleName;
   const color = getAQIColor(data.aqi);
   const label = getAQILabel(data.aqi);
   const effectProse = getEffectProse({ pm25: data.pm25, pm10: data.pm10, o3: data.o3, no2: data.no2 });
 
-  // BPM-synced pulse duration
-  const pulseDuration = useMemo(() => 60 / mapping.bpm, [mapping.bpm]);
+  const pulseDuration = useMemo(() => 60 / 90, []);
 
   const locationStr = borough && borough !== 'Citywide' ? `${borough}, NYC` : 'NYC';
 
@@ -30,10 +34,9 @@ export function ShareModal({ data, isTimelapse, onClose, borough }: ShareModalPr
     `${locationStr} Air Quality \u00b7 ${data.date}`,
     `AQI ${data.aqi} \u00b7 ${label}`,
     ``,
-    `Mood: ${mapping.mood}`,
-    `${mapping.feeling}`,
+    `Tier: ${tierName}`,
     ``,
-    `Scale: ${mapping.scale} \u00b7 ${mapping.bpm} BPM`,
+    `Scale: ${scaleName} \u00b7 90 BPM`,
     `${effectProse}`,
     ``,
     `PM2.5: ${data.pm25} \u03bcg/m\u00b3 \u00b7 PM10: ${data.pm10} \u03bcg/m\u00b3`,
@@ -131,17 +134,8 @@ export function ShareModal({ data, isTimelapse, onClose, borough }: ShareModalPr
                   lineHeight: 1.3,
                 }}
               >
-                {mapping.mood}
+                {tierName}
               </div>
-              <p style={{
-                fontSize: '13px',
-                lineHeight: 1.7,
-                color: c.textSecondary,
-                marginTop: '8px',
-                fontFamily: 'Georgia, "Times New Roman", serif',
-              }}>
-                {mapping.feeling}
-              </p>
             </div>
 
             {/* Musical details */}
@@ -154,13 +148,13 @@ export function ShareModal({ data, isTimelapse, onClose, borough }: ShareModalPr
                   <div style={{ fontSize: '10px', color: c.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>
                     Scale
                   </div>
-                  <div style={{ fontSize: '13px', color: c.textPrimary }}>{mapping.scale}</div>
+                  <div style={{ fontSize: '13px', color: c.textPrimary }}>{scaleName}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '10px', color: c.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>
                     Tempo
                   </div>
-                  <div className="tabular-nums" style={{ fontSize: '13px', color: c.textPrimary }}>{mapping.bpm} BPM</div>
+                  <div className="tabular-nums" style={{ fontSize: '13px', color: c.textPrimary }}>90 BPM</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '10px', color: c.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>

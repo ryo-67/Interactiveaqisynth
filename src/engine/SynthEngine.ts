@@ -180,7 +180,8 @@ export class SynthEngine {
     const bar = Math.floor(hour / 4);
     const beatInBar = hour % 4;
 
-    const reading = day[hour];
+    // DST days carry 23 or 25 local hours (archive policy); a beat past the day's last entry plays as an all-null hour — data voices rest, the bed keeps its identity.
+    const reading: HourReading = day[hour] ?? { ts: "", pm25: null, o3: null, no2: null, source: { pm25: "own", o3: "own", no2: "own" } };
     // Negative PM2.5 is instrument noise, clamped to 0 (§4.1 audit).
     const pm25 = reading.pm25 == null ? null : Math.max(0, reading.pm25);
     const pm25n = normalize(pm25, this.anchors.pm25);

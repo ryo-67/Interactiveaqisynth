@@ -24,13 +24,13 @@ import {
   type Theme,
 } from "./utils/theme";
 import {
-  fetchCurrentAQI,
-  preloadAllHistorical,
-  warmupEdgeFunction,
-  runDiagnostic,
+  getLast24h,
+  getAnchors,
   type Borough,
   type DataSource,
+  type DaySeries,
 } from "./utils/nycOpenData";
+import type { PollutantAnchors } from "./engine/contour";
 
 export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -46,12 +46,7 @@ export default function App() {
   if (engineRef.current === null) {
     engineRef.current = new SynthEngine(QUEENS_2023_ANCHORS);
   }
-  const [fixtureKey, setFixtureKey] = useState(PHASE0_DAYS[0].key);
-
-  useEffect(() => {
-    const fixture = PHASE0_DAYS.find((d) => d.key === fixtureKey);
-    if (fixture) engineRef.current?.setDay(fixture.day);
-  }, [fixtureKey]);
+  const [selectedDayKey, setSelectedDayKey] = useState("live");
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -75,161 +70,57 @@ export default function App() {
   // NYC borough data
   const [selectedBorough, setSelectedBorough] =
     useState<Borough>("Citywide");
-  const [currentBoroughData, setCurrentBoroughData] =
-    useState<Record<Borough, AQIDataPoint | null> | null>(null);
-  const [historicalCache, setHistoricalCache] = useState<
-    Record<string, AQIDataPoint[]>
-  >({});
   const [dataSource, setDataSource] =
     useState<DataSource>("loading");
 
-  // Global loading state
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
-  const [loadingPhase, setLoadingPhase] = useState(
-    "Waking up the server...",
-  );
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingError, setLoadingError] = useState<string | null>(
-    null,
-  );
-  const [showSkip, setShowSkip] = useState(false);
+  // Live last-24h series + archive anchors for the engine (sprint 2). Nothing else loads until asked (BUG-20).
+  const [liveSeries, setLiveSeries] = useState<DaySeries | null>(null);
+  const [liveAnchors, setLiveAnchors] = useState<PollutantAnchors | null>(null);
+
+  // Feed the engine: live last-24h (with archive anchors, §3.10) by default; the Phase 0 fixtures stay as a dev convenience with their Queens 2023 anchors.
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    if (selectedDayKey === "live") {
+      if (liveSeries && liveAnchors) engine.setDay(liveSeries.hours, liveAnchors);
+    } else {
+      const fixture = PHASE0_DAYS.find((d) => d.key === selectedDayKey);
+      if (fixture) engine.setDay(fixture.day, QUEENS_2023_ANCHORS);
+    }
+  }, [selectedDayKey, liveSeries, liveAnchors]);
+
 
   // Fallback mock data
   const mockData = useRef(generateMockAQIData());
 
-  // Show "skip" button after 12 seconds
-  useEffect(() => {
-    if (initialLoadDone) return;
-    const timer = setTimeout(() => setShowSkip(true), 12000);
-    return () => clearTimeout(timer);
-  }, [initialLoadDone]);
-
-  // ——— Single initial load: warmup → current AQI → all historical ———
+  // ——— First paint loads only the last 24 hours (UX-01, fixes BUG-20). The page renders immediately; the engine gets real data when it lands.
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
-      // Phase 1: Warmup
-      setLoadingPhase("Waking up the server...");
-      setLoadingProgress(5);
-      const warm = await warmupEdgeFunction();
-      if (cancelled) return;
-      console.log(
-        `[App] Edge Function warmup: ${warm ? "ready" : "slow/failed, continuing"}`,
-      );
-      setLoadingProgress(10);
-
-      // Phase 2: Current AQI (fast, AirNow)
-      setLoadingPhase("Fetching current air quality...");
       try {
-        const data = await fetchCurrentAQI();
+        const [series, anchors] = await Promise.all([
+          getLast24h("Citywide"),
+          getAnchors("Citywide"),
+        ]);
         if (cancelled) return;
-        setCurrentBoroughData(data);
-        setDataSource("live-current");
-        setLoadingProgress(20);
-        console.log("[App] Current AQI loaded from AirNow");
+        setLiveSeries(series);
+        setLiveAnchors(anchors);
+        setDataSource("live");
       } catch (err) {
-        console.warn(
-          "[App] Current AQI fetch failed, using mock:",
-          err,
-        );
+        console.warn("[App] Live fetch failed, engine stays on fixtures:", err);
         if (!cancelled) setDataSource("mock");
       }
-      if (cancelled) return;
-
-      // Phase 3: Historical data for ALL boroughs (EPA AQS)
-      // After first successful run, server's KV cache makes this near-instant.
-      setLoadingPhase("Loading EPA historical data...");
-      try {
-        const result = await preloadAllHistorical(
-          (borough, index, total) => {
-            if (cancelled) return;
-            setLoadingPhase(
-              `Loading history: ${borough} (${index + 1}/${total})`,
-            );
-            setLoadingProgress(
-              20 + ((index + 1) / total) * 75,
-            );
-          },
-        );
-
-        if (cancelled) return;
-
-        if (Object.keys(result).length > 0) {
-          setHistoricalCache(result);
-          setDataSource("live-historical");
-          console.log(
-            `[App] All historical data loaded: ${Object.keys(result).join(", ")}`,
-          );
-        } else {
-          console.warn(
-            "[App] No historical data from any borough",
-          );
-          setLoadingError(
-            "EPA historical data unavailable. Using current AQI only.",
-          );
-          // Run diagnostic in background
-          runDiagnostic().then((diag) =>
-            console.log("[App] EPA diagnostic:", diag),
-          );
-        }
-      } catch (err) {
-        console.warn("[App] Historical preload failed:", err);
-        if (!cancelled) {
-          setLoadingError(
-            "EPA historical data unavailable. Using current AQI only.",
-          );
-        }
-      }
-
-      if (cancelled) return;
-
-      setLoadingProgress(100);
-      setLoadingPhase("Ready");
-      // Brief pause for smooth transition
-      await new Promise((r) => setTimeout(r, 400));
-      if (!cancelled) setInitialLoadDone(true);
     })();
-
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Allow skipping the loading overlay
-  const handleSkipLoading = useCallback(() => {
-    setInitialLoadDone(true);
-  }, []);
+  // ——— Timeline and map still render the mock flow; the real page is sprint 3. The engine, not these visuals, carries the live data this sprint.
+  const timelineData = useMemo(() => mockData.current, []);
 
-  // ——— Timeline data: prefer historical, fall back to current-only or mock ———
-  const timelineData = useMemo(() => {
-    const historical = historicalCache[selectedBorough];
-    if (historical && historical.length > 0) {
-      // Append current reading as the final point if newer
-      const current = currentBoroughData?.[selectedBorough];
-      if (current) {
-        const lastHistDate =
-          historical[historical.length - 1]?.date;
-        if (lastHistDate !== current.date) {
-          return [...historical, current];
-        }
-      }
-      return historical;
-    }
-
-    // Fallback: single current reading
-    const current = currentBoroughData?.[selectedBorough];
-    if (current) return [current];
-
-    // Last resort: mock data
-    return mockData.current;
-  }, [historicalCache, selectedBorough, currentBoroughData]);
-
-  // ——— Latest data per borough for map coloring ———
   const latestByBorough = useMemo(() => {
-    if (currentBoroughData) return currentBoroughData;
-    const latest =
-      mockData.current[mockData.current.length - 1];
+    const latest = mockData.current[mockData.current.length - 1];
     return {
       Citywide: latest,
       Manhattan: null,
@@ -238,12 +129,7 @@ export default function App() {
       Bronx: null,
       "Staten Island": null,
     } as Record<Borough, AQIDataPoint | null>;
-  }, [currentBoroughData]);
-
-  // Reset index to most recent when timeline changes
-  useEffect(() => {
-    setCurrentIndex(Math.max(0, timelineData.length - 1));
-  }, [timelineData]);
+  }, []);
 
   const currentData =
     timelineData[
@@ -334,148 +220,12 @@ export default function App() {
   const sourceLabel = useMemo(() => {
     if (dataSource === "loading") return "Connecting...";
     if (dataSource === "mock") return "Demo data";
-    const hasHistory =
-      historicalCache[selectedBorough]?.length > 0;
-    if (hasHistory) return "AirNow + EPA AQS";
+    if (liveSeries?.fallback === "zipcode") return "AirNow area reading";
     return "AirNow (live)";
-  }, [dataSource, historicalCache, selectedBorough]);
-
-  // Count how many boroughs have historical data
-  const loadedBoroughCount = useMemo(
-    () =>
-      Object.keys(historicalCache).filter(
-        (k) => historicalCache[k]?.length > 0,
-      ).length,
-    [historicalCache],
-  );
+  }, [dataSource, liveSeries]);
 
   return (
     <ThemeContext.Provider value={theme}>
-      {/* ——— Global Loading Overlay ——— */}
-      <AnimatePresence>
-        {!initialLoadDone && (
-          <motion.div
-            key="loading-overlay"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center"
-            style={{ background: c.bg }}
-          >
-            <div className="text-center space-y-6 px-6 max-w-sm">
-              {/* Title */}
-              <div>
-                <h1
-                  style={{
-                    fontFamily:
-                      'Georgia, "Times New Roman", serif',
-                    fontStyle: "italic",
-                    fontSize: "28px",
-                    fontWeight: 400,
-                    color: c.textPrimary,
-                    lineHeight: 1.3,
-                  }}
-                >
-                  NYC Air Quality
-                </h1>
-                <p
-                  style={{
-                    fontSize: "11px",
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    color: c.textMuted,
-                    marginTop: "6px",
-                  }}
-                >
-                  Sonification
-                </p>
-              </div>
-
-              {/* Phase description */}
-              <p
-                style={{
-                  fontSize: "13px",
-                  color: c.textSecondary,
-                  fontFamily: "Georgia, serif",
-                  fontStyle: "italic",
-                  lineHeight: 1.5,
-                  minHeight: "20px",
-                }}
-              >
-                {loadingPhase}
-              </p>
-
-              {/* Progress bar */}
-              <div className="space-y-2">
-                <div
-                  className="w-56 h-0.5 rounded-full mx-auto overflow-hidden"
-                  style={{ background: c.sliderTrack }}
-                >
-                  <motion.div
-                    className="h-full rounded-full"
-                    style={{ background: c.sliderFill }}
-                    initial={{ width: "0%" }}
-                    animate={{
-                      width: `${loadingProgress}%`,
-                    }}
-                    transition={{
-                      duration: 0.5,
-                      ease: "easeOut",
-                    }}
-                  />
-                </div>
-                <p
-                  className="tabular-nums"
-                  style={{
-                    fontSize: "10px",
-                    color: c.textFaint,
-                  }}
-                >
-                  {Math.round(loadingProgress)}%
-                </p>
-              </div>
-
-              {/* Error message */}
-              {loadingError && (
-                <p
-                  style={{
-                    fontSize: "11px",
-                    color:
-                      theme === "dark"
-                        ? "rgba(255,160,140,0.7)"
-                        : "rgba(180,60,40,0.6)",
-                    fontStyle: "italic",
-                  }}
-                >
-                  {loadingError}
-                </p>
-              )}
-
-              {/* Skip button */}
-              {showSkip && (
-                <motion.button
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                  onClick={handleSkipLoading}
-                  className="px-4 py-2 rounded-full transition-all duration-200 hover:opacity-80"
-                  style={{
-                    fontSize: "11px",
-                    fontFamily: "Georgia, serif",
-                    fontStyle: "italic",
-                    color: c.textMuted,
-                    background: c.bgSurface,
-                    border: `1px solid ${c.border}`,
-                  }}
-                >
-                  Continue with available data
-                </motion.button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ——— Main App ——— */}
       <div
         className="min-h-screen flex flex-col transition-colors duration-700"
@@ -522,10 +272,7 @@ export default function App() {
                   }}
                 >
                   Sonification{" "}
-                  {dataSource !== "mock" &&
-                  dataSource !== "loading"
-                    ? "\u00b7 Live data"
-                    : ""}
+                  {dataSource === "live" ? "\u00b7 Live data" : ""}
                 </p>
               </div>
               <div className="flex items-center gap-2 pointer-events-auto">
@@ -594,12 +341,19 @@ export default function App() {
           <div className="max-w-2xl mx-auto px-5 pt-6 pb-4 space-y-5">
             {/* Temporary fixture selector so the Phase 0 engine port can be heard in the app (sprint 1). Replaced by real data flow in sprint 2; no styling by design. */}
             <select
-              value={fixtureKey}
-              onChange={(e) => setFixtureKey(e.target.value)}
+              value={selectedDayKey}
+              onChange={(e) => setSelectedDayKey(e.target.value)}
             >
+              <option value="live">
+                {liveSeries
+                  ? "Live: NYC (last 24 h)"
+                  : dataSource === "mock"
+                    ? "Live: NYC (unavailable)"
+                    : "Live: NYC (loading...)"}
+              </option>
               {PHASE0_DAYS.map((d) => (
                 <option key={d.key} value={d.key}>
-                  {d.label}
+                  {d.label} (fixture)
                 </option>
               ))}
             </select>
@@ -638,8 +392,6 @@ export default function App() {
                     }}
                   >
                     {sourceLabel}
-                    {loadedBoroughCount > 0 &&
-                      ` \u00b7 ${loadedBoroughCount} boroughs cached`}
                   </span>
                 </div>
               </div>

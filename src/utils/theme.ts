@@ -173,9 +173,13 @@ export const NYC_LON = -73.9857;
 // MAPPING (PM2.5 → turbidity + mieCoefficient): aerosol scattering — what smoke does to light.
 // MAPPING (O3 → rayleigh + bloom intensity + disc brightness): photochemical intensity — ozone is made by strong sun, so high ozone reads bright and white and low ozone reads deep blue.
 // MAPPING (clock → sunPosition + star visibility): the day itself.
+// Tone-mapping exposure that makes a clear noon sky read as a clear day (haze 0, rayleigh at the model default). Settled by eye against the reference; see the scene-test harness.
+export const CLEAR_NOON_EXPOSURE = 0.5;
+
 export const SKY_RANGES = {
-  turbidity: { clear: 2, suffocating: 20 },
-  mieCoefficient: { clear: 0.005, high: 0.1 },
+  // Aerosol ends match the published haze path in skyParams.ts (turbidity 2 = measured clear sky, 12 = past Preetham's overcast figure of 10). The previous 20 / 0.1 sat outside the model's useful range, which rendered June 7 as blown-out white and made the day rows unjudgeable.
+  turbidity: { clear: 2, suffocating: 12 },
+  mieCoefficient: { clear: 0.005, high: 0.05 },
   mieDirectionalG: 0.86, // held, per the brief
   rayleigh: { lowO3: 0.6, highO3: 3.0 },
   bloomIntensity: { lowO3: 0.15, highO3: 1.4 },

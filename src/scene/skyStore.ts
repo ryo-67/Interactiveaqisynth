@@ -3,13 +3,14 @@
 // `applied` and `ranges` change only when Apply is pressed. The grid reads those, so the benchmark rows are stable until you deliberately push a change into them.
 import { useSyncExternalStore } from "react";
 import { SKY_RANGES } from "../utils/theme";
+import { RAYLEIGH_DEFAULT, hazeToAerosol } from "./skyParams";
+import { CLEAR_NOON_EXPOSURE } from "../utils/theme";
 
 export interface SkyControls {
-  turbidity: number;
-  mie: number;
-  rayleigh: number;
+  haze: number; // the single aerosol parameter: turbidity and mie rise together along it
+  rayleigh: number; // held at the model default; adjustable, but not varied by the haze row
   bloom: number;
-  exposure: number;
+  exposure: number; // set once so a clear noon sky reads as a clear day
 }
 
 // The runtime copy of theme.ts SKY_RANGES. Editing the ends here re-renders the real-day rows through the mapping, which is how those rows become benchmarkable.
@@ -23,7 +24,7 @@ export interface SkyRanges {
   exposure: { lowO3: number; highO3: number };
 }
 
-let controls: SkyControls = { turbidity: 8, mie: 0.03, rayleigh: 1.8, bloom: 0.6, exposure: 0.5 };
+let controls: SkyControls = { haze: 0, rayleigh: RAYLEIGH_DEFAULT, bloom: 0.6, exposure: CLEAR_NOON_EXPOSURE };
 let applied: SkyControls = { ...controls };
 let ranges: SkyRanges = {
   turbidity: { ...SKY_RANGES.turbidity },
@@ -61,16 +62,16 @@ export function applyAsRangeEnd(end: "clear" | "smoke"): void {
     end === "clear"
       ? {
           ...ranges,
-          turbidity: { ...ranges.turbidity, clear: controls.turbidity },
-          mieCoefficient: { ...ranges.mieCoefficient, clear: controls.mie },
+          turbidity: { ...ranges.turbidity, clear: hazeToAerosol(controls.haze).turbidity },
+          mieCoefficient: { ...ranges.mieCoefficient, clear: hazeToAerosol(controls.haze).mieCoefficient },
           rayleigh: { ...ranges.rayleigh, lowO3: controls.rayleigh },
           bloomIntensity: { ...ranges.bloomIntensity, lowO3: controls.bloom },
           exposure: { ...ranges.exposure, lowO3: controls.exposure },
         }
       : {
           ...ranges,
-          turbidity: { ...ranges.turbidity, suffocating: controls.turbidity },
-          mieCoefficient: { ...ranges.mieCoefficient, high: controls.mie },
+          turbidity: { ...ranges.turbidity, suffocating: hazeToAerosol(controls.haze).turbidity },
+          mieCoefficient: { ...ranges.mieCoefficient, high: hazeToAerosol(controls.haze).mieCoefficient },
           rayleigh: { ...ranges.rayleigh, highO3: controls.rayleigh },
           bloomIntensity: { ...ranges.bloomIntensity, highO3: controls.bloom },
           exposure: { ...ranges.exposure, highO3: controls.exposure },

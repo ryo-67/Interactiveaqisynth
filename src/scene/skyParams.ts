@@ -47,6 +47,24 @@ export function skyParamsFor(
   };
 }
 
+// The aerosol path (§5.2 item 2): one parameter, haze 0→1, along which turbidity and mieCoefficient rise together. Two free variables would be a search space, not a comparison. haze = 0 is the model's own default sky (turbidity 2, mie 0.005). Linear for now.
+// Endpoints from published values rather than guesswork: turbidity 2.0 is a measured clear sky (photometric fits land at 2.5, stable 2–3); Preetham's own figures use 6 for a hazy evening and 10 for overcast. Above ~12 the model is outside its useful range, which is why an earlier 2→30 path read as hazy in every cell.
+export const HAZE_PATH = {
+  turbidity: { at0: 2, at1: 12 },
+  mieCoefficient: { at0: 0.005, at1: 0.05 },
+} as const;
+
+export function hazeToAerosol(haze: number): { turbidity: number; mieCoefficient: number } {
+  const h = Math.max(0, Math.min(1, haze));
+  return {
+    turbidity: HAZE_PATH.turbidity.at0 + (HAZE_PATH.turbidity.at1 - HAZE_PATH.turbidity.at0) * h,
+    mieCoefficient: HAZE_PATH.mieCoefficient.at0 + (HAZE_PATH.mieCoefficient.at1 - HAZE_PATH.mieCoefficient.at0) * h,
+  };
+}
+
+// Rayleigh is held at the three.js Sky model default and is no longer part of what the haze row varies.
+export const RAYLEIGH_DEFAULT = 1;
+
 // Stars fade in below the horizon and are hidden by haze (§5.2 item 4).
 export function starOpacity(sunElevationDeg: number, pm25n: number | null): number {
   const night = Math.max(0, Math.min(1, -sunElevationDeg / 8)); // full by ~8° below the horizon

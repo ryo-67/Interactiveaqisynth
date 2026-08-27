@@ -4,9 +4,12 @@ import { Canvas, useThree, invalidate } from "@react-three/fiber";
 import { Sky, Stars } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { SKY_RANGES } from "../utils/theme";
+import { HosekSky } from "./hosek/HosekSky";
 import type { SkyParams } from "./skyParams";
 
 export type GroundMode = "above" | "fade" | "edge";
+// Preetham is what three.js ships; Hosek-Wilkie is the 2012 replacement designed to fix exactly the two conditions this piece leans on, sunset and high turbidity.
+export type SkyModel = "preetham" | "hosek";
 
 interface Props {
   params: SkyParams;
@@ -16,6 +19,7 @@ interface Props {
   style?: React.CSSProperties;
   // Static grid cells render on demand (once, then on prop change); the live preview renders continuously so dragging a slider is smooth.
   live?: boolean;
+  model?: SkyModel;
 }
 
 // Tone-mapping exposure is a renderer setting, not a <Sky> prop. On-demand cells must be told to repaint after it changes.
@@ -31,7 +35,7 @@ function Exposure({ value }: { value: number }) {
   return null;
 }
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "edge", style, live = false }: Props) {
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = false, model = "preetham" }: Props) {
   // "above": tilt the camera up so only sky above the horizon is in frame. "edge"/"fade": horizon sits at the vertical middle.
   const cameraRotationX = groundMode === "above" ? 0.32 : 0;
   const stars = Math.round(SKY_RANGES.starsCount * starOpacity);
@@ -47,14 +51,19 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "edge",
         style={{ width: "100%", height: "100%", display: "block" }}
       >
         <Exposure value={params.exposure} />
-        <Sky
-          distance={450000}
-          sunPosition={sunPosition}
-          turbidity={params.turbidity}
-          rayleigh={params.rayleigh}
-          mieCoefficient={params.mieCoefficient}
-          mieDirectionalG={params.mieDirectionalG}
-        />
+        {model === "hosek" ? (
+          // Hosek-Wilkie takes turbidity, ground albedo and solar elevation. It has no rayleigh or mie inputs: the fitted dataset carries the scattering.
+          <HosekSky sunPosition={sunPosition} turbidity={params.turbidity} />
+        ) : (
+          <Sky
+            distance={450000}
+            sunPosition={sunPosition}
+            turbidity={params.turbidity}
+            rayleigh={params.rayleigh}
+            mieCoefficient={params.mieCoefficient}
+            mieDirectionalG={params.mieDirectionalG}
+          />
+        )}
         {stars > 0 && (
           <Stars radius={100} depth={50} count={stars} factor={4} saturation={0} fade speed={0.4} />
         )}

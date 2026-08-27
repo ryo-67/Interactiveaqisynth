@@ -34,6 +34,13 @@ export interface BeatInfo {
   pm25n: number | null;
   o3n: number | null;
   no2n: number | null;
+  // PM2.5 haze value for the scene: normalized PM2.5 smoothed with the same α = 0.3 carry rules the tier uses (§5.2 item 2 — the scene must not re-derive its own smoothing).
+  pm25nSmoothed: number | null;
+}
+
+export interface PulseInfo {
+  hour: number;
+  step: number; // 16th-note step within the bar
 }
 
 const BEAT_S = 60 / 90; // one beat = one hour = 0.667 s; every parameter ramp uses this (never jump)
@@ -51,11 +58,13 @@ export class SynthEngine {
   private day: Day | null = null;
   private bars: BarState[] = [];
   private smoother = new SmoothedAQI(0.3);
+  private hazeSmoother = new SmoothedAQI(0.3); // same class, same α: normalized PM2.5 for the scene's haze
   private curTier = 0;
   private curChordRootMidi = CHORD_ROOT_MIDI;
   private curBarK: number | null = null;
   private startHour = 0;
   private beatCallback: ((info: BeatInfo) => void) | null = null;
+  private pulseCallback: ((info: PulseInfo) => void) | null = null;
   private initPromise: Promise<void> | null = null;
 
   // Loop-wrap dedup: each callback drops a second firing closer than half its own interval; reset on every (re)start so a day switch never swallows its first events.
@@ -139,6 +148,7 @@ export class SynthEngine {
     const heldPosition = opts?.keepPosition ? transport.position.toString() : null;
     transport.stop();
     this.smoother.reset(); // new day (or new borough's air) = new seed; within a day the state carries across the wrap
+    this.hazeSmoother.reset();
     if (wasPlaying) {
       this.lastBeatTime = this.lastStepTime = -1;
       transport.start("+0.05", heldPosition ?? `${Math.floor(this.startHour / 4)}:${this.startHour % 4}:0`);
@@ -161,10 +171,16 @@ export class SynthEngine {
     this.beatCallback = cb;
   }
 
+  // Pulse-hit tap for the scene's city flicker (§5.2 item 3). Same timing source as everything else: the engine's own 16th-step scheduler.
+  onPulse(cb: ((info: PulseInfo) => void) | null): void {
+    this.pulseCallback = cb;
+  }
+
   async play(): Promise<void> {
     await this.init();
     if (!this.day || Tone.getTransport().state === "started") return;
     this.smoother.reset();
+    this.hazeSmoother.reset();
     this.startTransport();
   }
 
@@ -200,6 +216,7 @@ export class SynthEngine {
 
     // MAPPING (PM2.5 → AQI tier → scale ladder, §3.2/§3.4): smoothed hourly AQI selects the scale for every voice.
     const smoothed = this.smoother.update(pm25ToAQI(pm25));
+    const pm25nSmoothed = this.hazeSmoother.update(pm25n);
     if (smoothed != null) this.curTier = tierIndexOf(smoothed);
     const tier = TIERS[this.curTier];
 
@@ -267,6 +284,7 @@ export class SynthEngine {
       pm25n,
       o3n,
       no2n,
+      pm25nSmoothed,
     });
   }
 
@@ -287,6 +305,7 @@ export class SynthEngine {
       const f = midiToFreq(this.curChordRootMidi + 12);
       this.pulse.triggerAttackRelease(f * 2, "32n", time);
       this.pulse.frequency.exponentialRampToValueAtTime(f, time + 0.03);
+      this.pulseCallback?.({ hour: bar * 4 + Math.floor(step / 4), step });
     }
   }
 }

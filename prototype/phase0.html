@@ -1,0 +1,340 @@
+<!doctype html>
+<!--
+  phase0.html — V4
+  V4 (ruling D-16, STRATEGY §4.4 as amended): a borough missing a pollutant uses the citywide value for it — citywide = per-hour mean across the boroughs that monitor that pollutant (O3: Bronx, Manhattan, Queens, Staten Island; NO2: Bronx, Queens). The two Brooklyn days now carry citywide O3/NO2 instead of nulls, marked "(citywide)" in the readout. Null guards remain in code; they now cover only hours no borough reports, which none of these six days contains. No sonic constants changed.
+  V3:
+  V3 (from V2 listening notes): bass and pulse get their own timbral identities that tier degrades, instead of sharing the tier's harmonicity/index. Bass stays a sub: harmonicity 1→2 across tiers (never metallic), index at 0.5× the tier table, attack 40 ms, release 0.8 s, two octaves below the chord root, private 400 Hz lowpass before the shared chain. Pulse reads as click/mallet: fixed harmonicity 7 (try 11 if too tonal), full tier index, 1 ms attack / 80 ms decay / no sustain, one-octave-down pitch envelope over the first 30 ms. Added sixth day: Oct 29 Brooklyn (PM2.5 only), the clean control for the one-lung rendering.
+  V2:
+  V2: bed rewritten as a 6-bar loop, degrees [1,5,4,1,5,1], so it cycles with the day and the 5→1 cadence at the wrap is deliberate rather than an artifact of a 4-bar bed against a 6-bar day. Added fifth day (Jun 7 Brooklyn, O3/NO2 entirely null) to exercise the §4.4 guards.
+  V1 below:
+  Headless Tone.js prototype of the sonification engine, STRATEGY.md §3, for the PH0-04 listening test.
+  One borough (Queens), four hardcoded days, no data fetching, no build step, no imports from src/.
+  Clock: 90 BPM, 4/4. One hour = one beat. One day = 24 beats = 6 bars, looped (§3.3, §3.9).
+  Decisions carried in from plan approval: smoothed AQI carries across the loop wrap (no per-pass reset);
+  reverb "decay" is a crossfade between two static reverbs (Tone.Reverb decay cannot ramp);
+  bass plays the bed's chord root (NO2 drives its density and modulation depth, not its pitch).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AQI Synth — Phase 0 listening prototype</title>
+</head>
+<body>
+  <h1>AQI Synth — Phase 0 (V4)</h1>
+  <p>Queens, EPA AQS hourly, 2023. Pick a day, press Play. One day = 16 seconds, looped.</p>
+  <div>
+    <button data-day="2023-10-29">Oct 29, cleanest</button>
+    <button data-day="2023-07-12">Jul 12, ozone</button>
+    <button data-day="2023-02-09">Feb 9, rush hour</button>
+    <button data-day="2023-06-07">Jun 7, the smoke</button>
+    <button data-day="2023-06-07-brooklyn">Jun 7, Brooklyn (O3, NO2 citywide)</button>
+    <button data-day="2023-10-29-brooklyn">Oct 29, Brooklyn (O3, NO2 citywide)</button>
+  </div>
+  <div>
+    <button id="play">Play</button>
+    <button id="stop">Stop</button>
+    <label>Start at hour <input id="startHour" type="number" min="0" max="23" value="0"></label>
+    <span>(applies on Play or day switch)</span>
+  </div>
+  <pre id="readout">no day selected</pre>
+
+<script type="module">
+import * as Tone from "https://cdn.jsdelivr.net/npm/tone@15/+esm";
+
+// ——— Data: Queens 2023, EPA AQS hourly. PM2.5 µg/m³ (88502), O3 ppb (44201), NO2 ppb (42602), max across sites per hour. null = missing (§4.4).
+const DAYS = {
+  "2023-06-07": {"pm25":[81.9,75.4,64.5,65.6,65.0,63.5,62.9,65.5,65.6,59.8,74.5,161.2,253.3,269.7,262.7,174.0,157.1,161.2,183.1,183.2,178.9,172.2,155.3,154.4],"o3":[41.0,43.0,46.0,44.0,38.0,33.0,33.0,32.0,34.0,38.0,48.0,46.0,45.0,38.0,40.0,37.0,39.0,40.0,39.0,39.0,32.0,30.0,31.0,29.0],"no2":[20.7,18.6,13.6,22.9,28.8,34.6,31.2,27.9,20.8,20.1,8.2,10.5,11.9,16.1,14.1,13.2,17.4,16.4,14.1,13.8,21.4,21.8,17.7,18.8]},
+  "2023-07-12": {"pm25":[12.6,13.6,13.7,14.3,15.0,18.6,20.0,19.8,18.5,17.8,13.0,10.8,10.3,10.7,9.9,14.3,15.8,15.8,18.7,19.8,18.1,17.8,15.6,13.9],"o3":[31.0,25.0,22.0,29.0,21.0,22.0,19.0,40.0,40.0,47.0,68.0,83.0,86.0,85.0,83.0,84.0,75.0,71.0,66.0,55.0,51.0,42.0,31.0,22.0],"no2":[24.6,26.1,27.1,25.4,34.8,35.1,39.5,34.9,37.6,33.7,18.0,7.8,9.6,5.4,4.8,7.8,6.8,9.9,10.1,16.1,14.4,18.7,29.8,32.7]},
+  "2023-02-09": {"pm25":[14.2,16.5,15.3,18.7,18.8,24.0,27.1,24.3,17.9,27.3,22.6,13.4,6.9,6.7,7.5,7.2,5.9,9.1,8.0,6.9,8.6,10.2,10.5,9.3],"o3":[0.0,0.0,0.0,0.0,0.0,1.0,1.0,0.0,1.0,1.0,1.0,2.0,22.0,29.0,29.0,32.0,33.0,33.0,30.0,36.0,39.0,40.0,42.0,40.0],"no2":[51.6,53.2,52.1,56.1,60.0,66.8,70.4,58.8,50.2,63.7,55.3,43.6,19.8,13.3,12.0,13.9,15.0,15.6,21.0,15.4,14.1,13.3,11.4,13.2]},
+  "2023-10-29": {"pm25":[1.7,1.2,0.2,2.4,1.3,-0.1,-0.9,1.3,2.8,2.1,2.5,3.0,1.6,1.1,0.2,0.7,2.4,3.3,3.6,2.5,1.1,0.7,-0.5,0.3],"o3":[20.0,23.0,24.0,23.0,21.0,20.0,18.0,17.0,16.0,15.0,13.0,14.0,13.0,13.0,13.0,12.0,11.0,12.0,11.0,12.0,10.0,8.0,9.0,9.0],"no2":[8.5,7.5,5.8,6.2,8.2,6.8,8.2,8.3,9.1,7.8,7.2,6.2,7.0,7.2,7.3,8.0,9.9,9.0,10.4,9.6,10.0,10.3,8.9,9.8]},
+  // Brooklyn Jun 7 (V4, D-16): Brooklyn monitors no O3/NO2, so those channels carry the citywide per-hour mean (O3: Bronx/Manhattan/Queens/Staten Island; NO2: Bronx/Queens). PM2.5 is Brooklyn's own.
+  "2023-06-07-brooklyn": {"pm25":[112.4,100.7,105.9,94.9,85.8,82.0,78.8,81.8,78.5,76.0,96.4,207.6,330.4,375.9,384.0,230.1,206.8,224.4,239.7,239.4,243.4,227.4,212.9,198.5],"o3":[37.0,38.2,39.8,39.2,37.5,35.5,33.5,34.5,35.5,38.2,45.2,43.5,41.2,37.2,35.8,37.0,39.2,38.8,36.8,33.8,31.0,30.0,28.8,23.2],"no2":[14.2,12.5,9.7,14.8,19.6,25.2,23.4,20.8,14.2,13.2,8.6,10.7,11.8,14.2,13.6,12.0,13.4,13.6,12.8,13.0,16.9,17.1,14.6,16.2]},
+  // Brooklyn Oct 29 (V4, D-16): clean control, citywide O3/NO2 as above.
+  "2023-10-29-brooklyn": {"pm25":[3.1,3.2,3.0,2.6,2.3,1.9,2.1,2.1,2.9,3.2,3.8,3.8,4.0,3.7,3.3,3.6,4.4,4.6,3.8,6.2,6.0,5.3,4.2,3.7],"o3":[20.2,21.0,20.8,20.0,18.2,17.8,15.8,13.2,11.5,11.2,10.8,11.0,10.2,10.8,10.8,10.8,9.5,8.5,8.0,7.0,6.0,5.2,5.8,6.0],"no2":[8.3,6.5,5.4,5.3,7.5,6.7,7.4,7.6,9.1,7.9,7.7,6.9,7.2,7.5,7.9,8.6,10.3,10.3,10.9,10.4,10.6,10.9,9.7,10.0]}
+};
+
+// Days whose O3/NO2 are the citywide mean rather than the borough's own monitors (D-16) — marked in the readout.
+const CITYWIDE_CHANNELS = new Set(["2023-06-07-brooklyn", "2023-10-29-brooklyn"]);
+
+// ——— Corpus normalization (§3.10): 2023 Queens hourly distribution. p05 → 0, p95 → 1, clamped at 0 below; values above 1 are clamped at each rule's own ceiling so June 7 sits off the top.
+const NORM = { pm25: { p05: 1.3, p95: 20.8 }, o3: { p05: 1.0, p95: 54.0 }, no2: { p05: 3.3, p95: 35.8 } };
+function normVal(v, kind) {
+  if (v == null) return null;
+  return Math.max(0, (v - NORM[kind].p05) / (NORM[kind].p95 - NORM[kind].p05));
+}
+
+// ——— EPA PM2.5 AQI breakpoints, linear within each band. Negative PM2.5 is instrument noise, clamped to 0 before this.
+const AQI_BP = [
+  [0.0, 12.0, 0, 50], [12.1, 35.4, 51, 100], [35.5, 55.4, 101, 150],
+  [55.5, 150.4, 151, 200], [150.5, 250.4, 201, 300], [250.5, 500.4, 301, 500],
+];
+function pm25ToAQI(c) {
+  if (c == null) return null;
+  c = Math.max(0, c);
+  for (const [cLo, cHi, iLo, iHi] of AQI_BP) {
+    if (c <= cHi) return iLo + ((c - cLo) / (cHi - cLo)) * (iHi - iLo);
+  }
+  return 500;
+}
+
+// ——— Scale ladder (§3.4) + FM parameters and melody articulation per tier. FM: low tier = integer ratios and low index (warm); high tier = irrational ratios and high index (metallic, beating) — dissonance lives at the oscillator (§3.5). Note length shortens with tier: same notes, less air (§3.9).
+const TIERS = [
+  { name: "Easy",        max: 35,       scale: { name: "Major Pentatonic", semis: [0, 2, 4, 7, 9] },          harm: 1,     mod: 1,  noteLen: "1n"  },
+  { name: "Shallow",     max: 65,       scale: { name: "Whole Tone",       semis: [0, 2, 4, 6, 8, 10] },       harm: 2,     mod: 3,  noteLen: "2n." },
+  { name: "Tight",       max: 100,      scale: { name: "Dorian",           semis: [0, 2, 3, 5, 7, 9, 10] },    harm: 3,     mod: 6,  noteLen: "2n"  },
+  { name: "Ragged",      max: 150,      scale: { name: "Phrygian",         semis: [0, 1, 3, 5, 7, 8, 10] },    harm: 2.76,  mod: 12, noteLen: "4n"  },
+  { name: "Suffocating", max: Infinity, scale: { name: "Chromatic",        semis: [0,1,2,3,4,5,6,7,8,9,10,11] }, harm: 1.414, mod: 24, noteLen: "8n" },
+];
+function tierIndexOf(aqi) { return TIERS.findIndex(t => aqi <= t.max); }
+
+const ALPHA = 0.3;          // exponential smoothing on AQI so tier does not flicker hour to hour
+const BEAT_S = 60 / 90;     // one beat = one hour = 0.667 s; all parameter ramps use this (never jump)
+const BED_DEGREES = [1, 5, 4, 1, 5, 1]; // composed six-bar bed (§3.8), written once in the Easy scale, transposed by degree; six bars so it cycles with the day and cadences 5→1 into the loop wrap (V2)
+
+// ——— Euclidean rhythm (Bjorklund via the Bresenham formulation): step i of n is a hit when the k-count advances. Rotation r shifts the pattern left so the bar's downbeat character follows the hour of day.
+function euclidHit(step, k, n, r) {
+  const i = (step + r) % n;
+  return Math.floor(((i + 1) * k) / n) - Math.floor((i * k) / n) > 0;
+}
+
+// Box-Muller standard normal, for Brownian detune draws.
+function randNormal() {
+  const u = 1 - Math.random(), v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+// ——— Per-day precompute: clamp PM2.5 noise, per-bar NO2 means → Euclidean k and rotation.
+// MAPPING (NO2 → pulse density, §3.2/§3.9): mean normalized NO2 of the bar's 4 hours → k = round(3 + 8·v) clamped 3..11 over 16 steps. Metaphor: combustion traffic as rhythmic pressure — rush hour hammers, empty streets tick.
+// §4.4: a bar with no NO2 readings at all has k = null → no pulse that bar (partial bars use the mean of reporting hours; missing is never zero).
+function prepareDay(key) {
+  const src = DAYS[key];
+  const pm25 = src.pm25.map(v => v == null ? null : Math.max(0, v));
+  const bars = [];
+  for (let b = 0; b < 6; b++) {
+    const vals = src.no2.slice(b * 4, b * 4 + 4).filter(v => v != null).map(v => normVal(v, "no2"));
+    if (vals.length === 0) { bars.push({ k: null, rot: (b * 4) % 16 }); continue; }
+    const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+    bars.push({ k: Math.min(11, Math.max(3, Math.round(3 + 8 * mean))), rot: (b * 4) % 16 });
+  }
+  return { key, pm25, o3: src.o3, no2: src.no2, bars };
+}
+
+// ——— Runtime state ———
+let day = null;              // prepared day
+let smoothedAQI = null;      // carries across the loop wrap by design: Listen mode is a rolling window with no seam
+let curTier = 0;             // last computed tier index (drives scale for all voices)
+let curChordRootMidi = 60;   // bed's current chord root; bass and pulse pitch anchor to it
+let curBarK = null;          // current bar's Euclidean k, for readout and the beat-3 bass rule
+let initPromise = null; // single-flight guard: two rapid clicks must not build the graph twice
+
+// ——— Audio graph (built once after the user-gesture Tone.start(); nothing is disposed on day switch) ———
+let melody, pulse, bass, bedVoices, filter, dryGain, revShortGain, revLongGain;
+
+function initAudio() {
+  return (initPromise ||= buildAudio());
+}
+
+async function buildAudio() {
+  await Tone.start();
+
+  // Shared effects chain, uniform across voices (§3.6): every voice → lowpass → reverb → destination.
+  // MAPPING (O3 → lowpass ceiling): cutoff = 2500 Hz at normalized O3 = 0 up to 12000 Hz at 1. Metaphor: visibility — O3 peaks with sunlight, bright clear afternoons open the ceiling; Feb 9's titrated overnight zero holds the piece dark until noon.
+  filter = new Tone.Filter(2500, "lowpass");
+  // MAPPING (PM2.5 → reverb, §3.6): wet = 0.15 + 0.6·pm25n (clamp 0.9); "decay" 1.5 s → 7.5 s is a crossfade between two static reverbs because Tone.Reverb decay cannot ramp. Metaphor: fog — particulates scatter the sound field.
+  dryGain = new Tone.Gain(0.85);
+  revShortGain = new Tone.Gain(0.15);
+  revLongGain = new Tone.Gain(0);
+  const revShort = new Tone.Reverb({ decay: 1.5, wet: 1 });
+  const revLong = new Tone.Reverb({ decay: 7.5, wet: 1 });
+  await Promise.all([revShort.ready, revLong.ready]);
+  filter.connect(dryGain); dryGain.toDestination();
+  filter.connect(revShortGain); revShortGain.connect(revShort); revShort.toDestination();
+  filter.connect(revLongGain); revLongGain.connect(revLong); revLong.toDestination();
+
+  // Four FM voices (§3.5), all through the shared chain. Envelope and volume values are mix choices, not data mappings.
+  melody = new Tone.FMSynth({ volume: -8, envelope: { attack: 0.02, decay: 0.1, sustain: 0.7, release: 0.3 } }).connect(filter);
+  // V3 pulse identity: fixed harmonicity 7 so it reads as click/mallet, not a tone (try 11 if still too tonal); attack 1 ms, decay 80 ms, no sustain. A one-octave-down pitch envelope over the first 30 ms is applied per hit at the trigger site. Soft tick at Easy, hammer at Suffocating via the tier's full modulation index.
+  pulse = new Tone.FMSynth({ volume: -12, harmonicity: 7, envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.05 }, modulationEnvelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.05 } }).connect(filter);
+  // V3 bass identity: a sub that never goes metallic — attack 40 ms, release 0.8 s, and a private 400 Hz lowpass before the shared chain so it stays a floor.
+  bass = new Tone.FMSynth({ volume: -10, envelope: { attack: 0.04, decay: 0.2, sustain: 0.6, release: 0.8 } });
+  const bassFloor = new Tone.Filter(400, "lowpass");
+  bass.connect(bassFloor); bassFloor.connect(filter);
+  // Bed pad is three mono FMSynths (one per triad note) instead of PolySynth so harmonicity/modulationIndex can ramp, not jump.
+  bedVoices = [0, 1, 2].map(() => new Tone.FMSynth({ volume: -16, envelope: { attack: 0.4, decay: 0.3, sustain: 0.8, release: 1.2 } }).connect(filter));
+
+  Tone.getTransport().bpm.value = 90;
+  Tone.getTransport().timeSignature = 4;
+  Tone.getTransport().loop = true;
+  Tone.getTransport().loopStart = 0;
+  Tone.getTransport().loopEnd = "6m";
+  Tone.getTransport().scheduleRepeat(onBeat, "4n", 0);
+  Tone.getTransport().scheduleRepeat(onStep16, "16n", 0);
+}
+
+// Build the bed chord for a 1-indexed degree in the current tier's scale: stack every-other degree (root, +2, +4) with octave carry, root octave C4. In Chromatic this collapses toward clusters — that is the wreckage working as intended.
+function chordMidi(degree, tierIdx) {
+  const semis = TIERS[tierIdx].scale.semis, len = semis.length;
+  return [0, 2, 4].map(step => {
+    const j = (degree - 1) + step;
+    return 60 + semis[j % len] + 12 * Math.floor(j / len);
+  });
+}
+
+// MAPPING (O3 → melody pitch, §3.2): normalized O3 spans two octaves C3–C5, quantized to the nearest degree of the current tier's scale. The contour is preserved across scales — the same arch, wrecked — which is the mechanism by which June 7 reads as the same piece.
+function melodyMidi(o3n, tierIdx) {
+  const target = 48 + Math.min(1, o3n) * 24;
+  const semis = TIERS[tierIdx].scale.semis;
+  let best = 48, bestDist = Infinity;
+  for (let oct = 0; oct <= 2; oct++) for (const s of semis) {
+    const m = 48 + 12 * oct + s;
+    if (m > 72) continue;
+    const d = Math.abs(m - target);
+    if (d < bestDist) { bestDist = d; best = m; }
+  }
+  return best;
+}
+
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+
+// At the loop wrap Tone can fire the boundary repeat event twice — once at "6m" and once at "0" — at the same audio time, double-triggering every voice ("start time must be strictly greater" errors). Each callback drops a second firing closer than half its own interval.
+let lastBeatTime = -1, lastStepTime = -1;
+
+function onBeat(time) {
+  if (!day) return;
+  if (time - lastBeatTime < 0.3) return;
+  lastBeatTime = time;
+  const ticks = Tone.getTransport().getTicksAtTime(time);
+  const ppq = Tone.getTransport().PPQ;
+  const hour = Math.round(ticks / ppq) % 24;
+  const bar = Math.floor(hour / 4);
+  const beatInBar = hour % 4;
+
+  const pm25 = day.pm25[hour], o3 = day.o3[hour], no2 = day.no2[hour];
+  const pm25n = normVal(pm25, "pm25"), o3n = normVal(o3, "o3"), no2n = normVal(no2, "no2");
+
+  // MAPPING (PM2.5 → AQI tier → scale ladder, §3.2/§3.4): hourly AQI from EPA breakpoints, exponentially smoothed (α = 0.3) so tier does not flicker; smoothing state carries across the loop wrap. A null PM2.5 hour holds the last smoothed value (§4.4: never estimated).
+  const aqi = pm25ToAQI(pm25);
+  if (aqi != null) smoothedAQI = smoothedAQI == null ? aqi : ALPHA * aqi + (1 - ALPHA) * smoothedAQI;
+  if (smoothedAQI != null) curTier = tierIndexOf(smoothedAQI);
+  const tier = TIERS[curTier];
+
+  // MAPPING (PM2.5 → FM harmonicity/modulationIndex by tier, §3.5): timbral degradation at the oscillator. Same ratio for all voices; pulse at half index. MAPPING (NO2 → modulation depth, §3.6): pulse and bass index raised up to +50% at normalized NO2 = 1 — combustion grit. All ramped over one beat, never jumped.
+  const no2Boost = 1 + 0.5 * Math.min(1, no2n ?? 0);
+  for (const v of [melody, ...bedVoices]) { v.harmonicity.rampTo(tier.harm, BEAT_S, time); v.modulationIndex.rampTo(tier.mod, BEAT_S, time); }
+  // V3: pulse harmonicity is fixed (set at construction); tier degrades it through the full-value modulation index alone.
+  pulse.modulationIndex.rampTo(tier.mod * no2Boost, BEAT_S, time);
+  // V3: bass harmonicity rises only 1 (Easy) → 2 (Suffocating), linear across tiers — it stays a sub while the tier still moves it; index at 0.5× the tier table.
+  bass.harmonicity.rampTo(1 + curTier * 0.25, BEAT_S, time);
+  bass.modulationIndex.rampTo(0.5 * tier.mod * no2Boost, BEAT_S, time);
+
+  // Effects follow the current hour; a null hour holds the previous value (no data, no movement).
+  if (o3n != null) filter.frequency.rampTo(2500 + 9500 * Math.min(1, o3n), BEAT_S, time);
+  if (pm25n != null) {
+    const wet = Math.min(0.9, 0.15 + 0.6 * pm25n);
+    const x = Math.min(1, pm25n); // 0 → all short reverb (1.5 s), 1 → all long (7.5 s): the decay rule as a crossfade
+    dryGain.gain.rampTo(1 - wet, BEAT_S, time);
+    revShortGain.gain.rampTo(wet * (1 - x), BEAT_S, time);
+    revLongGain.gain.rampTo(wet * x, BEAT_S, time);
+  }
+
+  // Bed (§3.8): one chord per bar, the 6-bar progression cycling with the day (V2). From Ragged up, the progression advances on beats 1 and 3 — harmonic rhythm doubles, acceleration without a tempo change (§3.9).
+  const fastBed = curTier >= 3;
+  let chordIdx = null;
+  if (beatInBar === 0) chordIdx = bar;
+  else if (beatInBar === 2 && fastBed) chordIdx = (bar + 1) % 6;
+  if (chordIdx != null) {
+    const notes = chordMidi(BED_DEGREES[chordIdx], curTier);
+    curChordRootMidi = notes[0];
+    const dur = fastBed ? "2n" : "1m";
+    bedVoices.forEach((v, i) => v.triggerAttackRelease(mtof(notes[i]), dur, time));
+  }
+
+  // Bass: the bed's chord root an octave below on beat 1; again on beat 3 when the bar's Euclidean k ≥ 8. NO2 drives its density and modulation depth, not its pitch — the bass agrees with the composed identity. A whole-bar-null NO2 drops the beat-3 hit (k undefined) but keeps beat 1, which belongs to the bed.
+  curBarK = day.bars[bar].k;
+  if (beatInBar === 0 || (beatInBar === 2 && curBarK != null && curBarK >= 8)) {
+    bass.triggerAttackRelease(mtof(curChordRootMidi - 24), "2n", time); // V3: two octaves below the chord root (was one)
+  }
+
+  // Melody (§3.2): one note per beat from O3; null hour = rest, never interpolated (§4.4). Note length by tier (§3.9).
+  if (o3n != null) {
+    // MAPPING (PM2.5 → Brownian detune, §3.6): per-note cents from N(0, σ), σ = 40·min(pm25n, 1.5). Clean days are in tune; June 7 (σ = 60) is out of tune. Particulate jitter on the line.
+    const sigma = 40 * Math.min(1.5, pm25n ?? 0);
+    melody.detune.setValueAtTime(sigma * randNormal(), time);
+    melody.triggerAttackRelease(mtof(melodyMidi(o3n, curTier)), tier.noteLen, time);
+  }
+
+  // Direct DOM update rather than Tone.Draw: Draw rides on requestAnimationFrame, which throttled or backgrounded tabs suspend, and a text readout ~100 ms ahead of the audio is fine for this prototype.
+  updateReadout(hour, pm25, o3, no2);
+}
+
+// Pulse (§3.2): FM percussive hit on each Euclidean step, pitched at the current chord root octave 4 so it always agrees with the bed. k = null (whole bar of missing NO2) = silence, per §4.4.
+function onStep16(time) {
+  if (!day) return;
+  if (time - lastStepTime < 0.08) return;
+  lastStepTime = time;
+  const ticks = Tone.getTransport().getTicksAtTime(time);
+  const ppq = Tone.getTransport().PPQ;
+  const step = Math.round(ticks / (ppq / 4)) % 16;
+  const bar = Math.floor(Math.round(ticks / ppq) / 4) % 6;
+  const { k, rot } = day.bars[bar];
+  if (k != null && euclidHit(step, k, 16, rot)) {
+    // V3 pitch envelope: start an octave above the target and fall to it over the first 30 ms — percussive snap rather than pitch.
+    const f = mtof(curChordRootMidi + 12);
+    pulse.triggerAttackRelease(f * 2, "32n", time);
+    pulse.frequency.exponentialRampToValueAtTime(f, time + 0.03);
+  }
+}
+
+// ——— UI ———
+const readoutEl = document.getElementById("readout");
+const fmt = v => v == null ? "—" : v.toFixed(1);
+function updateReadout(hour, pm25, o3, no2) {
+  const tier = TIERS[curTier];
+  const cw = CITYWIDE_CHANNELS.has(day.key) ? " (citywide)" : "";
+  readoutEl.textContent =
+    `day    ${day.key}\n` +
+    `hour   ${String(hour).padStart(2, "0")}:00\n` +
+    `PM2.5  ${fmt(pm25)} µg/m³   O3 ${fmt(o3)} ppb${cw}   NO2 ${fmt(no2)} ppb${cw}\n` +
+    `AQI    ${smoothedAQI == null ? "—" : smoothedAQI.toFixed(0)} (smoothed)\n` +
+    `tier   ${tier.name}\n` +
+    `scale  ${tier.scale.name}\n` +
+    `euclid k=${curBarK == null ? "no pulse (null NO2)" : curBarK} of 16`;
+}
+
+function startHourPosition() {
+  const h = Math.min(23, Math.max(0, Number(document.getElementById("startHour").value) || 0));
+  return { h, pos: `${Math.floor(h / 4)}:${h % 4}:0` };
+}
+
+// Day switch: stop the transport, swap arrays, restart from the start-hour. Nothing is disposed; effect and FM parameters ramp from wherever they are.
+async function selectDay(key) {
+  await initAudio();
+  const wasPlaying = Tone.getTransport().state === "started";
+  Tone.getTransport().stop();
+  day = prepareDay(key);
+  smoothedAQI = null; // new day = new seed (raw AQI at the start hour); within a day it carries across the wrap
+  // Start with an explicit offset (never pre-set .position while stopped): a stopped transport "catches up" skipped events in one burst, firing every earlier beat at the same audio time.
+  lastBeatTime = lastStepTime = -1; // dedup guards must not swallow the new day's first events
+  if (wasPlaying) Tone.getTransport().start("+0.05", startHourPosition().pos);
+  else readoutEl.textContent = `day ${key} loaded — press Play`;
+}
+
+document.querySelectorAll("[data-day]").forEach(btn =>
+  btn.addEventListener("click", () => selectDay(btn.dataset.day)));
+
+document.getElementById("play").addEventListener("click", async () => {
+  await initAudio();
+  if (!day) { readoutEl.textContent = "pick a day first"; return; }
+  if (Tone.getTransport().state === "started") return;
+  smoothedAQI = null;
+  lastBeatTime = lastStepTime = -1;
+  Tone.getTransport().start("+0.05", startHourPosition().pos);
+});
+
+document.getElementById("stop").addEventListener("click", () => Tone.getTransport().stop());
+
+// Expose internals for headless verification (not part of the prototype's UI contract).
+window.__phase0 = { prepareDay, pm25ToAQI, normVal, euclidHit, chordMidi, melodyMidi, TIERS, DAYS, voices: () => ({ melody, pulse, bass, bedVoices }), state: () => ({ day: day?.key, smoothedAQI, curTier, curBarK, curChordRootMidi }) };
+</script>
+</body>
+</html>

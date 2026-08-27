@@ -2,7 +2,9 @@
 import React, { useLayoutEffect } from "react";
 import { Canvas, useThree, invalidate } from "@react-three/fiber";
 import { Sky, Stars } from "@react-three/drei";
-import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { EffectComposer, Bloom, ToneMapping } from "@react-three/postprocessing";
+import { ToneMappingMode } from "postprocessing";
+import { ACESFilmicToneMapping } from "three";
 import { SKY_RANGES } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import type { SkyParams } from "./skyParams";
@@ -20,6 +22,16 @@ interface Props {
   // Static grid cells render on demand (once, then on prop change); the live preview renders continuously so dragging a slider is smooth.
   live?: boolean;
   model?: SkyModel;
+}
+
+// Dev-only handle so the renderer and scene can be inspected from the console (?dev=1 harness only).
+function DevHandle() {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  useLayoutEffect(() => {
+    (window as unknown as Record<string, unknown>).__sky = { gl, scene };
+  }, [gl, scene]);
+  return null;
 }
 
 // Tone-mapping exposure is a renderer setting, not a <Sky> prop. On-demand cells must be told to repaint after it changes.
@@ -44,13 +56,15 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
     <div style={{ position: "relative", ...style }}>
       <Canvas
         camera={{ position: [0, 0, 0], fov: 62, rotation: [cameraRotationX, 0, 0] }}
-        gl={{ antialias: true }}
+        // Tone mapping must be set explicitly: r3f v8 applies its ACES default through a pre-three-r155 code path (it writes outputEncoding alongside toneMapping), which no longer lands on three 0.172, leaving the renderer at NoToneMapping — and with no tone mapping the exposure value is inert, because the shaders' tonemapping_fragment compiles to a no-op.
+        gl={{ antialias: true, toneMapping: ACESFilmicToneMapping }}
         // Cap device pixel ratio: at DPR 2 the bloom pass costs four times the pixels for no visible gain.
         dpr={[1, 1.75]}
         frameloop={live ? "always" : "demand"}
         style={{ width: "100%", height: "100%", display: "block" }}
       >
         <Exposure value={params.exposure} />
+        <DevHandle />
         {model === "hosek" ? (
           // Hosek-Wilkie takes turbidity, ground albedo and solar elevation. It has no rayleigh or mie inputs: the fitted dataset carries the scattering.
           <HosekSky sunPosition={sunPosition} turbidity={params.turbidity} />
@@ -75,6 +89,8 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
               luminanceSmoothing={0.35}
               mipmapBlur
             />
+            {/* three applies material tone mapping only when rendering to the canvas (WebGLProgram: toneMapping stays NoToneMapping unless currentRenderTarget is null), and the composer renders the scene into a target — so with bloom on the sky reached the screen untonemapped and washed out. The composed output is tone mapped here instead; the effect reads the renderer's toneMappingExposure, so the exposure control still governs it. */}
+            <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
           </EffectComposer>
         )}
       </Canvas>

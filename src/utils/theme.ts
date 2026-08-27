@@ -174,12 +174,34 @@ export const NYC_LON = -73.9857;
 // MAPPING (O3 → rayleigh + bloom intensity + disc brightness): photochemical intensity — ozone is made by strong sun, so high ozone reads bright and white and low ozone reads deep blue.
 // MAPPING (clock → sunPosition + star visibility): the day itself.
 // Tone-mapping exposure that makes a clear noon sky read as a clear day (haze 0, rayleigh at the model default). Settled by eye against the reference; see the scene-test harness.
-export const CLEAR_NOON_EXPOSURE = 0.5;
+export const CLEAR_NOON_EXPOSURE = 0.2;
+
+// Hosek-Wilkie's ground albedo (D-20). Urban surfaces sit below 0.25 and cluster near 0.15: dark asphalt shingles measure 0.04–0.10, light concrete 0.35–0.40 fresh ageing to 0.25–0.30. Investigated as the smoke mechanism and rejected — it was never 0, and moving it barely shifts a smoke day.
+export const HOSEK_ALBEDO = 0.15;
+
+// The wildfire plume (D-20): a composited layer above the sky, driven by normalized PM2.5. It darkens and warms what is behind it rather than replacing it, because a plume sits between the observer and the sky.
+export const SMOKE = {
+  hueDeg: 30,            // amber at low density
+  hueDriftDeg: -12,      // drifts toward brown as the plume thickens
+  // A plume does two things to the light reaching the eye, and needs both terms: it attenuates the sky behind it (multiply) and it adds its own in-scattered sunlight (screen). Attenuation alone can only darken, which turns a smoke afternoon into a dim blue one rather than a brown one.
+  attenuation: {
+    saturation: 0.22,
+    lightness: { thin: 0.82, thick: 0.44 },
+    alphaMax: 0.85,
+  },
+  inscatter: {
+    saturation: { thin: 0.5, thick: 0.82 },
+    lightness: { thin: 0.34, thick: 0.46 },
+    alphaMax: 0.62,
+  },
+  zenithFactor: 0.35,    // fraction of horizon density still present at the top of the frame
+  horizonBias: 1.8,      // exponent on the vertical ramp: the plume is thicker low in the frame
+} as const;
 
 export const SKY_RANGES = {
-  // Aerosol ends match the published haze path in skyParams.ts (turbidity 2 = measured clear sky, 12 = past Preetham's overcast figure of 10). The previous 20 / 0.1 sat outside the model's useful range, which rendered June 7 as blown-out white and made the day rows unjudgeable.
-  turbidity: { clear: 2, suffocating: 12 },
-  mieCoefficient: { clear: 0.005, high: 0.05 },
+  // Aerosol now covers ORDINARY HAZE only (D-20): the wildfire event is a composited plume, not a turbidity value. 2 = measured clear sky, 6 = Preetham's own hazy-evening figure. Must stay equal to HAZE_PATH in skyParams.ts — skyParamsFor reads these, so a change here without one there renders a different sky than the readout claims.
+  turbidity: { clear: 2, suffocating: 6 },
+  mieCoefficient: { clear: 0.005, high: 0.02 },
   mieDirectionalG: 0.86, // held, per the brief
   rayleigh: { lowO3: 0.6, highO3: 3.0 },
   bloomIntensity: { lowO3: 0.15, highO3: 1.4 },

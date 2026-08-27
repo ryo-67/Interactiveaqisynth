@@ -7,8 +7,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SkyView, type SkyModel } from "./SkyView";
 import { skyParamsFor, starOpacity, hazeToAerosol, RAYLEIGH_DEFAULT } from "./skyParams";
 import { GlassSample, GLASS_IMPLS, GLASS_LABELS, type GlassImpl } from "./GlassSamples";
+import { SmokeLayer } from "./SmokeLayer";
 import { sunAnglesAt, sunPositionVector } from "./solar";
-import { CLEAR_NOON_EXPOSURE, NYC_LAT, NYC_LON, families, typeScale, space } from "../utils/theme";
+import { CLEAR_NOON_EXPOSURE, HOSEK_ALBEDO, NYC_LAT, NYC_LON, SMOKE, families, typeScale, space } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
 import type { HourReading } from "../engine/SynthEngine";
 
@@ -35,7 +36,10 @@ export default function SceneTestPage() {
   const [rayleigh, setRayleigh] = useState(num("rayleigh", RAYLEIGH_DEFAULT));
   const [bloom, setBloom] = useState(num("bloom", 0.6));
   const [exposure, setExposure] = useState(num("exposure", CLEAR_NOON_EXPOSURE));
-  const [albedo, setAlbedo] = useState(num("albedo", 0.1)); // Hosek's ground-albedo input; ignored by Preetham, which has no such parameter
+  const [albedo, setAlbedo] = useState(num("albedo", HOSEK_ALBEDO)); // Hosek's ground-albedo input; ignored by Preetham, which has no such parameter
+  // The composited plume (D-20). Manual here rather than tied to the day's PM2.5, so smoke can be judged against a fixed sky; in the scene it is driven by normalized PM2.5.
+  const [smoke, setSmoke] = useState(num("smoke", 0));
+  const [smokeHue, setSmokeHue] = useState(num("smokeHue", SMOKE.hueDeg));
   const [glass, setGlass] = useState<GlassImpl | "none">(str("glass", "none") as GlassImpl | "none");
 
   const [archive, setArchive] = useState<HourReading[] | null>(null);
@@ -75,10 +79,11 @@ export default function SceneTestPage() {
   useEffect(() => {
     const p = new URLSearchParams({
       dev: "1", model, day, hour: String(hour), haze: String(haze), ozone: String(ozone),
-      rayleigh: String(rayleigh), bloom: String(bloom), exposure: String(exposure), albedo: String(albedo), glass,
+      rayleigh: String(rayleigh), bloom: String(bloom), exposure: String(exposure), albedo: String(albedo),
+      smoke: String(smoke), smokeHue: String(smokeHue), glass,
     });
     window.history.replaceState(null, "", `?${p}`);
-  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, glass]);
+  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, glass]);
 
   const view = useMemo(() => {
     const dateForSun = day === "manual" ? "2023-07-12" : day;
@@ -97,13 +102,16 @@ export default function SceneTestPage() {
         ` · ozone ${ozone.toFixed(2)}` +
         ` · sun ${ang.elevationDeg.toFixed(0)}°` +
         ` · albedo ${albedo.toFixed(2)}${model === "hosek" ? "" : " (hosek only)"}` +
+        ` · smoke ${smoke.toFixed(2)} @ hue ${smokeHue.toFixed(0)}°` +
         (reading ? ` · real: pm25 ${reading.pm25 ?? "—"} µg/m³, o3 ${reading.o3 ?? "—"} ppb` : " · manual"),
     };
-  }, [day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, model, reading]);
+  }, [day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, model, reading]);
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#05050a" }}>
       <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} style={{ width: "100vw", height: "100vh" }} live />
+
+      <SmokeLayer density={smoke} hueDeg={smokeHue} />
 
       {glass !== "none" && (
         <div style={{ position: "fixed", left: "50%", top: "40%", transform: "translate(-50%,-50%)" }}>
@@ -144,6 +152,8 @@ export default function SceneTestPage() {
         <Slider label="bloom" min={0} max={3} step={0.05} value={bloom} onChange={setBloom} />
         <Slider label="exposure" min={0.02} max={1.5} step={0.01} value={exposure} onChange={setExposure} />
         <Slider label="albedo" min={0} max={0.4} step={0.01} value={albedo} onChange={setAlbedo} />
+        <Stepped label="smoke" min={0} max={1} step={0.05} value={smoke} onChange={setSmoke} />
+        <Slider label="smoke hue" min={0} max={60} step={1} value={smokeHue} onChange={setSmokeHue} />
 
         <Group label="glass">
           <Radio name="glass" label="off" checked={glass === "none"} onChange={() => setGlass("none")} />

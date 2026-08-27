@@ -58,10 +58,10 @@ export function skyParamsFor(
 }
 
 // The aerosol path (§5.2 item 2): one parameter, haze 0→1, along which turbidity and mieCoefficient rise together. Two free variables would be a search space, not a comparison. haze = 0 is the model's own default sky (turbidity 2, mie 0.005). Linear for now.
-// Endpoints from published values rather than guesswork: turbidity 2.0 is a measured clear sky (photometric fits land at 2.5, stable 2–3); Preetham's own figures use 6 for a hazy evening and 10 for overcast. Above ~12 the model is outside its useful range, which is why an earlier 2→30 path read as hazy in every cell.
+// Ordinary haze only (D-20): the wildfire event moved to the composited smoke layer, so this path no longer has to reach for it. 2.0 is a measured clear sky (photometric fits land at 2.5, stable 2–3); 6 is Preetham's own hazy-evening figure. Kept equal to SKY_RANGES.turbidity/mieCoefficient in theme.ts, which is what actually renders.
 export const HAZE_PATH = {
-  turbidity: { at0: 2, at1: 12 },
-  mieCoefficient: { at0: 0.005, at1: 0.05 },
+  turbidity: { at0: 2, at1: 6 },
+  mieCoefficient: { at0: 0.005, at1: 0.02 },
 } as const;
 
 export function hazeToAerosol(haze: number): { turbidity: number; mieCoefficient: number } {

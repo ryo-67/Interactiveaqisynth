@@ -1,6 +1,6 @@
 // SkyView — one physically based sky, rendered with the real drei <Sky>, <Stars>, and postprocessing <Bloom>. Used by the /scene-test harness and (next sprint) by the scene itself. Static: no engine, no clock; the caller passes the hour.
 import React, { useLayoutEffect } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useThree, invalidate } from "@react-three/fiber";
 import { Sky, Stars } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { SKY_RANGES } from "../utils/theme";
@@ -14,18 +14,24 @@ interface Props {
   starOpacity: number;
   groundMode?: GroundMode;
   style?: React.CSSProperties;
+  // Static grid cells render on demand (once, then on prop change); the live preview renders continuously so dragging a slider is smooth.
+  live?: boolean;
 }
 
-// Tone-mapping exposure is a renderer setting, not a <Sky> prop.
+// Tone-mapping exposure is a renderer setting, not a <Sky> prop. On-demand cells must be told to repaint after it changes.
 function Exposure({ value }: { value: number }) {
   const gl = useThree((s) => s.gl);
   useLayoutEffect(() => {
     gl.toneMappingExposure = value;
+    invalidate();
+    // One more after materials compile, so an on-demand cell is never left blank on first paint.
+    const t = setTimeout(() => invalidate(), 60);
+    return () => clearTimeout(t);
   }, [gl, value]);
   return null;
 }
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "edge", style }: Props) {
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "edge", style, live = false }: Props) {
   // "above": tilt the camera up so only sky above the horizon is in frame. "edge"/"fade": horizon sits at the vertical middle.
   const cameraRotationX = groundMode === "above" ? 0.32 : 0;
   const stars = Math.round(SKY_RANGES.starsCount * starOpacity);
@@ -35,6 +41,9 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "edge",
       <Canvas
         camera={{ position: [0, 0, 0], fov: 62, rotation: [cameraRotationX, 0, 0] }}
         gl={{ antialias: true }}
+        // Cap device pixel ratio: at DPR 2 the bloom pass costs four times the pixels for no visible gain at these sizes.
+        dpr={live ? [1, 1.75] : 1}
+        frameloop={live ? "always" : "demand"}
         style={{ width: "100%", height: "100%", display: "block" }}
       >
         <Exposure value={params.exposure} />

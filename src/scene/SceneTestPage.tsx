@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SkyView, type GroundMode } from "./SkyView";
 import { skyParamsFor, starOpacity, type SkyParams } from "./skyParams";
 import { GlassSample, GLASS_IMPLS, GLASS_LABELS, type GlassImpl } from "./GlassSamples";
+import { initControls, setControl, useControl, useControls } from "./skyStore";
 import { sunAnglesAt, sunPositionVector } from "./solar";
 import { NYC_LAT, NYC_LON, SKY_RANGES, families, typeScale, space } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
@@ -22,6 +23,25 @@ const DAYS = [
 
 const params = new URLSearchParams(window.location.search);
 const num = (k: string, d: number) => (params.has(k) ? Number(params.get(k)) : d);
+
+initControls({
+  turbidity: num("turbidity", 8),
+  mie: num("mie", 0.03),
+  rayleigh: num("rayleigh", 1.8),
+  bloom: num("bloom", 0.6),
+  exposure: num("exposure", 0.5),
+});
+
+// Frozen base for the parameter rows. Grid cells never read the sliders — otherwise every tick re-renders every live WebGL context on the page and dragging goes to treacle.
+const BASE: SkyParams = {
+  turbidity: 8,
+  mieCoefficient: 0.03,
+  mieDirectionalG: SKY_RANGES.mieDirectionalG,
+  rayleigh: 1.8,
+  bloomIntensity: 0.6,
+  discBrightness: 1,
+  exposure: 0.5,
+};
 
 // Only mount a cell's WebGL context while it is on screen: the grid has more cells than a browser allows live contexts.
 function LazyCell({ children, height }: { children: React.ReactNode; height: number }) {
@@ -96,13 +116,6 @@ export default function SceneTestPage() {
   const [archive, setArchive] = useState<HourReading[] | null>(null);
   const [anchors, setAnchors] = useState<PollutantAnchors | null>(null);
 
-  // Slider state — the live cell reads these; their printed values are the ones to copy into theme.ts.
-  const [turbidity, setTurbidity] = useState(num("turbidity", 8));
-  const [mie, setMie] = useState(num("mie", 0.03));
-  const [rayleigh, setRayleigh] = useState(num("rayleigh", 1.8));
-  const [bloom, setBloom] = useState(num("bloom", 0.6));
-  const [exposure, setExposure] = useState(num("exposure", 0.5));
-
   useEffect(() => {
     (async () => {
       try {
@@ -136,22 +149,12 @@ export default function SceneTestPage() {
     };
   }, [archive, anchors]);
 
-  const liveParams: SkyParams = {
-    turbidity,
-    mieCoefficient: mie,
-    mieDirectionalG: SKY_RANGES.mieDirectionalG,
-    rayleigh,
-    bloomIntensity: bloom,
-    discBrightness: 1,
-    exposure,
-  };
-
   // ——— Full-screen single cases ———
   const kase = params.get("case");
   if (kase) {
     const full = { width: "100vw", height: "100vh" } as const;
     if (kase === "haze") {
-      const p = { ...liveParams, turbidity: num("turbidity", 8), mieCoefficient: num("mie", 0.03) };
+      const p = { ...BASE, turbidity: num("turbidity", 8), mieCoefficient: num("mie", 0.03) };
       return <SkyView params={p} sunPosition={NOON_SUN} starOpacity={0} style={full} />;
     }
     if (kase === "day") {
@@ -159,7 +162,7 @@ export default function SceneTestPage() {
       return <SkyView params={c.p} sunPosition={c.sun} starOpacity={c.stars} style={full} />;
     }
     if (kase === "ozone") {
-      const p = { ...liveParams, rayleigh: num("rayleigh", 1.8), bloomIntensity: num("bloom", 0.6), discBrightness: num("brightness", 1), turbidity: 2.5, mieCoefficient: 0.006 };
+      const p = { ...BASE, rayleigh: num("rayleigh", 1.8), bloomIntensity: num("bloom", 0.6), discBrightness: num("brightness", 1), turbidity: 2.5, mieCoefficient: 0.006 };
       return <SkyView params={p} sunPosition={NOON_SUN} starOpacity={0} style={full} />;
     }
     if (kase === "ground") {
@@ -219,14 +222,7 @@ export default function SceneTestPage() {
     <div style={{ background: "#05050a", minHeight: "100vh", color: "#fff", padding: space.md, paddingBottom: 160 }}>
       <div style={section}>Live — slider values (read these into theme.ts SKY_RANGES)</div>
       <div style={row}>
-        <div style={{ width: wide }}>
-          <LazyCell height={wideH}>
-            <SkyView params={liveParams} sunPosition={NOON_SUN} starOpacity={0} style={{ width: wide, height: wideH }} />
-          </LazyCell>
-          <Label>
-            turbidity {turbidity} · mie {mie} · rayleigh {rayleigh} · bloom {bloom} · exposure {exposure}
-          </Label>
-        </div>
+        <LivePreview width={wide} height={wideH} />
       </div>
 
       <div style={section}>Row 1 — haze at fixed noon sun (last cell is past the top of the range)</div>
@@ -236,7 +232,7 @@ export default function SceneTestPage() {
             key={`${t}-${m}`}
             label={`turbidity ${t} · mie ${m}`}
             href={`/scene-test?dev=1&case=haze&turbidity=${t}&mie=${m}`}
-            params={{ ...liveParams, turbidity: t, mieCoefficient: m }}
+            params={{ ...BASE, turbidity: t, mieCoefficient: m }}
             sunPosition={NOON_SUN}
             stars={0}
             width={w}
@@ -290,7 +286,7 @@ export default function SceneTestPage() {
             key={i}
             label={`${["low", "middle", "high"][i]} — rayleigh ${r.toFixed(2)} · bloom ${b.toFixed(2)} · brightness ${br.toFixed(2)}`}
             href={`/scene-test?dev=1&case=ozone&rayleigh=${r}&bloom=${b}&brightness=${br}`}
-            params={{ ...liveParams, rayleigh: r, bloomIntensity: b, discBrightness: br, turbidity: 2.5, mieCoefficient: 0.006 }}
+            params={{ ...BASE, rayleigh: r, bloomIntensity: b, discBrightness: br, turbidity: 2.5, mieCoefficient: 0.006 }}
             sunPosition={NOON_SUN}
             stars={0}
             width={w}
@@ -370,11 +366,11 @@ export default function SceneTestPage() {
           fontSize: typeScale.micro.size,
         }}
       >
-        <Slider label="turbidity" min={1} max={35} step={0.5} value={turbidity} onChange={setTurbidity} />
-        <Slider label="mieCoefficient" min={0.001} max={0.2} step={0.001} value={mie} onChange={setMie} />
-        <Slider label="rayleigh" min={0} max={6} step={0.05} value={rayleigh} onChange={setRayleigh} />
-        <Slider label="bloom intensity" min={0} max={3} step={0.05} value={bloom} onChange={setBloom} />
-        <Slider label="exposure" min={0.1} max={1.5} step={0.01} value={exposure} onChange={setExposure} />
+        <Slider label="turbidity" ctl="turbidity" min={1} max={35} step={0.5} />
+        <Slider label="mieCoefficient" ctl="mie" min={0.001} max={0.2} step={0.001} />
+        <Slider label="rayleigh" ctl="rayleigh" min={0} max={6} step={0.05} />
+        <Slider label="bloom intensity" ctl="bloom" min={0} max={3} step={0.05} />
+        <Slider label="exposure" ctl="exposure" min={0.1} max={1.5} step={0.01} />
       </div>
     </div>
   );
@@ -387,26 +383,49 @@ const GLASS_BACKGROUNDS: Record<string, { date: string; hour: number; label: str
   dusk: { date: "2023-07-12", hour: 20, label: "dusk" },
 };
 
+// Only this slider and the live preview re-render on a drag; the grid is untouched.
 function Slider({
   label,
+  ctl,
   min,
   max,
   step,
-  value,
-  onChange,
 }: {
   label: string;
+  ctl: keyof import("./skyStore").SkyControls;
   min: number;
   max: number;
   step: number;
-  value: number;
-  onChange: (v: number) => void;
 }) {
+  const value = useControl(ctl);
+  const onChange = (v: number) => setControl(ctl, v);
   return (
     <label style={{ display: "flex", alignItems: "center", gap: space.xs, color: "rgba(255,255,255,0.8)" }}>
       <span style={{ width: 108 }}>{label}</span>
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} style={{ width: 160 }} />
       <span style={{ width: 56, textAlign: "right" }}>{value}</span>
     </label>
+  );
+}
+
+// The live preview: continuous frameloop, subscribed to the store, isolated from the grid.
+function LivePreview({ width, height }: { width: number; height: number }) {
+  const c = useControls();
+  const p: SkyParams = {
+    turbidity: c.turbidity,
+    mieCoefficient: c.mie,
+    mieDirectionalG: SKY_RANGES.mieDirectionalG,
+    rayleigh: c.rayleigh,
+    bloomIntensity: c.bloom,
+    discBrightness: 1,
+    exposure: c.exposure,
+  };
+  return (
+    <div style={{ width }}>
+      <SkyView params={p} sunPosition={NOON_SUN} starOpacity={0} style={{ width, height }} live />
+      <Label>
+        turbidity {c.turbidity} · mie {c.mie} · rayleigh {c.rayleigh} · bloom {c.bloom} · exposure {c.exposure}
+      </Label>
+    </div>
   );
 }

@@ -15,7 +15,7 @@ Version 2, August 26, 2026. BUG-01 to BUG-10 are the March list with statuses up
 | BUG-03 | S1 | OPEN | Live reading appended directly after last EPA day | `App.tsx` `timelineData` memo does `[...historical, current]`. TimelineScrubber has no gap rendering. Architectural: two sources, one array. Fix: UX-03. Do not patch the scrubber |
 | BUG-04 | S2 | FIXED 2026-08-27, 52bf7f3 | Tone.js "scheduled callbacks" and "polyphony" warnings suppressed by monkey-patching `console.warn` | Root cause is the PolySynth engine. Goes away with SON-01; remove the patch in CLN-07 |
 | BUG-05 | S2 | FIXED 2026-08-27, e5e2d2c | 48 shadcn/Radix wrappers shipped with zero imports | Count corrected from 60+. CLN-01 |
-| BUG-06 | S2 | OPEN | Map on desktop, pills on mobile, no continuity | UX-09 |
+| BUG-06 | S2 | FIXED 2026-08-27, 0c9a731 | Map on desktop, pills on mobile, no continuity | UX-09 |
 | BUG-07 | S3 | FIXED 2026-08-27, e5e2d2c | Make export `src/imports/InteractiveAqiSynth.tsx` (2,277 lines) + `svg-1l4tu5jyx0.ts` dead | Zero imports. CLN-02 |
 | BUG-08 | S3 | FIXED 2026-08-27, e5e2d2c | ~40 versioned aliases in vite.config.ts | CLN-04 |
 | BUG-09 | S2 | OPEN | Theme doesn't persist across refresh | POL-03 |
@@ -37,7 +37,7 @@ Version 2, August 26, 2026. BUG-01 to BUG-10 are the March list with statuses up
 | BUG-18 | S2 | FIXED 2026-08-27, 6473a4a | Concentration is hourly max, AQI is 24-h based | `processEPAData` uses `first_max_value` for concentrations and EPA's daily AQI for the number. June 7 Queens shows PM2.5 412 alongside AQI 278. Fix: DAT-05, decide display rule (O-10) |
 | BUG-19 | S2 | FIXED 2026-08-27, 6473a4a | O3 1-hour max evaluated against 8-hour breakpoints | Overstates O3 AQI on hot days. Fix: DAT-05 |
 | BUG-20 | S1 | FIXED 2026-08-27, 8d4573f | First paint gated on five sequential historical fetches | `App.tsx` load effect: health → current → `preloadAllHistorical` (sequential, 150 s timeout each). Cold CDN worst case is minutes; skip button after 12 s. Listen needs none of it. Fix: UX-01 |
-| BUG-21 | S2 | OPEN | Loading copy says "Waking up the server..." | Supabase-era. Fix: UX-10 |
+| BUG-21 | S2 | FIXED 2026-08-27, 8d4573f | Loading copy says "Waking up the server..." | Supabase-era. Fix: UX-10 |
 | BUG-22 | S3 | FIXED 2026-08-27, e5e2d2c | `hono` still in dependencies | Leftover from the Deno server. Fix: INF-04, CLN-03 |
 | BUG-23 | S2 | FIXED 2026-08-27, 6473a4a | `fetchHistorical` assumes a 90 s deadline; `vercel.json` sets no `maxDuration` | A 16 s cold fetch has succeeded, so the budget is above 10 s, but the actual limit is unverified. Fix: INF-03 |
 | BUG-24 | S3 | OPEN | README is Figma Make boilerplate with a link to the Figma file | Fix: CLN-06 |

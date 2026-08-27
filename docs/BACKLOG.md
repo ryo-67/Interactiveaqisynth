@@ -84,10 +84,10 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | UX-04 | P0 | TODO | Counterfactual selector | WHO, Delhi, Lockdown. Visually distinct from pins. §2.3 |
 | UX-05 | P0 | TODO | Pollutant sliders with real-value anchors | PM2.5, O3, NO2. Anchor = current hour's reading. No PM10 slider |
 | UX-06 | P0 | TODO | Speculative state indicator | On AQI number and orbs |
-| UX-07 | P0 | TODO | Source line states borrowed channels per borough | "Brooklyn monitors PM2.5; O3 and NO2 are citywide." Per §5.2 |
-| UX-08 | P0 | TODO | Phrase indicator | 24-step marker showing which hour is playing |
-| UX-09 | P1 | TODO | Responsive layout, laptop and phone | Map on laptop, pills on phone. BUG-06 |
-| UX-10 | P1 | TODO | Loading copy | Remove "Waking up the server." BUG-21 |
+| UX-07 | P0 | DONE 2026-08-27 | Source line states borrowed channels per borough | "Brooklyn monitors PM2.5; O3 and NO2 are citywide." Per §5.2 |
+| UX-08 | P0 | DONE 2026-08-27 (the score playhead is the indicator) | Phrase indicator | 24-step marker showing which hour is playing |
+| UX-09 | P1 | DONE 2026-08-27 (map/pills concept superseded by §5 words-only page) | Responsive layout, laptop and phone | Map on laptop, pills on phone. BUG-06 |
+| UX-10 | P1 | DONE 2026-08-27 (loading overlay deleted with UX-01) | Loading copy | Remove "Waking up the server." BUG-21 |
 | UX-11 | P1 | TODO | Progressive disclosure | Mood + AQI + play first; timeline, counterfactuals, sliders discoverable |
 | UX-12 | P2 | TODO | Keyboard accessibility audit | Sliders, timeline, focus order |
 | UX-13 | P3 | TODO | Scrollytelling wrapper | Only if wanted after Phase 1 ships |
@@ -96,9 +96,9 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
-| DSN-01 | P0 | TODO | Create `src/content.ts` | All prose, mood words, pin labels and blurbs, counterfactual definitions with sources, UI labels |
-| DSN-02 | P0 | TODO | Expand `theme.ts` tokens | Type scale, spacing, motion, opacity per STRATEGY §5 |
-| DSN-03 | P1 | TODO | Hand-style all components | No shadcn remnants, tokens only |
+| DSN-01 | P0 | DONE 2026-08-27 | Create `src/content.ts` | All prose, mood words, pin labels and blurbs, counterfactual definitions with sources, UI labels |
+| DSN-02 | P0 | DONE 2026-08-27 | Expand `theme.ts` tokens | Type scale, spacing, motion, opacity per STRATEGY §5 |
+| DSN-03 | P1 | IN PROGRESS (Listen components done; Timeline, Imagine, actions are 3b/3c) | Hand-style all components | No shadcn remnants, tokens only |
 | DSN-04 | P1 | TODO | Mood word copy pass | O-02. Shoro writes |
 | DSN-05 | P2 | TODO | Figma variables matching tokens | For MCP sync. Not blocking |
 | DSN-06 | P3 | TODO | Differentiated dark/light | Phase 2 |

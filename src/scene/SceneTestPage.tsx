@@ -108,21 +108,24 @@ export default function SceneTestPage() {
   }, [day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, model, reading]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#05050a" }}>
-      <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} style={{ width: "100vw", height: "100vh" }} live />
+    // The scene owns the area above the control bar rather than the whole viewport, so the plume's densest band — which sits at the horizon, at the bottom of the frame — is never hidden behind the controls.
+    <div style={{ position: "fixed", inset: 0, background: "#05050a", display: "flex", flexDirection: "column" }}>
+      <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
+        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} style={{ width: "100%", height: "100%" }} live />
 
-      <SmokeLayer density={smoke} hueDeg={smokeHue} />
+        <SmokeLayer density={smoke} hueDeg={smokeHue} />
 
-      {glass !== "none" && (
-        <div style={{ position: "fixed", left: "50%", top: "40%", transform: "translate(-50%,-50%)" }}>
-          <GlassSample impl={glass} />
-        </div>
-      )}
+        {glass !== "none" && (
+          <div style={{ position: "absolute", left: "50%", top: "45%", transform: "translate(-50%,-50%)" }}>
+            <GlassSample impl={glass} />
+          </div>
+        )}
+      </div>
 
       <div
         style={{
-          position: "fixed", left: 0, right: 0, bottom: 0,
-          background: "rgba(5,5,10,0.9)", borderTop: "1px solid rgba(255,255,255,0.14)",
+          flex: "0 0 auto",
+          background: "rgba(5,5,10,0.96)", borderTop: "1px solid rgba(255,255,255,0.14)",
           padding: space.sm, display: "flex", flexWrap: "wrap", alignItems: "center", gap: space.md,
           fontFamily: families.data, fontSize: typeScale.micro.size, color: "rgba(255,255,255,0.85)",
         }}

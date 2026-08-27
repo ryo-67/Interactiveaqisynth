@@ -28,9 +28,10 @@ export function SmokeLayer({ density, hueDeg }: Props) {
   if (d <= 0.001) return null;
 
   const hue = (hueDeg ?? SMOKE.hueDeg) + SMOKE.hueDriftDeg * d;
-  const base: React.CSSProperties = { position: "fixed", inset: 0, pointerEvents: "none" };
+  // Absolute, not fixed: the scene owns its own box above the control bar, so the plume's densest band stays visible.
+  const base: React.CSSProperties = { position: "absolute", inset: 0, pointerEvents: "none" };
 
-  // Attenuation: warm grey, darkening toward the horizon where the path is longest.
+  // Attenuation: a light warm tint that strips blue, deepening a little toward the horizon. Kept light on purpose — this term must not carry the darkening.
   const attenuation = ramp(
     d,
     SMOKE.attenuation.alphaMax,
@@ -39,13 +40,13 @@ export function SmokeLayer({ density, hueDeg }: Props) {
     (t) => lerp(SMOKE.attenuation.lightness.thin, SMOKE.attenuation.lightness.thick, Math.pow(t, 0.8) * d),
   );
 
-  // In-scatter: saturated amber, brightening toward the horizon.
+  // In-scatter: the plume's own light. Bright orange-tan overhead, deeper and more saturated toward the horizon where the path is longest.
   const inscatter = ramp(
     d,
     SMOKE.inscatter.alphaMax,
     hue,
     lerp(SMOKE.inscatter.saturation.thin, SMOKE.inscatter.saturation.thick, d),
-    (t) => lerp(SMOKE.inscatter.lightness.thin, SMOKE.inscatter.lightness.thick, Math.pow(t, 0.8)),
+    (t) => lerp(SMOKE.inscatter.lightness.zenith, SMOKE.inscatter.lightness.horizon, Math.pow(t, 1.4)),
   );
 
   return (

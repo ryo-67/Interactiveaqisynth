@@ -181,21 +181,23 @@ export const HOSEK_ALBEDO = 0.15;
 
 // The wildfire plume (D-20): a composited layer above the sky, driven by normalized PM2.5. It darkens and warms what is behind it rather than replacing it, because a plume sits between the observer and the sky.
 export const SMOKE = {
-  hueDeg: 30,            // amber at low density
-  hueDriftDeg: -12,      // drifts toward brown as the plume thickens
-  // A plume does two things to the light reaching the eye, and needs both terms: it attenuates the sky behind it (multiply) and it adds its own in-scattered sunlight (screen). Attenuation alone can only darken, which turns a smoke afternoon into a dim blue one rather than a brown one.
+  // Wildfire smoke at midday reads bright orange-tan, not brown: large particles scatter forward and absorb blue far more than red, so the sky loses its blue and the light arrives reddened while the scene stays bright. Brown belongs near the horizon, where the sight-line through the plume is longest.
+  hueDeg: 30,            // orange; the hue barely moves — brown is this hue at lower lightness, not a different one
+  hueDriftDeg: -6,       // slight drift toward red as the plume thickens
+  // Attenuation (multiply): a warm, LIGHT tint. It strips blue without crushing luminance — capped so a full plume at midday is never darker than the clear sky at the same hour.
   attenuation: {
-    saturation: 0.22,
-    lightness: { thin: 0.82, thick: 0.44 },
-    alphaMax: 0.85,
+    saturation: 0.55,
+    lightness: { thin: 0.94, thick: 0.74 },
+    alphaMax: 0.5,
   },
+  // In-scatter (screen): the sunlight the plume throws back at the viewer. Weighted above attenuation, so the sky brightens as smoke rises rather than dimming. Deeper and more saturated toward the horizon, which is where it tips into brown.
   inscatter: {
-    saturation: { thin: 0.5, thick: 0.82 },
-    lightness: { thin: 0.34, thick: 0.46 },
-    alphaMax: 0.62,
+    saturation: { thin: 0.55, thick: 0.85 },
+    lightness: { zenith: 0.6, horizon: 0.46 },
+    alphaMax: 0.92,
   },
-  zenithFactor: 0.35,    // fraction of horizon density still present at the top of the frame
-  horizonBias: 1.8,      // exponent on the vertical ramp: the plume is thicker low in the frame
+  zenithFactor: 0.55,    // fraction of horizon density still present at the top of the frame: midday smoke fills the whole sky
+  horizonBias: 1.8,      // exponent on the vertical ramp
 } as const;
 
 export const SKY_RANGES = {

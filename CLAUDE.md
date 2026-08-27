@@ -10,7 +10,7 @@ Interactive AQI Synth — a single-page React app that sonifies (converts to sou
 
 ```bash
 npm install       # Install dependencies (uses .npmrc for JSR registry)
-npm run dev       # Start Vite dev server on port 3000 (auto-opens browser)
+npm run dev       # Start Vite dev server on port 55128 (auto-opens browser)
 npm run build     # Production build to build/ directory
 ```
 
@@ -22,7 +22,7 @@ No test runner or linter is configured.
 - **React 18 + TypeScript** with Vite (SWC plugin)
 - **Tone.js** for audio synthesis
 - **Tailwind CSS** + Radix UI/Shadcn components
-- **Supabase Edge Functions** (Hono server) for API proxying
+- **Vercel serverless functions** (`api/` directory) for API proxying
 - **Canvas API** for visualizations (orbs, timeline)
 
 ### Path Alias
@@ -32,7 +32,7 @@ No test runner or linter is configured.
 `App.tsx` is the sole orchestrator — it manages all global state (timeline position, playback, selected borough, theme) and passes data down to child components. No routing library; entirely state-driven UI.
 
 **Data loading sequence in App.tsx:**
-1. Warmup Supabase edge function (cold start)
+1. Warmup API health check (`/api/health`)
 2. Fetch current AQI from AirNow API
 3. Preload historical AQI for all boroughs from EPA AQS API (with progress tracking)
 4. Falls back to mock data (`utils/mockData.ts`) if APIs are unavailable
@@ -45,12 +45,14 @@ No test runner or linter is configured.
 - **RecordButton.tsx** — MediaRecorder capture to WAV/WebM
 - **AQIInfo.tsx** — Pollutant breakdown display (PM2.5, PM10, O3, NO2)
 
-### Backend (src/supabase/functions/server/)
-Hono server deployed as Supabase Edge Functions with Deno KV caching:
-- `GET /aqi/current` — proxies AirNow API (30-min cache)
-- `GET /aqi/historical?borough=X` — proxies EPA AQS API (permanent cache per borough-year)
-- `aqi-service.tsx` — API integration logic
-- `kv_store.tsx` — Deno KV caching layer
+### Backend (api/)
+Vercel serverless functions (same-origin, deployed with the frontend). Caching is done at Vercel's CDN via `Cache-Control: s-maxage` headers — there is no storage layer:
+- `GET /api/aqi/current` — proxies AirNow API (CDN-cached 30 min)
+- `GET /api/aqi/historical?borough=X` — proxies EPA AQS API (CDN-cached 1 day per borough URL)
+- `GET /api/health` — warmup/health check; `GET /api/aqi/diagnostic` — env + EPA connectivity test
+- `api/_lib/aqi.ts` — shared API integration logic (underscore prefix = not exposed as an endpoint)
+
+Requires env vars on Vercel for live data: `AIRNOW_API_KEY`, `EPA_AQS_EMAIL`, `EPA_AQS_API_KEY`. Without them the endpoints return 500 and the frontend falls back to mock data. `npm run dev` serves only the frontend (mock data); use `vercel dev` to run the functions locally.
 
 ### Data & Utilities (src/utils/)
 - **mockData.ts** — Mock AQI data generator + AQI-to-music mapping constants (scales, note selection, texture mappings)

@@ -1,4 +1,7 @@
-import * as kv from "./kv_store.tsx";
+// AQI data service — proxies AirNow (current) and EPA AQS (historical).
+// Ported from the original Supabase Edge Function (src/supabase/functions/server/aqi-service.tsx).
+// Caching is handled by Vercel's CDN via Cache-Control headers on the route
+// responses, so this module is pure fetch + transform with no storage layer.
 
 // ——— Borough mappings ———
 
@@ -19,10 +22,7 @@ export const BOROUGHS: Borough[] = [
 ];
 
 // NYC county FIPS codes (state 36 = New York)
-const BOROUGH_FIPS: Record<
-  Exclude<Borough, "Citywide">,
-  string
-> = {
+const BOROUGH_FIPS: Record<Exclude<Borough, "Citywide">, string> = {
   Manhattan: "061", // New York County
   Bronx: "005", // Bronx County
   Brooklyn: "047", // Kings County
@@ -31,10 +31,7 @@ const BOROUGH_FIPS: Record<
 };
 
 // Representative zip codes for AirNow current observations
-const BOROUGH_ZIPS: Record<
-  Exclude<Borough, "Citywide">,
-  string
-> = {
+const BOROUGH_ZIPS: Record<Exclude<Borough, "Citywide">, string> = {
   Manhattan: "10001",
   Brooklyn: "11201",
   Queens: "11101",
@@ -67,16 +64,6 @@ export interface AQIDataPoint {
   no2: number; // ppb
 }
 
-interface CachedHistorical {
-  cachedAt: number;
-  data: AQIDataPoint[];
-}
-
-interface CachedCurrent {
-  cachedAt: number;
-  data: Record<string, AQIDataPoint | null>;
-}
-
 // ——— AQI breakpoint conversions ———
 
 function pollutantAQI(
@@ -88,9 +75,7 @@ function pollutantAQI(
     const [cLo, cHi] = breakpoints[i];
     const [iLo, iHi] = aqiRanges[i];
     if (value <= cHi) {
-      return Math.round(
-        ((iHi - iLo) / (cHi - cLo)) * (value - cLo) + iLo,
-      );
+      return Math.round(((iHi - iLo) / (cHi - cLo)) * (value - cLo) + iLo);
     }
   }
   return 300;
@@ -188,8 +173,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-// ——— Small delay for rate limiting ———
-
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -219,9 +202,7 @@ interface EPAResponse {
   Data: EPARawRecord[];
 }
 
-function processEPAData(
-  records: EPARawRecord[],
-): AQIDataPoint[] {
+function processEPAData(records: EPARawRecord[]): AQIDataPoint[] {
   // Group by date → aggregate across sites, keep max per pollutant
   const byDate = new Map<
     string,
@@ -238,13 +219,7 @@ function processEPAData(
     if (r.first_max_value == null) continue;
     const date = r.date_local;
     if (!byDate.has(date)) {
-      byDate.set(date, {
-        pm25: [],
-        pm10: [],
-        o3: [],
-        no2: [],
-        aqis: [],
-      });
+      byDate.set(date, { pm25: [], pm10: [], o3: [], no2: [], aqis: [] });
     }
     const day = byDate.get(date)!;
 
@@ -312,8 +287,7 @@ async function fetchEPAYear(
   const bdate = `${year}0101`;
   // For current year, fetch up to yesterday; for past years, full year
   const currentYear = new Date().getFullYear();
-  const edate =
-    year === currentYear ? getYesterdayYMD() : `${year}1231`;
+  const edate = year === currentYear ? getYesterdayYMD() : `${year}1231`;
 
   const url =
     `https://aqs.epa.gov/data/api/dailyData/byCounty` +
@@ -323,9 +297,7 @@ async function fetchEPAYear(
     `&bdate=${bdate}&edate=${edate}` +
     `&state=36&county=${county}`;
 
-  console.log(
-    `[EPA AQS] Fetching ${borough} (county ${county}) year ${year}...`,
-  );
+  console.log(`[EPA AQS] Fetching ${borough} (county ${county}) year ${year}...`);
 
   // Per-request timeout: 25 seconds (prevents a single slow EPA call from eating the budget)
   const controller = new AbortController();
@@ -342,9 +314,7 @@ async function fetchEPAYear(
     console.log(
       `[EPA AQS] HTTP ${response.status} for ${borough}/${year}: ${text.slice(0, 200)}`,
     );
-    throw new Error(
-      `EPA AQS returned HTTP ${response.status} for ${borough} ${year}`,
-    );
+    throw new Error(`EPA AQS returned HTTP ${response.status} for ${borough} ${year}`);
   }
 
   const json: EPAResponse = await response.json();
@@ -355,21 +325,18 @@ async function fetchEPAYear(
     return [];
   }
 
-  console.log(
-    `[EPA AQS] Got ${json.Data.length} records for ${borough}/${year}`,
-  );
+  console.log(`[EPA AQS] Got ${json.Data.length} records for ${borough}/${year}`);
   return processEPAData(json.Data);
 }
 
 /**
- * Fetch 5+ years of historical daily data for a borough.
- * Uses KV cache per borough-year; only fetches missing/stale years.
+ * Fetch 3 years of historical daily data for a borough from EPA AQS.
+ * No storage cache — the route sets a long s-maxage so Vercel's CDN
+ * serves this at most once a day per borough.
  */
-export async function fetchHistorical(
-  borough: Borough,
-): Promise<AQIDataPoint[]> {
-  const email = Deno.env.get("EPA_AQS_EMAIL");
-  const apiKey = Deno.env.get("EPA_AQS_API_KEY");
+export async function fetchHistorical(borough: Borough): Promise<AQIDataPoint[]> {
+  const email = process.env.EPA_AQS_EMAIL;
+  const apiKey = process.env.EPA_AQS_API_KEY;
 
   if (!email || !apiKey) {
     throw new Error(
@@ -377,228 +344,42 @@ export async function fetchHistorical(
     );
   }
 
-  // ── FAST PATH: aggregate cache (single KV read) ──
-  // After the first successful fetch, all subsequent requests return instantly.
-  const aggKey = `aqi:hist:agg:${borough}`;
-  try {
-    const agg = await kv.get(aggKey);
-    if (
-      agg &&
-      agg.data &&
-      Array.isArray(agg.data) &&
-      agg.data.length > 0
-    ) {
-      const ageHours =
-        (Date.now() - (agg.cachedAt || 0)) / (1000 * 60 * 60);
-      // Return cached aggregate if < 20 hours old (refreshes roughly once/day)
-      if (ageHours < 20) {
-        console.log(
-          `[FAST PATH] ${aggKey}: ${agg.data.length} points, ${Math.round(ageHours)}h old`,
-        );
-        return agg.data;
-      }
-      console.log(
-        `[AGG STALE] ${aggKey}: ${Math.round(ageHours)}h old, rebuilding`,
-      );
-    }
-  } catch (e) {
-    console.log(`[AGG ERROR] reading ${aggKey}: ${e}`);
-  }
-
-  // ── SLOW PATH: per-year fetch + build aggregate ──
-  const now = new Date();
-  const currentYear = now.getFullYear();
+  const currentYear = new Date().getFullYear();
   const startYear = currentYear - 2;
   const allData: AQIDataPoint[] = [];
 
-  // Deadline: return whatever we have before the Edge Function timeout kills us.
-  const deadline = Date.now() + 25000;
-
-  console.log(
-    `[fetchHistorical] Slow path for ${borough}: years ${startYear}-${currentYear}, deadline in 25s`,
-  );
+  // Deadline: stay well under the function's execution limit and the
+  // client's timeout — return whatever we have by then.
+  const deadline = Date.now() + 90000;
 
   // For "Citywide", use Manhattan as a representative proxy
-  // (fetching all 5 boroughs × 5 years would exceed Edge Function compute limits)
-  const boroughsToFetch: Exclude<Borough, "Citywide">[] =
-    borough === "Citywide"
-      ? ["Manhattan"]
-      : [borough as Exclude<Borough, "Citywide">];
+  // (fetching all 5 boroughs × 3 years per request is needlessly slow)
+  const boroughToFetch: Exclude<Borough, "Citywide"> =
+    borough === "Citywide" ? "Manhattan" : borough;
 
-  for (const b of boroughsToFetch) {
-    const boroughData: AQIDataPoint[] = [];
-
-    for (let year = startYear; year <= currentYear; year++) {
-      // Check deadline before each year
-      if (Date.now() > deadline) {
-        console.log(
-          `[fetchHistorical] ⏱ Deadline reached at ${b}/${year}, returning ${boroughData.length} points so far`,
-        );
-        break;
-      }
-
-      const cacheKey = `aqi:hist:${b}:${year}`;
-
-      // Check cache
-      try {
-        const cached: CachedHistorical | null =
-          await kv.get(cacheKey);
-        if (cached && cached.data && cached.data.length > 0) {
-          const ageHours =
-            (Date.now() - cached.cachedAt) / (1000 * 60 * 60);
-          // Past years: cache forever. Current year: refresh weekly.
-          if (year < currentYear || ageHours < 24 * 7) {
-            console.log(
-              `[Cache HIT] ${cacheKey} (${cached.data.length} points, ${Math.round(ageHours)}h old)`,
-            );
-            boroughData.push(...cached.data);
-            continue;
-          }
-          console.log(
-            `[Cache STALE] ${cacheKey} (${Math.round(ageHours)}h old, refreshing)`,
-          );
-        }
-      } catch (e) {
-        console.log(`[Cache ERROR] reading ${cacheKey}: ${e}`);
-      }
-
-      // Fetch from EPA
-      try {
-        const yearData = await fetchEPAYear(
-          b,
-          year,
-          email,
-          apiKey,
-        );
-        boroughData.push(...yearData);
-
-        // Cache the result
-        if (yearData.length > 0) {
-          try {
-            await kv.set(cacheKey, {
-              cachedAt: Date.now(),
-              data: yearData,
-            } as CachedHistorical);
-            console.log(
-              `[Cache SET] ${cacheKey} (${yearData.length} points)`,
-            );
-          } catch (e) {
-            console.log(
-              `[Cache ERROR] writing ${cacheKey}: ${e}`,
-            );
-          }
-        }
-
-        // Rate limit: wait 1s between EPA requests
-        await delay(1000);
-      } catch (e) {
-        console.log(
-          `[EPA AQS] Error fetching ${b}/${year}: ${e}`,
-        );
-        // Continue with other years — partial data is better than none
-      }
-    }
-
-    if (borough === "Citywide") {
-      // For citywide, merge later
-      allData.push(...boroughData);
-    } else {
-      allData.push(...boroughData);
-    }
-  }
-
-  if (borough === "Citywide" && allData.length > 0) {
-    const result = aggregateCitywide(allData);
-    // Cache the aggregate
-    try {
-      await kv.set(aggKey, {
-        cachedAt: Date.now(),
-        data: result,
-      });
+  for (let year = startYear; year <= currentYear; year++) {
+    if (Date.now() > deadline) {
       console.log(
-        `[AGG SET] ${aggKey}: ${result.length} points`,
+        `[fetchHistorical] Deadline reached at ${boroughToFetch}/${year}, returning ${allData.length} points so far`,
       );
-    } catch (e) {
-      console.log(`[AGG ERROR] writing ${aggKey}: ${e}`);
+      break;
     }
-    return result;
+
+    try {
+      const yearData = await fetchEPAYear(boroughToFetch, year, email, apiKey);
+      allData.push(...yearData);
+      // Rate limit: wait 1s between EPA requests
+      if (year < currentYear) await delay(1000);
+    } catch (e) {
+      console.log(`[EPA AQS] Error fetching ${boroughToFetch}/${year}: ${e}`);
+      // Continue with other years — partial data is better than none
+    }
   }
 
-  // Sort by date
   allData.sort(
-    (a, b) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime(),
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
-
-  // Cache the aggregate for fast path on next request
-  if (allData.length > 0) {
-    try {
-      await kv.set(aggKey, {
-        cachedAt: Date.now(),
-        data: allData,
-      });
-      console.log(
-        `[AGG SET] ${aggKey}: ${allData.length} points`,
-      );
-    } catch (e) {
-      console.log(`[AGG ERROR] writing ${aggKey}: ${e}`);
-    }
-  }
-
   return allData;
-}
-
-function aggregateCitywide(
-  allBoroughData: AQIDataPoint[],
-): AQIDataPoint[] {
-  // Group by date string → average pollutants, max AQI
-  const byDate = new Map<string, AQIDataPoint[]>();
-  for (const d of allBoroughData) {
-    if (!byDate.has(d.date)) byDate.set(d.date, []);
-    byDate.get(d.date)!.push(d);
-  }
-
-  const result: AQIDataPoint[] = [];
-  for (const [date, points] of byDate.entries()) {
-    const pm25 =
-      Math.round(
-        (points.reduce((s, p) => s + p.pm25, 0) /
-          points.length) *
-          10,
-      ) / 10;
-    const pm10 = Math.round(
-      points.reduce((s, p) => s + p.pm10, 0) / points.length,
-    );
-    const o3 =
-      Math.round(
-        (points.reduce((s, p) => s + p.o3, 0) / points.length) *
-          10,
-      ) / 10;
-    const no2 =
-      Math.round(
-        (points.reduce((s, p) => s + p.no2, 0) /
-          points.length) *
-          10,
-      ) / 10;
-    const aqi = Math.max(...points.map((p) => p.aqi));
-
-    result.push({
-      date,
-      aqi,
-      category: aqiCategory(aqi),
-      mainPollutant: mainPollutant(pm25, pm10, o3, no2),
-      pm25,
-      pm10,
-      o3,
-      no2,
-    });
-  }
-
-  result.sort(
-    (a, b) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime(),
-  );
-  return result;
 }
 
 // ——— AirNow: Current observations ———
@@ -724,52 +505,24 @@ function reverseAQI_NO2(aqi: number): number {
 
 /**
  * Fetch current AQI for all boroughs from AirNow.
- * Caches for 30 minutes.
+ * No storage cache — the route sets s-maxage=1800 so Vercel's CDN
+ * serves this at most once per 30 minutes.
  */
-export async function fetchCurrent(): Promise<
-  Record<string, AQIDataPoint | null>
-> {
-  const apiKey = Deno.env.get("AIRNOW_API_KEY");
+export async function fetchCurrent(): Promise<Record<string, AQIDataPoint | null>> {
+  const apiKey = process.env.AIRNOW_API_KEY;
   if (!apiKey) {
-    throw new Error(
-      "AIRNOW_API_KEY environment variable is required",
-    );
+    throw new Error("AIRNOW_API_KEY environment variable is required");
   }
 
-  // Check cache
-  const cacheKey = "aqi:current:all";
-  try {
-    const cached: CachedCurrent | null = await kv.get(cacheKey);
-    if (cached && cached.data) {
-      const ageMin =
-        (Date.now() - cached.cachedAt) / (1000 * 60);
-      if (ageMin < 30) {
-        console.log(
-          `[Cache HIT] current AQI (${Math.round(ageMin)}min old)`,
-        );
-        return cached.data;
-      }
-    }
-  } catch (e) {
-    console.log(`[Cache ERROR] reading current: ${e}`);
-  }
-
-  // Fetch from AirNow for each borough
   const result: Record<string, AQIDataPoint | null> = {
     Citywide: null,
   };
-  const boroughs = Object.keys(BOROUGH_ZIPS) as Exclude<
-    Borough,
-    "Citywide"
-  >[];
+  const boroughs = Object.keys(BOROUGH_ZIPS) as Exclude<Borough, "Citywide">[];
 
   // Fetch all boroughs in parallel (5 requests, within AirNow limits)
   const promises = boroughs.map(async (b) => {
     try {
-      const obs = await fetchAirNowForZip(
-        BOROUGH_ZIPS[b],
-        apiKey,
-      );
+      const obs = await fetchAirNowForZip(BOROUGH_ZIPS[b], apiKey);
       const point = airNowToDataPoint(obs);
       return { borough: b, point };
     } catch (e) {
@@ -784,31 +537,22 @@ export async function fetchCurrent(): Promise<
   }
 
   // Citywide = average of all boroughs that have data
-  const withData = results
-    .filter((r) => r.point !== null)
-    .map((r) => r.point!);
+  const withData = results.filter((r) => r.point !== null).map((r) => r.point!);
   if (withData.length > 0) {
     const pm25 =
       Math.round(
-        (withData.reduce((s, p) => s + p.pm25, 0) /
-          withData.length) *
-          10,
+        (withData.reduce((s, p) => s + p.pm25, 0) / withData.length) * 10,
       ) / 10;
     const pm10 = Math.round(
-      withData.reduce((s, p) => s + p.pm10, 0) /
-        withData.length,
+      withData.reduce((s, p) => s + p.pm10, 0) / withData.length,
     );
     const o3 =
       Math.round(
-        (withData.reduce((s, p) => s + p.o3, 0) /
-          withData.length) *
-          10,
+        (withData.reduce((s, p) => s + p.o3, 0) / withData.length) * 10,
       ) / 10;
     const no2 =
       Math.round(
-        (withData.reduce((s, p) => s + p.no2, 0) /
-          withData.length) *
-          10,
+        (withData.reduce((s, p) => s + p.no2, 0) / withData.length) * 10,
       ) / 10;
     const aqi = Math.max(...withData.map((p) => p.aqi));
 
@@ -822,19 +566,6 @@ export async function fetchCurrent(): Promise<
       o3,
       no2,
     };
-  }
-
-  // Cache
-  try {
-    await kv.set(cacheKey, {
-      cachedAt: Date.now(),
-      data: result,
-    } as CachedCurrent);
-    console.log(
-      `[Cache SET] current AQI for ${Object.keys(result).length} boroughs`,
-    );
-  } catch (e) {
-    console.log(`[Cache ERROR] writing current: ${e}`);
   }
 
   return result;

@@ -1,5 +1,4 @@
 import { AQIDataPoint } from "./mockData";
-import { projectId, publicAnonKey } from "./supabase/info";
 
 // ——— Borough types & map data (unchanged) ———
 
@@ -128,13 +127,11 @@ export function no2ToAQI(ppb: number): number {
 
 // ——— API client ———
 
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-ca7e1b38`;
-
-// Only Authorization header for GET requests — no Content-Type (no body),
-// which also avoids triggering complex CORS preflights.
-const headers = {
-  Authorization: `Bearer ${publicAnonKey}`,
-};
+// Same-origin Vercel serverless functions (see /api at the repo root).
+// No auth headers needed — same origin, no CORS, keys stay server-side.
+// Note: `npm run dev` serves only the frontend; without the functions the
+// app falls back to mock data. Use `vercel dev` to run both locally.
+const API_BASE = "/api";
 
 /**
  * Fetch with timeout via AbortController.
@@ -302,10 +299,7 @@ export async function runDiagnostic(): Promise<any> {
     );
     const response = await fetchWithTimeout(
       `${API_BASE}/aqi/diagnostic`,
-      {
-        headers,
-        timeoutMs: 30000,
-      },
+      { timeoutMs: 30000 },
     );
     if (!response.ok) {
       const text = await response.text();
@@ -337,10 +331,7 @@ export async function warmupEdgeFunction(): Promise<boolean> {
   try {
     const response = await fetchWithTimeout(
       `${API_BASE}/health`,
-      {
-        headers,
-        timeoutMs: 20000,
-      },
+      { timeoutMs: 20000 },
     );
     return response.ok;
   } catch {
@@ -357,7 +348,7 @@ export async function fetchCurrentAQI(): Promise<
 > {
   const response = await fetchWithRetry(
     `${API_BASE}/aqi/current`,
-    { headers, timeoutMs: 30000 },
+    { timeoutMs: 30000 },
   );
 
   if (!response.ok) {
@@ -405,7 +396,7 @@ export async function fetchHistoricalAQI(
 ): Promise<AQIDataPoint[]> {
   const response = await fetchWithRetry(
     `${API_BASE}/aqi/historical?borough=${encodeURIComponent(borough)}`,
-    { headers, timeoutMs: 150000 }, // 2.5 minutes — 5 years × rate limiting on cold cache
+    { timeoutMs: 150000 }, // generous — cold EPA fetch takes 3 years × rate limiting
   );
 
   if (!response.ok) {

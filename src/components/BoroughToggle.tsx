@@ -24,10 +24,21 @@ interface Props {
 export function BoroughToggle({ selected, onSelect, dateLabel, hourLabel, status }: Props) {
   const c = themeColors(useTheme());
   return (
+    // flex-wrap keeps the status group visible at every width: on laptop it sits right-aligned on the row; on phone the borough words scroll in their own strip and the status wraps below, right-aligned.
     <div
-      style={{ display: "flex", alignItems: "baseline", gap: space.md, overflowX: "auto", whiteSpace: "nowrap" }}
+      style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", columnGap: space.md, rowGap: space.xs }}
     >
-      <div style={{ display: "flex", gap: space.md, alignItems: "baseline", flex: 1 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: space.md,
+          alignItems: "baseline",
+          flex: "1 0 auto",
+          maxWidth: "100%",
+          overflowX: "auto",
+          whiteSpace: "nowrap",
+        }}
+      >
         {ORDER.map((b) => {
           const isSel = b === selected;
           return (
@@ -59,6 +70,7 @@ export function BoroughToggle({ selected, onSelect, dateLabel, hourLabel, status
           fontSize: typeScale.micro.size,
           color: c.textMuted,
           fontVariantNumeric: "tabular-nums",
+          marginLeft: "auto",
         }}
       >
         {dateLabel} · {hourLabel} · {status}

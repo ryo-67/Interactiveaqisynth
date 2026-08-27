@@ -19,7 +19,8 @@ export const COUNTY_TO_BOROUGH: Record<string, Borough> = {
 export type Pollutant = "pm25" | "o3" | "no2";
 export const POLLUTANTS: Pollutant[] = ["pm25", "o3", "no2"];
 
-export type SourceTag = "own" | "citywide";
+// 'typical' = live NO2 filled from the archive's typical profile (D-18): New York does not publish live NO2 (BUG-25), so absence in the live window is filled from the borough's mean hourly contour for the month and day type, disclosed in the source line.
+export type SourceTag = "own" | "citywide" | "typical";
 
 export interface HourReading {
   ts: string; // ISO local hour with offset
@@ -229,4 +230,32 @@ export function utcToNyIso(utc: Date): string {
   const offset = (parts.timeZoneName!.replace("GMT", "") || "+00:00").replace("−", "-");
   const hour = parts.hour === "24" ? "00" : parts.hour;
   return `${parts.year}-${parts.month}-${parts.day}T${hour}:${parts.minute}:00${offset}`;
+}
+
+// ——— Typical NO2 fill (D-18, amends §4.2/§4.4 for live NO2 only) ———
+// public/data/typical-no2.json: borough (and Citywide) → month "1".."12" → weekday/weekend → 24 mean hourly NO2 values over 2020–2025, built by scripts/build-archive.ts from the borough's played archive series (already citywide-substituted where the borough has no monitor). The live route calls this after the transform; the historical route never does — EPA carries real NO2 there.
+
+export type DayType = "weekday" | "weekend";
+export type TypicalNo2Table = Record<string, Record<string, Record<DayType, Array<number | null>>>>;
+
+export function dayTypeOf(dateIso: string): DayType {
+  const dow = new Date(dateIso.slice(0, 10) + "T12:00:00Z").getUTCDay();
+  return dow === 0 || dow === 6 ? "weekend" : "weekday";
+}
+
+export function fillTypicalNo2(result: TransformResult, table: TypicalNo2Table): void {
+  const fill = (name: string, series: BoroughSeries) => {
+    for (const h of series.hours) {
+      if (h.no2 != null) continue; // real readings (own or citywide-substituted) always win
+      const month = String(Number(h.ts.slice(5, 7)));
+      const hour = Number(h.ts.slice(11, 13));
+      const v = table[name]?.[month]?.[dayTypeOf(h.ts)]?.[hour];
+      if (v != null) {
+        h.no2 = v;
+        h.source.no2 = "typical";
+      }
+    }
+  };
+  for (const b of BOROUGHS) fill(b, result.boroughs[b]);
+  fill("Citywide", result.citywide);
 }

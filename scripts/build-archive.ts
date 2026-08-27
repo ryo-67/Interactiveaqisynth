@@ -15,11 +15,13 @@ import { fileURLToPath } from "node:url";
 import {
   toBoroughHours,
   utcToNyIso,
+  dayTypeOf,
   BOROUGHS,
   COUNTY_TO_BOROUGH,
   NY_STATE_FIPS,
   POLLUTANTS,
   type Borough,
+  type DayType,
   type HourReading,
   type Pollutant,
   type SiteHourRow,
@@ -120,6 +122,19 @@ async function main() {
     anchorVals.set(name, new Map(POLLUTANTS.map((p) => [p, []])));
   }
 
+  // typical NO2 accumulator (D-18): borough → month → daytype → hour → running sum/count of the borough's played NO2 (own or citywide-substituted). New York publishes no live NO2 (BUG-25); the live route fills absence from these means, disclosed as source 'typical'.
+  const typAcc = new Map<string, Map<string, Map<DayType, Array<{ sum: number; n: number }>>>>();
+  for (const name of [...BOROUGHS, "Citywide"]) {
+    const byMonth = new Map<string, Map<DayType, Array<{ sum: number; n: number }>>>();
+    for (let m = 1; m <= 12; m++) {
+      byMonth.set(String(m), new Map([
+        ["weekday", Array.from({ length: 24 }, () => ({ sum: 0, n: 0 }))],
+        ["weekend", Array.from({ length: 24 }, () => ({ sum: 0, n: 0 }))],
+      ] as Array<[DayType, Array<{ sum: number; n: number }>]>));
+    }
+    typAcc.set(name, byMonth);
+  }
+
   for (const year of YEARS) {
     console.log(`\n=== ${year} ===`);
     const rows: SiteHourRow[] = [];
@@ -160,8 +175,14 @@ async function main() {
       const gz = execFileSync("gzip", ["-9", "-c", file]).length;
       console.log(`  ${slug(name)}-${year}.json: ${hours.length} hours, ${(statSync(file).size / 1e6).toFixed(2)} MB raw, ${(gz / 1e3).toFixed(0)} KB gzipped`);
       const av = anchorVals.get(name)!;
+      const ta = typAcc.get(name)!;
       for (const h of hours) {
         for (const p of POLLUTANTS) if (h[p] != null) av.get(p)!.push(h[p] as number);
+        if (h.no2 != null) {
+          const cell = ta.get(String(Number(h.ts.slice(5, 7))))!.get(dayTypeOf(h.ts))![Number(h.ts.slice(11, 13))];
+          cell.sum += h.no2;
+          cell.n += 1;
+        }
       }
     }
   }
@@ -179,6 +200,20 @@ async function main() {
     }
   }
   writeFileSync(join(OUT, "anchors.json"), JSON.stringify(anchors, null, 2));
+
+  // typical-no2.json (D-18): mean hourly contour per borough per month per day type over the archive.
+  const typical: Record<string, Record<string, Record<DayType, Array<number | null>>>> = {};
+  for (const [name, byMonth] of typAcc) {
+    typical[name] = {};
+    for (const [month, byType] of byMonth) {
+      typical[name][month] = { weekday: [], weekend: [] };
+      for (const dt of ["weekday", "weekend"] as DayType[]) {
+        typical[name][month][dt] = byType.get(dt)!.map((c) => (c.n > 0 ? round1(c.sum / c.n) : null));
+      }
+    }
+  }
+  writeFileSync(join(OUT, "typical-no2.json"), JSON.stringify(typical));
+  console.log("typical-no2.json written");
   console.log("\nanchors.json written:");
   console.log(JSON.stringify(anchors, null, 2));
 }

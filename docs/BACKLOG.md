@@ -34,6 +34,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | DAT-09 | P1 | TODO | Verify WHO guideline unit conversions | 100 µg/m³ O3 8-h and 25 µg/m³ NO2 24-h to ppb at 25 °C. Cite conversion |
 | DAT-10 | P2 | TODO | Check for NO2 monitors outside Bronx/Queens under other parameter codes | O-05. Affects which boroughs borrow NO2 |
 | DAT-11 | P2 | TODO | Verify 88502 coverage holds for 2024 to 2026 | 2023 checked. Spot-check before relying on it in copy |
+| DAT-12 | P2 | TODO | Research whether NYSDEC's own real-time monitoring page exposes NO2 outside AirNow | BUG-25 follow-up: live NO2 currently a typical archive profile (D-18). A real live source would retire the fill |
 
 ## Infrastructure (STRATEGY §6)
 

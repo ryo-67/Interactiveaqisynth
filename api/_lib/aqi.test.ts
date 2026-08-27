@@ -1,6 +1,6 @@
 // Pins the §4.4/D-16 transform rules: per-borough max across sites, citywide mean of reporting boroughs, substitution with provenance, null when nobody reports, and the New York state filter.
 import { describe, it, expect } from "vitest";
-import { toBoroughHours, seriesAQI, pm25ToAQI, utcToNyIso, type SiteHourRow } from "./aqi";
+import { toBoroughHours, seriesAQI, pm25ToAQI, utcToNyIso, fillTypicalNo2, type SiteHourRow } from "./aqi";
 
 const H0 = "2026-06-01T00:00:00-04:00";
 const H1 = "2026-06-01T01:00:00-04:00";
@@ -54,6 +54,32 @@ describe("toBoroughHours", () => {
     for (const b of Object.values(result.boroughs)) {
       for (const h of b.hours) expect(h.pm25).not.toBe(999);
     }
+  });
+});
+
+describe("fillTypicalNo2 (D-18)", () => {
+  it("fills only null NO2 from the month/day-type/hour profile and flags it 'typical'", () => {
+    const r = toBoroughHours(rows, AXIS); // hour 0 NO2 is null for everyone; hour 1 Queens has own NO2
+    // H0/H1 are 2026-06-01, a Monday → month "6", weekday, hours 0 and 1
+    const table = {
+      Queens: { "6": { weekday: [17.5, 16.0], weekend: [9.9, 9.9] } },
+      Brooklyn: { "6": { weekday: [14.2, 13.0], weekend: [9.9, 9.9] } },
+      Bronx: { "6": { weekday: [18.1, 17.0], weekend: [9.9, 9.9] } },
+      Manhattan: { "6": { weekday: [15.0, 14.0], weekend: [9.9, 9.9] } },
+      "Staten Island": { "6": { weekday: [12.0, 11.0], weekend: [9.9, 9.9] } },
+      Citywide: { "6": { weekday: [15.4, 14.4], weekend: [9.9, 9.9] } },
+    };
+    fillTypicalNo2(r, table);
+    expect(r.boroughs.Queens.hours[0].no2).toBe(17.5);
+    expect(r.boroughs.Queens.hours[0].source.no2).toBe("typical");
+    expect(r.citywide.hours[0].no2).toBe(15.4);
+    expect(r.citywide.hours[0].source.no2).toBe("typical");
+    // a real reading is never overwritten: Queens hour 1 keeps its own 25
+    expect(r.boroughs.Queens.hours[1].no2).toBe(25);
+    expect(r.boroughs.Queens.hours[1].source.no2).toBe("own");
+    // Brooklyn hour 1 borrowed the citywide 25 via D-16, which also wins over typical
+    expect(r.boroughs.Brooklyn.hours[1].no2).toBe(25);
+    expect(r.boroughs.Brooklyn.hours[1].source.no2).toBe("citywide");
   });
 });
 

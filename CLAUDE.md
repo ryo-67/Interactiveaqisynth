@@ -67,7 +67,7 @@ interface HourReading {
   pm25: number | null;        // µg/m³, max across sites
   o3: number | null;          // ppb
   no2: number | null;         // ppb
-  source: { pm25: 'own' | 'citywide'; o3: 'own' | 'citywide'; no2: 'own' | 'citywide' };
+  source: { pm25: 'own' | 'citywide'; o3: 'own' | 'citywide'; no2: 'own' | 'citywide' | 'typical' };
 }
 ```
 
@@ -87,6 +87,7 @@ Data
 - Missing is null only when no borough reports. Citywide is the per-hour mean of reporting boroughs.
 - Daily AQI comes from EPA where present, else from the 24-h mean. Hourly max is kept for the phrase and pin labels, never for the AQI number.
 - Look up API behavior before proposing a fix. AirNow and EPA AQS both have quirks; do not cycle through guesses.
+- Live NO2: New York publishes none in real time, so absence is filled from the archive's typical profile, flagged source.no2 = 'typical' and disclosed on the page (D-18, amending §4.2/§4.4).
 
 Code
 - TypeScript strict. Functional components. No component libraries. Tokens from `theme.ts` only. All prose from `content.ts`.

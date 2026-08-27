@@ -41,7 +41,7 @@ Version 2, August 26, 2026. BUG-01 to BUG-10 are the March list with statuses up
 | BUG-22 | S3 | FIXED 2026-08-27, e5e2d2c | `hono` still in dependencies | Leftover from the Deno server. Fix: INF-04, CLN-03 |
 | BUG-23 | S2 | FIXED 2026-08-27, 6473a4a | `fetchHistorical` assumes a 90 s deadline; `vercel.json` sets no `maxDuration` | A 16 s cold fetch has succeeded, so the budget is above 10 s, but the actual limit is unverified. Fix: INF-03 |
 | BUG-24 | S3 | OPEN | README is Figma Make boilerplate with a link to the Figma file | Fix: CLN-06 |
-| BUG-25 | S1 | OPEN | AirNow real-time feed carries no New York NO2 | Verified empirically 2026-08-27: 7-day /aq/data/ pull over the NYC bbox returned 638 NO2 rows, all state 34 (New Jersey); zero NY sites. NYSDEC pushes O3 and PM2.5 to AirNow but not NO2, so the live pulse voice rests (per §4.4) even though Bronx/Queens NO2 exists in EPA AQS at ~5 weeks lag. Needs a decision: alternative live source (NYSDEC/NYCCAS direct?), accept the rest, or borrow the most recent EPA hour with provenance |
+| BUG-25 | S1 | FIXED 2026-08-27, see sprint 2 D-18 commit | AirNow real-time feed carries no New York NO2 | Verified empirically 2026-08-27: 7-day /aq/data/ pull over the NYC bbox returned 638 NO2 rows, all state 34 (New Jersey); zero NY sites. NYSDEC pushes O3 and PM2.5 to AirNow but not NO2, so the live pulse voice rests (per §4.4) even though Bronx/Queens NO2 exists in EPA AQS at ~5 weeks lag. Ruled D-18: live absence filled from the archive typical profile per borough/month/day-type, source 'typical', disclosed. DAT-12 researches a real live source |
 
 ### Engine (superseded wholesale by SON-01, recorded for the case study)
 

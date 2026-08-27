@@ -8,7 +8,7 @@ import { normalize, pm25ToAQI, SmoothedAQI, melodyMidi, type PollutantAnchors } 
 import { euclidHit, barK } from "./euclid";
 import { TIERS, tierIndexOf, chordMidi, midiToFreq } from "./scales";
 
-export type SourceTag = "own" | "citywide";
+export type SourceTag = "own" | "citywide" | "typical"; // typical = live NO2 filled from the archive profile (D-18)
 
 export interface HourReading {
   ts: string; // ISO local hour
@@ -246,9 +246,9 @@ export class SynthEngine {
       scaleName: tier.scaleName,
       k: this.curBarK,
       borrowed: {
-        pm25: reading.source.pm25 === "citywide",
-        o3: reading.source.o3 === "citywide",
-        no2: reading.source.no2 === "citywide",
+        pm25: reading.source.pm25 !== "own",
+        o3: reading.source.o3 !== "own",
+        no2: reading.source.no2 !== "own",
       },
       smoothedAQI: smoothed,
       pm25: reading.pm25,

@@ -6,9 +6,13 @@ import {
   BOROUGHS,
   type SiteHourRow,
   type Pollutant,
+  fillTypicalNo2,
   type TransformResult,
   type HourReading,
+  type TypicalNo2Table,
 } from "../_lib/aqi";
+// Bundled at build time; the function has no filesystem access to public/ at runtime.
+import typicalNo2 from "../../public/data/typical-no2.json";
 
 /**
  * GET /api/aqi/current — last 24 local hours for every borough (DAT-01; fixes BUG-11, BUG-12, BUG-13).
@@ -80,6 +84,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     if (nyRows.length === 0) {
       // Whole-response fallback only: the data endpoint returned nothing for New York (outage or empty window). The zip-code endpoint cannot tell boroughs apart (BUG-12), so its area reading is flagged citywide on every channel and the response says so.
       const fallback = await zipCodeFallback(apiKey);
+      fillTypicalNo2(fallback, typicalNo2 as TypicalNo2Table); // the zip endpoint has no NO2 either (BUG-11)
       res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=3600");
       res.status(200).json({ status: "ok", source: "airnow", fallback: "zipcode", fetchedAt: new Date().toISOString(), ...fallback });
       return;
@@ -88,6 +93,8 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     // Axis: the distinct local hours seen, sorted, capped to the latest 24.
     const axis = [...new Set(rows.map((r) => r.ts))].sort().slice(-24);
     const result = toBoroughHours(rows, axis);
+    // D-18: live NO2 absence (New York publishes none, BUG-25) filled from the archive's typical profile, disclosed as source 'typical'. Real readings always win; the historical route never does this.
+    fillTypicalNo2(result, typicalNo2 as TypicalNo2Table);
 
     res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=3600");
     res.status(200).json({ status: "ok", source: "airnow", fetchedAt: new Date().toISOString(), ...result });

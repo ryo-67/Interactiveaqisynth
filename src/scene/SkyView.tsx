@@ -10,6 +10,12 @@ import { HosekSky } from "./hosek/HosekSky";
 import type { SkyParams } from "./skyParams";
 
 export type GroundMode = "above" | "fade" | "edge";
+
+// Framing rule (row 5, option (a)): only above-horizon sky in frame, at every viewport size.
+// three's `fov` is the VERTICAL field of view and does not change with aspect, so the visible vertical span is always ±FOV_DEG/2 around the camera pitch. Pitching up by half the fov puts the bottom edge exactly on the horizon; the margin pushes it just below, so the horizon sits at or under the bottom edge and never inside the frame. Being vertical-only, this holds at any aspect ratio or box height without further work.
+const FOV_DEG = 62;
+const HORIZON_MARGIN_DEG = 1.5;
+const ABOVE_HORIZON_PITCH_RAD = ((FOV_DEG / 2 + HORIZON_MARGIN_DEG) * Math.PI) / 180;
 // Preetham is what three.js ships; Hosek-Wilkie is the 2012 replacement designed to fix exactly the two conditions this piece leans on, sunset and high turbidity.
 export type SkyModel = "preetham" | "hosek";
 
@@ -30,9 +36,10 @@ interface Props {
 function DevHandle() {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
   useLayoutEffect(() => {
-    (window as unknown as Record<string, unknown>).__sky = { gl, scene };
-  }, [gl, scene]);
+    (window as unknown as Record<string, unknown>).__sky = { gl, scene, camera };
+  }, [gl, scene, camera]);
   return null;
 }
 
@@ -50,14 +57,14 @@ function Exposure({ value }: { value: number }) {
 }
 
 export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "preetham", albedo = 0.1 }: Props) {
-  // "above": tilt the camera up so only sky above the horizon is in frame. "edge"/"fade": horizon sits at the vertical middle.
-  const cameraRotationX = groundMode === "above" ? 0.32 : 0;
+  // "above": pitch up by half the vertical fov plus a margin, so the horizon falls at or below the bottom edge. The previous fixed 0.32 rad left the bottom edge 12.7 degrees BELOW the horizon, which rendered the dome's ground half — invisible only while the control bar happened to cover it. "edge"/"fade": horizon sits at the vertical middle.
+  const cameraRotationX = groundMode === "above" ? ABOVE_HORIZON_PITCH_RAD : 0;
   const stars = Math.round(SKY_RANGES.starsCount * starOpacity);
 
   return (
     <div style={{ position: "relative", ...style }}>
       <Canvas
-        camera={{ position: [0, 0, 0], fov: 62, rotation: [cameraRotationX, 0, 0] }}
+        camera={{ position: [0, 0, 0], fov: FOV_DEG, rotation: [cameraRotationX, 0, 0] }}
         // Tone mapping must be set explicitly: r3f v8 applies its ACES default through a pre-three-r155 code path (it writes outputEncoding alongside toneMapping), which no longer lands on three 0.172, leaving the renderer at NoToneMapping — and with no tone mapping the exposure value is inert, because the shaders' tonemapping_fragment compiles to a no-op.
         gl={{ antialias: true, toneMapping: ACESFilmicToneMapping }}
         // Cap device pixel ratio: at DPR 2 the bloom pass costs four times the pixels for no visible gain.

@@ -110,3 +110,56 @@ export function themeColors(theme: Theme) {
     recordRed: "#e63c3c",
   };
 }
+
+// ——— Sprint 3a design tokens (DSN-02, STRATEGY §5.4/§5.5) ———
+
+// Five-tier color, keyed by tier index (Easy → Suffocating), carried from the v1 palette (D-19 pending none — Shoro confirmed these hues 2026-08-27). The hue appears on exactly four things: mood word (full), O3 line and playhead (medium), pins (subtle, 3b). Everything else is the text hierarchy on the ground.
+export const TIER_COLORS = ["#68d89b", "#e8cf6a", "#e89b6a", "#e86a6a", "#b06ae8"] as const;
+
+// Opacity scale (§5.5). Tier color is applied through these, not at arbitrary alphas.
+export const opacity = {
+  full: 1,
+  medium: 0.72,
+  subtle: 0.4,
+  faint: 0.18,
+} as const;
+
+export function tierColorAt(tierIndex: number, level: keyof typeof opacity): string {
+  const hex = TIER_COLORS[Math.max(0, Math.min(4, tierIndex))];
+  const a = Math.round(opacity[level] * 255).toString(16).padStart(2, "0");
+  return level === "full" ? hex : `${hex}${a}`;
+}
+
+// Three type families (§5.5). No webfonts this sprint; these are the stacks the shipped build already speaks.
+export const families = {
+  serifItalic: 'Georgia, "Times New Roman", serif', // editorial serif — borough selected, mood word, mood sentence (styled italic at use)
+  data: '"SF Mono", "Roboto Mono", Menlo, monospace', // tabular data face — the number, hour marks
+  uiCaps: 'system-ui, "Helvetica Neue", sans-serif', // UI caps — unselected boroughs, source line (uppercase + letterspacing at use)
+} as const;
+
+// Named type scale (§5.5): [fontSize, lineHeight].
+export const typeScale = {
+  display: { size: "96px", line: 1.0 }, // the AQI number
+  heading: { size: "34px", line: 1.15 }, // mood word
+  body: { size: "15px", line: 1.6 }, // mood sentence
+  caption: { size: "12px", line: 1.4 }, // borough row, legend
+  micro: { size: "10px", line: 1.4 }, // hour marks, source line
+} as const;
+
+// Spacing tokens.
+export const space = {
+  xs: "6px",
+  sm: "12px",
+  md: "20px",
+  lg: "36px",
+  xl: "64px",
+} as const;
+
+// The four motion profiles (§5.4). Everything moves on the 90 BPM grid or not at all; drift is the one continuous exception (particulate, not rhythmic).
+export const motion = {
+  beatMs: 60000 / 90 / 1, // one beat = one hour = 666.7 ms; playhead advance
+  blurMs: 500, // mood word swap at tier boundaries
+  crossfadeMs: 300, // borough/day switch on the score
+  driftPxPerSec: 4, // haze grain drift speed — continuous
+} as const;
+

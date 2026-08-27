@@ -22,6 +22,8 @@ interface Props {
   // Static grid cells render on demand (once, then on prop change); the live preview renders continuously so dragging a slider is smooth.
   live?: boolean;
   model?: SkyModel;
+  // Hosek-Wilkie's third input beside turbidity and solar elevation: ground albedo, the bounce light the lower atmosphere sees.
+  albedo?: number;
 }
 
 // Dev-only handle so the renderer and scene can be inspected from the console (?dev=1 harness only).
@@ -47,7 +49,7 @@ function Exposure({ value }: { value: number }) {
   return null;
 }
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "preetham" }: Props) {
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "preetham", albedo = 0.1 }: Props) {
   // "above": tilt the camera up so only sky above the horizon is in frame. "edge"/"fade": horizon sits at the vertical middle.
   const cameraRotationX = groundMode === "above" ? 0.32 : 0;
   const stars = Math.round(SKY_RANGES.starsCount * starOpacity);
@@ -67,7 +69,7 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
         <DevHandle />
         {model === "hosek" ? (
           // Hosek-Wilkie takes turbidity, ground albedo and solar elevation. It has no rayleigh or mie inputs: the fitted dataset carries the scattering.
-          <HosekSky sunPosition={sunPosition} turbidity={params.turbidity} />
+          <HosekSky sunPosition={sunPosition} turbidity={params.turbidity} albedo={albedo} />
         ) : (
           <Sky
             distance={450000}

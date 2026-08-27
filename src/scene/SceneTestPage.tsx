@@ -35,6 +35,7 @@ export default function SceneTestPage() {
   const [rayleigh, setRayleigh] = useState(num("rayleigh", RAYLEIGH_DEFAULT));
   const [bloom, setBloom] = useState(num("bloom", 0.6));
   const [exposure, setExposure] = useState(num("exposure", CLEAR_NOON_EXPOSURE));
+  const [albedo, setAlbedo] = useState(num("albedo", 0.1)); // Hosek's ground-albedo input; ignored by Preetham, which has no such parameter
   const [glass, setGlass] = useState<GlassImpl | "none">(str("glass", "none") as GlassImpl | "none");
 
   const [archive, setArchive] = useState<HourReading[] | null>(null);
@@ -74,10 +75,10 @@ export default function SceneTestPage() {
   useEffect(() => {
     const p = new URLSearchParams({
       dev: "1", model, day, hour: String(hour), haze: String(haze), ozone: String(ozone),
-      rayleigh: String(rayleigh), bloom: String(bloom), exposure: String(exposure), glass,
+      rayleigh: String(rayleigh), bloom: String(bloom), exposure: String(exposure), albedo: String(albedo), glass,
     });
     window.history.replaceState(null, "", `?${p}`);
-  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, glass]);
+  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, glass]);
 
   const view = useMemo(() => {
     const dateForSun = day === "manual" ? "2023-07-12" : day;
@@ -95,13 +96,14 @@ export default function SceneTestPage() {
         `haze ${haze.toFixed(2)} → turbidity ${aer.turbidity.toFixed(1)}, mie ${aer.mieCoefficient.toFixed(4)}` +
         ` · ozone ${ozone.toFixed(2)}` +
         ` · sun ${ang.elevationDeg.toFixed(0)}°` +
+        ` · albedo ${albedo.toFixed(2)}${model === "hosek" ? "" : " (hosek only)"}` +
         (reading ? ` · real: pm25 ${reading.pm25 ?? "—"} µg/m³, o3 ${reading.o3 ?? "—"} ppb` : " · manual"),
     };
-  }, [day, hour, haze, ozone, rayleigh, bloom, exposure, reading]);
+  }, [day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, model, reading]);
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#05050a" }}>
-      <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} style={{ width: "100vw", height: "100vh" }} live />
+      <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} style={{ width: "100vw", height: "100vh" }} live />
 
       {glass !== "none" && (
         <div style={{ position: "fixed", left: "50%", top: "40%", transform: "translate(-50%,-50%)" }}>
@@ -141,6 +143,7 @@ export default function SceneTestPage() {
         <Slider label="rayleigh" min={0} max={6} step={0.05} value={rayleigh} onChange={setRayleigh} />
         <Slider label="bloom" min={0} max={3} step={0.05} value={bloom} onChange={setBloom} />
         <Slider label="exposure" min={0.02} max={1.5} step={0.01} value={exposure} onChange={setExposure} />
+        <Slider label="albedo" min={0} max={0.4} step={0.01} value={albedo} onChange={setAlbedo} />
 
         <Group label="glass">
           <Radio name="glass" label="off" checked={glass === "none"} onChange={() => setGlass("none")} />

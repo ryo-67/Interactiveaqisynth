@@ -4,6 +4,7 @@
 // Clock → sunPosition, star visibility (handled by the caller from solar.ts).
 
 import { SKY_RANGES } from "../utils/theme";
+import type { SkyRanges } from "./skyStore";
 
 export interface SkyParams {
   turbidity: number;
@@ -24,18 +25,24 @@ export function nightExposureFactor(sunElevationDeg: number): number {
 }
 
 // pm25n and o3n are the engine's normalized values (p05 → 0, p95 → 1). Both saturate above 1: an extreme day sits at the ceiling rather than running away. sunElevationDeg, when given, applies the night falloff.
-export function skyParamsFor(pm25n: number | null, o3n: number | null, sunElevationDeg?: number): SkyParams {
+// `r` overrides the compiled ranges: the test harness passes its tuned copy so the real-day rows re-render through whatever ends are currently set.
+export function skyParamsFor(
+  pm25n: number | null,
+  o3n: number | null,
+  sunElevationDeg?: number,
+  r: SkyRanges = SKY_RANGES as unknown as SkyRanges,
+): SkyParams {
   const p = Math.min(1, pm25n ?? 0);
   const o = Math.min(1, o3n ?? 0);
   return {
-    turbidity: lerp(SKY_RANGES.turbidity.clear, SKY_RANGES.turbidity.suffocating, p),
-    mieCoefficient: lerp(SKY_RANGES.mieCoefficient.clear, SKY_RANGES.mieCoefficient.high, p),
-    mieDirectionalG: SKY_RANGES.mieDirectionalG,
-    rayleigh: lerp(SKY_RANGES.rayleigh.lowO3, SKY_RANGES.rayleigh.highO3, o),
-    bloomIntensity: o3n == null ? 0 : lerp(SKY_RANGES.bloomIntensity.lowO3, SKY_RANGES.bloomIntensity.highO3, o),
-    discBrightness: lerp(SKY_RANGES.discBrightness.lowO3, SKY_RANGES.discBrightness.highO3, o),
+    turbidity: lerp(r.turbidity.clear, r.turbidity.suffocating, p),
+    mieCoefficient: lerp(r.mieCoefficient.clear, r.mieCoefficient.high, p),
+    mieDirectionalG: r.mieDirectionalG,
+    rayleigh: lerp(r.rayleigh.lowO3, r.rayleigh.highO3, o),
+    bloomIntensity: o3n == null ? 0 : lerp(r.bloomIntensity.lowO3, r.bloomIntensity.highO3, o),
+    discBrightness: lerp(r.discBrightness.lowO3, r.discBrightness.highO3, o),
     exposure:
-      lerp(SKY_RANGES.exposure.lowO3, SKY_RANGES.exposure.highO3, o) *
+      lerp(r.exposure.lowO3, r.exposure.highO3, o) *
       (sunElevationDeg == null ? 1 : nightExposureFactor(sunElevationDeg)),
   };
 }

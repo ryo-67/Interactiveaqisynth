@@ -5,7 +5,18 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SkyView, type GroundMode } from "./SkyView";
 import { skyParamsFor, starOpacity, type SkyParams } from "./skyParams";
 import { GlassSample, GLASS_IMPLS, GLASS_LABELS, type GlassImpl } from "./GlassSamples";
-import { initControls, setControl, useControl, useControls } from "./skyStore";
+import {
+  applyAsRangeEnd,
+  applyToGrid,
+  getRanges,
+  initControls,
+  resetRanges,
+  setControl,
+  useApplied,
+  useControl,
+  useControls,
+  useRanges,
+} from "./skyStore";
 import { sunAnglesAt, sunPositionVector } from "./solar";
 import { NYC_LAT, NYC_LON, SKY_RANGES, families, typeScale, space } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
@@ -32,16 +43,18 @@ initControls({
   exposure: num("exposure", 0.5),
 });
 
-// Frozen base for the parameter rows. Grid cells never read the sliders — otherwise every tick re-renders every live WebGL context on the page and dragging goes to treacle.
-const BASE: SkyParams = {
-  turbidity: 8,
-  mieCoefficient: 0.03,
-  mieDirectionalG: SKY_RANGES.mieDirectionalG,
-  rayleigh: 1.8,
-  bloomIntensity: 0.6,
-  discBrightness: 1,
-  exposure: 0.5,
-};
+// The parameter rows read the APPLIED values, not the live sliders: the grid holds still while you drag and updates when you press Apply.
+function baseFrom(c: { turbidity: number; mie: number; rayleigh: number; bloom: number; exposure: number }): SkyParams {
+  return {
+    turbidity: c.turbidity,
+    mieCoefficient: c.mie,
+    mieDirectionalG: SKY_RANGES.mieDirectionalG,
+    rayleigh: c.rayleigh,
+    bloomIntensity: c.bloom,
+    discBrightness: 1,
+    exposure: c.exposure,
+  };
+}
 
 // Only mount a cell's WebGL context while it is on screen: the grid has more cells than a browser allows live contexts.
 function LazyCell({ children, height }: { children: React.ReactNode; height: number }) {
@@ -115,6 +128,9 @@ const NOON_SUN = sunPositionVector(NOON_ANGLES);
 export default function SceneTestPage() {
   const [archive, setArchive] = useState<HourReading[] | null>(null);
   const [anchors, setAnchors] = useState<PollutantAnchors | null>(null);
+  const applied = useApplied(); // changes only on Apply
+  const ranges = useRanges();
+  const BASE = baseFrom(applied);
 
   useEffect(() => {
     (async () => {
@@ -139,7 +155,7 @@ export default function SceneTestPage() {
       const pm25n = rec && a ? normalize(rec.pm25 == null ? null : Math.max(0, rec.pm25), a.pm25) : 0;
       const o3n = rec && a ? normalize(rec.o3, a.o3) : 0;
       const ang = sunAnglesAt(date, hour, NYC_LAT, NYC_LON, date >= `${date.slice(0, 4)}-03-12` && date <= `${date.slice(0, 4)}-11-05` ? -4 : -5);
-      const p = skyParamsFor(pm25n, o3n, ang.elevationDeg);
+      const p = skyParamsFor(pm25n, o3n, ang.elevationDeg, ranges);
       return {
         p,
         sun: sunPositionVector(ang),
@@ -147,14 +163,14 @@ export default function SceneTestPage() {
         readout: `pm25 ${rec?.pm25 ?? "—"} (n ${pm25n?.toFixed(2)}) · o3 ${rec?.o3 ?? "—"} (n ${o3n?.toFixed(2)}) · turb ${p.turbidity.toFixed(1)} · mie ${p.mieCoefficient.toFixed(3)} · ray ${p.rayleigh.toFixed(2)} · bloom ${p.bloomIntensity.toFixed(2)} · exp ${p.exposure.toFixed(2)} · el ${ang.elevationDeg.toFixed(0)}°`,
       };
     };
-  }, [archive, anchors]);
+  }, [archive, anchors, ranges]);
 
   // ——— Full-screen single cases ———
   const kase = params.get("case");
   if (kase) {
     const full = { width: "100vw", height: "100vh" } as const;
     if (kase === "haze") {
-      const p = { ...BASE, turbidity: num("turbidity", 8), mieCoefficient: num("mie", 0.03) };
+      const p = { ...baseFrom({ turbidity: num("turbidity", 8), mie: num("mie", 0.03), rayleigh: num("rayleigh", 1.8), bloom: num("bloom", 0.6), exposure: num("exposure", 0.5) }) };
       return <SkyView params={p} sunPosition={NOON_SUN} starOpacity={0} style={full} />;
     }
     if (kase === "day") {
@@ -162,7 +178,7 @@ export default function SceneTestPage() {
       return <SkyView params={c.p} sunPosition={c.sun} starOpacity={c.stars} style={full} />;
     }
     if (kase === "ozone") {
-      const p = { ...BASE, rayleigh: num("rayleigh", 1.8), bloomIntensity: num("bloom", 0.6), discBrightness: num("brightness", 1), turbidity: 2.5, mieCoefficient: 0.006 };
+      const p = { ...baseFrom({ turbidity: 2.5, mie: 0.006, rayleigh: num("rayleigh", 1.8), bloom: num("bloom", 0.6), exposure: num("exposure", 0.5) }), discBrightness: num("brightness", 1) };
       return <SkyView params={p} sunPosition={NOON_SUN} starOpacity={0} style={full} />;
     }
     if (kase === "ground") {
@@ -194,18 +210,20 @@ export default function SceneTestPage() {
   const wide = 560;
   const wideH = Math.round((wide * CELL_H) / CELL_W);
 
+  const tLo = ranges.turbidity.clear, tHi = ranges.turbidity.suffocating;
+  const mLo = ranges.mieCoefficient.clear, mHi = ranges.mieCoefficient.high;
+  const at = (f: number): [number, number] => [
+    Math.round((tLo + (tHi - tLo) * f) * 10) / 10,
+    Math.round((mLo + (mHi - mLo) * f) * 1000) / 1000,
+  ];
   const hazeSteps: Array<[number, number]> = [
-    [2, 0.005],
-    [6, 0.02],
-    [10, 0.04],
-    [15, 0.07],
-    [20, 0.1],
-    [30, 0.15], // past the top, on purpose
+    at(0), at(0.25), at(0.5), at(0.75), at(1),
+    [Math.round(tHi * 1.5 * 10) / 10, Math.round(mHi * 1.5 * 1000) / 1000], // past the top, on purpose
   ];
   const ozoneSteps: Array<[number, number, number]> = [
-    [SKY_RANGES.rayleigh.lowO3, SKY_RANGES.bloomIntensity.lowO3, SKY_RANGES.discBrightness.lowO3],
-    [(SKY_RANGES.rayleigh.lowO3 + SKY_RANGES.rayleigh.highO3) / 2, (SKY_RANGES.bloomIntensity.lowO3 + SKY_RANGES.bloomIntensity.highO3) / 2, (SKY_RANGES.discBrightness.lowO3 + SKY_RANGES.discBrightness.highO3) / 2],
-    [SKY_RANGES.rayleigh.highO3, SKY_RANGES.bloomIntensity.highO3, SKY_RANGES.discBrightness.highO3],
+    [ranges.rayleigh.lowO3, ranges.bloomIntensity.lowO3, ranges.discBrightness.lowO3],
+    [(ranges.rayleigh.lowO3 + ranges.rayleigh.highO3) / 2, (ranges.bloomIntensity.lowO3 + ranges.bloomIntensity.highO3) / 2, (ranges.discBrightness.lowO3 + ranges.discBrightness.highO3) / 2],
+    [ranges.rayleigh.highO3, ranges.bloomIntensity.highO3, ranges.discBrightness.highO3],
   ];
 
   const section: React.CSSProperties = {
@@ -302,7 +320,7 @@ export default function SceneTestPage() {
             key={m}
             label={{ above: "(a) camera above horizon only", fade: "(b) horizon fade to a neutral band", edge: "(c) sky edge to edge" }[m]}
             href={`/scene-test?dev=1&case=ground&mode=${m}`}
-            params={skyParamsFor(0.05, 0.5)}
+            params={skyParamsFor(0.05, 0.5, undefined, ranges)}
             sunPosition={NOON_SUN}
             stars={0}
             groundMode={m}
@@ -349,6 +367,26 @@ export default function SceneTestPage() {
         );
       })}
 
+      <div style={section}>Current ranges — paste into theme.ts SKY_RANGES</div>
+      <pre
+        style={{
+          fontFamily: families.data,
+          fontSize: typeScale.micro.size,
+          color: "rgba(255,255,255,0.8)",
+          background: "rgba(255,255,255,0.05)",
+          padding: space.sm,
+          overflowX: "auto",
+        }}
+      >
+{`turbidity: { clear: ${ranges.turbidity.clear}, suffocating: ${ranges.turbidity.suffocating} },
+mieCoefficient: { clear: ${ranges.mieCoefficient.clear}, high: ${ranges.mieCoefficient.high} },
+mieDirectionalG: ${ranges.mieDirectionalG},
+rayleigh: { lowO3: ${ranges.rayleigh.lowO3}, highO3: ${ranges.rayleigh.highO3} },
+bloomIntensity: { lowO3: ${ranges.bloomIntensity.lowO3}, highO3: ${ranges.bloomIntensity.highO3} },
+discBrightness: { lowO3: ${ranges.discBrightness.lowO3}, highO3: ${ranges.discBrightness.highO3} },
+exposure: { lowO3: ${ranges.exposure.lowO3}, highO3: ${ranges.exposure.highO3} },`}
+      </pre>
+
       {/* Sliders, fixed at the foot */}
       <div
         style={{
@@ -371,6 +409,12 @@ export default function SceneTestPage() {
         <Slider label="rayleigh" ctl="rayleigh" min={0} max={6} step={0.05} />
         <Slider label="bloom intensity" ctl="bloom" min={0} max={3} step={0.05} />
         <Slider label="exposure" ctl="exposure" min={0.1} max={1.5} step={0.01} />
+        <div style={{ display: "flex", gap: space.xs, alignItems: "center" }}>
+          <Btn onClick={applyToGrid} title="Push the current slider values into every parameter row">Apply to grid</Btn>
+          <Btn onClick={() => applyAsRangeEnd("clear")} title="Write these values into the clear / low-ozone end of the ranges — the real-day rows re-render through them">Set clear end</Btn>
+          <Btn onClick={() => applyAsRangeEnd("smoke")} title="Write these values into the smoke / high-ozone end of the ranges">Set smoke end</Btn>
+          <Btn onClick={resetRanges} title="Back to the proposed ranges in theme.ts">Reset</Btn>
+        </div>
       </div>
     </div>
   );
@@ -405,6 +449,29 @@ function Slider({
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} style={{ width: 160 }} />
       <span style={{ width: 56, textAlign: "right" }}>{value}</span>
     </label>
+  );
+}
+
+function Btn({ onClick, children, title }: { onClick: () => void; children: React.ReactNode; title?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        fontFamily: families.uiCaps,
+        fontSize: typeScale.micro.size,
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        color: "rgba(255,255,255,0.92)",
+        background: "rgba(255,255,255,0.12)",
+        border: "1px solid rgba(255,255,255,0.28)",
+        borderRadius: 4,
+        padding: "6px 10px",
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

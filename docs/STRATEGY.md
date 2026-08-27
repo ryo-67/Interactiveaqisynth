@@ -242,43 +242,66 @@ Sourced values only (§2.3). Stored in content.ts with the source cited in a com
 
 ### §5.1 Principle
 
-The score is the picture. The visual is the thing being played, drawn as a 24-hour graphic score, and everything else on the page is typography. No dashboard chrome: no chips, pills, bordered buttons, slider tracks, icons, panels, or decorative backgrounds. The register is editorial and notational (graphic scores, printed data reports), not product UI.
+The scene is the day being played. A full-bleed sky that changes with the hour under the playhead and with the air, in the register of Apple Weather: photographic gradients, a literal sun, atmospheric particles, and glass panels for the readouts. Everything on screen is data. Nothing is decoration, because the reference app's rule is the same: everything on that screen is weather.
 
-Benchmark, August 26, 2026: the shipped build has the right typographic voice (large serif AQI number, italic mood word, serif/caps pairing) and reads as a settings page anyway, because of pill selectors, uniform slider rows, icon buttons, a sparkline timeline, and bokeh orbs that carry no data. v2 keeps the type and removes the chrome.
+Why this and not the typographic score (D-14, reversed by D-19): the portfolio has an installation (Body Politic) and a hand-drawn character piece (Bushwick) and needs one polished, immersive, product-grade web piece. That is the slot a design-engineer hiring manager checks first. The score survives as a component inside a glass panel; it stops being the whole page.
 
-### §5.2 Page order (laptop)
+### §5.2 The scene (data to scene mapping)
 
-1. Borough toggle. One horizontal row of words at the very top: NYC, Manhattan, Brooklyn, Queens, Bronx, Staten Island. The selected borough is set in italic serif; the rest in the UI face. Date, hour, and live/archive status right-aligned on the same row.
-2. The number. AQI, display size, serif. Never animates.
-3. Mood word and mood sentence. Italic serif. The word is from the five-tier scale (§3.4); the sentence is written per tier by Shoro in content.ts, with one data-driven clause (which pollutant carries the line this hour). Changes only at tier boundaries, with the blur transition.
-4. The score. Full width. 24 columns, one per hour. O3 contour as a line in the tier color. NO2 as pulse marks at the foot of each column, height by density. PM2.5 as haze density over the field (live grain, not flat fill). A vertical playhead advances one column per beat. Hour marks at 0, 6, 12, 18, and "now" for live. Clicking the score toggles play.
-5. The timeline. A ruled line from January 2020 to today. Pins are ticks with names in italic serif. The EPA lag is a dashed segment labeled with the computed lag ("5 weeks unreported"). The live reading is the rightmost tick. Scrubbing plays each day as its phrase.
-6. Footer, three lines.
-   - Imagine, as a sentence: "Hear this same afternoon at WHO guideline levels, on a Delhi winter morning, or in April 2020, under the COVID-19 lockdown." Each condition is a link. Opening one reveals the three pollutant numbers, which are the sliders: drag the number itself. The real reading stays printed beside it as the anchor.
-   - Actions, as words: "Record 16 s · Share this hour."
-   - Sources and coverage, muted: "Live from AirNow · Archive from EPA · Queens monitors PM2.5, O3, NO2." For a borough using substitutions: "Brooklyn monitors PM2.5; O3 and NO2 are citywide." The coverage clause is how borrowed channels are disclosed: as fact, in the attribution line, with no further framing. See O-07.
+Three layers, each driven by one channel, on the same beat clock as the sound:
 
-Phone: same order, stacked. Borough row scrolls horizontally. Score keeps 24 columns at reduced height.
+1. Sky and sun, from O3 and the clock. The sky gradient is keyed to the hour under the playhead (a 24-stop table from night through dawn, day, dusk, night). The sun travels the O3 contour: its height above the horizon is the hour's normalized O3. Ozone is photochemical, so this is the sun the data actually implies. On July 12 it climbs high; on June 7 it barely lifts. The sun's position is the melody's pitch, drawn.
+2. Haze, from PM2.5. A particle field whose density, size, and drift speed scale with normalized PM2.5, plus a color-temperature shift of the whole sky toward amber and gray as PM2.5 rises, and a visibility falloff that flattens contrast toward the horizon. June 7 renders orange because that is what the sky did. Oct 29 is clear to the horizon. Tier boundaries change the haze palette, on the mood blur.
+3. City, from NO2. A ground band at the bottom of the scene: a skyline silhouette whose window lights and traffic glow pulse on the Euclidean pattern, denser at 6 am on weekdays and thin at noon. The pulse hits are visible as flickers on the beat.
 
-### §5.3 Color
+The playhead is the sun's motion. Twenty-four hours in 16 seconds means the sun crosses the sky in the time of one phrase; on loop it does it again. Borough switch crossfades the whole scene over one beat with the phrase continuing.
 
-Monochrome ground with one hue from the AQI tier (existing five-tier AQI color system). The hue appears on the O3 line, the playhead, pin ticks, and the mood word, and nowhere else. Dark mode is the default and is ink-on-dark; light mode is the paper inversion. No bokeh, no gradients, no glow. The haze field is grain in the ground color at varying density.
+### §5.3 The glass layer
 
-### §5.4 Motion
+Two materials, following Apple's HIG Materials guidance (June 2025): a glass material for the functional layer (controls and navigation that float above content) and a standard frosted material for content within the scene. The HIG rule is adopted as written: glass is never used in the content layer, and glass is never stacked on glass. On the web both are approximations: `backdrop-filter` blur and saturation, a layered translucent fill, and an inset specular edge for glass; a heavier blur and higher fill alpha for frosted. True refraction (SVG displacement) is Phase 2. Copy describes this as "translucent materials following Apple's HIG"; "Liquid Glass" is Apple's name for its own material and is not used.
 
-Everything moves on the 90 BPM grid or not at all. The playhead advances per beat. Pulse marks can flash on their hit. The haze field drifts slowly and continuously (it is particulate, not rhythmic). Mood word swaps on tier change (0.5 s, blur). Borough or day change crossfades the score (0.3 s). The number never animates.
+Controls (glass): the borough control and the timeline ribbon. Content (frosted): the hero readout, the score panel, the Imagine panel, the source line. Text on either material must meet contrast against the brightest and darkest sky stops; fill alpha is tuned to guarantee that, per material.
 
-### §5.5 Design tokens
+Panels:
 
-src/utils/theme.ts stays the single source of truth: five-tier AQI color, surface layers, text hierarchy, three type families (editorial serif italic, data tabular, UI caps), a named type scale (display, heading, body, caption, micro), spacing tokens, the four motion profiles above, and the opacity scale. No component libraries.
+1. Hero panel: AQI number (display, serif, tabular figures), mood word in tier color, mood sentence with the `{pollutant}` and `{hour}` clauses. The panel breathes on the beat (a 2% scale or opacity pulse, subtle).
+2. Borough control: a segmented glass toggle, NYC first. The selected segment has a moving highlight that settles on the beat.
+3. Score panel: the 24-column graphic score from v2 as a compact strip (O3 line, NO2 marks, haze density, playhead), so the notation is available without being the page. Tapping it toggles play.
+4. Timeline ribbon: a horizontal, scrubbable band across the bottom, Jan 2020 to today, with pins as glass chips showing name and date, the lag gap as a frosted segment labeled with the computed weeks, and "today" as the home chip. Dragging scrubs; the scene and the sound follow.
+5. Imagine panel (sprint 3c): the counterfactual sentence and the three scrubbable pollutant numbers with real-value anchors.
+6. Source line: muted, at the foot, built from the `source` flags exactly as in v2.
 
-### §5.6 Components (hand-styled)
+### §5.4 Motion and microinteractions
 
-BoroughToggle, AQINumber, MoodLine, Score (canvas), Timeline (canvas, pins, gap), ImagineSentence with inline scrubbable numbers, FooterActions, SourceLine, EntryMoment. Nine.
+Everything moves on the 90 BPM grid or drifts continuously as atmosphere. Nothing moves for its own sake. Per component, one microinteraction, added last:
 
-### §5.7 Alternatives considered
+- Hero panel breathes on the beat.
+- Sun eases along its path per beat; a flare on tier change.
+- Haze particles react to a tap or pointer move with a local displacement that settles within one bar.
+- Borough highlight glides and settles on the beat.
+- Pins lift on hover and ring on the beat when selected.
+- Timeline drag has inertia that quantizes to a day on release.
+- Mood word swap keeps the 0.5 s blur.
 
-The Field (full-screen PM2.5 grain, melody drawn faintly through it): more installation, closer to Body Politic's TouchDesigner side; held as a Phase 2 dark-mode variant if wanted. The Ledger (typography only, no drawing): rejected because the sound would have no visual counterpart during playback.
+Glass motion follows the HIG model: elements materialize by sharpening (blur and fill ramping in) rather than fading, and control highlights move like a drop settling, with a short overshoot and no linear slides.
+
+Accessibility fallbacks are part of the material, defined in `theme.ts`, not bolted on: `prefers-reduced-transparency` raises fill alpha and blur so both materials go frosted and opaque enough to read without the scene; `prefers-contrast: more` switches panels to near-solid black or white with a contrasting border; `prefers-reduced-motion` disables the particles' drift, all beat pulses, the settle overshoot, and the materialize effect (panels then fade). The sun still moves under reduced motion because it is the playhead.
+
+### §5.5 Color
+
+The sky table carries the palette; there is no fixed background color. Tier colors (the EPA five, D-14's ruling stands) appear on the mood word, the score's O3 line, the pins, and nowhere else in the glass layer. Haze color temperature is a separate ramp from clear-blue through white-gray to amber, driven by PM2.5, not by tier. Dark and light modes become night and day: the same scene at different hours, so a separate theme is unnecessary. Text hierarchy sits on glass and must meet contrast against the brightest and darkest sky stops; the panel fill alpha is tuned to guarantee that.
+
+### §5.6 Tokens and technology
+
+`theme.ts` stays the source of truth: the sky table (24 stops), the haze ramp, tier colors, glass parameters (blur radius, fill alpha, edge alpha), type scale, spacing, motion profiles (beat 667 ms, bar 2.67 s, blur 0.5 s, crossfade one beat). Scene rendered on a Canvas 2D layer stack first (gradient, sun, particles, city band); WebGL only if Canvas cannot hold 60 fps on a mid-range phone with the haze at Suffocating density. Glass via CSS `backdrop-filter`; refraction effects (SVG displacement) are Phase 2 polish. No component libraries.
+
+### §5.7 Responsive
+
+Laptop: scene full-bleed, panels in a single centered column over it, timeline ribbon pinned to the bottom edge. Phone: same scene, panels stack, timeline ribbon pinned above the safe area, borough control scrolls horizontally inside its glass. The scene's particle budget halves on phone.
+
+### §5.8 Components (hand-styled)
+
+Scene (Sky, Sun, Haze, City), HeroPanel, BoroughControl, ScorePanel, TimelineRibbon, ImaginePanel, SourceLine, EntryMoment. Eight visible; Scene has four internal layers.
 
 ## §6. Infrastructure
 
@@ -362,6 +385,7 @@ Code
 | D-16 | 2026-08-26 | Unmonitored pollutants substitute the citywide value, disclosed in the source line | Null channel (voice absent); one-lung rendering | Phase 0 listening: Brooklyn with two voices missing was more alarming than the wildfire day itself, so absence was carrying meaning the data hadn't earned. Citywide is a measurement with provenance; the substitution is stated on the page |
 | D-17 | 2026-08-27 | Phase 0 closed on the author's verdict; three-listener test skipped | Run the test before Phase 1 | Shoro judged the sound good after V4. The stranger-recognition question stays open and should be asked informally during Phase 1 with the real bed |
 | D-18 | 2026-08-27 | Live NO2 uses a typical archive profile per borough, month, and day type, flagged 'typical' and disclosed | Pulse rests in Listen (§4.4 null rule); most-recent EPA NO2 (5 weeks stale) | AirNow carries no New York NO2 (BUG-25). Listen is the landing state; a landing state without its pulse is the no-hook version as the default. Same logic as D-16 applied across time instead of across boroughs: same pollutant, measured, provenance stated |
+| D-19 | 2026-08-27 | Immersive Apple-Weather register: full-bleed data-driven sky scene with glass panels, replacing the typographic score-as-page | Keep D-14 (typographic); illustrated register (gauravi.design style) | Portfolio needs one polished, immersive, product-grade web piece; the typographic register could not fill that slot however well executed. The scene keeps every visual element data-driven (sun = O3, haze = PM2.5, city = NO2), so the honesty rule holds. Apple Weather chosen over illustration because the scene must be tuned in code and the sky is the day being played. Sprint 3a (typographic) stays deployed until the scene replaces it |
 | D-14 | 2026-08-26 | The 24-hour graphic score is the primary visual; all controls are typographic | Orbs as centerpiece; dashboard controls; typography-only page | The visual must be the thing being played; chrome reads as SaaS; type alone leaves playback inert |
 
 ---
@@ -383,6 +407,8 @@ Code
 | O-10 | Hourly vs 24-hour mean as the displayed number when they disagree | Shoro | Pin labels |
 | O-12 | Historical route edge days: EPA bounds requests in standard time, so converting to wall clock leaves the first and last day of any range one hour short. Pad the request window by an hour each side or trim edge days | Sprint 3 cleanup | Pin playback of range-edge days |
 | O-13 | git push without explicit remote reported "up-to-date" while pushing nothing; explicit `git push origin main` worked. Check upstream tracking config | Shoro | Nothing |
+| O-14 | Scene performance budget on phone at Suffocating haze density; whether Canvas 2D holds or WebGL is required | Scene prototype | §5.6 |
+| O-15 | Whether a skyline silhouette reads as NYC without becoming a logo; alternative is an abstract ground band | Scene prototype | §5.2 item 3 |
 
 ---
 

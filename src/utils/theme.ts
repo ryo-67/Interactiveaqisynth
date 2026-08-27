@@ -163,3 +163,77 @@ export const motion = {
   driftPxPerSec: 4, // haze grain drift speed — continuous
 } as const;
 
+// ——— Scene tokens (D-19, §5.2/§5.6) — everything the scene draws is data; these are the only constants the drawing code may use ———
+
+// NYC for the solar-position calculation (§5.2 item 1, amended: the sun runs on the clock).
+export const NYC_LAT = 40.7128;
+export const NYC_LON = -73.9857;
+
+// 24 sky stops, one per clock hour: [zenith, mid, horizon]. Authored from photographic intuition (V1, to be tuned by eye); dawn 4–6 and dusk 18–20 are the least confident ramps.
+export const SKY_STOPS: ReadonlyArray<readonly [string, string, string]> = [
+  ["#050510", "#0a0a1c", "#12122a"], // 0 — deep night
+  ["#04040e", "#090919", "#101026"], // 1
+  ["#04040e", "#090919", "#101026"], // 2
+  ["#050511", "#0a0a1b", "#131230"], // 3
+  ["#070818", "#101334", "#2a2450"], // 4 — first light
+  ["#0b1230", "#23305e", "#6a5378"], // 5
+  ["#12305e", "#4a6a9e", "#c98d6e"], // 6 — dawn
+  ["#2a5a96", "#6f95c4", "#e8b98a"], // 7
+  ["#3c74b4", "#82a9d4", "#c9d4e4"], // 8
+  ["#4482c4", "#8fb4dc", "#c2d6ea"], // 9
+  ["#4a8ad0", "#96bce2", "#c8dcf0"], // 10
+  ["#4e90d8", "#9cc2e8", "#cce0f4"], // 11
+  ["#5094dc", "#a0c6ec", "#d0e4f8"], // 12 — noon cerulean
+  ["#5092da", "#9ec4ea", "#cee2f6"], // 13
+  ["#4c8cd2", "#98bee4", "#cadef2"], // 14
+  ["#4682c6", "#8fb2da", "#c4d6ec"], // 15
+  ["#3f76b6", "#84a2cc", "#c2c8dc"], // 16
+  ["#3a66a4", "#7e92be", "#d0b49a"], // 17 — light starts to warm
+  ["#2f5490", "#7079aa", "#e0a072"], // 18 — dusk
+  ["#1e3a70", "#54588e", "#d87d52"], // 19 — sunset amber
+  ["#101c48", "#2c2c60", "#84486a"], // 20 — civil dusk
+  ["#080a20", "#141438", "#2c2050"], // 21
+  ["#050512", "#0b0b20", "#161232"], // 22
+  ["#050510", "#0a0a1c", "#12122a"], // 23 — night
+];
+
+// Haze color-temperature ramp (§5.2 item 2): clear → white-gray → amber, driven by PM2.5, not tier. tintAlphaCap keeps the sun visible at any density.
+export const HAZE_RAMP = {
+  stops: ["#bcd4e8", "#c8c4bc", "#c07d3a"] as const,
+  tintAlphaCap: 0.42,
+  contrastFlattenCap: 0.5, // horizon-weighted contrast falloff at max PM2.5
+} as const;
+
+// Particle budget (§5.6, O-14). Phone is half the laptop budget by rule.
+export const PARTICLE_BUDGET = { laptop: 900, phone: 450 } as const;
+
+// Sun geometry (§5.2 item 1). Apex fraction is of viewport height above the horizon line at normalized O3 = 1.
+export const SUN = {
+  radiusFrac: 0.045, // of min(viewport w, h)
+  bloomScale: 3.2, // bloom radius as a multiple of the disc
+  bloomAlpha: 0.35,
+  apexFrac: 0.667, // top of arc reaches the upper third at o3n = 1
+  nightDim: 0.25, // disc alpha as it sits at the horizon at night stops
+} as const;
+
+// City band (§5.2 item 3, O-15: abstract blocks, not a recognizable skyline).
+export const CITY = {
+  bandFrac: 0.2, // bottom fifth
+  blockCount: 26,
+  silhouette: "#07070e",
+  lightColor: "#ffd98a",
+  trafficColor: "#e8a05a",
+  flashMs: 90, // pulse-hit flicker duration
+} as const;
+
+// Glass material (§5.3) with the §5.4 accessibility fallbacks. These feed CSS custom properties; index.css holds the .glass rules and the three @media fallbacks.
+export const GLASS = {
+  blur: "18px",
+  saturate: "1.6",
+  fillAlpha: 0.16,
+  edgeAlpha: 0.35,
+  // prefers-reduced-transparency: both materials go frosted-opaque
+  fillAlphaOpaque: 0.85,
+  blurOpaque: "36px",
+} as const;
+

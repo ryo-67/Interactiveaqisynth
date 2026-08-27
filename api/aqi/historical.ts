@@ -3,6 +3,7 @@ import {
   toBoroughHours,
   seriesAQI,
   utcToNyIso,
+  addDays,
   BOROUGHS,
   COUNTY_TO_BOROUGH,
   NY_STATE_FIPS,
@@ -72,8 +73,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const bdate = from.replaceAll("-", "");
-    const edate = to.replaceAll("-", "");
+    // O-12: EPA bounds requests in Local Standard Time, so a wall-clock day's edge hours can live in the neighboring LST date. Pad the request window by one day each side (clamped to the year — AQS rejects cross-year windows), then trim to the requested local range after conversion.
+    const paddedFrom = addDays(from, -1) < `${year}-01-01` ? `${year}-01-01` : addDays(from, -1);
+    const paddedTo = addDays(to, 1) > `${year}-12-31` ? `${year}-12-31` : addDays(to, 1);
+    const bdate = paddedFrom.replaceAll("-", "");
+    const edate = paddedTo.replaceAll("-", "");
     const rows: SiteHourRow[] = [];
 
     // One request per county, sequential with a short gap — EPA asks for pacing, and five requests is the whole fan-out.
@@ -118,7 +122,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!byDate.has(date)) byDate.set(date, []);
       byDate.get(date)!.push(h);
     }
-    const days = [...byDate.entries()].map(([date, hours]) => ({ date, hours, aqi: seriesAQI(hours) }));
+    const days = [...byDate.entries()]
+      .filter(([date]) => date >= from && date <= to) // trim the padding back to the requested range
+      .map(([date, hours]) => ({ date, hours, aqi: seriesAQI(hours) }));
 
     res.setHeader("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=604800");
     res.status(200).json({ status: "ok", source: "epa_aqs", borough: boroughParam, from, to, days });

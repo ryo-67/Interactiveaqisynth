@@ -259,3 +259,11 @@ export function fillTypicalNo2(result: TransformResult, table: TypicalNo2Table):
   for (const b of BOROUGHS) fill(b, result.boroughs[b]);
   fill("Citywide", result.citywide);
 }
+
+// Calendar-day arithmetic on YYYY-MM-DD (UTC-safe, no wall-clock involvement). Used to pad EPA request windows (O-12).
+export function addDays(dateIso: string, n: number): string {
+  const d = new Date(dateIso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+

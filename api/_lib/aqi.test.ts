@@ -1,6 +1,6 @@
 // Pins the §4.4/D-16 transform rules: per-borough max across sites, citywide mean of reporting boroughs, substitution with provenance, null when nobody reports, and the New York state filter.
 import { describe, it, expect } from "vitest";
-import { toBoroughHours, seriesAQI, pm25ToAQI, utcToNyIso, fillTypicalNo2, type SiteHourRow } from "./aqi";
+import { toBoroughHours, seriesAQI, pm25ToAQI, utcToNyIso, fillTypicalNo2, addDays, type SiteHourRow } from "./aqi";
 
 const H0 = "2026-06-01T00:00:00-04:00";
 const H1 = "2026-06-01T01:00:00-04:00";
@@ -104,3 +104,13 @@ describe("seriesAQI", () => {
     expect(aqi.latestHour).toBe(pm25ToAQI(11));
   });
 });
+
+describe("addDays (O-12 window padding)", () => {
+  it("crosses month and year boundaries correctly", () => {
+    expect(addDays("2026-06-01", -1)).toBe("2026-05-31");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+    expect(addDays("2024-03-01", -1)).toBe("2024-02-29");
+  });
+});
+

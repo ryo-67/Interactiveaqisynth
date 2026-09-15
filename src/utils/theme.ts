@@ -265,8 +265,9 @@ export const SKY_FADE = { startDeg: 2, endDeg: -2 } as const;
 export const GOLDEN = {
   horizon: "#ff7a1f",
   mid: "#ff5f8a",
-  zenith: "#6730c7",
-  strength: 0.4, // 0.32 → 0.4 (2026-09-15): the orange and rose were already fully saturated, so "more saturated" is more of the layer
+  zenith: "#6321d6",
+  strength: 0.5, // 0.32 → 0.4 → 0.5 (2026-09-15): the orange and rose were already fully saturated, so "more saturated" is more of the layer
+  saturationBoost: 0.35, // added to the sky's saturation grade at the golden peak, so the sky under the layer saturates with it and the way into golden hour saturates too
   peakDeg: 2,
   belowDeg: -5,
   aboveDeg: 14,
@@ -346,8 +347,8 @@ export const GRAIN = {
 
 // Night (D-20 addendum): the analytic models go dark and neutral with the sun down, but a clear night sky reads deep blue — skyglow, airglow and the eye's own shift. A blue gradient is screened over the sky from sunset to −6° (civil twilight's end) and held through the night; particulate damps it, because a hazy night is grey-orange, not blue. FIRST PASS — the harness has a strength slider.
 export const NIGHT = {
-  zenith: "#041c58",
-  horizon: "#18479b",
+  zenith: "#001a5c",
+  horizon: "#0d44a6",
   strength: 1,
   fullBelowDeg: -2, // full night-blue from 2° below the horizon
   fadeFromDeg: 0, // and gone at the horizon: gone earlier, the sky dipped before the day model arrived; kept later, it screened over the day model's horizon glow and spiked (measured 2026-09-15)

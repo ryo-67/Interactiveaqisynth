@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The calendar popover animates in and out, centred on the picker bar
+
+The popover cut in and out; now it stays mounted through a 180 ms exit and enters from a hidden first frame, opacity with a 4 px settle from the bar it hangs from, none of it under prefers-reduced-motion. On wider viewports it is centred on the picker bar's own centreline instead of hanging from its left edge; on phones it stays centred in the viewport. Its strings are on the UI face with the chips; the calendar grid keeps the data face. Escape and a press outside now close it: a popover with an exit and no way out but its own chip read as stuck.
+
 ## 2026-09-15 — Scale ladder on EPA's lines (D-38)
 
 Tiers now change at 50, 100, 150 and 200, the AQI categories the page already colours by; Very Unhealthy and Hazardous share Chromatic. The Phase 0 boundaries (35, 65, 100, 150) had the ear a category ahead of the eye.

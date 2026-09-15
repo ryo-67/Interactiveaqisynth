@@ -1424,7 +1424,7 @@ html {
 
 /* prefers-reduced-motion: no materialize/settle transitions on the material */
 @media (prefers-reduced-motion: reduce) {
-  .glass {
+  .glass, .scene-popover {
     transition: none;
   }
 }

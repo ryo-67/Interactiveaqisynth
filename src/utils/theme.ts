@@ -265,6 +265,7 @@ export const motion = {
   beatMs: 60000 / 90 / 1, // one beat = one hour = 666.7 ms; playhead advance
   blurMs: 500, // mood word swap at tier boundaries
   crossfadeMs: 300, // borough/day switch on the score
+  popoverMs: 180, // the calendar popover in and out: opacity with a 4 px settle (2026-09-15)
   driftPxPerSec: 4, // haze grain drift speed — continuous
 } as const;
 

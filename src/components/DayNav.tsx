@@ -1,7 +1,7 @@
 // DayNav — scrubbing older days (§2.2, UX-03 as page-level navigation): pagination one day at a time, the measured pins as chips, and a hand-built month calendar. Range is January 2020 to the archive's last available day (the static archive plus the live-year route; EPA lags real time, so yesterday is never assumed); "Live" returns to the last 24 hours. No component libraries; tokens only; copy from content.ts.
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, CONTROL, motion } from "../utils/theme";
 import { chipStyle } from "./chip";
 import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, CAL_AVAILABLE_UNTIL, PICK_OR_DATE } from "../content";
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from "./icons";
@@ -37,8 +37,8 @@ function usePopoverPosition(open: boolean, anchorRef: React.RefObject<HTMLDivEle
       const r = anchorRef.current?.getBoundingClientRect();
       if (r && r.width > 0) {
         const w = Math.min(width, window.innerWidth - margin * 2);
-        // Narrow viewports centre it; wider ones hang it from the anchor's left edge.
-        const left = window.innerWidth < 576 ? (window.innerWidth - w) / 2 : Math.max(margin, Math.min(r.left, window.innerWidth - w - margin));
+        // Narrow viewports centre it in the viewport; wider ones centre it on the picker bar's own vertical centreline (2026-09-15), kept inside the viewport.
+        const left = window.innerWidth < 576 ? (window.innerWidth - w) / 2 : Math.max(margin, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - margin));
         const top = r.bottom + gap;
         setPos((p) => (p.left === left && p.top === top ? p : { left, top }));
       }
@@ -49,7 +49,47 @@ function usePopoverPosition(open: boolean, anchorRef: React.RefObject<HTMLDivEle
   }, [open, anchorRef, width]);
   return pos;
 }
-const popoverStyle = (c: ReturnType<typeof themeColors>): React.CSSProperties => ({ position: "fixed", padding: space.sm, zIndex: 20, fontFamily: families.data, fontSize: typeScale.caption.size, color: c.textSecondary, width: `min(${POPOVER_WIDTH}px, calc(100vw - ${parseInt(space.sm) * 2}px))`, whiteSpace: "normal" });
+// The panel's own strings (month, hints, the menu) are on the UI face like the chips; the calendar grid inside sets the data face for itself.
+const popoverStyle = (c: ReturnType<typeof themeColors>, visible: boolean): React.CSSProperties => ({
+  position: "fixed", padding: space.sm, zIndex: 20, fontFamily: families.ui, letterSpacing: CONTROL.chipTracking, fontSize: typeScale.caption.size, color: c.textSecondary, width: `min(${POPOVER_WIDTH}px, calc(100vw - ${parseInt(space.sm) * 2}px))`, whiteSpace: "normal",
+  // In and out (2026-09-15): opacity with a 4 px settle from above, motion.popoverMs, origin at the top where it hangs from the bar; .scene-popover in index.css drops the transition under prefers-reduced-motion.
+  opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(-4px) scale(0.98)", transformOrigin: "top center", transition: `opacity ${motion.popoverMs}ms ease, transform ${motion.popoverMs}ms cubic-bezier(0.2, 0.8, 0.2, 1)`, pointerEvents: visible ? "auto" : "none",
+});
+
+// Dismissal: Escape, or a press outside both the popover and its anchor. Choosing a day closes it already (the callers watch `date`).
+function useDismiss(open: boolean, close: () => void, anchorRef: React.RefObject<HTMLDivElement>): void {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (anchorRef.current?.contains(t)) return;
+      if ((t as Element).closest?.(".scene-popover")) return;
+      close();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onDown, true);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("pointerdown", onDown, true); };
+  }, [open, close, anchorRef]);
+}
+
+// Presence with an entrance and an exit: mounted a frame before it shows, so the transition has a start state to leave from, and kept mounted through its exit for motion.popoverMs.
+function usePresence(open: boolean): { mounted: boolean; visible: boolean } {
+  const [mounted, setMounted] = useState(open);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      let inner = 0;
+      const outer = requestAnimationFrame(() => { inner = requestAnimationFrame(() => setVisible(true)); });
+      return () => { cancelAnimationFrame(outer); cancelAnimationFrame(inner); };
+    }
+    setVisible(false);
+    const t = setTimeout(() => setMounted(false), motion.popoverMs);
+    return () => clearTimeout(t);
+  }, [open]);
+  return { mounted, visible };
+}
 
 // CalendarGrid — the month view with its bounds (January 2020 to the archive's last available day) and the line that states the bound. Owns the month it shows; mounts on the month of the chosen day, else the last available day's.
 function CalendarGrid({ date, latestDate, onPick }: { date: string | null; latestDate: string | null; onPick: (iso: string) => void }) {
@@ -81,7 +121,7 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
         <span style={{ color: c.textPrimary }}>{monthLabel}</span>
         <button style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label="next month"><ChevronRightIcon /></button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs, fontFamily: families.data, letterSpacing: 0 }}>
         {["S", "M", "T", "W", "T", "F", "S"].map((dd, i) => (
           <span key={i} style={{ textAlign: "center", color: c.textFaint }}>{dd}</span>
         ))}
@@ -122,7 +162,10 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
   const chip = (active: boolean) => chipStyle(c, active);
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
-  const pos = usePopoverPosition(open, anchorRef, POPOVER_WIDTH);
+  const presence = usePresence(open);
+  const pos = usePopoverPosition(presence.mounted, anchorRef, POPOVER_WIDTH);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(open, close, anchorRef);
   useEffect(() => { setOpen(false); }, [date]);
   const pin = PINS.find((p) => p.date === date);
   const label = date ? (pin ? pin.name : labelOf(date)) : NAV_LAST_24H;
@@ -144,8 +187,8 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
         </span>
         <span aria-hidden style={{ color: c.textMuted, marginLeft: 2, display: "inline-flex" }}>{open ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}</span>
       </button>
-      {open && createPortal(
-        <div className="glass frosted" role="dialog" aria-label={NAV_CALENDAR} style={{ ...popoverStyle(c), left: pos.left, top: pos.top }}>
+      {presence.mounted && createPortal(
+        <div className="glass frosted scene-popover" role="dialog" aria-label={NAV_CALENDAR} style={{ ...popoverStyle(c, presence.visible), left: pos.left, top: pos.top }}>
           <div role="listbox" aria-label="Day" style={{ display: "flex", flexDirection: "column", gap: space.xxs, marginBottom: space.sm }}>
             {options.map((o) => {
               const active = o.date === date;
@@ -169,7 +212,10 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
   const c = themeColors(useTheme());
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
-  const pos = usePopoverPosition(open, anchorRef, POPOVER_WIDTH);
+  const presence = usePresence(open);
+  const pos = usePopoverPosition(presence.mounted, anchorRef, POPOVER_WIDTH);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(open, close, anchorRef);
   // Any choice of day closes the calendar — a date in it, a preset chip (PinStrip, a sibling), or Live — because each one lands as a new `date`.
   useEffect(() => { setOpen(false); }, [date]);
   // The last day that can be played: the archive's last available day, never simply yesterday (EPA publishes with a lag). Until it is known, nothing past the pins is offered.
@@ -207,8 +253,8 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
       <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}><ChevronRightIcon /></button>
       <button style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
 
-      {open && createPortal(
-        <div className="glass frosted" role="dialog" aria-label={NAV_CALENDAR} style={{ ...popoverStyle(c), left: pos.left, top: pos.top }}>
+      {presence.mounted && createPortal(
+        <div className="glass frosted scene-popover" role="dialog" aria-label={NAV_CALENDAR} style={{ ...popoverStyle(c, presence.visible), left: pos.left, top: pos.top }}>
           <CalendarGrid date={date} latestDate={latestDate} onPick={(iso) => { onChange(iso); setOpen(false); }} />
         </div>,
         document.body,

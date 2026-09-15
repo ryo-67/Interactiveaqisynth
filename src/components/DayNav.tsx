@@ -1,5 +1,5 @@
 // DayNav — scrubbing older days (§2.2, UX-03 as page-level navigation): pagination one day at a time, the measured pins as chips, and a hand-built month calendar. Range is January 2020 to yesterday (the archive plus the live-year route); "Live" returns to the last 24 hours. No component libraries; tokens only; copy from content.ts.
-import React, { useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
 import { chipStyle } from "./chip";
 import { PINS, NAV_LIVE, NAV_PREV, NAV_NEXT, NAV_CALENDAR } from "../content";
@@ -109,8 +109,30 @@ export function DayNav({ date, onChange, loading }: Props) {
 // PinStrip — the measured days as chips (§2.2), its own pill in the scaffold. The chips wrap onto further rows when the pill is narrow, rather than scrolling or clipping.
 export function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
   const c = themeColors(useTheme());
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Hug the chips even when they wrap. CSS fit-content on a wrapping row means "all chips on one line", which clamps to the container and fills it; so after layout the pill (the parent glass) is sized to its widest row plus the inset. Every row is at most that wide, so the new width cannot re-wrap anything. Re-measured on resize.
+  useLayoutEffect(() => {
+    const strip = ref.current;
+    const pill = strip?.parentElement;
+    if (!strip || !pill) return;
+    const fit = () => {
+      pill.style.width = "";
+      const chips = [...strip.querySelectorAll("button")].map((b) => b.getBoundingClientRect());
+      if (!chips.length) return;
+      const left = Math.min(...chips.map((r) => r.left)), right = Math.max(...chips.map((r) => r.right));
+      const inset = parseFloat(getComputedStyle(pill).paddingLeft) || 0;
+      const w = Math.ceil(right - left + inset * 2);
+      if (Math.abs(pill.getBoundingClientRect().width - w) > 1) pill.style.width = `${w}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(pill.parentElement ?? pill);
+    return () => { ro.disconnect(); pill.style.width = ""; };
+  }, []);
+
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: `var(--chip-inset, ${CONTROL.gap}px)`, maxWidth: "100%" }}>
+    <div ref={ref} style={{ display: "flex", flexWrap: "wrap", gap: `var(--chip-inset, ${CONTROL.gap}px)`, maxWidth: "100%" }}>
       {PINS.map((p) => {
         const active = date === p.date;
         return (

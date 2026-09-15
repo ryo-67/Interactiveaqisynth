@@ -412,10 +412,10 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
 
   return (
     <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
-      {/* The tabs are a header band attached to the top of the graph container, built to the preset bar's spec (§5.3): the same chips (chip.ts), the same 4 px inset and 4 px gaps, the band spanning the container edge to edge so the container's own top corners round it and its bottom is square, a hairline along its bottom, and no fill or shadow of its own — the band and the graph are one container. */}
-      <div role="tablist" style={{ position: "relative", display: "flex", alignItems: "center", flex: "0 0 auto", gap: CONTROL.gap, height: `var(--ctl-pill, ${CONTROL.pillHeight}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad, 20px)) ${GRAPH.tabsGap}px`, padding: `0 var(--chip-inset, ${CONTROL.gap}px)`, boxSizing: "border-box", overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", scrollbarWidth: "none" }}>
+      {/* The tabs are a header band attached to the top of the graph container, built to the preset bar's spec (§5.3): the same chips (chip.ts), the same 4 px gaps with a roomier 8 px inset, the band spanning the container edge to edge so the container's own top corners round it and its bottom is square, a hairline along its bottom, and no fill or shadow of its own — the band and the graph are one container. */}
+      <div role="tablist" style={{ position: "relative", display: "flex", alignItems: "center", flex: "0 0 auto", gap: CONTROL.gap, height: `calc(var(--ctl-inner, ${CONTROL.inner}px) + ${GRAPH.tabsInset * 2}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad, 20px)) ${GRAPH.tabsGap}px`, padding: `0 ${GRAPH.tabsInset}px`, boxSizing: "border-box", overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", scrollbarWidth: "none" }}>
         {/* The hairline is inside the band, on its bottom edge, so nothing overhangs it and the band cannot scroll vertically. */}
-        <span aria-hidden style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 1, background: c.textFaint, pointerEvents: "none" }} />
+        <span aria-hidden style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: GRAPH.tabsHairline, background: c.textFaint, pointerEvents: "none" }} />
         {TRACK_ORDER.map((t) => {
           const active = t === tab;
           return (

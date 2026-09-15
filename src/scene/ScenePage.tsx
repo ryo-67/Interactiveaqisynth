@@ -117,7 +117,7 @@ export default function ScenePage() {
             <Glass material="frosted" className="scene-panel scene-hero">
               <AQINumber value={s.displayAqi} />
               <div style={{ marginTop: space.md }}>
-                <MoodLine tierIndex={s.moodTier} hour={s.moodHour} dominant={s.dominant} />
+                <MoodLine tierIndex={s.moodTier} hour={s.moodHour} dominant={s.dominant} aqi={s.moodAqi} />
               </div>
             </Glass>
             {day && day.length > 0 && (

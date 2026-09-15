@@ -115,10 +115,8 @@ export function themeColors(theme: Theme) {
 
 // ——— Sprint 3a design tokens (DSN-02, STRATEGY §5.4/§5.5) ———
 
-// Five-tier color, keyed by tier index (Easy → Suffocating), carried from the v1 palette (D-19 pending none — Shoro confirmed these hues 2026-08-27). The hue appears on exactly four things: mood word (full), O3 line and playhead (medium), pins (subtle, 3b). Everything else is the text hierarchy on the ground.
-export const TIER_COLORS = ["#68d89b", "#e8cf6a", "#e89b6a", "#e86a6a", "#b06ae8"] as const;
 
-// The standard AQI categories (EPA, six), D-23: the graph's AQI line and its legend use these, because visitors read AQI tools against this palette. The five tier colours above remain the piece's own voice on the mood word.
+// The standard AQI categories (EPA, six), D-23/D-27: the ONE colour scheme. The graph's line and bar, and the mood word, all take their colour from aqiScaleColor(aqi) — the word is the colour of its own AQI on the same scale as the line, so the two never disagree. The former five tier colours are deleted.
 // The colours are the standard hues lifted to pass WCAG 1.4.11 (≥ 3:1 for graphics) against the dark panel (#0e0e1c, the hard case). The standard values fail for the top two: Very Unhealthy #8f3f97 is 3.0:1 and Hazardous #7e0023 is 1.7:1. Measured: Good 11.0, Moderate 17.8, USG 8.2, Unhealthy 6.3, Very Unhealthy 7.3, Hazardous 6.3.
 export const AQI_CATEGORIES = [
   { max: 50, color: "#00e400" },
@@ -179,11 +177,6 @@ export const opacity = {
   faint: 0.18,
 } as const;
 
-export function tierColorAt(tierIndex: number, level: keyof typeof opacity): string {
-  const hex = TIER_COLORS[Math.max(0, Math.min(4, tierIndex))];
-  const a = Math.round(opacity[level] * 255).toString(16).padStart(2, "0");
-  return level === "full" ? hex : `${hex}${a}`;
-}
 
 // Three type families (§5.5). No webfonts this sprint; these are the stacks the shipped build already speaks.
 export const families = {

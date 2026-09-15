@@ -37,6 +37,8 @@ export interface ListenSession {
   latest: { reading: HourReading; hour: number } | null; // latest non-null hour: the resting state before playback
   moodTier: number;
   moodHour: number;
+  // The AQI the mood word describes: the smoothed AQI the tier is computed from while playing, the latest hour's AQI at rest.
+  moodAqi: number | null;
   dominant: Channel | null;
   // Normalized channels for whatever the page is showing right now: the beat while playing, the latest hour at rest. The scene reads its sky from these.
   channels: { pm25: number | null; o3: number | null; no2: number | null };
@@ -190,6 +192,11 @@ export function useListenSession(): ListenSession {
       ? tierIndexOf(pm25ToAQI(Math.max(0, latest.reading.pm25))!)
       : 0;
   const moodHour = beat ? beat.hour : (latest?.hour ?? 0);
+  const moodAqi = beat
+    ? beat.smoothedAQI
+    : latest?.reading.pm25 != null
+      ? pm25ToAQI(Math.max(0, latest.reading.pm25))
+      : null;
   const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (latest?.hour ?? 12);
   const playheadHour = useEasedHour(clockTarget, playing);
   const paused = !playing && (beat != null || seekAt != null);
@@ -214,7 +221,7 @@ export function useListenSession(): ListenSession {
   return {
     borough, setBorough, date, setDate, dayLoading, playheadHour, paused, seek,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
-    displayAqi, latest, moodTier, moodHour, dominant, channels, devDayKey, setDevDayKey,
+    displayAqi, latest, moodTier, moodHour, moodAqi, dominant, channels, devDayKey, setDevDayKey,
   };
 }
 

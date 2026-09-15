@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — One day control on phones (D-34)
+
+On phones the arrows, the date chip, the Live chip and the preset strip are replaced by one chip that names the current choice and opens a menu: Last 24h, then the presets in order, then "or choose a date" and the calendar. Three stacked pills spent a third of a phone's height on navigation. The calendar grid and the popover placement were extracted so the phone picker and the wider layouts share them.
+
 ## 2026-09-15 — The sun's path is planned on screen (D-33)
 
 A setting sun that swung toward the edge of the frame dipped and then climbed again on screen. The cause was structural: the path was chosen in azimuth and elevation but judged on screen, and the camera's rectilinear projection bends constant-elevation paths upward toward the edges. The path is now planned in the camera's own screen space: a straight line on screen while the sun is visible, which is monotonic by construction; angles while it is unseen, behind the camera or below the horizon, with the exit and entry on the frame's edge. A pure module with unit tests over the cases that failed: live 4 pm to Ozone Spike 11 pm goes down and right and out; the reverse comes in at the edge and climbs; noon to a sun behind the camera goes down and right and out without ever going over the top.

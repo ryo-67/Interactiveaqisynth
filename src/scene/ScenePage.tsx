@@ -16,7 +16,7 @@ import { BoroughToggle } from "../components/BoroughToggle";
 import { AQINumber } from "../components/AQINumber";
 import { MoodLine } from "../components/MoodLine";
 import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
-import { DayNav, PinStrip } from "../components/DayNav";
+import { DayNav, PinStrip, DayPicker } from "../components/DayNav";
 import { SourceLine } from "../components/SourceLine";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
 import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, space, GOLDEN } from "../utils/theme";
@@ -54,8 +54,21 @@ function tabFromUrl(): TrackKey {
 
 const DISSOLVE_BEATS = 1.5; // the dissolve's length on a change of day while playing (D-32): the same span as the glide at rest
 
+// Phones (state C, ≤575) get one day control instead of three pills: the width that makes state C is the width that makes a dropdown the better control.
+function usePhone(): boolean {
+  const [phone, setPhone] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 575px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 575px)");
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return phone;
+}
+
 export default function ScenePage() {
   const s = useListenSession();
+  const phone = usePhone();
   const { day, beat, playing, paused, channels, skyChannels, rest } = s;
   const hour = s.playheadHour; // the one transport position: the graph's playhead reads it as an index
   const clock = s.playheadClock; // the same position as time of day: the sun and the stars read it
@@ -153,12 +166,20 @@ export default function ScenePage() {
             </Glass>
             {/* The day group: picker and presets together, since both choose the day. Right-aligned as a unit on laptop; dissolves into the centred row below that. */}
             <div className="scene-day">
-              <Glass material="glass" className="scene-pill scene-chips">
-                <DayNav date={s.date} onChange={s.setDate} loading={s.dayLoading} latestDate={s.latestDate} />
-              </Glass>
-              <Glass material="glass" className="scene-pill scene-chips scene-pins">
-                <PinStrip date={s.date} onChange={s.setDate} />
-              </Glass>
+              {phone ? (
+                <Glass material="glass" className="scene-pill scene-chips">
+                  <DayPicker date={s.date} onChange={s.setDate} loading={s.dayLoading} latestDate={s.latestDate} />
+                </Glass>
+              ) : (
+                <>
+                  <Glass material="glass" className="scene-pill scene-chips">
+                    <DayNav date={s.date} onChange={s.setDate} loading={s.dayLoading} latestDate={s.latestDate} />
+                  </Glass>
+                  <Glass material="glass" className="scene-pill scene-chips scene-pins">
+                    <PinStrip date={s.date} onChange={s.setDate} />
+                  </Glass>
+                </>
+              )}
             </div>
           </div>
 

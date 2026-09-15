@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
 import { pmToAQISeries, monotoneCurve } from "./graphSeries";
+import { chipStyle } from "./chip";
 import { pulseSteps, STEPS_PER_HOUR } from "./graphPulse";
 import type { PollutantAnchors } from "../engine/contour";
 import type { Day } from "../engine/SynthEngine";
@@ -411,25 +412,14 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
 
   return (
     <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
-      {/* The tabs are a header band across the panel, not chips floating over the plot: pulled out to the panel's edges (the panel's padding is --graph-pad), a hairline along its bottom, the active tab's underline sitting on that hairline, tabs abutting with their own padding so the first label lines up with the panel's padding. */}
-      <div role="tablist" style={{ position: "relative", display: "flex", flex: "0 0 auto", gap: 0, height: `var(--ctl-inner, ${CONTROL.inner}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad, 20px)) ${GRAPH.tabsGap}px`, padding: `0 calc(var(--graph-pad, 20px) - ${GRAPH.tabPad}px)`, overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", boxSizing: "content-box", scrollbarWidth: "none" }}>
-        {/* The hairline is inside the band, on its bottom edge, so the tabs (the band's full height, underline at their bottom) never overflow it: the band cannot scroll vertically, and the active underline sits exactly on the line. */}
+      {/* The tabs are a header band attached to the top of the graph container, built to the preset bar's spec (§5.3): the same chips (chip.ts), the same 4 px inset and 4 px gaps, the band spanning the container edge to edge so the container's own top corners round it and its bottom is square, a hairline along its bottom, and no fill or shadow of its own — the band and the graph are one container. */}
+      <div role="tablist" style={{ position: "relative", display: "flex", alignItems: "center", flex: "0 0 auto", gap: CONTROL.gap, height: `var(--ctl-pill, ${CONTROL.pillHeight}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad, 20px)) ${GRAPH.tabsGap}px`, padding: `0 var(--chip-inset, ${CONTROL.gap}px)`, boxSizing: "border-box", overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", scrollbarWidth: "none" }}>
+        {/* The hairline is inside the band, on its bottom edge, so nothing overhangs it and the band cannot scroll vertically. */}
         <span aria-hidden style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 1, background: c.textFaint, pointerEvents: "none" }} />
         {TRACK_ORDER.map((t) => {
           const active = t === tab;
           return (
-            <button
-              key={t}
-              role="tab"
-              aria-selected={active}
-              onClick={() => onTab(t)}
-              style={{
-                fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: 1, cursor: "pointer",
-                color: active ? c.textPrimary : c.textMuted,
-                background: "none", border: "none", borderBottom: `2px solid ${active ? c.textPrimary : "transparent"}`,
-                height: "100%", boxSizing: "border-box", padding: `0 ${GRAPH.tabPad}px`, flex: "0 0 auto", position: "relative",
-              }}
-            >
+            <button key={t} role="tab" aria-selected={active} onClick={() => onTab(t)} style={chipStyle(c, active)}>
               {TRACK_LABELS[t]}{TRACK_UNITS[t] ? ` ${TRACK_UNITS[t]}` : ""}
             </button>
           );

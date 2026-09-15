@@ -1577,6 +1577,11 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
     /* Spacing stays at the tablet values (24 / 16): the phone step changes control and type sizes, not the room around them. */
   }
   .scene-panel.scene-graph { --graph-pad: 12px; --graph-pad-x: 8px; } /* tighter around the graph on phones (2026-09-15): the plot takes the room */
+  /* On phones the graph fills the height the other bands leave (2026-09-15): the middle band takes the remaining height instead of centring in it, the hero keeps its content height, and the graph panel is the flexible child, its plot growing into it (--graph-fill) with --graph-tab-h as the floor. No feedback loop: the panel's height comes from the column, not from its content. */
+  .scene-mid { flex: 1 1 auto; min-height: 0; margin: 0; justify-content: flex-start; }
+  .scene-panel.scene-hero { flex: 0 0 auto; }
+  .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; --graph-fill: 1; }
+  .scene-graph-unit { display: none; } /* phone tabs are the pollutant alone: AQI, PM2.5, O₃, NO₂ (2026-09-15) */
   .scene-panel.scene-graph [role="tablist"] > button { flex: 1 1 auto !important; } /* the tabs fill the band, each growing from its own text so PM2.5 µg/m³, the longest, is never cropped; important over the chip's inline flex: 0 0 auto */
   .scene-top .glass { width: fit-content; max-width: 100%; margin: 0; }
   .scene-pill { padding: 0 12px; }

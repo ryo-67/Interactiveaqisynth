@@ -367,10 +367,8 @@ export function Graph({ day, playheadHour, running, live, tab, onTab, onSeek, li
         y0 += tabH;
       }
 
-      // X axis: a line under the plot, ticks from the hour grid above; two labels only, drawn after the hairlines are composited below.
+      // X axis: the plot's baseline is the axis line (a second line here sat two pixels under it once the pulse row went, 2026-09-15); the ticks come from the hour grid above; two labels only, drawn after the hairlines are composited below.
       const axisY = cssH - axisH;
-      hair.strokeStyle = firmLine;
-      hair.beginPath(); hair.moveTo(plotX, axisY + 0.5); hair.lineTo(plotRight, axisY + 0.5); hair.stroke();
       // Every hairline is in the layer now; composite it once, BENEATH everything drawn so far (the line, the area, the labels): the hairlines are the bottom of the stack and the line is the top. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
       faint.save(); faint.setTransform(1, 0, 0, 1, 0, 0); faint.globalCompositeOperation = "destination-out"; faint.drawImage(hairCanvas, 0, 0); faint.restore();
       ctx.save();
@@ -447,7 +445,7 @@ export function Graph({ day, playheadHour, running, live, tab, onTab, onSeek, li
           const active = t === tab;
           return (
             <button key={t} className="scene-chip" data-active={active} role="tab" aria-selected={active} onClick={() => onTab(t)} style={chipStyle(c, active)}>
-              {TRACK_LABELS[t]}{TRACK_UNITS[t] ? ` ${TRACK_UNITS[t]}` : ""}
+              {TRACK_LABELS[t]}{TRACK_UNITS[t] ? <span className="scene-graph-unit" style={{ marginLeft: "0.3em" }}>{TRACK_UNITS[t]}</span> : null} {/* the unit is its own span: phones hide it (index.css), the tab is just the pollutant there */}
             </button>
           );
         })}

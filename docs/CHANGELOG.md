@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The phone graph fills the height it is given; tabs without units
+
+On phones the middle band takes the height the top bar and the transport leave instead of centring in it, the hero keeps its content height, and the graph panel is the flexible child with its plot growing into it, the breakpoint's tab height now a floor rather than the size: on a 390 × 844 phone the plot goes from 268 to 344 tall, and the 88-tall floor on short phones becomes 196 to 240. The tab chips drop their units on phones, AQI, PM2.5, O₃, NO₂, since the band is narrow and the unit is in the axis. The x-axis line under the plot is gone: with the pulse row removed it sat two pixels under the plot's own baseline, which is the axis.
+
 ## 2026-09-15 — No pulse row (D-39)
 
 The pulse row beneath the plot is gone at every size: it crowded the panel, and the pulse is the thing the ear already has. With it go its height token, its step and hit-count series, the module that built them and the anchors the graph took only for it.

@@ -218,24 +218,18 @@ export function useListenSession(): ListenSession {
   };
 }
 
-// The beat report gives an integer hour; this tweens toward it over one beat so everything on the phrase clock glides instead of stepping. Across the loop seam it runs 23 → 24 (= 0), never backward. Under reduced motion it still moves, because it is the playhead.
+// The beat report says hour h has just STARTED. The clock therefore runs from h toward h+1 over the beat, so the playhead crosses each column in time with the sound and the sun glides continuously; the next report lands as it reaches h+1, and any drift between the audio clock and the frame clock is corrected there. (Easing from the previous hour TO h made the playhead arrive a full beat late, so pulse hits flashed a column ahead of the line.) Across the loop seam it runs 23 → 24 (= 0), never backward. Under reduced motion it still moves, because it is the playhead.
 function useEasedHour(target: number): number {
   const [value, setValue] = useState(target);
-  const fromRef = useRef(target);
   useEffect(() => {
-    let to = target;
-    const from = fromRef.current;
-    if (to < from - 12) to += 24;
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / motion.beatMs);
-      const e = 1 - Math.pow(1 - t, 3); // ease-out cubic: arrives on the beat, settles rather than snaps
-      const v = (from + (to - from) * e) % 24;
-      fromRef.current = v;
-      setValue(v);
+      setValue((target + t) % 24);
       if (t < 1) raf = requestAnimationFrame(tick);
     };
+    setValue(target % 24);
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [target]);

@@ -191,6 +191,8 @@ export const typeScale = {
   heading: { size: "34px", line: 1.15 }, // mood word
   body: { size: "15px", line: 1.6 }, // mood sentence
   caption: { size: "12px", line: 1.4 }, // borough row, legend
+  // Georgia's italic capitals sit visibly shorter than Inter's at the same size; the selected borough word is set larger by this factor so the two cap heights match on the row.
+  serifCapsMatch: 1.12,
   micro: { size: "10px", line: 1.4 }, // hour marks and other non-text glyph labels only; running text is never below caption
 } as const;
 

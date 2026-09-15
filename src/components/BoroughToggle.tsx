@@ -27,7 +27,7 @@ export function BoroughToggle({ selected, onSelect }: Props) {
       className="scene-strip"
       style={{
         display: "flex",
-        justifyContent: "center",
+        justifyContent: "safe center", // centred, but never with the first word pushed out of reach when the row is wider than its pill
         alignItems: "center",
         gap: "var(--ctl-gap-wide, 16px)",
         height: `var(--ctl-inner, ${CONTROL.inner}px)`,
@@ -37,6 +37,19 @@ export function BoroughToggle({ selected, onSelect }: Props) {
     >
       {ORDER.map((b) => {
         const isSel = b === selected;
+        // Both renderings of the word — UI caps and italic serif — are laid out in the same grid cell; the one for the current state shows and the other is hidden but still sized, so the button's width is the wider of the two and the row never changes length as the selection moves.
+        const variant = (serif: boolean, visible: boolean): React.CSSProperties => ({
+          gridArea: "1 / 1",
+          fontFamily: serif ? families.serifItalic : families.uiCaps,
+          fontStyle: serif ? "italic" : "normal",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          fontSize: serif ? `calc(${typeScale.caption.size} * ${typeScale.serifCapsMatch})` : typeScale.caption.size,
+          lineHeight: `var(--ctl-inner, ${CONTROL.inner}px)`,
+          textAlign: "center",
+          visibility: visible ? "visible" : "hidden",
+          color: isSel ? c.textPrimary : c.textMuted,
+        });
         return (
           <button
             key={b}
@@ -49,18 +62,13 @@ export function BoroughToggle({ selected, onSelect }: Props) {
               padding: 0,
               cursor: "pointer",
               flex: "0 0 auto",
-              // All caps at all times; the selected borough is set in the italic serif, so it keeps the row's rhythm and changes voice rather than case.
-              fontFamily: isSel ? families.serifItalic : families.uiCaps,
-              fontStyle: isSel ? "italic" : "normal",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              fontSize: typeScale.caption.size,
-              lineHeight: `var(--ctl-inner, ${CONTROL.inner}px)`,
+              display: "inline-grid",
               height: `var(--ctl-inner, ${CONTROL.inner}px)`,
-              color: isSel ? c.textPrimary : c.textMuted,
+              whiteSpace: "nowrap",
             }}
           >
-            {LABELS[b]}
+            <span aria-hidden={isSel} style={variant(false, !isSel)}>{LABELS[b]}</span>
+            <span aria-hidden={!isSel} style={variant(true, isSel)}>{LABELS[b]}</span>
           </button>
         );
       })}

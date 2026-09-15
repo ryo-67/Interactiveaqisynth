@@ -1441,7 +1441,9 @@ html {
 .scene-strip::-webkit-scrollbar { display: none; height: 0; }
 .scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-gap); flex: 0 0 auto; min-width: 0; }
 .scene-mid { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--ui-gap); min-height: 0; }
-.scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; }
+.scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; }
+/* In the top bar the pins pill is the one that gives: it shrinks and its strip scrolls, so the borough words and the day navigation keep their size on one row down to ~1100 px (the frame is 1871 wide; a laptop is not). */
+.scene-top > .scene-pill:last-child { flex: 1 1 auto; }
 .scene-pill.scene-borough { padding: 0 24px; }
 /* Pills that hold bordered chips (day navigation, pins): the side inset equals the vertical inset around the chips, so a border never sits far inside another border. */
 .scene-pill.scene-chips { padding: 0 6px; }

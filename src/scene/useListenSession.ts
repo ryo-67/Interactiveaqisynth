@@ -137,13 +137,7 @@ export function useListenSession(): ListenSession {
   // Pause, not stop: the transport holds its position, so play resumes from it. The paused HOUR is remembered separately from the beat report, because the report describes the day that was playing — when the day changes while paused, the report is stale and is cleared, and the page reads the NEW day at the paused hour, so the sky eases to the new data in place instead of freezing on the old.
   const [pausedHour, setPausedHour] = useState<number | null>(null);
   useEffect(() => {
-    const engine = engineRef.current;
-    if (!engine) return;
-    if (playing) void engine.play();
-    else {
-      engine.pause();
-      setPausedHour((h) => beat?.hour ?? h);
-    }
+    if (!playing) setPausedHour((h) => beat?.hour ?? h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
   useEffect(() => {
@@ -167,10 +161,15 @@ export function useListenSession(): ListenSession {
 
 
 
-  // Play/pause: the score click, the transport, and Space. Tone.start() must begin inside the gesture's call stack.
+  // Play/pause: the sky, the transport button, and Space. The engine is told inside the gesture's own call stack — Tone.start() needs the gesture, and a pause that waited for a render and an effect landed a frame late, which the ear reads as a trailing tail. React state follows.
+  const playingRef = useRef(false);
   const togglePlay = useCallback(() => {
-    void engineRef.current?.init();
-    setPlaying((p) => !p);
+    const next = !playingRef.current;
+    playingRef.current = next;
+    const engine = engineRef.current;
+    if (next) void engine?.play(); // play() begins with init(), so Tone.start() runs here, in the gesture
+    else engine?.pause();
+    setPlaying(next);
   }, []);
 
   const setVolume = useCallback((db: number) => engineRef.current?.setVolume(db), []);

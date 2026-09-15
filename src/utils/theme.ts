@@ -281,15 +281,21 @@ export const SKY_GRADE = {
   saturationUnderSmoke: -0.5,
 } as const;
 
-// Floating particulate (§5.2 item 2): points drifting in the near field, count and opacity from normalized PM2.5. Size will come from PM10 once it is a channel (DAT-13); until then it is fixed. Drift stops under prefers-reduced-motion (§5.4).
+// Floating particulate (§5.2 item 2): bokeh, not stars. Out-of-focus discs in the near field — soft core, brighter rim, sized by distance so the near ones are large and diffuse — faintly additive so the bloom pass flares the bright ones. Count and opacity from normalized PM2.5. Size will also take PM10 once it is a channel (DAT-13). Drift stops under prefers-reduced-motion (§5.4).
 export const PARTICLES = {
-  max: 700,
-  sizePx: 2.4,
-  opacityMax: 0.6,
+  max: 320,
+  opacityMax: 0.32,
   curve: 0.7,          // opacity ∝ density^curve
-  fallPerSec: 0.35,    // world units per second, downward
-  swayPerSec: 0.25,
-  box: 24,             // half-size of the cube of particles around the camera, world units
+  sizePx: 34,          // base disc diameter in px at one world unit from the camera, before per-particle variation
+  sizeVariance: 1.4,   // per-particle multiplier spans 1/(1+v)..(1+v)
+  ring: 0.82,          // where the rim sits on the disc radius (0..1)
+  ringWidth: 0.07,
+  coreAlpha: 0.35,     // the diffuse centre, relative to the rim
+  box: 10,             // half-size of the cube of particles around the camera, world units
+  near: 1.2,           // no particle closer than this: keeps a disc from filling the frame
+  fallPerSec: 0.18,    // world units per second, downward
+  swayPerSec: 0.12,
+  warmth: 0.08,        // slight warm tint, so the discs read as dust in light rather than as pure white
 } as const;
 
 // Night (D-20 addendum): the analytic models go dark and neutral with the sun down, but a clear night sky reads deep blue — skyglow, airglow and the eye's own shift. A blue gradient is screened over the sky from sunset to −6° (civil twilight's end) and held through the night; particulate damps it, because a hazy night is grey-orange, not blue. FIRST PASS — the harness has a strength slider.

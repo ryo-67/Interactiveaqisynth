@@ -100,19 +100,68 @@ function StarField({ opacity, count, hour }: { opacity: number; count: number; h
   );
 }
 
-// MAPPING (PM2.5 → floating particulate): a cube of points around the camera, seeded once, falling and swaying slowly; opacity ∝ density^curve, so a clear day shows nothing and a heavy one fills the near field. They live in the scene, so the composer's grade, bloom and tone mapping treat them as part of the sky, and the plume above veils them like everything else.
+// MAPPING (PM2.5 → floating particulate): bokeh discs in the near field, seeded once, drifting slowly; opacity ∝ density^curve, so a clear day shows nothing and a heavy one fills the near field with soft floaters. A point shader draws each as an out-of-focus disc — diffuse centre, brighter rim — sized by distance. Additive at low alpha, so they add light the way dust in a beam does and the bloom pass flares the bright ones. They live in the scene, so the grade, bloom and tone mapping treat them as part of the sky, and the plume above veils them like everything else.
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+const particleVertex = /* glsl */ `
+attribute float aSize;
+varying float vSize;
+uniform float uBasePx;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  float dist = max(0.2, -mv.z);
+  gl_PointSize = uBasePx * aSize / dist;
+  vSize = aSize;
+  gl_Position = projectionMatrix * mv;
+}
+`;
+const particleFragment = /* glsl */ `
+uniform float uOpacity;
+uniform float uRing;
+uniform float uRingWidth;
+uniform float uCoreAlpha;
+uniform vec3 uTint;
+varying float vSize;
+void main() {
+  vec2 p = gl_PointCoord * 2.0 - 1.0;
+  float d = length(p);
+  if (d > 1.0) discard;
+  // Out-of-focus disc: a soft, dim centre and a brighter rim where the blur circle's edge piles up light.
+  float core = (1.0 - d * d) * uCoreAlpha;
+  float rim = exp(-pow((d - uRing) / uRingWidth, 2.0));
+  float edge = 1.0 - smoothstep(0.92, 1.0, d);
+  float a = (core + rim) * edge * uOpacity;
+  gl_FragColor = vec4(uTint * a, a);
+}
+`;
 function ParticleField({ density }: { density: number }) {
-  const geometry = useMemo(() => {
+  const { geometry, phase } = useMemo(() => {
     const rnd = mulberry32(19730607);
-    const n = PARTICLES.max, b = PARTICLES.box;
+    const n = PARTICLES.max, b = PARTICLES.box, v = PARTICLES.sizeVariance;
     const pos = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) { pos[i * 3] = (rnd() * 2 - 1) * b; pos[i * 3 + 1] = (rnd() * 2 - 1) * b; pos[i * 3 + 2] = (rnd() * 2 - 1) * b; }
+    const size = new Float32Array(n);
+    const ph = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      let x = 0, y = 0, z = 0;
+      do { x = (rnd() * 2 - 1) * b; y = (rnd() * 2 - 1) * b; z = (rnd() * 2 - 1) * b; } while (Math.hypot(x, y, z) < PARTICLES.near);
+      pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+      size[i] = Math.pow(1 + v, rnd() * 2 - 1); // log-uniform spread of disc sizes
+      ph[i] = rnd() * Math.PI * 2;
+    }
     const g = new BufferGeometry();
     g.setAttribute("position", new Float32BufferAttribute(pos, 3));
-    return g;
+    g.setAttribute("aSize", new Float32BufferAttribute(size, 1));
+    return { geometry: g, phase: ph };
   }, []);
-  const phase = useMemo(() => { const rnd = mulberry32(7); return Float32Array.from({ length: PARTICLES.max }, () => rnd() * Math.PI * 2); }, []);
+  const dpr = useThree((s) => s.gl.getPixelRatio());
+  const uniforms = useMemo(() => ({
+    uOpacity: { value: 0 },
+    uBasePx: { value: PARTICLES.sizePx * dpr },
+    uRing: { value: PARTICLES.ring },
+    uRingWidth: { value: PARTICLES.ringWidth },
+    uCoreAlpha: { value: PARTICLES.coreAlpha },
+    uTint: { value: new Vector3(1, 1 - PARTICLES.warmth * 0.5, 1 - PARTICLES.warmth) },
+  }), [dpr]);
+  uniforms.uOpacity.value = PARTICLES.opacityMax * Math.pow(Math.max(0, Math.min(1, density)), PARTICLES.curve);
   useFrame((state, dt) => {
     if (REDUCED_MOTION) return;
     const attr = geometry.getAttribute("position") as Float32BufferAttribute;
@@ -120,16 +169,15 @@ function ParticleField({ density }: { density: number }) {
     const b = PARTICLES.box, t = state.clock.elapsedTime;
     for (let i = 0; i < PARTICLES.max; i++) {
       a[i * 3 + 1] -= PARTICLES.fallPerSec * dt;
-      a[i * 3] += Math.sin(t * 0.6 + phase[i]) * PARTICLES.swayPerSec * dt;
+      a[i * 3] += Math.sin(t * 0.5 + phase[i]) * PARTICLES.swayPerSec * dt;
       if (a[i * 3 + 1] < -b) a[i * 3 + 1] += 2 * b;
       if (a[i * 3] > b) a[i * 3] -= 2 * b; else if (a[i * 3] < -b) a[i * 3] += 2 * b;
     }
     attr.needsUpdate = true;
   });
-  const opacity = PARTICLES.opacityMax * Math.pow(Math.max(0, Math.min(1, density)), PARTICLES.curve);
   return (
     <points geometry={geometry} renderOrder={1} frustumCulled={false}>
-      <pointsMaterial size={PARTICLES.sizePx} sizeAttenuation={false} color="#ffffff" transparent opacity={opacity} depthWrite={false} toneMapped={false} />
+      <shaderMaterial vertexShader={particleVertex} fragmentShader={particleFragment} uniforms={uniforms} transparent depthWrite={false} depthTest={false} blending={AdditiveBlending} />
     </points>
   );
 }

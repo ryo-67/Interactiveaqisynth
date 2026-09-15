@@ -161,8 +161,8 @@ export const GRAPH = {
   axisHeight: 22,
   labelGutter: 6,
   lineWidth: { aqi: 2.5, channel: 1.75 },
-  // AQI's y-scale is fixed so the line never rescales between days and the bar beside it is always the same ruler. 300 is the top of Very Unhealthy; hours above it ride the top edge (Jun 7's peak does).
-  aqiScaleMax: 300,
+  // AQI's y-scale is fixed at the full standard range, 0–500, so the line never rescales between days, nothing is ever clipped (Jun 7 crossed 350 and flatlined at a 300 top), and the bar beside it is the complete ruler including Hazardous.
+  aqiScaleMax: 500,
   // The AQI scale bar at the right of the AQI tab: the standard category colours as one smooth vertical gradient on that scale, marker at the current value.
   scaleBarWidth: 14,
   scaleBarGap: 8,

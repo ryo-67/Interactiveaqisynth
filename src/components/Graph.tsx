@@ -96,7 +96,7 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, onToggle }
       for (const t of lineTracks) {
         const vals = series[t];
         const present = vals.filter((v): v is number => v != null);
-        // Scale. AQI is FIXED at 0–300 (GRAPH.aqiScaleMax), so the line never rescales between days and the bar beside it is always the same ruler; hours above it ride the top edge. The other channels have no standard ruler and take the day's own max, floored so a quiet day is not stretched to look dramatic; that changes only when the day changes.
+        // Scale. AQI is FIXED at the full 0–500 (GRAPH.aqiScaleMax), so the line never rescales between days, nothing clips, and the bar beside it is always the same complete ruler. The other channels have no standard ruler and take the day's own max, floored so a quiet day is not stretched to look dramatic; that changes only when the day changes.
         const floor = t === "pm25" ? 20 : t === "o3" ? 40 : 30;
         const max = t === "aqi" ? GRAPH.aqiScaleMax : Math.max(floor, ...present) * 1.08;
         const inner = tabH - lh - 2;

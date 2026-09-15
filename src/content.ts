@@ -50,4 +50,4 @@ export const NAV_PREV = "‹";
 export const NAV_NEXT = "›";
 export const NAV_CALENDAR = "Calendar";
 export const NAV_UNAVAILABLE = "Not yet reported."; // a day past the archive and the EPA feed
-export const SOURCE_LINE_TYPICAL_NO2 = "No live NO2 in New York; a typical archive profile stands in.";
+export const SOURCE_LINE_TYPICAL_NO2 = "NO2 is a typical archive day; NYC has no live NO2."; // D-18 disclosure; Shoro's to revise

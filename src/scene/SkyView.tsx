@@ -118,19 +118,23 @@ const particleFragment = /* glsl */ `
 uniform float uOpacity;
 uniform float uRing;
 uniform float uRingWidth;
+uniform float uRingGain;
 uniform float uCoreAlpha;
+uniform float uChroma;
 uniform vec3 uTint;
 varying float vSize;
+float rimAt(float d, float r) { return exp(-pow((d - r) / uRingWidth, 2.0)); }
 void main() {
   vec2 p = gl_PointCoord * 2.0 - 1.0;
   float d = length(p);
   if (d > 1.0) discard;
-  // Out-of-focus disc: a soft, dim centre and a brighter rim where the blur circle's edge piles up light.
+  // Out-of-focus disc: a soft, dim centre and a bright rim where the blur circle's edge piles up light. The rim's radius differs per channel — red outermost, blue innermost — so the edge fringes into colour the way a real particle refracts.
   float core = (1.0 - d * d) * uCoreAlpha;
-  float rim = exp(-pow((d - uRing) / uRingWidth, 2.0));
-  float edge = 1.0 - smoothstep(0.92, 1.0, d);
-  float a = (core + rim) * edge * uOpacity;
-  gl_FragColor = vec4(uTint * a, a);
+  vec3 rim = vec3(rimAt(d, uRing + uChroma), rimAt(d, uRing), rimAt(d, uRing - uChroma)) * uRingGain;
+  float edge = 1.0 - smoothstep(0.9, 1.0, d);
+  vec3 c = (vec3(core) + rim) * edge * uOpacity * uTint;
+  float a = min(1.0, max(c.r, max(c.g, c.b)));
+  gl_FragColor = vec4(c, a);
 }
 `;
 function ParticleField({ density }: { density: number }) {
@@ -158,6 +162,8 @@ function ParticleField({ density }: { density: number }) {
     uBasePx: { value: PARTICLES.sizePx * dpr },
     uRing: { value: PARTICLES.ring },
     uRingWidth: { value: PARTICLES.ringWidth },
+    uRingGain: { value: PARTICLES.ringGain },
+    uChroma: { value: PARTICLES.chroma },
     uCoreAlpha: { value: PARTICLES.coreAlpha },
     uTint: { value: new Vector3(1, 1 - PARTICLES.warmth * 0.5, 1 - PARTICLES.warmth) },
   }), [dpr]);

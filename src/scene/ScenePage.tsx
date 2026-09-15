@@ -105,10 +105,10 @@ export default function ScenePage() {
             <Glass material="glass" className="scene-pill scene-borough">
               <BoroughToggle selected={s.borough} onSelect={s.setBorough} />
             </Glass>
-            <Glass material="glass" className="scene-pill">
+            <Glass material="glass" className="scene-pill scene-chips">
               <DayNav date={s.date} onChange={s.setDate} loading={s.dayLoading} />
             </Glass>
-            <Glass material="glass" className="scene-pill">
+            <Glass material="glass" className="scene-pill scene-chips">
               <PinStrip date={s.date} onChange={s.setDate} />
             </Glass>
           </div>

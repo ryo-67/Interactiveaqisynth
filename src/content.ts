@@ -23,7 +23,7 @@ export const STATUS_LIVE = "live";
 export const STATUS_ARCHIVE = "archive";
 
 // Source line (§5.3 panel 6). The coverage clause is built from the source flags, never hardcoded. Shortened 2026-09-15 at Shoro's request; Shoro's to revise. Two parts: the sources, then coverage.
-export const SOURCE_LINE_BASE = "AirNow live · EPA archive";
+export const SOURCE_LINE_BASE = "Live from AirNow · Archive from EPA";
 export const SOURCE_MONITORS = "{borough} measures {list}.";
 export const SOURCE_BORROWED = "{borough} measures {ownList}; {borrowedList} from the citywide reading.";
 export const SOURCE_AREA_READING = "AirNow area reading; no borough detail."; // zip-code fallback (BUG-12): no borough can honestly be named

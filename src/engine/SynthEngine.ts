@@ -44,7 +44,7 @@ export interface PulseInfo {
 }
 
 const BEAT_S = 60 / 90; // one beat = one hour = 0.667 s; every parameter ramp uses this (never jump)
-const PAUSE_FADE_S = 0.08; // pause and resume fade at the master: long enough to avoid a click, short enough to read as immediate
+const PAUSE_FADE_S = 0.03; // pause and resume fade at the master: long enough to avoid a click, short enough to read as immediate. Scheduled from the immediate clock, not Tone.now(), which sits a lookahead (~100 ms) in the future.
 const MELODY_ROOT_MIDI = 48; // C3; melody spans two octaves to C5 (§3.2)
 const CHORD_ROOT_MIDI = 60; // C4; bed triads stack upward from here
 
@@ -199,7 +199,7 @@ export class SynthEngine {
   }
 
   private openMaster(): void {
-    const now = Tone.now();
+    const now = Tone.immediate();
     this.master.gain.cancelScheduledValues(now);
     this.master.gain.rampTo(1, PAUSE_FADE_S, now);
   }
@@ -209,7 +209,7 @@ export class SynthEngine {
     const transport = Tone.getTransport();
     transport.pause();
     if (!this.master) return;
-    const now = Tone.now();
+    const now = Tone.immediate(); // Tone.now() is currentTime + lookahead; a fade scheduled there starts ~100 ms late
     this.master.gain.cancelScheduledValues(now);
     this.master.gain.rampTo(0, PAUSE_FADE_S, now);
     for (const v of [this.melody, this.bass, this.pulse, ...this.bedVoices]) v.triggerRelease(now + PAUSE_FADE_S);

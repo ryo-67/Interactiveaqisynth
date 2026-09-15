@@ -5,7 +5,7 @@ import { SOURCE_LINE_BASE, SOURCE_URL_AIRNOW, SOURCE_URL_EPA, SOURCE_BORROWED, S
 import type { Borough } from "../utils/nycOpenData";
 import type { Day } from "../engine/SynthEngine";
 
-const CHANNEL_LABELS = { pm25: "PM2.5", o3: "O3", no2: "NO2" } as const;
+const CHANNEL_LABELS = { pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // the same labels the graph's tabs use
 type Channel = keyof typeof CHANNEL_LABELS;
 
 interface Props {

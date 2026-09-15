@@ -37,7 +37,7 @@ export const TRANSPORT_VOLUME = "Volume";
 export const SKY_TOGGLE_LABEL = "Play or pause"; // the sky itself as a play/pause target, for screen readers. PLACEHOLDER — Shoro's.
 
 // Graph track labels and units. Units are the measurements'; the labels are PLACEHOLDERS — Shoro's.
-export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O3", no2: "NO2", pulse: "pulse" } as const; // the pulse row's numbers are hits per bar
+export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O₃", no2: "NO₂", pulse: "pulse" } as const; // chemical subscripts (U+2083, U+2082): the data font carries them (Shoro, 2026-09-15) // the pulse row's numbers are hits per bar
 export const TRACK_UNITS = { aqi: "", pm25: "µg/m³", o3: "ppb", no2: "ppb" } as const;
 
 // Day navigation. Pin names are Shoro's (from the Figma scaffold, 2026-09-15); the rest are PLACEHOLDERS — Shoro's.
@@ -58,4 +58,4 @@ export const NAV_LAST_24H = "Last 24h";
 export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}";
 export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the presets and the calendar (Shoro, 2026-09-15) // under the calendar (Shoro, 2026-09-15) // the date chip's label when live (Shoro, 2026-09-15)
 export const NAV_UNAVAILABLE = "Not yet reported."; // a day past the archive and the EPA feed
-export const SOURCE_LINE_TYPICAL_NO2 = "NO2 is typical, not live."; // D-18 disclosure; Shoro's to revise
+export const SOURCE_LINE_TYPICAL_NO2 = "NO₂ is typical, not live."; // D-18 disclosure; Shoro's to revise

@@ -5,6 +5,7 @@ import { motion } from "../utils/theme";
 import { normalize, pm25ToAQI, type PollutantAnchors } from "../engine/contour";
 import { tierIndexOf } from "../engine/scales";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
+import { PINS } from "../content";
 import { getCurrentAll, getAnchors, getDay, clientSeriesAQI, type Borough, type CurrentSnapshot, type DaySeries } from "../utils/nycOpenData";
 
 // Dev-only fixture select (?dev=1): never renders for a visitor.
@@ -100,6 +101,12 @@ export function useListenSession(): ListenSession {
   }, [date, borough]);
 
   const setDate = useCallback((d: string | null) => setDateState(d), []);
+
+  // Warm the archive year the pins live in once the page is idle, so the first pin does not wait on a fetch (the year file is cached per borough after that).
+  useEffect(() => {
+    const id = window.setTimeout(() => { void getDay(borough, PINS[0].date).catch(() => undefined); }, 1500);
+    return () => window.clearTimeout(id);
+  }, [borough]);
 
   const devFixture = DEV && devDayKey !== "live" ? PHASE0_DAYS.find((d) => d.key === devDayKey) : undefined;
   const day: Day | null = devFixture ? devFixture.day : date ? (chosen?.hours ?? null) : (snapshot?.series[borough].hours ?? null);
@@ -228,15 +235,35 @@ export function useListenSession(): ListenSession {
 // The beat report says hour h has just STARTED. The clock therefore runs from h toward h+1 over the beat, so the playhead crosses each column in time with the sound and the sun glides continuously; the next report lands as it reaches h+1, and any drift between the audio clock and the frame clock is corrected there. (Easing from the previous hour TO h made the playhead arrive a full beat late, so pulse hits flashed a column ahead of the line.) Across the loop seam it runs 23 → 24 (= 0), never backward. Under reduced motion it still moves, because it is the playhead.
 function useEasedHour(target: number, running: boolean): number {
   const [value, setValue] = useState(target);
+  const heldRef = useRef(target);
   useEffect(() => {
-    if (!running) { setValue(target % 24); return; } // paused: hold (a seek jumps it); a fresh play resumes the run from the next beat report
+    if (!running) {
+      // At rest or paused: glide to the target over half a beat rather than jump, so a day switch moves the sun instead of cutting it. A seek lands the same way.
+      const from = heldRef.current;
+      let to = target % 24;
+      if (Math.abs(to - from) > 12) to += to < from ? 24 : -24; // shortest way round the day
+      const start = performance.now();
+      let raf = 0;
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / (motion.beatMs * 0.5));
+        const e = 1 - Math.pow(1 - t, 3);
+        const v = ((from + (to - from) * e) % 24 + 24) % 24;
+        heldRef.current = v;
+        setValue(v);
+        if (t < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / motion.beatMs);
-      setValue((target + t) % 24);
+      heldRef.current = (target + t) % 24;
+      setValue(heldRef.current);
       if (t < 1) raf = requestAnimationFrame(tick);
     };
+    heldRef.current = target % 24;
     setValue(target % 24);
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);

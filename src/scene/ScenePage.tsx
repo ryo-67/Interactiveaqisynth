@@ -61,26 +61,28 @@ export default function ScenePage() {
   }, [tab]);
 
 
-  // The particulate inputs, eased: absolute PM2.5 for the regime, lenses, grain and aberration; the veil density for the plume and the stars. Both step once per beat in the data; the sky should not.
+  // Every input that steps with the data is eased in the space where it is USED, so in and out take the same curve: the particulate LEVELS (0..1), not the raw µg/m³ — eased in µg/m³ the field appeared at once on the way up (the value rushed through the 35–150 band) and receded slowly on the way down (it lingered there on the exponential tail). The sky's own channels ease too, so the dome, the plume and the type move together instead of the dome cutting while the plume fades. Time constant: half a beat (~330 ms), settled within about a second.
+  const tau = motion.beatMs * 0.5;
   const pm25Target = beat ? (beat.pm25 ?? 0) : (latest?.reading.pm25 ?? 0);
-  const pm25Eased = useEased(pm25Target, motion.beatMs * 1.5);
-  const smokeTarget = beat?.pm25nSmoothed ?? channels.pm25 ?? 0;
-  const smokeEased = useEased(smokeTarget, motion.beatMs * 1.5);
+  const lens = useEased(particleLevel(pm25Target), tau);
+  const grain = useEased(grainLevel(pm25Target), tau);
+  const regime = useEased(smokeRegime(pm25Target), tau);
+  const smokeEased = useEased(beat?.pm25nSmoothed ?? channels.pm25 ?? 0, tau);
+  const pm25nEased = useEased(channels.pm25 ?? 0, tau);
+  const o3nEased = useEased(channels.o3 ?? 0, tau);
 
   const view = useMemo(() => {
     const firstTs = day?.[0]?.ts ?? "2023-07-12T00:00:00-04:00";
     const date = firstTs.slice(0, 10);
     const ang = sunAnglesAt(date, hour, NYC_LAT, NYC_LON, tzOffsetFromTs(firstTs));
     // MAPPING (PM2.5 → aerosol path, O3 → rayleigh + bloom, clock → exposure + fade): skyParamsFor is the one mapping, shared with the harness.
-    const params = skyParamsFor(channels.pm25, channels.o3, ang.elevationDeg);
+    const params = skyParamsFor(pm25nEased, o3nEased, ang.elevationDeg);
     // MAPPING (PM2.5 → plume density): the engine's own smoothed value while playing (§5.2: the scene never re-derives the smoothing); the latest hour's normalized value at rest.
     const smoke = smokeEased;
-    const pm25 = pm25Eased;
     // MAPPING (smoke regime → sky saturation): the blue is absorbed under smoke, so the grade goes negative as the regime rises.
-    const r = smokeRegime(pm25);
-    const saturation = SKY_GRADE.saturation + (SKY_GRADE.saturationUnderSmoke - SKY_GRADE.saturation) * r;
-    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke, pm25, saturation, night: nightBlend(ang.elevationDeg) };
-  }, [day, hour, channels.pm25, channels.o3, smokeEased, pm25Eased]);
+    const saturation = SKY_GRADE.saturation + (SKY_GRADE.saturationUnderSmoke - SKY_GRADE.saturation) * regime;
+    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, pm25nEased), smoke, regime, saturation, night: nightBlend(ang.elevationDeg) };
+  }, [day, hour, pm25nEased, o3nEased, smokeEased, regime]);
 
   // Glass parameters as custom properties, once, at the root (§5.6: theme.ts is the source of truth; index.css reads these).
   const glassVars = {
@@ -94,9 +96,9 @@ export default function ScenePage() {
       <div style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars }}>
         {/* The scene: renders continuously while playing, on demand at rest. */}
         <div style={{ position: "absolute", inset: 0 }}>
-          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} saturation={view.saturation} particles={particleLevel(view.pm25)} grain={grainLevel(view.pm25)} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} saturation={view.saturation} particles={lens} grain={grain} live={playing} style={{ width: "100%", height: "100%" }} />
           <NightLayer blend={view.night} density={view.smoke} />
-          <SmokeLayer density={view.smoke} pm25={view.pm25} />
+          <SmokeLayer density={view.smoke} regime={view.regime} />
         </div>
 
         {/* The scaffold (D-26): see .scene-ui in index.css. */}

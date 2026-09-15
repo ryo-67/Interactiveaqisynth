@@ -126,7 +126,7 @@ export default function SceneTestPage() {
         <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} hour={hour} saturation={saturation + (SKY_GRADE.saturationUnderSmoke - saturation) * smokeRegime(pmAbs)} particles={particleLevel(pmAbs)} grain={grainLevel(pmAbs)} style={{ width: "100%", height: "100%" }} live />
 
         <NightLayer blend={view.night} density={smoke} strength={night} />
-        <SmokeLayer density={smoke} pm25={pmAbs} hueDeg={smokeHue} />
+        <SmokeLayer density={smoke} regime={smokeRegime(pmAbs)} hueDeg={smokeHue} />
 
 
       </div>

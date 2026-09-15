@@ -8,7 +8,7 @@ import { SMOKE } from "../utils/theme";
 
 interface Props {
   density: number; // 0..1, normalized PM2.5 — how much veil
-  pm25?: number | null; // absolute µg/m³ — which regime: white haze or orange smoke (SMOKE.orange)
+  regime?: number; // 0..1 — white haze to orange smoke, from absolute PM2.5 via smokeRegime(); eased by the caller so in and out take the same curve
   hueDeg?: number; // override for tuning; defaults to the token
 }
 
@@ -31,10 +31,10 @@ function ramp(d: number, alphaMax: number, hue: number, sat: number, light: (t: 
   return `linear-gradient(to bottom, ${parts.join(", ")})`;
 }
 
-export const SmokeLayer = React.memo(function SmokeLayer({ density, pm25, hueDeg }: Props) {
+export const SmokeLayer = React.memo(function SmokeLayer({ density, regime = 0, hueDeg }: Props) {
   const d = Math.max(0, Math.min(1, density));
   if (d <= 0.001) return null;
-  const r = smokeRegime(pm25); // colour follows the regime; alpha follows density
+  const r = Math.max(0, Math.min(1, regime)); // colour follows the regime; alpha follows density
 
   const hue = (hueDeg ?? SMOKE.hueDeg) + SMOKE.hueDriftDeg * r;
   // Absolute, not fixed: the scene owns its own box above the control bar, so the plume's densest band stays visible.
@@ -69,4 +69,4 @@ export const SmokeLayer = React.memo(function SmokeLayer({ density, pm25, hueDeg
       <div aria-hidden style={{ ...base, background: inscatter, mixBlendMode: "screen" }} />
     </>
   );
-}, (a, b) => Math.round(a.density * 200) === Math.round(b.density * 200) && Math.round(smokeRegime(a.pm25) * 100) === Math.round(smokeRegime(b.pm25) * 100) && a.hueDeg === b.hueDeg);
+}, (a, b) => Math.round(a.density * 200) === Math.round(b.density * 200) && Math.round((a.regime ?? 0) * 100) === Math.round((b.regime ?? 0) * 100) && a.hueDeg === b.hueDeg);

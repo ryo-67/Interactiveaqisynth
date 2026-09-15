@@ -340,7 +340,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         y0 += pulseH;
       }
 
-      // X axis: a tick at every reading, firmer at bar starts; two labels only — the first reading's date and time at the left ("Sep 14, 2:00 pm"; the year only when it is not this year) and "now" at the right when live, else the last reading's time. Hour numbers read as a 24-hour clock and confused the rolling live window.
+      // X axis: a tick at every reading, firmer at bar starts; two labels only — at the left the first reading's time, with its date on the live window whose readings straddle two days ("Sep 14, 2:00 pm"; the year only when it is not this year); at the right "now" when live, else the last reading's time. Hour numbers read as a 24-hour clock and confused the rolling live window.
       const axisY = cssH - axisH;
       hair.strokeStyle = firmLine;
       hair.beginPath(); hair.moveTo(plotX, axisY + 0.5); hair.lineTo(plotRight, axisY + 0.5); hair.stroke();
@@ -355,7 +355,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (n > 0) {
         ctx.fillStyle = c.textMuted;
-        ctx.fillText(readingLabel(day[0].ts, true), plotX + 2, cssH - 5);
+        // The date is on the left label only for the live window, whose readings straddle two days; a chosen day is named by the picker already, so its label is just the time.
+        ctx.fillText(readingLabel(day[0].ts, live), plotX + 2, cssH - 5);
         const right = live ? "now" : readingLabel(day[n - 1].ts, false);
         ctx.fillText(right, plotRight - ctx.measureText(right).width - 2, cssH - 5);
       }

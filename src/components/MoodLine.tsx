@@ -89,6 +89,7 @@ export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
           margin: 0,
           width: lineWidth != null ? `${lineWidth}px` : undefined, // the widest line of the five sentences: one width, one height, for every tier
           whiteSpace: "nowrap",
+          textAlign: "right", // under the word, which sits at the panel's right (2026-09-15)
         }}
       >
         {line1}<br />{line2}

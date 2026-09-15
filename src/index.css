@@ -1482,3 +1482,16 @@ html {
   .scene-source { padding: 4px 12px; font-size: 11px; }
   .scene-transport { flex: 0 0 auto; }
 }
+
+/* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */
+@media (max-width: 767px) and (max-height: 720px) {
+  .scene-ui { --display-size: 48px; --heading-size: 20px; --body-size: 13px; --body-line: 1.4; --graph-tab-h: 88px; }
+  .scene-panel.scene-hero { padding: 12px 16px 8px; }
+  .scene-panel.scene-graph { padding: 8px 12px; }
+}
+/* The shortest phones (640 tall): pills tighten to 28 and the graph to 72, which is the floor at which the tabs and the axis still read. */
+@media (max-width: 767px) and (max-height: 660px) {
+  .scene-ui { --ctl-pill: 28px; --graph-tab-h: 72px; --ui-gap: 8px; }
+  .scene-panel.scene-hero { padding: 8px 12px 8px; }
+  .scene-panel.scene-graph { padding: 8px 12px 4px; }
+}

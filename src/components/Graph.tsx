@@ -70,7 +70,9 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const cssW = wrap.clientWidth;
       // Breakpoint from the panel's own width: the panel is ~640 on laptop, ~700 on a portrait tablet, ~320 on a phone.
       const bp: "laptop" | "tablet" | "phone" = cssW < 480 ? "phone" : cssW < 760 ? "tablet" : "laptop";
-      const tabH = GRAPH.tabHeight[bp];
+      // The scene may override the tab height by CSS (--graph-tab-h) where the VIEWPORT is short — a phone's width says nothing about its height.
+      const cssTab = parseInt(getComputedStyle(wrap).getPropertyValue("--graph-tab-h"));
+      const tabH = Number.isFinite(cssTab) && cssTab > 0 ? cssTab : GRAPH.tabHeight[bp];
       const pulseH = GRAPH.pulseRowHeight[bp];
       const axisH = GRAPH.axisHeight[bp];
       const lineTracks: TrackKey[] = [tab];

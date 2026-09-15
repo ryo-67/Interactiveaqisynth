@@ -1467,9 +1467,9 @@ html {
     --display-size: 72px; --heading-size: 28px; --body-size: 14px; --body-line: 1.5;
     --ui-pad: 24px; --ui-gap: 16px;
   }
-  .scene-top { flex-wrap: wrap; }
-  .scene-top > .glass { flex: 1 1 auto; }
-  .scene-top > .scene-pins { flex: 0 1 auto; width: fit-content; max-width: 100%; }
+  /* Below laptop width every top pill fits its content and the row centres them; the pins follow the picker, so they centre too. */
+  .scene-top { flex-wrap: wrap; justify-content: center; }
+  .scene-top > .glass { flex: 0 1 auto; width: fit-content; max-width: 100%; margin: 0; }
   .scene-mid { flex-direction: column; align-items: stretch; justify-content: center; }
   .scene-panel { flex: 0 1 auto; width: 100%; max-width: 100%; }
   .scene-panel.scene-hero { padding: 24px 24px 16px; }
@@ -1483,9 +1483,8 @@ html {
     --display-size: 56px; --heading-size: 24px; --body-size: 14px; --body-line: 1.5;
     --ui-pad: 12px; --ui-gap: 8px;
   }
-  .scene-top { flex-direction: column; align-items: stretch; gap: 8px; }
-  .scene-top > .glass { width: 100%; }
-  .scene-top > .scene-pins { width: fit-content; max-width: 100%; margin-left: 0; } /* phone: the column is left-aligned */
+  .scene-top { flex-direction: column; align-items: center; gap: 8px; }
+  .scene-top > .glass { width: fit-content; max-width: 100%; margin: 0; }
   .scene-pill { padding: 0 12px; }
   .scene-pill.scene-borough { padding: 0 12px; }
   .scene-ui { --chip-inset: 4px; }

@@ -30,6 +30,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
+  const areaCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
   const playheadRef = useRef<number | null>(playheadHour);
   playheadRef.current = playheadHour;
   const playing = running && playheadHour != null;
@@ -161,26 +162,41 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
         }
 
-        // The area under the line, one trapezoid per hour segment, each filled with a vertical gradient from the segment's colour at the line to transparent at the baseline — so the fade follows the line's own height. AQI uses the scale colour at each end (a horizontal blend across the segment); the others fade white.
+        // The area under the line: colour blends horizontally along the line (a stop at every hour's scale colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per tab, day and size, so the playhead's per-frame redraw does not rebuild it.
         const baseY = y0 + lh + inner;
-        for (let i = 1; i < n; i++) {
-          const a = vals[i - 1], b = vals[i];
-          if (a == null || b == null) continue;
-          const x0 = plotX + (i - 1) * colW + colW / 2, x1 = plotX + i * colW + colW / 2;
-          const ya = yFor(a), yb = yFor(b);
+        const areaKey = `${t}|${n}|${cssW}|${cssH}|${dpr}|${day[0]?.ts ?? ""}|${vals.map((v) => (v == null ? "" : Math.round(v * 10))).join(",")}`;
+        let area = areaCache.current;
+        if (!area || area.key !== areaKey) {
+          const off = document.createElement("canvas");
+          off.width = Math.ceil(plotW * dpr); off.height = Math.ceil(cssH * dpr);
+          const o = off.getContext("2d")!;
+          o.setTransform(dpr, 0, 0, dpr, 0, 0);
           const alpha = t === "aqi" ? GRAPH.areaAlpha.aqi : GRAPH.areaAlpha.channel;
-          const top = Math.min(ya, yb);
-          const fade = ctx.createLinearGradient(0, top, 0, baseY);
-          const rgb = (col: string, aa: number) => col.startsWith("rgb(") ? col.replace("rgb(", "rgba(").replace(")", `, ${aa})`) : `rgba(255,255,255,${aa})`;
-          // A fill takes one gradient, so the segment carries the scale colour of its mean value and fades vertically; at one hour per segment the horizontal step between neighbours is invisible.
-          const mid = t === "aqi" ? aqiScaleColor((a + b) / 2) : "rgb(255,255,255)";
-          fade.addColorStop(0, rgb(mid, alpha));
-          fade.addColorStop(1, rgb(mid, 0));
-          ctx.fillStyle = fade;
-          ctx.beginPath();
-          ctx.moveTo(x0 - 0.5, ya); ctx.lineTo(x1 + 0.5, yb); ctx.lineTo(x1 + 0.5, baseY); ctx.lineTo(x0 - 0.5, baseY); ctx.closePath();
-          ctx.fill();
+          // Pass 1: the mask — each hour segment fades from opaque at the line to transparent at the base.
+          for (let i = 1; i < n; i++) {
+            const va = vals[i - 1], vb = vals[i];
+            if (va == null || vb == null) continue;
+            const x0 = (i - 1) * colW + colW / 2, x1 = i * colW + colW / 2;
+            const ya = yFor(va), yb = yFor(vb);
+            const fade = o.createLinearGradient(0, Math.min(ya, yb), 0, baseY);
+            fade.addColorStop(0, `rgba(0,0,0,${alpha})`);
+            fade.addColorStop(1, "rgba(0,0,0,0)");
+            o.fillStyle = fade;
+            o.beginPath(); o.moveTo(x0 - 0.5, ya); o.lineTo(x1 + 0.5, yb); o.lineTo(x1 + 0.5, baseY); o.lineTo(x0 - 0.5, baseY); o.closePath(); o.fill();
+          }
+          // Pass 2: the colour, through the mask — the scale colour at every hour along the line, or white for the other tracks.
+          o.globalCompositeOperation = "source-in";
+          const colour = o.createLinearGradient(0, 0, plotW, 0);
+          for (let i = 0; i < n; i++) {
+            const v = vals[i];
+            colour.addColorStop(Math.min(1, Math.max(0, (i * colW + colW / 2) / plotW)), v == null ? "rgba(255,255,255,0)" : t === "aqi" ? aqiScaleColor(v) : "rgb(255,255,255)");
+          }
+          o.fillStyle = colour;
+          o.fillRect(0, 0, plotW, cssH);
+          area = { key: areaKey, canvas: off };
+          areaCache.current = area;
         }
+        ctx.drawImage(area.canvas, 0, 0, area.canvas.width, area.canvas.height, plotX, 0, plotW, cssH);
 
         // The line. AQI segments are gradients between the scale colour at each end — the same rule the bar is drawn with, so a point on the line and the bar at that height always match; the others are the secondary text colour.
         ctx.lineWidth = t === "aqi" ? GRAPH.lineWidth.aqi : GRAPH.lineWidth.channel;

@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The sky as a play button; a paused day reads the new day
+
+Clicking anywhere on the sky now toggles play. It is the largest target on the page, the audio gesture is the click itself, and the panels above it still take their own clicks; Space already did the same from the keyboard, so the box carries a role and label but stays out of the tab order. The paused regression had a structural cause: when pause stopped clearing the engine's last beat report (so the page could show where it paused), that report also stayed the source of the mood, the channels and the plume, so switching days while paused kept the old day's reading until a beat arrived, which it never does while paused. The paused hour is now remembered on its own, the stale report is cleared when the day changes at rest, and the page reads the new day at that hour, so the smoke, grade and grain ease to the new data in place while the playhead holds.
+
 ## 2026-09-15 — Adaptive glass, graph tabs, stars that turn
 
 The glass now does what Apple's material does: each panel samples the rendered sky under its own rectangle a few times a second — a handful of single-pixel reads from the finished frame, after post-processing — and switches between a light and a dark material with hysteresis, its children re-theming with it. This exists because no single fill can hold AA for one text colour against both a white horizon and a night sky; two tones with the fill alpha set by the worst-case arithmetic can. Text tokens were raised to pass 4.5:1 on those fills and the faint token is now lines-only. The graph's toggles became tabs, one track at a time with the pulse row always beneath, because stacking four tracks was the wrong instrument; each bar in the pulse row now shows its hit count. The star field turns about the celestial pole fifteen degrees an hour, so facing south the stars rise on the left and set on the right, and it covers the whole sphere so nothing rotates into view as a gap.

@@ -32,6 +32,7 @@ export const SOURCE_AREA_READING = "AirNow area reading; no borough detail."; //
 export const TRANSPORT_PLAY = "Play";
 export const TRANSPORT_PAUSE = "Pause";
 export const TRANSPORT_VOLUME = "Volume";
+export const SKY_TOGGLE_LABEL = "Play or pause"; // the sky itself as a play/pause target, for screen readers. PLACEHOLDER — Shoro's.
 
 // Graph track labels and units. Units are the measurements'; the labels are PLACEHOLDERS — Shoro's.
 export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O3", no2: "NO2", pulse: "pulse" } as const; // the pulse row's numbers are hits per bar

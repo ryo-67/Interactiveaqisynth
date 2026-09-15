@@ -35,7 +35,8 @@ export interface ListenSession {
   togglePlay: () => void;
   setVolume: (db: number) => void;
   displayAqi: number | null;
-  latest: { reading: HourReading; hour: number } | null; // latest non-null hour: the resting state before playback
+  latest: { reading: HourReading; hour: number } | null; // latest non-null hour of the loaded day
+  rest: { reading: HourReading; hour: number } | null; // the hour the page reads at rest: the paused or seeked hour if the day has it, else latest
   moodTier: number;
   moodHour: number;
   // The AQI the mood word describes: the smoothed AQI the tier is computed from while playing, the latest hour's AQI at rest.
@@ -131,13 +132,22 @@ export function useListenSession(): ListenSession {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day, borough, devDayKey, date]);
 
-  // Pause, not stop: the transport holds its position and the last beat report stays, so the page shows where it paused and play resumes from there.
+  // Pause, not stop: the transport holds its position, so play resumes from it. The paused HOUR is remembered separately from the beat report, because the report describes the day that was playing — when the day changes while paused, the report is stale and is cleared, and the page reads the NEW day at the paused hour, so the sky eases to the new data in place instead of freezing on the old.
+  const [pausedHour, setPausedHour] = useState<number | null>(null);
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
     if (playing) void engine.play();
-    else engine.pause();
+    else {
+      engine.pause();
+      setPausedHour((h) => beat?.hour ?? h);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
+  useEffect(() => {
+    if (!playing) setBeat(null); // a new day while paused or at rest: the last report described the old one
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day]);
 
   const beatAtRef = useRef(0);
   useEffect(() => {
@@ -150,6 +160,7 @@ export function useListenSession(): ListenSession {
   const seek = useCallback((hour: number) => {
     engineRef.current?.seek(hour);
     setSeekAt({ hour, t: performance.now() });
+    setPausedHour(Math.floor(hour)); // at rest, the page reads the day at the seeked hour
   }, []);
 
 
@@ -191,29 +202,32 @@ export function useListenSession(): ListenSession {
     return null;
   })();
 
-  // Mood inputs: the beat report while playing (it describes what you are hearing); the latest hour at rest.
+  // At rest the page reads one hour of the loaded day: the paused or seeked hour if there is one and the day has it, else the latest reporting hour.
+  const rest = pausedHour != null && day && day[pausedHour] ? { reading: day[pausedHour], hour: pausedHour } : latest;
+
+  // Mood inputs: the beat report while playing (it describes what you are hearing); the rest hour otherwise.
   const a = anchors ?? QUEENS_2023_ANCHORS;
   const moodTier = beat
     ? beat.tierIndex
-    : latest?.reading.pm25 != null
-      ? tierIndexOf(pm25ToAQI(Math.max(0, latest.reading.pm25))!)
+    : rest?.reading.pm25 != null
+      ? tierIndexOf(pm25ToAQI(Math.max(0, rest.reading.pm25))!)
       : 0;
-  const moodHour = beat ? beat.hour : (latest?.hour ?? 0);
+  const moodHour = beat ? beat.hour : (rest?.hour ?? 0);
   const moodAqi = beat
     ? beat.smoothedAQI
-    : latest?.reading.pm25 != null
-      ? pm25ToAQI(Math.max(0, latest.reading.pm25))
+    : rest?.reading.pm25 != null
+      ? pm25ToAQI(Math.max(0, rest.reading.pm25))
       : null;
-  const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (latest?.hour ?? 12);
+  const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.hour ?? 12);
   const playheadHour = useEasedHour(clockTarget, playing);
-  const paused = !playing && (beat != null || seekAt != null);
+  const paused = !playing && (pausedHour != null || seekAt != null);
   const channels = beat
     ? { pm25: beat.pm25n, o3: beat.o3n, no2: beat.no2n }
-    : latest
+    : rest
       ? {
-          pm25: normalize(latest.reading.pm25 == null ? null : Math.max(0, latest.reading.pm25), a.pm25),
-          o3: normalize(latest.reading.o3, a.o3),
-          no2: normalize(latest.reading.no2, a.no2),
+          pm25: normalize(rest.reading.pm25 == null ? null : Math.max(0, rest.reading.pm25), a.pm25),
+          o3: normalize(rest.reading.o3, a.o3),
+          no2: normalize(rest.reading.no2, a.no2),
         }
       : { pm25: null, o3: null, no2: null };
   const dominant = (() => {
@@ -228,7 +242,7 @@ export function useListenSession(): ListenSession {
   return {
     borough, setBorough, date, setDate, dayLoading, playheadHour, paused, seek,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
-    displayAqi, latest, moodTier, moodHour, moodAqi, dominant, channels, devDayKey, setDevDayKey,
+    displayAqi, latest, rest, moodTier, moodHour, moodAqi, dominant, channels, devDayKey, setDevDayKey,
   };
 }
 

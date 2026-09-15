@@ -20,10 +20,12 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   vec2 disp = vec2(0.0);
   float rim = 0.0;
   for (int i = 0; i < ${MAX}; i++) {
-    // Each lens eases in over its own slice of the level rather than popping when a count crosses an integer.
+    // Each lens GROWS in over its own slice of the level — radius from zero, bending with it — and shrinks back out the same way, rather than appearing whole and fading.
     float w = smoothstep(0.0, 1.0, uLevel * float(${MAX}) - float(i));
     if (w <= 0.0) continue;
     vec4 L = uLens[i];
+    float g = 1.0 - (1.0 - w) * (1.0 - w); // ease-out on the size: quick to appear, slow to settle
+    L.z *= g;
     L.w *= w;
     vec2 d = uv - L.xy;
     d.x *= uAspect; // circular lenses on a non-square frame

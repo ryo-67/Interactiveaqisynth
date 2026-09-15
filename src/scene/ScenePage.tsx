@@ -110,7 +110,7 @@ export default function ScenePage() {
             <Glass material="glass" className="scene-pill scene-chips">
               <DayNav date={s.date} onChange={s.setDate} loading={s.dayLoading} />
             </Glass>
-            <Glass material="glass" className="scene-pill scene-chips">
+            <Glass material="glass" className="scene-pill scene-chips scene-pins">
               <PinStrip date={s.date} onChange={s.setDate} />
             </Glass>
           </div>

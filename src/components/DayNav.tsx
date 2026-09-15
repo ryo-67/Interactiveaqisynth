@@ -58,7 +58,7 @@ export function DayNav({ date, onChange, loading }: Props) {
   };
 
   return (
-    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
+    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: `var(--chip-inset, ${CONTROL.gap}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
       {/* Order per the scaffold: Calendar ‹ date › Live. */}
       <button style={chip(open)} onClick={() => setOpen((o) => !o)} aria-expanded={open}>{NAV_CALENDAR}</button>
       <button style={chip(false)} onClick={prev} aria-label="previous day">{NAV_PREV}</button>
@@ -106,11 +106,11 @@ export function DayNav({ date, onChange, loading }: Props) {
   );
 }
 
-// PinStrip — the measured days as chips in one scrolling line (§2.2), its own pill in the scaffold.
+// PinStrip — the measured days as chips (§2.2), its own pill in the scaffold. The chips wrap onto further rows when the pill is narrow, rather than scrolling or clipping.
 export function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
   const c = themeColors(useTheme());
   return (
-    <div className="scene-strip" style={{ display: "flex", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap", maxWidth: "100%" }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: `var(--chip-inset, ${CONTROL.gap}px)`, maxWidth: "100%" }}>
       {PINS.map((p) => {
         const active = date === p.date;
         return (

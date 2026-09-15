@@ -261,17 +261,18 @@ export const CONTROL = {
   // Hover and pressed states for every clickable (2026-09-15): a chip lightens by hoverAlpha on hover (an active chip by hoverActiveAlpha, since it is already lit), and scales by pressScale while pressed; stateMs is the transition. index.css reads these as custom properties.
   hoverAlpha: 0.10,
   hoverActiveAlpha: 0.22,
-  pressScale: 0.96,
+  pressAlpha: 0.18, // pressed: a darker fill (black at this alpha), never a shrink (2026-09-15: a press-in moved the pill's backdrop with it)
   stateMs: 120,
 } as const;
 
-// Cursors (2026-09-15): the page's own, as SVG data URIs built by cursors.ts. A ring is the default, a heavier ring over anything clickable, and over the sky the play or pause glyph so the sky reads as the transport it is. All white with a soft dark shadow so they read on any sky; 32 px, the size every browser accepts. Browsers that cannot show an SVG cursor fall back to their own.
+// Cursor (2026-09-15, Cursor.tsx): the page's own pointer, drawn in the DOM so it can move between states rather than snap. A ring by default; it grows over anything clickable; over the sky and the graph it grows further while a glyph fades in at its centre — play or pause for the sky, the drag arrows for the graph. Diameters in px, one transition for all of it. Fine pointers only; touch shows nothing.
 export const CURSOR = {
-  size: 32,
-  ring: { radius: 5, stroke: 1.5 },
-  pointer: { radius: 7, stroke: 2 },
-  colour: "#ffffff",
-  shadow: "rgba(0,0,0,0.5)",
+  ring: 10,
+  pointer: 16,
+  glyphRing: 28,
+  glyph: 14,
+  stroke: 1.5,
+  ms: 160,
 } as const;
 
 // The four motion profiles (§5.4). Everything moves on the 90 BPM grid or not at all; drift is the one continuous exception (particulate, not rhythmic).

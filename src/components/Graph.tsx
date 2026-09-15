@@ -505,7 +505,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         onPointerMove={(e) => { if (!dragging.current) return; const h = hourAt(e.clientX); if (h != null) onSeek(h); }}
         onPointerUp={(e) => { dragging.current = false; e.currentTarget.releasePointerCapture(e.pointerId); }}
         onPointerCancel={() => { dragging.current = false; }}
-        style={{ display: "block", cursor: "ew-resize", touchAction: "none" }} // width and height are set by draw() to exactly buffer ÷ ratio
+        data-cursor="drag" // the page cursor shows the drag arrows over the plot (Cursor.tsx)
+        style={{ display: "block", touchAction: "none" }} // width and height are set by draw() to exactly buffer ÷ ratio
         aria-label="24-hour graph; press or drag to move the playhead"
       />
     </div>

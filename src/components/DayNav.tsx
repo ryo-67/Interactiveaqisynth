@@ -139,11 +139,12 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
               data-active={sel}
               disabled={out}
               onClick={() => onPick(iso)}
+              // A 32 px square centred in its column (the columns are a fraction wider): the cells are one shape whatever the number in them. Left to the grid they shrank to their text.
               style={{
-                fontFamily: families.data, fontSize: typeScale.caption.size, textAlign: "center", height: `var(--ctl-inner, ${CONTROL.inner}px)`, padding: 0,
+                fontFamily: families.data, fontSize: typeScale.caption.size, display: "inline-flex", alignItems: "center", justifyContent: "center", justifySelf: "center", width: `var(--ctl-inner, ${CONTROL.inner}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, padding: 0,
                 color: out ? c.textFaint : sel ? "#05050a" : c.textPrimary,
                 background: sel ? "rgba(255,255,255,0.9)" : "none",
-                border: "none", borderRadius: 4,
+                border: "none", borderRadius: 8,
               }}
             >
               {Number(iso.slice(8, 10))}

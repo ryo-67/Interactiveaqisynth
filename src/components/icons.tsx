@@ -23,6 +23,9 @@ export const ChevronRightIcon = ({ size = 14, strokeWidth = 2, style }: IconProp
 export const ChevronDownIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="m6 9 6 6 6-6" /></svg>
 );
+export const MoveHorizontalIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="m18 8 4 4-4 4" /><path d="M2 12h20" /><path d="m6 8-4 4 4 4" /></svg>
+);
 export const ChevronUpIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="m18 15-6-6-6 6" /></svg>
 );

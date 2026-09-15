@@ -1424,7 +1424,7 @@ html {
 
 /* prefers-reduced-motion: no materialize/settle transitions on the material */
 @media (prefers-reduced-motion: reduce) {
-  .glass, .scene-popover, .scene-chip, .scene-play, .scene-day, .scene-borough-btn, .scene-volume::-webkit-slider-thumb {
+  .glass, .scene-popover, .scene-chip, .scene-play, .scene-day, .scene-borough-btn span, .scene-volume::-webkit-slider-thumb, .scene-cursor-ring, .scene-cursor-glyph {
     transition: none;
   }
 }
@@ -1439,23 +1439,30 @@ html {
 }
 .scene-ui .glass, .scene-ui select { pointer-events: auto; }
 
-/* ——— Cursors (2026-09-15, theme.ts CURSOR via cursors.ts): a ring by default, a heavier ring over anything clickable, the play or pause glyph over the sky. Each declaration falls back to the browser's own where an SVG cursor is not supported. The graph keeps its resize cursor: it is scrubbed, not clicked. ——— */
-.scene-root { cursor: var(--cursor-ring), auto; }
-.scene-root button:not(:disabled), .scene-root [role="button"], .scene-root .scene-volume, .scene-root a { cursor: var(--cursor-pointer), pointer; }
-.scene-root button:disabled { cursor: var(--cursor-ring), default; }
-.scene-sky[data-cursor="play"] { cursor: var(--cursor-play), pointer; }
-.scene-sky[data-cursor="pause"] { cursor: var(--cursor-pause), pointer; }
-.scene-sky[data-cursor="ring"] { cursor: var(--cursor-ring), auto; }
+/* ——— The page cursor (2026-09-15, Cursor.tsx, theme.ts CURSOR): an element that follows the pointer, so its ring can grow over a clickable and grow further while a glyph fades in over the sky (play, pause) or the graph (drag); a CSS cursor image cannot animate. The native cursor is hidden while it runs, everywhere including the popover, which is portaled outside the scene. Fine pointers only; the class is set by the component. ——— */
+html.has-cursor, html.has-cursor * { cursor: none !important; }
+.scene-cursor { position: fixed; left: 0; top: 0; z-index: 1000; pointer-events: none; will-change: transform; }
+.scene-cursor-ring { position: absolute; left: 0; top: 0; width: var(--cur-ring); height: var(--cur-ring); transform: translate(-50%, -50%); border-radius: 50%; box-sizing: border-box; border: var(--cur-stroke) solid #ffffff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(0, 0, 0, 0.18); opacity: 1; transition: width var(--cur-ms) ease-out, height var(--cur-ms) ease-out, opacity var(--cur-ms) ease; }
+.scene-cursor[data-mode="pointer"] .scene-cursor-ring { width: var(--cur-pointer); height: var(--cur-pointer); }
+.scene-cursor[data-mode="play"] .scene-cursor-ring, .scene-cursor[data-mode="pause"] .scene-cursor-ring, .scene-cursor[data-mode="drag"] .scene-cursor-ring { width: var(--cur-glyph-ring); height: var(--cur-glyph-ring); }
+.scene-cursor[data-mode="hidden"] .scene-cursor-ring, .scene-cursor[data-mode="hidden"] .scene-cursor-glyph { opacity: 0; }
+.scene-cursor-glyph { position: absolute; left: 0; top: 0; width: var(--cur-glyph); height: var(--cur-glyph); transform: translate(-50%, -50%); color: #ffffff; opacity: 0; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.5)); transition: opacity var(--cur-ms) ease; }
+.scene-cursor[data-mode="play"] .scene-cursor-glyph[data-glyph="play"], .scene-cursor[data-mode="pause"] .scene-cursor-glyph[data-glyph="pause"], .scene-cursor[data-mode="drag"] .scene-cursor-glyph[data-glyph="drag"] { opacity: 1; }
 
-/* ——— Hover and pressed states (2026-09-15, theme.ts CONTROL.hoverAlpha / hoverActiveAlpha / pressScale / stateMs): every clickable answers the pointer. Chips lighten on hover (an active chip a step more, it is already lit) and shrink by the press scale while pressed; the borough words brighten; the play button and the calendar days take the chip's hover; the slider thumb grows under the pointer. The chip fills are inline (chip.ts), so the hover fills are declared important. ——— */
-.scene-chip, .scene-play, .scene-day, .scene-borough-btn { transition: background-color var(--state-ms, 120ms) ease, color var(--state-ms, 120ms) ease, transform var(--state-ms, 120ms) ease, filter var(--state-ms, 120ms) ease; }
+/* ——— Hover and pressed states (2026-09-15, theme.ts CONTROL.hoverAlpha / hoverActiveAlpha / pressAlpha / stateMs): every clickable answers the pointer. On hover a chip lightens (an active chip a step more, it is already lit), a borough word brightens, the play button and a calendar day take the chip's hover; pressed is a darker fill, never a shrink. The chip fills and the word colours are inline, so these are declared important. ——— */
+.scene-chip, .scene-play, .scene-day, .scene-borough-btn span { transition: background-color var(--state-ms, 120ms) ease, color var(--state-ms, 120ms) ease; }
 .scene-chip:not(:disabled):hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
 .scene-chip[data-active="true"]:not(:disabled):hover { background-color: rgba(255, 255, 255, var(--chip-hover-active, 0.22)) !important; }
-.scene-chip:not(:disabled):active, .scene-day:not(:disabled):active, .scene-play:active, .scene-borough-btn:active { transform: scale(var(--press-scale, 0.96)); }
+.scene-chip:not(:disabled):active { background-color: rgba(0, 0, 0, var(--chip-press, 0.18)) !important; }
+.scene-chip[data-active="true"]:not(:disabled):active { background-color: rgba(255, 255, 255, 0.06) !important; }
 .scene-chip:disabled { opacity: 0.4; }
 .scene-play:hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
+.scene-play:active { background-color: rgba(0, 0, 0, var(--chip-press, 0.18)) !important; }
 .scene-day:not(:disabled):not([data-active="true"]):hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
-.scene-borough-btn:not([aria-selected="true"]):hover { filter: brightness(1.4); }
+.scene-day:not(:disabled):not([data-active="true"]):active { background-color: rgba(0, 0, 0, var(--chip-press, 0.18)) !important; }
+.scene-day[data-active="true"]:active { background-color: rgba(255, 255, 255, 0.72) !important; }
+.scene-borough-btn:not([aria-selected="true"]):hover span { color: rgba(255, 255, 255, 0.9) !important; }
+.scene-borough-btn:active span, .scene-borough-btn:not([aria-selected="true"]):active span { color: rgba(255, 255, 255, 0.5) !important; } /* the second selector outranks the hover rule above while pressed */
 .scene-volume::-webkit-slider-thumb { transition: transform var(--state-ms, 120ms) ease, box-shadow var(--state-ms, 120ms) ease; }
 .scene-volume:hover::-webkit-slider-thumb { transform: scale(1.12); }
 .scene-volume:active::-webkit-slider-thumb { transform: scale(1.2); box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 1); }

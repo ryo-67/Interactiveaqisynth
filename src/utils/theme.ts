@@ -183,7 +183,7 @@ export const opacity = {
 
 // Three type families (§5.5). No webfonts this sprint; these are the stacks the shipped build already speaks.
 export const families = {
-  serifItalic: 'Georgia, "Times New Roman", serif', // editorial serif — borough selected, mood word, mood sentence (styled italic at use)
+  serifItalic: 'Georgia, "Times New Roman", serif', // editorial serif — mood word, mood sentence, the AQI number (styled italic at use)
   data: '"SF Mono", "Roboto Mono", Menlo, monospace', // tabular data face — the number, hour marks
   uiCaps: 'system-ui, "Helvetica Neue", sans-serif', // UI caps — unselected boroughs, source line (uppercase + letterspacing at use)
 } as const;
@@ -195,7 +195,6 @@ export const typeScale = {
   body: { size: "15px", line: 1.6 }, // mood sentence
   caption: { size: "12px", line: 1.4 }, // borough row, legend
   // Georgia's italic capitals sit visibly shorter than Inter's at the same size; the selected borough word is set larger by this factor so the two cap heights match on the row.
-  serifCapsMatch: 0.96, // italic serif caps at 0.96 of the UI caps size: measured cap height 96% of the regular caps, just under it for optical weight
   micro: { size: "10px", line: 1.4 }, // hour marks and other non-text glyph labels only; running text is never below caption
 } as const;
 

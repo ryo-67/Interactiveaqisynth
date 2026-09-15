@@ -3,7 +3,7 @@
 // O3 → rayleigh, bloom intensity, disc brightness, exposure: photochemical intensity. Ozone is made by strong sun, so a high-ozone afternoon reads bright and white; a low-ozone morning reads deep blue.
 // Clock → sunPosition, star visibility (handled by the caller from solar.ts).
 
-import { SKY_RANGES, SKY_FADE, CLEAR_NOON_EXPOSURE, NIGHT_EXPOSURE, NIGHT, SMOKE } from "../utils/theme";
+import { SKY_RANGES, SKY_FADE, EXPOSURE_CURVE, NIGHT, SMOKE } from "../utils/theme";
 
 export interface SkyParams {
   turbidity: number;
@@ -23,15 +23,20 @@ export function daylightBlend(sunElevationDeg: number): number {
   return Math.max(0, Math.min(1, t));
 }
 
-// 0 at sunset, 1 at civil twilight's end and through the night: how much of the night-blue layer shows.
+// How much of the night-blue layer shows: 1 from NIGHT.fullBelowDeg down, 0 from NIGHT.fadeFromDeg up, across the horizon between.
 export function nightBlend(sunElevationDeg: number): number {
-  return Math.max(0, Math.min(1, sunElevationDeg / NIGHT.fullBelowDeg));
+  return Math.max(0, Math.min(1, (NIGHT.fadeFromDeg - sunElevationDeg) / (NIGHT.fadeFromDeg - NIGHT.fullBelowDeg)));
 }
 
-// MAPPING (clock → exposure): the settled noon value in daylight, the settled night value with the sun down, lerped across the same band the models cross-fade over — one transition, not two. Preetham darkens on its own below the horizon; exposure 0.65 is the value at which that darkness reads as night rather than as an underexposed day.
+// MAPPING (clock → exposure): the measured EXPOSURE_CURVE over sun elevation (theme.ts), linear between its points.
 export function exposureFor(sunElevationDeg: number): number {
-  const d = daylightBlend(sunElevationDeg);
-  return NIGHT_EXPOSURE + (CLEAR_NOON_EXPOSURE - NIGHT_EXPOSURE) * d;
+  const c = EXPOSURE_CURVE;
+  if (sunElevationDeg <= c[0][0]) return c[0][1];
+  for (let i = 1; i < c.length; i++) {
+    const [e0, x0] = c[i - 1], [e1, x1] = c[i];
+    if (sunElevationDeg <= e1) return x0 + (x1 - x0) * ((sunElevationDeg - e0) / (e1 - e0));
+  }
+  return c[c.length - 1][1];
 }
 
 // pm25n and o3n are the engine's normalized values (p05 → 0, p95 → 1). Both saturate above 1: an extreme day sits at the ceiling rather than running away. sunElevationDeg drives exposure; with no elevation given, noon is assumed.

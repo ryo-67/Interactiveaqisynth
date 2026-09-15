@@ -241,12 +241,24 @@ export const NYC_LON = -73.9857;
 // MAPPING (PM2.5 → turbidity + mieCoefficient): aerosol scattering — what smoke does to light.
 // MAPPING (O3 → rayleigh + bloom intensity + disc brightness): photochemical intensity — ozone is made by strong sun, so high ozone reads bright and white and low ozone reads deep blue.
 // MAPPING (clock → sunPosition + star visibility): the day itself.
-// MAPPING (clock → exposure): exposure is clock-only (D-20). Ozone does not touch it; ozone drives rayleigh and bloom. 0.2 is the settled clear-noon value; 0.65 is the settled Preetham night. The schedule lerps between them across SKY_FADE.
+// MAPPING (clock → exposure): a measured curve over sun elevation — the camera's auto-exposure. Exposure is clock-only (D-20); ozone does not touch it. Two models hand over at the horizon and neither is monotonic in brightness on its own there: the day model's clamped horizon glow at 0.7° outshines its own sky at 3°, and the night model is darkest just below the horizon. The curve is set so the mean luminance of the sky band rises through dawn and on to noon without a dip or a spike (measured 2026-09-15, Clear Day, quarter-hour steps), then falls the same way through dusk. Anchors: NIGHT_EXPOSURE with the sun well down, CLEAR_NOON_EXPOSURE from 36° up (the settled noon look); the points between are the measurement. Linear between points.
 export const CLEAR_NOON_EXPOSURE = 0.2;
-export const NIGHT_EXPOSURE = 0.65;
+export const NIGHT_EXPOSURE = 0.45; // 0.65 → 0.45 (2026-09-15): at 0.65 the night sky (84, mean luminance) was brighter than the day model can be at low sun, so no dawn could rise from it
+export const EXPOSURE_CURVE: ReadonlyArray<readonly [elevationDeg: number, exposure: number]> = [
+  [-90, NIGHT_EXPOSURE],
+  [-2, NIGHT_EXPOSURE],
+  [0.7, 0.62], // the day model's horizon glow, held down
+  [2, 0.9],
+  [3.4, 1.05],
+  [6, 1.1], // the day model's dimmest sky, lifted to the night's level
+  [9, 1.02],
+  [36, CLEAR_NOON_EXPOSURE],
+  [90, CLEAR_NOON_EXPOSURE],
+];
 
 // MAPPING (sun elevation → which sky model): Hosek-Wilkie for daylight, Preetham for night, cross-faded over this band of solar elevation (D-20). It ends at 0°, not below, because the Hosek dataset is frozen at the horizon: its coefficients stop changing at exactly 0° elevation, so any blend continuing below would fade between a live Preetham and a stuck Hosek.
-export const SKY_FADE = { startDeg: 6, endDeg: 0 } as const;
+// Measured 2026-09-15 at a fixed exposure: the night model's dawn glow (103 at 0.7°, mean luminance of the sky band) outshines the day model at 6° (67), and the night model keeps brightening faster than the day model as the sun climbs, so every hand-over above the horizon slid downhill. The day model (which clamps its sun at the horizon) now takes over across the horizon itself, −2° to 1°, before the night model's glow appears; the night model serves the night only.
+export const SKY_FADE = { startDeg: 2, endDeg: -2 } as const;
 
 // The literal sun (§5.1). Preetham draws its own disc; Hosek renders an aureole with no disc, so a sprite supplies one that the bloom pass can pick up. Angular diameter is oversized against the real 0.53° so it reads at phone scale. UNDER BENCHMARK in the harness — not yet in the page.
 export const SUN_DISC = {
@@ -326,7 +338,8 @@ export const NIGHT = {
   zenith: "#0a1e52",
   horizon: "#234a90",
   strength: 1,
-  fullBelowDeg: -6,
+  fullBelowDeg: -2, // full night-blue from 2° below the horizon
+  fadeFromDeg: 0, // and gone at the horizon: gone earlier, the sky dipped before the day model arrived; kept later, it screened over the day model's horizon glow and spiked (measured 2026-09-15)
   smokeDamping: 0.75,
 } as const;
 

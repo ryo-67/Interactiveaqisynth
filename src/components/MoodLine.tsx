@@ -24,19 +24,30 @@ export function splitTwoLines(sentence: string): [string, string] {
 
 export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
   const c = themeColors(useTheme());
-  // The sentence's width is the widest line any of the five sentences makes in the sentence's own font, measured, so the panel's width and height are the same whatever the tier. Re-measured when the type size changes with the breakpoint and once the fonts have loaded.
+  // The content's width is fixed at the widest thing any tier can put in it, measured in the elements' own fonts: the widest line of the five sentences, or the widest row — the number at three digits plus the row's gap plus the widest tier word. So the panel's width and height are the same whatever the tier (2026-09-15: the row still widened it for "Suffocating"). Re-measured when the type size changes with the breakpoint and once the fonts have loaded.
   const pRef = useRef<HTMLParagraphElement>(null);
-  const [lineWidth, setLineWidth] = useState<number | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const wordRef = useRef<HTMLDivElement>(null);
+  const [contentWidth, setContentWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
     const measure = () => {
-      const p = pRef.current;
-      if (!p) return;
+      const p = pRef.current, row = rowRef.current, word = wordRef.current;
+      if (!p || !row || !word) return;
       const ctx = document.createElement("canvas").getContext("2d");
       if (!ctx) return;
-      ctx.font = getComputedStyle(p).font;
+      // The font for the canvas is built from its parts: the computed `font` shorthand serializes to nothing for an element with font-variant-numeric set (the number), and the measurement then ran at the wrong size.
+      const fontOf = (el: Element) => { const cs = getComputedStyle(el); return `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; };
+      ctx.font = fontOf(p);
       let w = 0;
       for (const s of MOOD_SENTENCES) for (const line of splitTwoLines(s)) w = Math.max(w, ctx.measureText(line).width);
-      setLineWidth(Math.ceil(w));
+      const numberEl = row.firstElementChild as HTMLElement | null;
+      let rowW = 0;
+      if (numberEl) { ctx.font = fontOf(numberEl); rowW += ctx.measureText("888").width; }
+      rowW += parseFloat(getComputedStyle(row).columnGap || "0");
+      ctx.font = fontOf(word);
+      let wordW = 0;
+      for (const name of TIER_NAMES) wordW = Math.max(wordW, ctx.measureText(name).width);
+      setContentWidth(Math.ceil(Math.max(w, rowW + wordW)));
     };
     measure();
     window.addEventListener("resize", measure);
@@ -59,10 +70,11 @@ export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
   const transition = `filter ${motion.blurMs / 2}ms ease, opacity ${motion.blurMs / 2}ms ease`;
   const blur: React.CSSProperties = { filter: blurred ? "blur(6px)" : "none", opacity: blurred ? 0.4 : 1, transition };
   return (
-    <>
-      <div className="scene-hero-row">
+    <div style={{ width: contentWidth != null ? `${contentWidth}px` : undefined, maxWidth: "100%" }}>
+      <div className="scene-hero-row" ref={rowRef}>
         {number}
         <div
+          ref={wordRef}
           style={{
             ...blur,
             fontFamily: families.serifItalic,
@@ -87,13 +99,12 @@ export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
           lineHeight: "var(--body-line, 24px)",
           color: c.textSecondary,
           margin: 0,
-          width: lineWidth != null ? `${lineWidth}px` : undefined, // the widest line of the five sentences: one width, one height, for every tier
           whiteSpace: "nowrap",
           textAlign: "right", // under the word, which sits at the panel's right (2026-09-15)
         }}
       >
         {line1}<br />{line2}
       </p>
-    </>
+    </div>
   );
 }

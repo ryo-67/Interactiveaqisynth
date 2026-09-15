@@ -4,7 +4,7 @@ Why, not just what. Newest first.
 
 ## 2026-09-15 — The hero is one size for every tier; the sentence is always two lines
 
-Left to the browser, the five mood sentences (36 to 75 characters) could not all wrap to two lines at one width, so the panel changed size with the tier. Now each sentence is split at the word boundary nearest its middle, at least two words a side so nothing is orphaned, and the break is rendered; the sentence's width is the widest line any of the five makes in its own font, measured, so the panel's width and height are the same whatever the tier. Measured at four viewports: every sentence two lines, none overflowing, one panel size per viewport.
+Left to the browser, the five mood sentences (36 to 75 characters) could not all wrap to two lines at one width, so the panel changed size with the tier. Now each sentence is split at the word boundary nearest its middle, at least two words a side so nothing is orphaned, and the break is rendered; the content's width is the widest thing any tier can put in it, measured in the elements' own fonts: the widest line of the five sentences, or the number at three digits plus the row's gap plus the widest tier word; the word and the sentence sit at the right. So the panel's width and height are the same whatever the tier. Measured at four viewports: every sentence two lines, none overflowing, one panel size per viewport.
 
 ## 2026-09-15 — The phone graph fills the height it is given; tabs without units
 

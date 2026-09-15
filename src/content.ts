@@ -37,7 +37,7 @@ export const TRANSPORT_PAUSE = "Pause";
 export const TRANSPORT_VOLUME = "Volume";
 
 // Graph track labels and units. Units are the measurements'; the labels are PLACEHOLDERS — Shoro's.
-export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O3", no2: "NO2", pulse: "pulse · hits per bar" } as const;
+export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O3", no2: "NO2", pulse: "pulse" } as const; // the pulse row's numbers are hits per bar
 export const TRACK_UNITS = { aqi: "", pm25: "µg/m³", o3: "ppb", no2: "ppb" } as const;
 
 // Day navigation. Pin names are from STRATEGY §2.2; the rest are PLACEHOLDERS — Shoro's.

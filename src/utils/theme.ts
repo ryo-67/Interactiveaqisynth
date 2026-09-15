@@ -128,9 +128,29 @@ export const AQI_CATEGORIES = [
   { max: 500, color: "#7e0023" },
 ] as const;
 
-export function aqiCategoryColor(aqi: number): string {
-  for (const c of AQI_CATEGORIES) if (aqi <= c.max) return c.color;
-  return AQI_CATEGORIES[AQI_CATEGORIES.length - 1].color;
+// ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
+const AQI_STOPS: Array<{ at: number; rgb: [number, number, number] }> = (() => {
+  const hex = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  let lo = 0;
+  return AQI_CATEGORIES.map((c) => { const at = (lo + c.max) / 2; lo = c.max; return { at, rgb: hex(c.color) }; });
+})();
+export function aqiScaleColor(aqi: number): string {
+  const v = Math.max(0, aqi);
+  if (v <= AQI_STOPS[0].at) return `rgb(${AQI_STOPS[0].rgb.join(",")})`;
+  for (let i = 1; i < AQI_STOPS.length; i++) {
+    const a = AQI_STOPS[i - 1], b = AQI_STOPS[i];
+    if (v <= b.at) {
+      const t = (v - a.at) / (b.at - a.at);
+      const m = a.rgb.map((x, k) => Math.round(x + (b.rgb[k] - x) * t));
+      return `rgb(${m.join(",")})`;
+    }
+  }
+  return `rgb(${AQI_STOPS[AQI_STOPS.length - 1].rgb.join(",")})`;
+}
+// The gradient's stops, on a 0..max scale, for a canvas or CSS gradient drawn with the same rule.
+export function aqiScaleStops(max: number): Array<{ offset: number; color: string }> {
+  const stops = AQI_STOPS.filter((s) => s.at <= max).map((s) => ({ offset: s.at / max, color: `rgb(${s.rgb.join(",")})` }));
+  return [{ offset: 0, color: aqiScaleColor(0) }, ...stops, { offset: 1, color: aqiScaleColor(max) }];
 }
 
 // The graph (§5.3 score panel, rebuilt): four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of them.

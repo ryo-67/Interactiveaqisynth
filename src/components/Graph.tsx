@@ -2,7 +2,7 @@
 // Tabs: AQI (from PM2.5, coloured per EPA category, D-23), PM2.5 µg/m³, O3 ppb, NO2 ppb — one at a time, each with its unit and its own right-edge scale, a line through hourly points with gaps where the hour is null (§4.4 rest). The pulse row is always beneath: the engine's exact 16-step pattern per four-hour bar (graphPulse.ts), four steps under every hour column, each bar labelled with its hit count; a hit brightens when the engine fires it.
 // One clock: the playhead is the session's eased hour — the same number that moves the sun — so nothing here steps on its own. The active tab is the caller's state.
 import React, { useEffect, useMemo, useRef } from "react";
-import { useTheme, themeColors, families, typeScale, space, aqiCategoryColor, AQI_CATEGORIES, GRAPH } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
 import { pmToAQISeries } from "./graphSeries";
 import { pulseSteps, STEPS_PER_HOUR } from "./graphPulse";
@@ -127,11 +127,7 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
           const barX = cssW - barW;
           const barTop = yFor(max), barBottom = yFor(0);
           const grad = ctx.createLinearGradient(0, barBottom, 0, barTop);
-          grad.addColorStop(0, AQI_CATEGORIES[0].color);
-          for (const cat of AQI_CATEGORIES) {
-            if (cat.max > max) break;
-            grad.addColorStop(cat.max / max, cat.color);
-          }
+          for (const s of aqiScaleStops(max)) grad.addColorStop(s.offset, s.color);
           ctx.fillStyle = grad;
           ctx.beginPath();
           ctx.roundRect(barX + 2, barTop, barW - 4, barBottom - barTop, (barW - 4) / 2);
@@ -148,16 +144,23 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
         }
 
-        // The line. AQI is coloured per segment by the category of its higher end; the others are the secondary text colour.
+        // The line. AQI segments are gradients between the scale colour at each end — the same rule the bar is drawn with, so a point on the line and the bar at that height always match; the others are the secondary text colour.
         ctx.lineWidth = t === "aqi" ? GRAPH.lineWidth.aqi : GRAPH.lineWidth.channel;
         ctx.lineJoin = "round";
+        ctx.lineCap = "round";
         for (let i = 1; i < n; i++) {
           const a = vals[i - 1], b = vals[i];
           if (a == null || b == null) continue;
-          ctx.strokeStyle = t === "aqi" ? aqiCategoryColor(Math.max(a, b)) : c.textSecondary;
+          const x0 = plotX + (i - 1) * colW + colW / 2, x1 = plotX + i * colW + colW / 2;
+          if (t === "aqi") {
+            const seg = ctx.createLinearGradient(x0, yFor(a), x1, yFor(b));
+            seg.addColorStop(0, aqiScaleColor(a));
+            seg.addColorStop(1, aqiScaleColor(b));
+            ctx.strokeStyle = seg;
+          } else ctx.strokeStyle = c.textSecondary;
           ctx.beginPath();
-          ctx.moveTo(plotX + (i - 1) * colW + colW / 2, yFor(a));
-          ctx.lineTo(plotX + i * colW + colW / 2, yFor(b));
+          ctx.moveTo(x0, yFor(a));
+          ctx.lineTo(x1, yFor(b));
           ctx.stroke();
         }
         // Isolated points (a reporting hour between two nulls) still show.
@@ -165,7 +168,7 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
           const v = vals[i];
           if (v == null) continue;
           if ((i === 0 || vals[i - 1] == null) && (i === n - 1 || vals[i + 1] == null)) {
-            ctx.fillStyle = t === "aqi" ? aqiCategoryColor(v) : c.textSecondary;
+            ctx.fillStyle = t === "aqi" ? aqiScaleColor(v) : c.textSecondary;
             ctx.fillRect(plotX + i * colW + colW / 2 - 1, yFor(v) - 1, 2, 2);
           }
         }

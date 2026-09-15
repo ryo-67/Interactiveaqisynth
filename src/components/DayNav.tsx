@@ -147,7 +147,7 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
         aria-haspopup="dialog"
         aria-label={`${NAV_CALENDAR}: ${label}`}
       >
-        <CalendarIcon />
+        {/* No calendar glyph on phones: the caret is the affordance, and the 18 px is what lets the chip share a row with the boroughs from 408 wide. */}
         <span style={{ color: c.textPrimary }}>{label}</span>
         <span aria-hidden style={{ color: c.textMuted, fontSize: "0.8em", marginLeft: 2 }}>{open ? "▴" : "▾"}</span>
       </button>

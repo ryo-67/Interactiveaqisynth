@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — Phones from 408 wide: the header on one row
+
+With the day control reduced to one chip, the phone header can be one row where the two pills fit: the chip drops its calendar glyph on phones (the caret is the affordance) and the gap between the pills is 12, so the borough codes and the widest chip label need 404 with page padding. From 408 they share a row; below that they stack. Any one phone always gets the same layout.
+
 ## 2026-09-15 — One day control on phones (D-34)
 
 On phones the arrows, the date chip, the Live chip and the preset strip are replaced by one chip that names the current choice and opens a menu: Last 24h, then the presets in order, then "or choose a date" and the calendar. Three stacked pills spent a third of a phone's height on navigation. The calendar grid and the popover placement were extracted so the phone picker and the wider layouts share them.

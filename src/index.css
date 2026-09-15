@@ -1449,7 +1449,7 @@ html {
    A (≥1408): one row — borough at the left, day nav and presets at the right (needs 1405).
    B (840–1407): two rows — borough centred; day nav and presets side by side, centred as a pair (row two needs 834 at tablet padding).
    C2 (576–839): two rows — borough (codes) and day nav side by side, centred; presets centred beneath, hugging its chips (row one needs 573).
-   C (≤575): three centred rows — borough (codes), day nav, presets. No two pills fit side by side at phone widths. */
+   C (≤575): the phone's two pills — borough codes and the one day chip (D-34) — side by side from 408 (C1), stacked below. */
 .scene-top { flex-wrap: nowrap; }
 .scene-day { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: var(--ui-gap); margin-left: auto; min-width: 0; }
 @media (max-width: 1407px) {
@@ -1466,11 +1466,17 @@ html {
   .scene-source .source-detail { display: inline; }
 }
 @media (max-width: 575px) {
-  .scene-top { flex-direction: column; flex-wrap: nowrap; }
+  .scene-top { flex-direction: column; flex-wrap: nowrap; gap: 12px; } /* 12 between the two phone pills (2026-09-15) */
   .scene-day { display: flex; flex-direction: column; align-items: center; margin-left: 0; }
   .scene-source .source-sep { display: none; }
   .scene-source .source-detail { display: block; }
 }
+/* Phones from 408 wide (state C1, 2026-09-15): the borough codes (208) and the day chip (up to 136 without its glyph) plus the 12 gap fit one row inside 408 − 48 of padding, so they share it. Below 408 they stack. Any one phone always gets the same layout. */
+@media (max-width: 575px) and (min-width: 408px) {
+  .scene-top { flex-direction: row; justify-content: center; align-items: center; }
+  .scene-day { display: contents; }
+}
+
 /* Side by side, the hero keeps its content height and the graph is the taller panel: the graph stretches to the row and has a floor above the hero's natural height, so the hero is always the shorter of the two and the plot grows into the graph's extra height. The row is centred in the remaining height by its own margins. */
 .scene-mid { flex: 0 1 auto; margin: auto 0; display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; }
 /* Side-by-side only (laptop): the shorter hero sits on the graph's horizontal centre line, and the graph has a floor above the hero's natural height. In the column layouts each panel takes its content height and the plot stays at its breakpoint minimum. */

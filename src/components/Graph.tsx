@@ -210,7 +210,10 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
             if (va == null || vb == null) continue;
             // Segment edges on whole device pixels: adjacent segments then abut with neither an anti-aliased seam nor an overlap (the old ±0.5 px overlap made a double-alpha stripe at every hour, and it drifted from the hairlines). The line's own points stay fractional; only the fill's columns snap.
             const x0 = Math.round((i - 1) * colW * dpr) / dpr, x1 = Math.round(i * colW * dpr) / dpr;
-            const ya = yFor(va), yb = yFor(vb);
+            // The segment's top corners sit ON the line: the true points are at fractional x, so the y at each snapped edge is interpolated along the segment's own slope. Otherwise the fill's edge and the line diverge by up to half a pixel on steep parts.
+            const xa = (i - 1) * colW, xb = i * colW;
+            const yAt = (x: number) => yFor(va) + (yFor(vb) - yFor(va)) * ((x - xa) / (xb - xa));
+            const ya = yAt(x0), yb = yAt(x1);
             const fade = o.createLinearGradient(0, Math.min(ya, yb), 0, baseY);
             fade.addColorStop(0, `rgba(0,0,0,${alpha})`);
             fade.addColorStop(1, "rgba(0,0,0,0)");

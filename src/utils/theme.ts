@@ -27,12 +27,13 @@ export function themeColors(theme: Theme) {
     textPrimary: isDark
       ? "rgba(255,255,255,0.9)"
       : "rgba(0,0,0,0.84)",
+    // Text alphas hold WCAG AA (4.5:1) on the panel fills at GLASS.fillAlpha against any sky: secondary ≥ 6:1, muted ≥ 4.6:1 on both tones. Faint is for LINES only, never text.
     textSecondary: isDark
-      ? "rgba(255,255,255,0.58)"
-      : "rgba(0,0,0,0.58)",
+      ? "rgba(255,255,255,0.78)"
+      : "rgba(0,0,0,0.72)",
     textMuted: isDark
-      ? "rgba(255,255,255,0.35)"
-      : "rgba(0,0,0,0.38)",
+      ? "rgba(255,255,255,0.64)"
+      : "rgba(0,0,0,0.6)",
     textFaint: isDark
       ? "rgba(255,255,255,0.18)"
       : "rgba(0,0,0,0.22)",
@@ -256,12 +257,19 @@ export const SKY_RANGES = {
 export const GLASS = {
   blur: "18px",
   saturate: "1.6",
-  fillAlpha: 0.16,
+  // The material adapts to its local background (§5.3, as Apple's does): a light fill with dark text over a dark sky, a dark fill with light text over a bright one. Each panel samples the rendered sky under its own rectangle (SkyView's luminance probe) and switches with hysteresis. Fill alpha is set so text holds AA at the worst case for each tone — white text on a white sky through the dark fill: 255·(1−0.62)+10·0.62 ≈ 103 → 4.9:1 against the 0.9-alpha primary.
+  fillAlpha: 0.62,
+  fillDark: "10, 10, 22",
+  fillLight: "255, 255, 255",
   edgeAlpha: 0.35,
-  // Frosted (§5.3, the content material): heavier blur and a DARK fill, because content panels carry white text over the brightest sky stops and a white fill cannot hold contrast there. Alpha is a first pass; contrast against the brightest Jun 7 stop is to be measured.
+  // Frosted (the content material): heavier blur and a touch more fill than the control material.
   frostedBlur: "28px",
-  frostedFill: "10, 10, 22",
-  frostedFillAlpha: 0.42,
+  frostedFillAlpha: 0.7,
+  // The probe's switch points on relative luminance (0..1) of the sky under the panel, with hysteresis so a panel does not flicker at dusk.
+  toLightAbove: 0.5,
+  toDarkBelow: 0.36,
+  sampleEveryMs: 400,
+  transitionMs: 260,
   // prefers-reduced-transparency: both materials go frosted-opaque
   fillAlphaOpaque: 0.85,
   blurOpaque: "36px",

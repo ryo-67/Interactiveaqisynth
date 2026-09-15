@@ -1,11 +1,11 @@
 // SkyView — one physically based sky, rendered with the real drei <Sky>, <Stars>, and postprocessing <Bloom>. Used by the /scene-test harness and (next sprint) by the scene itself. Static: no engine, no clock; the caller passes the hour.
-import React, { useLayoutEffect } from "react";
-import { Canvas, useThree, invalidate } from "@react-three/fiber";
+import React, { useLayoutEffect, useMemo, useRef } from "react";
+import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { EffectComposer, Bloom, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
-import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute } from "three";
-import { SKY_RANGES, SUN_DISC } from "../utils/theme";
+import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector3 } from "three";
+import { SKY_RANGES, SUN_DISC, NYC_LAT } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
 
@@ -33,11 +33,57 @@ interface Props {
   // The literal sun sprite (§5.1). Size under benchmark: the harness passes discDeg; the page uses the token.
   disc?: boolean;
   discDeg?: number;
+  // Local hour (fractional) for the star field's rotation. Stars turn about the celestial pole 15° an hour, so facing south they rise on the left and set on the right; continuous across midnight.
+  hour?: number;
+  // The luminance probe: lets the page read the rendered sky's brightness under its panels, so the glass can choose its tone. See SkyProbe.
+  probeRef?: React.MutableRefObject<SkyProbe | null>;
   // Which way the camera looks. The default camera faces north (−Z), which in New York puts the daytime sun behind the viewer — no disc, Preetham's included, was ever in frame. "south" faces the sun's arc so it crosses left to right; "sun" yaws to the sun's azimuth so it is always horizontally centered. UNDER BENCHMARK with the disc.
   facing?: CameraFacing;
 }
 
 export type CameraFacing = "north" | "south" | "sun";
+
+// A rect in CSS pixels relative to the canvas; sample() resolves the mean relative luminance (0..1) of the rendered sky in each rect, read from the frame after post-processing.
+export interface ProbeRect { x: number; y: number; w: number; h: number }
+export interface SkyProbe { sample(rects: ProbeRect[]): Promise<Array<number | null>> }
+
+const srgbToLinear = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+
+// Reads pixels from the finished frame. With the composer mounted it renders at priority 1, so priority 2 lands after it; without it r3f's own render is disabled by our presence, so we render first. Reads are a handful of single pixels per panel, at most a few times a second — one GPU sync, then cheap.
+function LuminanceProbe({ probeRef, hasComposer }: { probeRef: React.MutableRefObject<SkyProbe | null>; hasComposer: boolean }) {
+  const { gl, scene, camera } = useThree();
+  const pending = useRef<{ rects: ProbeRect[]; resolve: (v: Array<number | null>) => void } | null>(null);
+  useLayoutEffect(() => {
+    probeRef.current = {
+      sample: (rects) => new Promise((resolve) => { pending.current = { rects, resolve }; invalidate(); }),
+    };
+    return () => { probeRef.current = null; };
+  }, [probeRef]);
+  useFrame(() => {
+    if (!hasComposer) gl.render(scene, camera);
+    const p = pending.current;
+    if (!p) return;
+    pending.current = null;
+    const ctx = gl.getContext();
+    const dpr = gl.getPixelRatio();
+    const W = gl.domElement.width, H = gl.domElement.height;
+    const buf = new Uint8Array(4);
+    const out = p.rects.map((r) => {
+      let sum = 0, n = 0;
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) {
+        const x = Math.floor((r.x + (r.w * (i + 0.5)) / 3) * dpr);
+        const y = Math.floor(H - (r.y + (r.h * (j + 0.5)) / 2) * dpr); // GL rows run bottom-up
+        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        ctx.readPixels(x, y, 1, 1, ctx.RGBA, ctx.UNSIGNED_BYTE, buf);
+        sum += 0.2126 * srgbToLinear(buf[0]) + 0.7152 * srgbToLinear(buf[1]) + 0.0722 * srgbToLinear(buf[2]);
+        n++;
+      }
+      return n ? sum / n : null;
+    });
+    p.resolve(out);
+  }, 2);
+  return null;
+}
 
 // Pitch and yaw applied in YXZ order: yaw about the world up axis first, then pitch — so pitching up never tilts the horizon. Camera looks along −Z at yaw 0 (north); east is +X, so facing azimuth `az` is a yaw of −az.
 function CameraRig({ pitch, yaw }: { pitch: number; yaw: number }) {
@@ -68,7 +114,7 @@ function getStarGeometry(count: number): BufferGeometry {
     // Uniform on the upper hemisphere, radius ~ 100..150 so the field has depth against the dome at the far plane.
     const u = rnd(), v = rnd();
     const theta = 2 * Math.PI * u;
-    const y = 0.05 + 0.95 * v; // above the horizon only
+    const y = 2 * v - 1; // the whole sphere: the field rotates, so anything below the horizon now rises later
     const r = Math.sqrt(1 - y * y);
     const d = 100 + 50 * rnd();
     pos[i * 3] = d * r * Math.cos(theta);
@@ -79,12 +125,17 @@ function getStarGeometry(count: number): BufferGeometry {
   starGeometry.setAttribute("position", new Float32BufferAttribute(pos, 3));
   return starGeometry;
 }
-function StarField({ opacity, count }: { opacity: number; count: number }) {
+// The field turns about the celestial pole, which sits due north at an altitude equal to the latitude: axis (0, sin φ, −cos φ) in a frame where north is −Z. Positive rotation about that axis would carry a southern star east, so the angle is negative: 15° an hour westward.
+const POLE_AXIS = new Vector3(0, Math.sin((NYC_LAT * Math.PI) / 180), -Math.cos((NYC_LAT * Math.PI) / 180)).normalize();
+function StarField({ opacity, count, hour }: { opacity: number; count: number; hour: number }) {
   const geometry = getStarGeometry(count);
+  const q = useMemo(() => new Quaternion().setFromAxisAngle(POLE_AXIS, -(hour / 24) * Math.PI * 2), [hour]);
   return (
-    <points geometry={geometry} renderOrder={1} frustumCulled={false}>
-      <pointsMaterial size={1.6} sizeAttenuation={false} color="#ffffff" transparent opacity={opacity} depthWrite={false} blending={AdditiveBlending} toneMapped={false} />
-    </points>
+    <group quaternion={q}>
+      <points geometry={geometry} renderOrder={1} frustumCulled={false}>
+        <pointsMaterial size={1.6} sizeAttenuation={false} color="#ffffff" transparent opacity={opacity} depthWrite={false} blending={AdditiveBlending} toneMapped={false} />
+      </points>
+    </group>
   );
 }
 
@@ -149,7 +200,8 @@ function Exposure({ value }: { value: number }) {
   return null;
 }
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north" }: Props) {
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, probeRef }: Props) {
+  const hasComposer = params.bloomIntensity > 0.01;
   // Sun elevation and azimuth from the vector itself, so every caller that already passes a sun position gets the fade and the facing for free.
   const len = Math.hypot(...sunPosition) || 1;
   const sunElevationDeg = (Math.asin(Math.max(-1, Math.min(1, sunPosition[1] / len))) * 180) / Math.PI;
@@ -192,8 +244,9 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
         {disc && sunElevationDeg > -discDeg && (
           <SunDisc sunPosition={sunPosition} brightness={params.discBrightness} deg={discDeg} />
         )}
-        {starOpacity > 0.001 && <StarField opacity={starOpacity} count={SKY_RANGES.starsCount} />}
-        {params.bloomIntensity > 0.01 && (
+        {starOpacity > 0.001 && <StarField opacity={starOpacity} count={SKY_RANGES.starsCount} hour={hour} />}
+        {probeRef && <LuminanceProbe probeRef={probeRef} hasComposer={hasComposer} />}
+        {hasComposer && (
           <EffectComposer>
             <Bloom
               intensity={params.bloomIntensity}

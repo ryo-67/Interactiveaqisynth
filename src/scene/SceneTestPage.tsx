@@ -119,7 +119,7 @@ export default function SceneTestPage() {
     // The scene owns the area above the control bar rather than the whole viewport, so the plume's densest band — which sits at the horizon, at the bottom of the frame — is never hidden behind the controls.
     <div style={{ position: "fixed", inset: 0, background: "#05050a", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
-        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} style={{ width: "100%", height: "100%" }} live />
+        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} hour={hour} style={{ width: "100%", height: "100%" }} live />
 
         <SmokeLayer density={smoke} hueDeg={smokeHue} />
 

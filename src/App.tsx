@@ -13,7 +13,7 @@ import { useListenSession, DEV } from "./scene/useListenSession";
 export default function App() {
   const [theme] = useState<Theme>("dark"); // dark is the default; light stays reachable through tokens (DSN-06 is Phase 2)
   const { borough, setBorough, snapshot, anchors: a, day, live, beat, playing, playheadHour, subscribePulse, togglePlay, displayAqi, moodTier, moodHour, dominant, devDayKey, setDevDayKey } = useListenSession();
-  const [tracks, setTracks] = useState<Record<TrackKey, boolean>>(() => Object.fromEntries(TRACK_ORDER.map((t) => [t, true])) as Record<TrackKey, boolean>);
+  const [tab, setTab] = useState<TrackKey>(TRACK_ORDER[0]);
 
   const c = themeColors(theme);
 
@@ -50,8 +50,8 @@ export default function App() {
                 anchors={a}
                 playheadHour={playing ? playheadHour : null}
                 live={live}
-                tracks={tracks}
-                onToggleTrack={(t) => setTracks((prev) => ({ ...prev, [t]: !prev[t] }))}
+                tab={tab}
+                onTab={setTab}
                 subscribePulse={subscribePulse}
                 onToggle={togglePlay}
               />

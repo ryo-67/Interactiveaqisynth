@@ -35,7 +35,7 @@ export function DayNav({ date, onChange, loading }: Props) {
     color: active ? c.textPrimary : c.textMuted,
     background: active ? "rgba(255,255,255,0.14)" : "none",
     border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.14)"}`,
-    borderRadius: 999, padding: "2px 8px",
+    borderRadius: 999, padding: "4px 10px", lineHeight: 1.2, flex: "0 0 auto",
   });
 
   const prev = () => onChange(addDays(date ?? nyToday(), -1) < MIN_DATE ? MIN_DATE : addDays(date ?? nyToday(), -1));
@@ -74,7 +74,7 @@ export function DayNav({ date, onChange, loading }: Props) {
         <button style={chip(open)} onClick={() => setOpen((o) => !o)} aria-expanded={open}>{NAV_CALENDAR}</button>
       </div>
 
-      <div style={{ display: "flex", gap: space.sm, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: space.sm, overflowX: "auto", whiteSpace: "nowrap", paddingBottom: 2 }}>
         {PINS.map((p) => (
           <button key={p.date} style={chip(date === p.date)} onClick={() => onChange(p.date)} title={labelOf(p.date)}>{p.name}</button>
         ))}

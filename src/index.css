@@ -1504,7 +1504,7 @@ html {
 /* Phone: every band stacks; the transport and the source share the bottom row; sizes at their smallest. */
 @media (max-width: 767px) {
   .scene-ui {
-    --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px;
+    --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 8px;
     --display-size: 56px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
     /* Spacing stays at the tablet values (24 / 16): the phone step changes control and type sizes, not the room around them. */
   }

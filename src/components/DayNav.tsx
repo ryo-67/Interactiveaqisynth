@@ -120,7 +120,7 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
         })}
       </div>
       {/* What the range is, stated: the archive's last available day. */}
-      <div style={{ marginTop: space.xs, textAlign: "center", color: c.textMuted }}>
+      <div style={{ marginTop: space.xs, textAlign: "center", color: c.textHint, fontSize: typeScale.micro.size }}>
         {CAL_AVAILABLE_UNTIL.replace("{date}", last ? labelOf(last) : "…")}
       </div>
     </>
@@ -169,7 +169,7 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
               );
             })}
           </div>
-          <div style={{ textAlign: "center", color: c.textMuted, marginBottom: space.xs }}>{PICK_OR_DATE}</div>
+          <div style={{ textAlign: "center", color: c.textHint, fontSize: typeScale.micro.size, marginBottom: space.xs }}>{PICK_OR_DATE}</div>
           <CalendarGrid date={date} latestDate={latestDate} onPick={(iso) => { onChange(iso); setOpen(false); }} />
         </div>,
         document.body,

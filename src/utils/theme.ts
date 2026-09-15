@@ -34,6 +34,10 @@ export function themeColors(theme: Theme) {
     textMuted: isDark
       ? "rgba(255,255,255,0.64)"
       : "rgba(0,0,0,0.6)",
+    // Hints: the quietest text that still reads — "or choose a date", "EPA data available till". One step below muted; measured ≥ 4.5:1 on the frosted panel over a bright sky (2026-09-15).
+    textHint: isDark
+      ? "rgba(255,255,255,0.56)"
+      : "rgba(0,0,0,0.52)",
     textFaint: isDark
       ? "rgba(255,255,255,0.18)"
       : "rgba(0,0,0,0.22)",

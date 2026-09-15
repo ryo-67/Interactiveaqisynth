@@ -2,10 +2,10 @@
 import React, { useLayoutEffect, useMemo } from "react";
 import { Canvas, useThree, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
-import { EffectComposer, Bloom, ToneMapping } from "@react-three/postprocessing";
+import { EffectComposer, Bloom, HueSaturation, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector3 } from "three";
-import { SKY_RANGES, SUN_DISC, NYC_LAT } from "../utils/theme";
+import { SKY_RANGES, SUN_DISC, SKY_GRADE, NYC_LAT } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
 
@@ -33,6 +33,8 @@ interface Props {
   // The literal sun sprite (§5.1). Size under benchmark: the harness passes discDeg; the page uses the token.
   disc?: boolean;
   discDeg?: number;
+  // Saturation grade on the sky (SKY_GRADE.saturation); the harness overrides it.
+  saturation?: number;
   // Local hour (fractional) for the star field's rotation. Stars turn about the celestial pole 15° an hour, so facing south they rise on the left and set on the right; continuous across midnight.
   hour?: number;
 
@@ -157,8 +159,7 @@ function Exposure({ value }: { value: number }) {
   return null;
 }
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0 }: Props) {
-  const hasComposer = params.bloomIntensity > 0.01;
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation }: Props) {
   // Sun elevation and azimuth from the vector itself, so every caller that already passes a sun position gets the fade and the facing for free.
   const len = Math.hypot(...sunPosition) || 1;
   const sunElevationDeg = (Math.asin(Math.max(-1, Math.min(1, sunPosition[1] / len))) * 180) / Math.PI;
@@ -202,18 +203,19 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
           <SunDisc sunPosition={sunPosition} brightness={params.discBrightness} deg={discDeg} />
         )}
         {starOpacity > 0.001 && <StarField opacity={starOpacity} count={SKY_RANGES.starsCount} hour={hour} />}
-        {hasComposer && (
-          <EffectComposer>
-            <Bloom
-              intensity={params.bloomIntensity}
-              luminanceThreshold={0.55}
-              luminanceSmoothing={0.35}
-              mipmapBlur
-            />
+        {/* The composer always mounts: the grade and the tone-mapping pass are part of the sky at every hour, not only when bloom is on. */}
+        <EffectComposer>
+          <Bloom
+            intensity={params.bloomIntensity}
+            luminanceThreshold={0.55}
+            luminanceSmoothing={0.35}
+            mipmapBlur
+          />
+          {/* Saturation grade before tone mapping, so it lifts the sky's own colour rather than the mapped result. */}
+          <HueSaturation saturation={saturation} />
             {/* three applies material tone mapping only when rendering to the canvas (WebGLProgram: toneMapping stays NoToneMapping unless currentRenderTarget is null), and the composer renders the scene into a target — so with bloom on the sky reached the screen untonemapped and washed out. The composed output is tone mapped here instead; the effect reads the renderer's toneMappingExposure, so the exposure control still governs it. */}
-            <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-          </EffectComposer>
-        )}
+          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        </EffectComposer>
       </Canvas>
       {groundMode === "fade" && (
         // A neutral band the sky fades into, instead of sky-below-horizon reading as fog.

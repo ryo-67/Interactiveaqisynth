@@ -3,7 +3,7 @@
 // One clock: the playhead is the session's eased hour — the same number that moves the sun — so nothing here steps on its own. The active tab is the caller's state.
 import React, { useEffect, useMemo, useRef } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiCategoryColor, AQI_CATEGORIES, GRAPH } from "../utils/theme";
-import { AQI_CATEGORY_NAMES, TRACK_LABELS, TRACK_UNITS } from "../content";
+import { TRACK_LABELS, TRACK_UNITS } from "../content";
 import { pmToAQISeries } from "./graphSeries";
 import { pulseSteps, STEPS_PER_HOUR } from "./graphPulse";
 import type { PollutantAnchors } from "../engine/contour";
@@ -77,15 +77,19 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
       ctx.clearRect(0, 0, cssW, cssH);
 
       const n = day.length;
-      const colW = cssW / n;
+      // The AQI tab keeps a scale bar at the left, drawn to the same y-scale as the line: the standard category colours as a vertical gradient, with a marker at the value under the playhead (the latest hour at rest).
+      const barW = tab === "aqi" ? GRAPH.scaleBarWidth : 0;
+      const plotX = barW ? barW + GRAPH.scaleBarGap : 0;
+      const plotW = cssW - plotX;
+      const colW = plotW / n;
       const labelPx = parseInt(typeScale.caption.size);
       ctx.font = `${labelPx}px ${families.data}`;
       const lh = labelPx + 4; // label line height inside the canvas
 
       // Hour grid: a faint tick per hour through everything, a firmer one per four-hour bar (the pulse's bar lines).
       for (let i = 0; i <= n; i++) {
-        const x = Math.round(i * colW) + 0.5;
-        ctx.strokeStyle = i % 4 === 0 ? c.textFaint : "rgba(255,255,255,0.06)";
+        const x = Math.round(plotX + i * colW) + 0.5;
+        ctx.strokeStyle = i % 4 === 0 ? c.textFaint : c.gridHair;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, cssH - GRAPH.axisHeight); ctx.stroke();
       }
@@ -103,26 +107,42 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
 
         // Baseline, the scale's top value at the right, and a mid gridline with its value so the line can be read against numbers.
         ctx.strokeStyle = c.textFaint;
-        ctx.beginPath(); ctx.moveTo(0, y0 + lh + inner + 0.5); ctx.lineTo(cssW, y0 + lh + inner + 0.5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(plotX, y0 + lh + inner + 0.5); ctx.lineTo(cssW, y0 + lh + inner + 0.5); ctx.stroke();
         const top = Math.round(max / 1.08);
         ctx.fillStyle = c.textMuted;
         const topLabel = String(top);
         ctx.fillText(topLabel, cssW - ctx.measureText(topLabel).width - 4, y0 + labelPx);
         const mid = Math.round(top / 2);
         ctx.setLineDash([2, 5]);
-        ctx.beginPath(); ctx.moveTo(0, yFor(mid) + 0.5); ctx.lineTo(cssW, yFor(mid) + 0.5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(plotX, yFor(mid) + 0.5); ctx.lineTo(cssW, yFor(mid) + 0.5); ctx.stroke();
         ctx.setLineDash([]);
         const midLabel = String(mid);
         ctx.fillText(midLabel, cssW - ctx.measureText(midLabel).width - 4, yFor(mid) - 3);
 
-        // AQI: the category lines that fall inside the scale, in their own colours, faint.
+        // AQI: the scale bar. A vertical gradient through the category colours at their breakpoints, on the line's own y-scale, and a marker at the value under the playhead.
         if (t === "aqi") {
+          const barTop = yFor(Math.min(max, 500)), barBottom = yFor(0);
+          const grad = ctx.createLinearGradient(0, barBottom, 0, barTop);
+          let lo = 0;
           for (const cat of AQI_CATEGORIES) {
-            if (cat.max >= max) break;
-            ctx.strokeStyle = cat.color + "55";
-            ctx.setLineDash([2, 4]);
-            ctx.beginPath(); ctx.moveTo(0, yFor(cat.max) + 0.5); ctx.lineTo(cssW, yFor(cat.max) + 0.5); ctx.stroke();
-            ctx.setLineDash([]);
+            const hi = Math.min(cat.max, max);
+            if (lo >= max) break;
+            grad.addColorStop(lo / Math.min(max, 500), cat.color);
+            grad.addColorStop(hi / Math.min(max, 500), cat.color);
+            lo = cat.max;
+          }
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.roundRect(2, barTop, barW - 4, barBottom - barTop, (barW - 4) / 2);
+          ctx.fill();
+          const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (vals[i] != null) return i; return -1; })();
+          const cur = hi >= 0 ? vals[hi] : null;
+          if (cur != null) {
+            const my = yFor(Math.min(cur, max));
+            ctx.fillStyle = c.textPrimary;
+            ctx.strokeStyle = c.bgPanel;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(barW / 2, my, GRAPH.scaleBarMarker, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
           }
         }
 
@@ -134,8 +154,8 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
           if (a == null || b == null) continue;
           ctx.strokeStyle = t === "aqi" ? aqiCategoryColor(Math.max(a, b)) : c.textSecondary;
           ctx.beginPath();
-          ctx.moveTo((i - 1) * colW + colW / 2, yFor(a));
-          ctx.lineTo(i * colW + colW / 2, yFor(b));
+          ctx.moveTo(plotX + (i - 1) * colW + colW / 2, yFor(a));
+          ctx.lineTo(plotX + i * colW + colW / 2, yFor(b));
           ctx.stroke();
         }
         // Isolated points (a reporting hour between two nulls) still show.
@@ -144,7 +164,7 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
           if (v == null) continue;
           if ((i === 0 || vals[i - 1] == null) && (i === n - 1 || vals[i + 1] == null)) {
             ctx.fillStyle = t === "aqi" ? aqiCategoryColor(v) : c.textSecondary;
-            ctx.fillRect(i * colW + colW / 2 - 1, yFor(v) - 1, 2, 2);
+            ctx.fillRect(plotX + i * colW + colW / 2 - 1, yFor(v) - 1, 2, 2);
           }
         }
         y0 += tabH;
@@ -155,18 +175,18 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
         const stepW = colW / STEPS_PER_HOUR;
         const now = performance.now();
         ctx.fillStyle = c.textMuted;
-        ctx.fillText(TRACK_LABELS.pulse, 4, y0 + labelPx);
+        ctx.fillText(TRACK_LABELS.pulse, plotX + 4, y0 + labelPx);
         for (let b = 0; b < series.barHits.length; b++) {
           const k = series.barHits[b];
           const label = k == null ? "—" : `${k}`;
-          const bx = b * 4 * colW + 4 * colW - ctx.measureText(label).width - 4;
+          const bx = plotX + b * 4 * colW + 4 * colW - ctx.measureText(label).width - 4;
           ctx.fillStyle = c.textMuted;
           ctx.fillText(label, bx, y0 + labelPx);
         }
         ctx.fillStyle = c.textSecondary;
         for (let s = 0; s < series.pulse.length; s++) {
           const v = series.pulse[s];
-          const x = s * stepW;
+          const x = plotX + s * stepW;
           if (v == null) {
             if (s % 16 === 0) { ctx.fillStyle = c.textFaint; ctx.fillRect(x, y0 + pulseH - 5, colW * 4, 1); }
             continue;
@@ -183,9 +203,9 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
       // X axis: a tick every hour, a label every three, "now" at the right edge when live.
       const axisY = cssH - GRAPH.axisHeight;
       ctx.strokeStyle = c.textFaint;
-      ctx.beginPath(); ctx.moveTo(0, axisY + 0.5); ctx.lineTo(cssW, axisY + 0.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(plotX, axisY + 0.5); ctx.lineTo(cssW, axisY + 0.5); ctx.stroke();
       for (let i = 0; i < n; i++) {
-        const x = Math.round(i * colW) + 0.5;
+        const x = Math.round(plotX + i * colW) + 0.5;
         ctx.strokeStyle = c.textFaint;
         ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + (i % 3 === 0 ? 5 : 3)); ctx.stroke();
         if (i % 3 === 0 && !(live && i === n - 1)) { ctx.fillStyle = c.textMuted; ctx.fillText(String(i), x + 3, cssH - 5); }
@@ -195,7 +215,7 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
       // Playhead: the eased hour, one line through every track, with the hour's values printed at its head.
       const playheadHour = playheadRef.current;
       if (playheadHour != null && n > 0) {
-        const x = Math.min(cssW - 0.5, playheadHour * colW);
+        const x = Math.min(cssW - 0.5, plotX + playheadHour * colW);
         ctx.strokeStyle = c.textPrimary;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, axisY); ctx.stroke();
@@ -244,16 +264,6 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
         })}
       </div>
       <canvas ref={canvasRef} onClick={onToggle} style={{ width: "100%", display: "block", cursor: "pointer" }} aria-label="24-hour graph; click to play or pause" />
-      {tab === "aqi" && (
-        <div style={{ display: "flex", gap: space.sm, flexWrap: "wrap", marginTop: space.sm, fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: 1.6, color: c.textMuted }}>
-          {AQI_CATEGORIES.map((cat, i) => (
-            <span key={cat.max} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 10, background: cat.color, borderRadius: 2, display: "inline-block" }} />
-              {i === 0 ? 0 : AQI_CATEGORIES[i - 1].max + 1}–{cat.max} {AQI_CATEGORY_NAMES[i]}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

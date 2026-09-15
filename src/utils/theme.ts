@@ -37,6 +37,7 @@ export function themeColors(theme: Theme) {
     textFaint: isDark
       ? "rgba(255,255,255,0.18)"
       : "rgba(0,0,0,0.22)",
+    gridHair: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
 
     border: isDark
       ? "rgba(255,255,255,0.07)"
@@ -140,6 +141,10 @@ export const GRAPH = {
   axisHeight: 22,
   labelGutter: 6,
   lineWidth: { aqi: 2.5, channel: 1.75 },
+  // The AQI scale bar at the left of the AQI tab: the standard category colours as a vertical gradient on the line's own y-scale, marker at the current value.
+  scaleBarWidth: 14,
+  scaleBarGap: 8,
+  scaleBarMarker: 4,
   pulseFlashMs: 140, // a hit mark brightens for this long after the engine fires it
 } as const;
 
@@ -258,7 +263,7 @@ export const SKY_RANGES = {
 export const GLASS = {
   blur: "18px",
   saturate: "1.6",
-  // The material adapts to its local background (§5.3, as Apple's does): a light fill with dark text over a dark sky, a dark fill with light text over a bright one. Each panel samples the rendered sky under its own rectangle (SkyView's luminance probe) and switches with hysteresis. Fill alpha is set so text holds AA at the worst case for each tone — white text on a white sky through the dark fill: 255·(1−0.62)+10·0.62 ≈ 103 → 4.9:1 against the 0.9-alpha primary.
+  // Two tones, chosen by the clock (D-24): light material with dark text in daylight, dark material with light text at night, switching at the middle of the sky's own dusk fade so every panel changes together and consistently. Per-panel pixel sampling was tried and rejected: it answered late and each panel switched on its own. Fill alpha is set so text holds AA at the worst case for each tone — white text on a white sky through the dark fill: 255·(1−0.62)+10·0.62 ≈ 103 → 4.9:1 against the 0.9-alpha primary; dark text on a black sky through the light fill is the mirror.
   fillAlpha: 0.62,
   fillDark: "10, 10, 22",
   fillLight: "255, 255, 255",
@@ -266,11 +271,6 @@ export const GLASS = {
   // Frosted (the content material): heavier blur and a touch more fill than the control material.
   frostedBlur: "28px",
   frostedFillAlpha: 0.7,
-  // The probe's switch points on relative luminance (0..1) of the sky under the panel, with hysteresis so a panel does not flicker at dusk.
-  toLightAbove: 0.5,
-  toDarkBelow: 0.38,
-  // Sampling is six pixel reads per panel, one GPU sync per sample; at 120 ms that is well inside a beat (667 ms), so a panel answers a sky change before the next hour lands. Reading every frame would stall the pipeline every frame.
-  sampleEveryMs: 120,
   transitionMs: 140,
   // prefers-reduced-transparency: both materials go frosted-opaque
   fillAlphaOpaque: 0.85,

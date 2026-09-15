@@ -293,8 +293,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, axisY); ctx.stroke();
         const hi = Math.max(0, Math.min(n - 1, Math.floor(playheadHour))); // clamped both ways: this indexes the day
-        // Date and clock time from the reading's own timestamp, not the index: "Sep 14, 6:00 pm", "Jun 7, 2023, 4:00 am".
-        const parts: string[] = [readingLabel(day[hi].ts, true)];
+        // Clock time from the reading's own timestamp, not the index. The date joins it only on the live window, whose readings straddle two days ("Sep 14, 6:00 pm"); a chosen day already names its date in the axis label, so its chip is just "4:00 am".
+        const parts: string[] = [readingLabel(day[hi].ts, live)];
         for (const t of lineTracks) { const v = series[t][hi]; parts.push(`${TRACK_LABELS[t]} ${v == null ? "—" : Math.round(v)}`); }
         const label = parts.join(" · ");
         // The readout is a chip, in the site's vocabulary: 24 tall, 8 px side padding, 8 px corners, the panel's dark fill with the chips' hairline border, caption type.

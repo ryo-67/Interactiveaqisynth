@@ -228,6 +228,10 @@ export const GLASS = {
   saturate: "1.6",
   fillAlpha: 0.16,
   edgeAlpha: 0.35,
+  // Frosted (§5.3, the content material): heavier blur and a DARK fill, because content panels carry white text over the brightest sky stops and a white fill cannot hold contrast there. Alpha is a first pass; contrast against the brightest Jun 7 stop is to be measured.
+  frostedBlur: "28px",
+  frostedFill: "10, 10, 22",
+  frostedFillAlpha: 0.42,
   // prefers-reduced-transparency: both materials go frosted-opaque
   fillAlphaOpaque: 0.85,
   blurOpaque: "36px",

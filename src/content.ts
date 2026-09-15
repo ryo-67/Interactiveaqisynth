@@ -31,3 +31,8 @@ export const SOURCE_AREA_READING = "AirNow area reading."; // zip-code fallback 
 
 // Source-line copy for the D-18 typical-NO2 case (Shoro, 2026-08-27).
 export const SOURCE_LINE_TYPICAL_NO2 = "NO2 is a typical profile from the archive; New York does not publish live NO2.";
+
+// Transport (the first glass control, §5.3). PLACEHOLDERS — Shoro's to write.
+export const TRANSPORT_PLAY = "Play";
+export const TRANSPORT_PAUSE = "Pause";
+export const TRANSPORT_VOLUME = "Volume";

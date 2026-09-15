@@ -248,13 +248,14 @@ Why this and not the typographic score (D-14, reversed by D-19): the portfolio h
 
 ### §5.2 The scene (data to scene mapping)
 
-Three layers, each driven by one channel, on the same beat clock as the sound:
+Two layers on the same beat clock as the sound, each a pure function of what the engine already reports every beat: the hour under the playhead and the normalized channels.
 
-1. Sky and sun, from O3 and the clock. The sky gradient is keyed to the hour under the playhead (a 24-stop table from night through dawn, day, dusk, night). The sun travels the O3 contour: its height above the horizon is the hour's normalized O3. Ozone is photochemical, so this is the sun the data actually implies. On July 12 it climbs high; on June 7 it barely lifts. The sun's position is the melody's pitch, drawn.
-2. Haze, from PM2.5. A particle field whose density, size, and drift speed scale with normalized PM2.5, plus a color-temperature shift of the whole sky toward amber and gray as PM2.5 rises, and a visibility falloff that flattens contrast toward the horizon. June 7 renders orange because that is what the sky did. Oct 29 is clear to the horizon. Tier boundaries change the haze palette, on the mood blur.
-3. City, from NO2. A ground band at the bottom of the scene: a skyline silhouette whose window lights and traffic glow pulse on the Euclidean pattern, denser at 6 am on weekdays and thin at noon. The pulse hits are visible as flickers on the beat.
+1. Sky and sun, from the clock, O3 and PM2.5. A physically based sky: Hosek-Wilkie in daylight, Preetham at night, cross-faded over sun elevation +6° to 0° (D-20). The sun's position is the real solar position for the day's date at the hour under the playhead (solar.ts), so it is in the same place on both sides of the loop seam. Tone-mapping exposure is clock-only: the settled noon value in daylight, the settled night value with the sun down, lerped across the same band. O3 drives rayleigh and bloom (photochemical intensity: a high-ozone afternoon reads bright and white, a low-ozone morning deep blue) and the brightness of the sun disc. PM2.5 drives the ordinary-haze aerosol path (turbidity 2 to 6, mie 0.005 to 0.02): the sky as clear air holding more aerosol. Stars fade in below the horizon and are hidden by haze.
+2. The plume, from PM2.5. Wildfire smoke is not a sky-model parameter: a sky model renders clear air with more aerosol in it, whereas June 7 was a plume between the observer and the sky. The plume is a composited layer above the sky in two terms — attenuation (multiply: the sky behind dims and loses its blue) and in-scatter (screen: the sunlight the plume throws back), the second weighted above the first so the sky brightens rather than dims as smoke rises, reading as bright orange-tan at midday and brown only at the horizon where the sight-line is longest. Density is the engine's own smoothed normalized PM2.5 (the scene never re-derives the smoothing).
 
-The playhead is the sun's motion. Twenty-four hours in 16 seconds means the sun crosses the sky in the time of one phrase; on loop it does it again. Borough switch crossfades the whole scene over one beat with the phrase continuing.
+NO2 has no visual in the scene yet. The city band of the Canvas-2D prototype was dropped with the physically based rebuild (D-19 task 3); what replaces it — a skyline silhouette, an abstract ground band, or a pulse rendered elsewhere — is open (O-15).
+
+The playhead is the sun's motion. Twenty-four hours in 16 seconds means the sun crosses the sky in the time of one phrase; on loop it does it again, easing per beat rather than stepping. Framing rule: the camera pitches up by half its vertical field of view plus a margin, so the horizon sits at or below the bottom edge at every viewport size and the dome's ground half is never in frame. Which way the camera faces is under benchmark: it has faced north, which in New York puts the daytime sun behind the viewer, so the literal sun (§5.1) is only in frame facing south or tracking the sun's azimuth. Borough switch crossfades the whole scene over one beat with the phrase continuing.
 
 ### §5.3 The glass layer
 
@@ -301,7 +302,7 @@ Laptop: scene full-bleed, panels in a single centered column over it, timeline r
 
 ### §5.8 Components (hand-styled)
 
-Scene (Sky, Sun, Haze, City), HeroPanel, BoroughControl, ScorePanel, TimelineRibbon, ImaginePanel, SourceLine, EntryMoment. Eight visible; Scene has four internal layers.
+Scene (SkyView: the two sky models, stars, bloom, the sun disc under benchmark; SmokeLayer), Glass (the two materials), HeroPanel, BoroughControl, ScorePanel, Transport, TimelineRibbon, ImaginePanel, SourceLine, EntryMoment.
 
 ## §6. Infrastructure
 

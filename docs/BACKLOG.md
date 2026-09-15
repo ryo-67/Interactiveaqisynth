@@ -111,6 +111,10 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | VIZ-02 | P1 | SUPERSEDED 2026-08-27 by D-19 | Orbs clear correctly on theme switch | BUG-10 |
 | VIZ-03 | P2 | SUPERSEDED 2026-08-27 by D-19 | Orb behavior by mode | Present breathing, past settled |
 | SCN-01 | P0 | DONE 2026-08-27 | Scene prototype at /scene: sky, solar-arc sun, haze, city band, first glass control | D-19 task 2. Canvas 2D holds 60 fps at 4x CPU throttle, 375 px, Suffocating haze (O-14: p99 6.9 ms; no WebGL). Register review pending |
+| SCN-02 | P0 | DONE 2026-09-14 (review pending) | Scene page at /scene on the physically based sky | Hosek/Preetham cross-fade over +6° to 0°, clock-only exposure, composited plume from the engine's smoothed PM2.5, real solar position eased per beat, glass and frosted panels around the existing hero, borough, score, transport and source line. Shares useListenSession with /. Canvas-2D prototype failed review on fidelity and is deleted |
+| SCN-03 | P0 | TODO | Sun disc and camera facing decision | Both under benchmark in the harness (`?disc=1`, `camera` toggle). Facing north puts NYC's daytime sun behind the camera; south keeps it in frame roughly 10–16 h; tracking the sun centers it. Summer noon (67°) is above the 63.5° frame top in every facing. Shoro decides; then the page takes the value |
+| SCN-04 | P1 | TODO | NO2 visual in the scene | The city band was dropped with the rebuild. Skyline, abstract ground band, or the pulse rendered on a panel (O-15) |
+| SCN-05 | P1 | TODO | Frosted panel contrast measured against the brightest sky stop | GLASS.frostedFillAlpha 0.42 is a first pass. Measure white text on the Jun 7 h14 plume and the Oct 29 noon zenith; raise alpha until 4.5:1 holds |
 
 ## Polish
 

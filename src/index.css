@@ -1394,6 +1394,14 @@ html {
   border-radius: 999px;
 }
 
+/* Frosted (§5.3): the content material. Same class chain as glass so every fallback below applies to it too. */
+.glass.frosted {
+  backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
+  -webkit-backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
+  background: rgba(var(--frosted-fill, 10, 10, 22), var(--frosted-fill-alpha, 0.42));
+  border-radius: 20px;
+}
+
 /* prefers-reduced-transparency: the material goes frosted-opaque enough to read without the scene */
 @media (prefers-reduced-transparency: reduce) {
   .glass {

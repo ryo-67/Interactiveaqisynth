@@ -3,11 +3,12 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// The three.js routes are lazy so their bundle never ships to /.
-// /scene itself is being rebuilt on the physically based sky (D-19); the Canvas-2D version that failed review is deleted, so only the test harness exists right now.
+// The three.js routes are lazy so their bundle never ships to /. /scene is the Listen page as the scene (D-19); / stays the typographic page until the scene passes review.
 const SceneTestPage = lazy(() => import("./scene/SceneTestPage"));
+const ScenePage = lazy(() => import("./scene/ScenePage"));
 
-const Root = window.location.pathname === "/scene-test" ? SceneTestPage : App;
+const path = window.location.pathname;
+const Root = path === "/scene-test" ? SceneTestPage : path === "/scene" ? ScenePage : App;
 
 createRoot(document.getElementById("root")!).render(
   <Suspense fallback={<div style={{ background: "#05050a", position: "fixed", inset: 0 }} />}>

@@ -48,8 +48,8 @@ export const PINS = [
   { date: "2023-02-09", name: "Rush Hour" },
   { date: "2023-10-29", name: "Clear Day" },
 ] as const;
-// Borough names on phones, where the full row cannot fit at the caption size (445 px of labels for 303 px of room). PLACEHOLDERS — Shoro's.
-export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhattan: "MNH", Brooklyn: "BKN", Queens: "QNS", Bronx: "BX", "Staten Island": "SI" };
+// Borough names on phones, where the full row cannot fit at the caption size (445 px of labels for 303 px of room).
+export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhattan: "MN", Brooklyn: "BK", Queens: "QN", Bronx: "BX", "Staten Island": "SI" }; // the official two-letter borough codes (Shoro, 2026-09-15)
 export const NAV_LIVE = "Live";
 export const NAV_PREV = "‹";
 export const NAV_NEXT = "›";

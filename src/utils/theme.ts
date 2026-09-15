@@ -250,23 +250,34 @@ export const HOSEK_ALBEDO = 0.15;
 
 // The wildfire plume (D-20): a composited layer above the sky, driven by normalized PM2.5. It darkens and warms what is behind it rather than replacing it, because a plume sits between the observer and the sky.
 export const SMOKE = {
-  // Wildfire smoke at midday reads bright orange-tan, not brown: large particles scatter forward and absorb blue far more than red, so the sky loses its blue and the light arrives reddened while the scene stays bright. Brown belongs near the horizon, where the sight-line through the plume is longest.
-  hueDeg: 30,            // orange; the hue barely moves — brown is this hue at lower lightness, not a different one
-  hueDriftDeg: -6,       // slight drift toward red as the plume thickens
-  // Attenuation (multiply): a warm, LIGHT tint. It strips blue without crushing luminance — capped so a full plume at midday is never darker than the clear sky at the same hour.
+  // Two regimes in one layer. ORDINARY HAZE (density up to ~0.5): particulate whitens the sky — Mie scattering flattens the blue toward grey-white, most at the horizon — so the veil is near-neutral and light. WILDFIRE (density toward 1): large particles absorb blue far more than red, so the sky loses its blue and the light arrives reddened while the scene stays bright; brown belongs only near the horizon, where the sight-line is longest. Saturation and lightness therefore move with density; hue barely does.
+  hueDeg: 30,
+  hueDriftDeg: -6,
+  // Alpha rises on a curve steeper than linear at the low end, so a normal day's 0.2–0.4 is visibly hazy rather than nothing: alpha ∝ density^curve.
+  curve: 0.6,
+  // Attenuation (multiply): a LIGHT tint that strips blue without crushing luminance; nearly neutral when thin, warm when thick. Capped so a full plume at midday is never darker than the clear sky at the same hour.
   attenuation: {
-    saturation: 0.55,
+    saturation: { thin: 0.12, thick: 0.55 },
     lightness: { thin: 0.94, thick: 0.74 },
     alphaMax: 0.5,
   },
-  // In-scatter (screen): the sunlight the plume throws back at the viewer. Weighted above attenuation, so the sky brightens as smoke rises rather than dimming. Deeper and more saturated toward the horizon, which is where it tips into brown.
+  // In-scatter (screen): the sunlight the particles throw back at the viewer. White-grey when thin (haze), orange when thick (smoke). Weighted above attenuation, so the sky brightens rather than dims as particulate rises. Deeper toward the horizon.
   inscatter: {
-    saturation: { thin: 0.55, thick: 0.85 },
-    lightness: { zenith: 0.6, horizon: 0.46 },
+    saturation: { thin: 0.08, thick: 0.85 },
+    lightness: { thin: { zenith: 0.78, horizon: 0.7 }, thick: { zenith: 0.6, horizon: 0.46 } },
     alphaMax: 0.92,
   },
-  zenithFactor: 0.55,    // fraction of horizon density still present at the top of the frame: midday smoke fills the whole sky
+  zenithFactor: 0.55,    // fraction of horizon density still present at the top of the frame
   horizonBias: 1.8,      // exponent on the vertical ramp
+} as const;
+
+// Night (D-20 addendum): the analytic models go dark and neutral with the sun down, but a clear night sky reads deep blue — skyglow, airglow and the eye's own shift. A blue gradient is screened over the sky from sunset to −6° (civil twilight's end) and held through the night; particulate damps it, because a hazy night is grey-orange, not blue. FIRST PASS — the harness has a strength slider.
+export const NIGHT = {
+  zenith: "#07122e",
+  horizon: "#1b3462",
+  strength: 0.85,
+  fullBelowDeg: -6,
+  smokeDamping: 0.75,
 } as const;
 
 export const SKY_RANGES = {

@@ -5,11 +5,12 @@
 // Everything lives in the URL, so any view can be reopened or sent: ?model=hosek&day=2023-06-07&hour=14&haze=0.6&ozone=0.7&glass=css
 import React, { useEffect, useMemo, useState } from "react";
 import { SkyView, type SkyModel, type CameraFacing } from "./SkyView";
-import { skyParamsFor, starOpacity, hazeToAerosol, daylightBlend, RAYLEIGH_DEFAULT } from "./skyParams";
+import { skyParamsFor, starOpacity, hazeToAerosol, daylightBlend, nightBlend, RAYLEIGH_DEFAULT } from "./skyParams";
 import { GlassSample, GLASS_IMPLS, GLASS_LABELS, type GlassImpl } from "./GlassSamples";
 import { SmokeLayer } from "./SmokeLayer";
+import { NightLayer } from "./NightLayer";
 import { sunAnglesAt, sunPositionVector } from "./solar";
-import { CLEAR_NOON_EXPOSURE, HOSEK_ALBEDO, NYC_LAT, NYC_LON, SMOKE, SUN_DISC, families, typeScale, space } from "../utils/theme";
+import { CLEAR_NOON_EXPOSURE, HOSEK_ALBEDO, NYC_LAT, NYC_LON, SMOKE, SUN_DISC, NIGHT, families, typeScale, space } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
 import type { HourReading } from "../engine/SynthEngine";
 
@@ -45,6 +46,7 @@ export default function SceneTestPage() {
   // The composited plume (D-20). Manual here rather than tied to the day's PM2.5, so smoke can be judged against a fixed sky; in the scene it is driven by normalized PM2.5.
   const [smoke, setSmoke] = useState(num("smoke", 0));
   const [smokeHue, setSmokeHue] = useState(num("smokeHue", SMOKE.hueDeg));
+  const [night, setNight] = useState(num("night", NIGHT.strength)); // the night-blue layer's strength, first pass
   const [glass, setGlass] = useState<GlassImpl | "none">(str("glass", "none") as GlassImpl | "none");
 
   const [archive, setArchive] = useState<HourReading[] | null>(null);
@@ -86,10 +88,10 @@ export default function SceneTestPage() {
     const p = new URLSearchParams({
       dev: "1", model, day, hour: String(hour), haze: String(haze), ozone: String(ozone),
       rayleigh: String(rayleigh), bloom: String(bloom), exposure: String(exposure), albedo: String(albedo),
-      smoke: String(smoke), smokeHue: String(smokeHue), glass, expAuto: expAuto ? "1" : "0", disc: disc ? "1" : "0", discDeg: String(discDeg), facing,
+      smoke: String(smoke), smokeHue: String(smokeHue), night: String(night), glass, expAuto: expAuto ? "1" : "0", disc: disc ? "1" : "0", discDeg: String(discDeg), facing,
     });
     window.history.replaceState(null, "", `?${p}`);
-  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, glass, expAuto, disc, discDeg, facing]);
+  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, night, glass, expAuto, disc, discDeg, facing]);
 
   const view = useMemo(() => {
     const dateForSun = day === "manual" ? "2023-07-12" : day;
@@ -103,6 +105,7 @@ export default function SceneTestPage() {
       params,
       sun: sunPositionVector(ang),
       stars: starOpacity(ang.elevationDeg, haze),
+      night: nightBlend(ang.elevationDeg),
       mappedReadout: `mapping would give rayleigh ${mapped.rayleigh.toFixed(2)} · bloom ${mapped.bloomIntensity.toFixed(2)} · exposure ${mapped.exposure.toFixed(2)} (scheduled${expAuto ? ", in use" : ", overridden by slider"})`,
       fadeReadout: `sun ${ang.elevationDeg.toFixed(1)}° el, ${ang.azimuthDeg.toFixed(0)}° az, camera facing ${facing} → hosek alpha ${blend.toFixed(2)} (${blend >= 1 ? "hosek only" : blend <= 0 ? "preetham only" : "cross-fading"}) · exposure ${params.exposure.toFixed(2)} · disc ${disc ? `on, brightness ${mapped.discBrightness.toFixed(2)}` : "off"}`,
       readout:
@@ -110,10 +113,10 @@ export default function SceneTestPage() {
         ` · ozone ${ozone.toFixed(2)}` +
         ` · sun ${ang.elevationDeg.toFixed(0)}°` +
         ` · albedo ${albedo.toFixed(2)}${model === "hosek" ? "" : " (hosek only)"}` +
-        ` · smoke ${smoke.toFixed(2)} @ hue ${smokeHue.toFixed(0)}°` +
+        ` · smoke ${smoke.toFixed(2)} @ hue ${smokeHue.toFixed(0)}° · night ${(nightBlend(ang.elevationDeg) * night).toFixed(2)}` +
         (reading ? ` · real: pm25 ${reading.pm25 ?? "—"} µg/m³, o3 ${reading.o3 ?? "—"} ppb` : " · manual"),
     };
-  }, [day, hour, haze, ozone, rayleigh, bloom, exposure, expAuto, albedo, smoke, smokeHue, model, disc, facing, reading]);
+  }, [day, hour, haze, ozone, rayleigh, bloom, exposure, expAuto, albedo, smoke, smokeHue, night, model, disc, facing, reading]);
 
   return (
     // The scene owns the area above the control bar rather than the whole viewport, so the plume's densest band — which sits at the horizon, at the bottom of the frame — is never hidden behind the controls.
@@ -121,6 +124,7 @@ export default function SceneTestPage() {
       <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
         <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} hour={hour} style={{ width: "100%", height: "100%" }} live />
 
+        <NightLayer blend={view.night} density={smoke} strength={night} />
         <SmokeLayer density={smoke} hueDeg={smokeHue} />
 
         {glass !== "none" && (
@@ -177,6 +181,7 @@ export default function SceneTestPage() {
         <Slider label="albedo" min={0} max={0.4} step={0.01} value={albedo} onChange={setAlbedo} />
         <Stepped label="smoke" min={0} max={1} step={0.05} value={smoke} onChange={setSmoke} />
         <Slider label="smoke hue" min={0} max={60} step={1} value={smokeHue} onChange={setSmokeHue} />
+        <Slider label="night blue" min={0} max={1} step={0.05} value={night} onChange={setNight} />
 
         <Group label="glass">
           <Radio name="glass" label="off" checked={glass === "none"} onChange={() => setGlass("none")} />

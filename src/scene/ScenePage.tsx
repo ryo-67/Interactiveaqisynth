@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { SkyView, type CameraFacing } from "./SkyView";
 import { SmokeLayer } from "./SmokeLayer";
-import { skyParamsFor, starOpacity } from "./skyParams";
+import { NightLayer } from "./NightLayer";
+import { skyParamsFor, starOpacity, nightBlend } from "./skyParams";
 import { sunAnglesAt, sunPositionVector, tzOffsetFromTs } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
@@ -50,7 +51,7 @@ export default function ScenePage() {
     const params = skyParamsFor(channels.pm25, channels.o3, ang.elevationDeg);
     // MAPPING (PM2.5 → plume density): the engine's own smoothed value while playing (§5.2: the scene never re-derives the smoothing); the latest hour's normalized value at rest.
     const smoke = beat?.pm25nSmoothed ?? channels.pm25 ?? 0;
-    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke };
+    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke, night: nightBlend(ang.elevationDeg) };
   }, [day, hour, channels.pm25, channels.o3, beat?.pm25nSmoothed]);
 
   const lastTs = day?.[day.length - 1]?.ts ?? null;
@@ -70,6 +71,7 @@ export default function ScenePage() {
         {/* The scene: renders continuously while playing, on demand at rest. */}
         <div style={{ position: "absolute", inset: 0 }}>
           <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} live={playing} style={{ width: "100%", height: "100%" }} />
+          <NightLayer blend={view.night} density={view.smoke} />
           <SmokeLayer density={view.smoke} />
         </div>
 

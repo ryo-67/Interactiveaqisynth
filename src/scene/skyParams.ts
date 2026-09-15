@@ -3,7 +3,7 @@
 // O3 → rayleigh, bloom intensity, disc brightness, exposure: photochemical intensity. Ozone is made by strong sun, so a high-ozone afternoon reads bright and white; a low-ozone morning reads deep blue.
 // Clock → sunPosition, star visibility (handled by the caller from solar.ts).
 
-import { SKY_RANGES, SKY_FADE, CLEAR_NOON_EXPOSURE, NIGHT_EXPOSURE } from "../utils/theme";
+import { SKY_RANGES, SKY_FADE, CLEAR_NOON_EXPOSURE, NIGHT_EXPOSURE, NIGHT } from "../utils/theme";
 
 export interface SkyParams {
   turbidity: number;
@@ -21,6 +21,11 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * Math.max(0, Math
 export function daylightBlend(sunElevationDeg: number): number {
   const t = (sunElevationDeg - SKY_FADE.endDeg) / (SKY_FADE.startDeg - SKY_FADE.endDeg);
   return Math.max(0, Math.min(1, t));
+}
+
+// 0 at sunset, 1 at civil twilight's end and through the night: how much of the night-blue layer shows.
+export function nightBlend(sunElevationDeg: number): number {
+  return Math.max(0, Math.min(1, sunElevationDeg / NIGHT.fullBelowDeg));
 }
 
 // MAPPING (clock → exposure): the settled noon value in daylight, the settled night value with the sun down, lerped across the same band the models cross-fade over — one transition, not two. Preetham darkens on its own below the horizon; exposure 0.65 is the value at which that darkness reads as night rather than as an underexposed day.

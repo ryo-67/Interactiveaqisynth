@@ -161,6 +161,27 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
         }
 
+        // The area under the line, one trapezoid per hour segment, each filled with a vertical gradient from the segment's colour at the line to transparent at the baseline — so the fade follows the line's own height. AQI uses the scale colour at each end (a horizontal blend across the segment); the others fade white.
+        const baseY = y0 + lh + inner;
+        for (let i = 1; i < n; i++) {
+          const a = vals[i - 1], b = vals[i];
+          if (a == null || b == null) continue;
+          const x0 = plotX + (i - 1) * colW + colW / 2, x1 = plotX + i * colW + colW / 2;
+          const ya = yFor(a), yb = yFor(b);
+          const alpha = t === "aqi" ? GRAPH.areaAlpha.aqi : GRAPH.areaAlpha.channel;
+          const top = Math.min(ya, yb);
+          const fade = ctx.createLinearGradient(0, top, 0, baseY);
+          const rgb = (col: string, aa: number) => col.startsWith("rgb(") ? col.replace("rgb(", "rgba(").replace(")", `, ${aa})`) : `rgba(255,255,255,${aa})`;
+          // A fill takes one gradient, so the segment carries the scale colour of its mean value and fades vertically; at one hour per segment the horizontal step between neighbours is invisible.
+          const mid = t === "aqi" ? aqiScaleColor((a + b) / 2) : "rgb(255,255,255)";
+          fade.addColorStop(0, rgb(mid, alpha));
+          fade.addColorStop(1, rgb(mid, 0));
+          ctx.fillStyle = fade;
+          ctx.beginPath();
+          ctx.moveTo(x0 - 0.5, ya); ctx.lineTo(x1 + 0.5, yb); ctx.lineTo(x1 + 0.5, baseY); ctx.lineTo(x0 - 0.5, baseY); ctx.closePath();
+          ctx.fill();
+        }
+
         // The line. AQI segments are gradients between the scale colour at each end — the same rule the bar is drawn with, so a point on the line and the bar at that height always match; the others are the secondary text colour.
         ctx.lineWidth = t === "aqi" ? GRAPH.lineWidth.aqi : GRAPH.lineWidth.channel;
         ctx.lineJoin = "round";

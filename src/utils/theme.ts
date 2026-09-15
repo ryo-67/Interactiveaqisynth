@@ -161,6 +161,8 @@ export const GRAPH = {
   axisHeight: { laptop: 24, tablet: 24, phone: 20 },
   labelGutter: 8,
   lineWidth: { aqi: 2.5, channel: 1.75 },
+  // The area under the line: a soft fill that fades from the line to the baseline, so the shape reads at a glance. AQI takes the line's own colour at every point; the other tracks a white fade.
+  areaAlpha: { aqi: 0.28, channel: 0.16 },
   // AQI's y-scale is fixed at the full standard range, 0–500, so the line never rescales between days, nothing is ever clipped (Jun 7 crossed 350 and flatlined at a 300 top), and the bar beside it is the complete ruler including Hazardous.
   aqiScaleMax: 500,
   // The AQI scale bar at the right of the AQI tab: the standard category colours as one smooth vertical gradient on that scale, marker at the current value.

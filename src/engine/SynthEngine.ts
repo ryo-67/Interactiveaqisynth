@@ -44,6 +44,7 @@ export interface PulseInfo {
 }
 
 const BEAT_S = 60 / 90; // one beat = one hour = 0.667 s; every parameter ramp uses this (never jump)
+const PAUSE_FADE_S = 0.08; // pause and resume fade at the master: long enough to avoid a click, short enough to read as immediate
 const MELODY_ROOT_MIDI = 48; // C3; melody spans two octaves to C5 (§3.2)
 const CHORD_ROOT_MIDI = 60; // C4; bed triads stack upward from here
 
@@ -79,6 +80,7 @@ export class SynthEngine {
   private dryGain!: Tone.Gain;
   private revShortGain!: Tone.Gain;
   private revLongGain!: Tone.Gain;
+  private master!: Tone.Gain; // the last node before the destination; pause closes it, resume opens it
 
   constructor(anchors: PollutantAnchors) {
     this.anchors = anchors;
@@ -102,14 +104,16 @@ export class SynthEngine {
     const revShort = new Tone.Reverb({ decay: 1.5, wet: 1 });
     const revLong = new Tone.Reverb({ decay: 7.5, wet: 1 });
     await Promise.all([revShort.ready, revLong.ready]);
+    // Everything sums into one master gain before the destination, so a pause can silence the whole mix — reverb tails included — in one ramp.
+    this.master = new Tone.Gain(1).toDestination();
     this.filter.connect(this.dryGain);
-    this.dryGain.toDestination();
+    this.dryGain.connect(this.master);
     this.filter.connect(this.revShortGain);
     this.revShortGain.connect(revShort);
-    revShort.toDestination();
+    revShort.connect(this.master);
     this.filter.connect(this.revLongGain);
     this.revLongGain.connect(revLong);
-    revLong.toDestination();
+    revLong.connect(this.master);
 
     // Four FM voices (§3.5), all through the shared chain. Envelope and volume values are mix choices from Phase 0, not data mappings.
     this.melody = new Tone.FMSynth({ volume: -8, envelope: { attack: 0.02, decay: 0.1, sustain: 0.7, release: 0.3 } }).connect(this.filter);
@@ -184,17 +188,31 @@ export class SynthEngine {
     if (transport.state === "paused" || this.seeked) {
       this.seeked = false;
       this.lastBeatTime = this.lastStepTime = -1;
+      this.openMaster();
       transport.start("+0.05");
       return;
     }
     this.smoother.reset();
     this.hazeSmoother.reset();
+    this.openMaster();
     this.startTransport();
   }
 
-  // Pause holds the position (Tone's pause keeps it; stop would reset to 0), so play() resumes from the same beat.
+  private openMaster(): void {
+    const now = Tone.now();
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.rampTo(1, PAUSE_FADE_S, now);
+  }
+
+  // Pause holds the position (Tone's pause keeps it; stop would reset to 0), so play() resumes from the same beat. Pausing the transport alone only stops the clock: events Tone had already scheduled inside its lookahead still fire, the bed's bar-long notes ring through their 1.2 s release, and the long reverb decays for 7.5 s — a pause that trails off for seconds. So the master closes in PAUSE_FADE_S and every held voice is released under it; the position is untouched.
   pause(): void {
-    Tone.getTransport().pause();
+    const transport = Tone.getTransport();
+    transport.pause();
+    if (!this.master) return;
+    const now = Tone.now();
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.rampTo(0, PAUSE_FADE_S, now);
+    for (const v of [this.melody, this.bass, this.pulse, ...this.bedVoices]) v.triggerRelease(now + PAUSE_FADE_S);
   }
 
   // Seek: move the phrase to any point in the day (§2.2 scrubbing, DAW-style). Works while playing — the transport keeps running from the new position and the next beat reads the new hour — and while paused or at rest, where play() then starts from the seeked position. Smoothers carry their state, so the sound glides into the new hour rather than cutting.

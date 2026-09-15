@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — Pause is immediate
+
+Pausing the transport only stopped the clock: events Tone had already scheduled inside its lookahead still fired, the bed's bar-long notes rang through their 1.2 s release, and the long reverb decayed for 7.5 s, so a pause trailed off for seconds. The mix now sums into one master gain before the destination; pause closes it in 80 ms and releases every held voice under it, resume opens it the same way. The position is untouched, so play still picks up where it stopped.
+
 ## 2026-09-15 — Graph time axis: two labels, readings pinned to the bounds
 
 Hour numbers along the x-axis read as a 24-hour clock, which on the rolling live window (2 pm yesterday to now) was more confusing than helpful. The axis now carries two labels: the first reading's date and time at the left ("Sep 14, 2:00 pm", with the year only when it is not this year) and "now" at the right when live, else the last reading's time. The playhead chip carries the date the same way ("Jun 7, 2023, 4:00 am · AQI 216"). With the y values in the gutter there is nothing left for the line to collide with, so the readings are pinned to the plot: the first on the y-axis line, the last on the right edge, no half-column of padding at either end. One consequence: the pulse steps of the last hour run from the last reading towards the hour after it, past the right edge, so they are not drawn.

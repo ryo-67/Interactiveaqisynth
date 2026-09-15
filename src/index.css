@@ -1527,7 +1527,7 @@ html {
 @media (max-width: 767px) and (min-width: 600px) {
   .scene-top { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; }
   .scene-day { display: contents; }
-  .scene-pill.scene-pins { flex-basis: 100%; margin: 0 auto; }
+  .scene-pill.scene-pins { flex: 0 1 auto; width: fit-content; } /* its own row because it is wider than the room left beside the other two; never fill it */
   .scene-source .source-sep { display: inline; }
   .scene-source .source-detail { display: inline; }
 }

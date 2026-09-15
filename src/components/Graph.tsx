@@ -85,10 +85,12 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const tabH = fill ? Math.max(minTab, Math.floor(available / 4) * 4) : minTab;
       const lineTracks: TrackKey[] = [tab];
       const cssH = GRAPH.labelGutter + tabH + pulseH + axisH;
+      // The buffer is whole device pixels at the current ratio (browser zoom changes it), so every line lands on a pixel; a fractional buffer size is truncated and the drawing is blurred by the mismatch.
       const dpr = window.devicePixelRatio || 1;
-      if (canvas.width !== cssW * dpr || canvas.height !== cssH * dpr) {
-        canvas.width = cssW * dpr;
-        canvas.height = cssH * dpr;
+      const bufW = Math.round(cssW * dpr), bufH = Math.round(cssH * dpr);
+      if (canvas.width !== bufW || canvas.height !== bufH) {
+        canvas.width = bufW;
+        canvas.height = bufH;
         canvas.style.height = `${cssH}px`;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -318,7 +320,16 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
     draw();
     const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); draw(); });
     ro.observe(wrap);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    // Browser zoom changes the device pixel ratio without always changing the panel's CSS size (Firefox fires no resize then), so watch the ratio itself: a media query that matches the current ratio stops matching the moment it changes; redraw and watch the new one.
+    let mq: MediaQueryList | null = null;
+    const watchRatio = () => {
+      mq?.removeEventListener("change", onRatio);
+      mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      mq.addEventListener("change", onRatio);
+    };
+    const onRatio = () => { cancelAnimationFrame(raf); draw(); watchRatio(); };
+    watchRatio();
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); };
   }, [series, day, playing, live, tab, c, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
 
   return (

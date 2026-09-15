@@ -173,7 +173,6 @@ export const GRAPH = {
   axisGutterPad: 4, // around the y-axis values in the left gutter
   tabsGap: 16, // between the band's hairline and the plot
   tabsInset: 8, // the band's inside padding around its chips: twice the preset bar's 4, so the band reads as a header rather than a pill (2026-09-15)
-  tabsHairline: 0.5, // the band's bottom line: half a CSS pixel — one device pixel on a 2× display, a faint line on 1×
   scaleBarWidth: 16, // the legend's column
   scaleTrackWidth: 4, // the gradient track inside it, like the volume slider's track turned upright (2026-09-15)
   scaleBarGap: 8,

@@ -76,13 +76,12 @@ export default function ScenePage() {
   // The sky reads the held channels (a null hour keeps its last reported value; useListenSession), never the raw ones.
   const pm25nEased = useEased(skyChannels.pm25 ?? 0, tau, "pm25n");
   const o3nEased = useEased(skyChannels.o3 ?? 0, tau, "o3n");
-  // The stars gate (0 through a day change's compressed night) and the golden-hour grade both ease, so a layer never pops.
-  const starsGate = useEased(s.starsGate, motion.beatMs * 0.3, "stars gate");
+
 
   const view = useMemo(() => {
-    // The sun runs on the transition's date (the old day while its sun sets, the new day from the night on), not the loaded day's: that is what keeps a change of day from snapping the sun to a new season's path.
+    // During a change of day the sun is the transition's interpolated position (D-31); otherwise the loaded day's date and the clock place it.
     const sun = s.sunDay ?? { date: "2023-07-12", tz: -4 };
-    const ang = sunAnglesAt(sun.date, clock, NYC_LAT, NYC_LON, sun.tz);
+    const ang = s.sunOverride ?? sunAnglesAt(sun.date, clock, NYC_LAT, NYC_LON, sun.tz);
     // MAPPING (PM2.5 → aerosol path, O3 → rayleigh + bloom, clock → exposure + fade): skyParamsFor is the one mapping, shared with the harness.
     const params = skyParamsFor(pm25nEased, o3nEased, ang.elevationDeg);
     // MAPPING (PM2.5 → plume density): the engine's own smoothed value while playing (§5.2: the scene never re-derives the smoothing); the rest hour's normalized value otherwise (the paused or seeked hour of the loaded day, else its latest).
@@ -92,7 +91,7 @@ export default function ScenePage() {
     const golden = goldenBlend(ang.elevationDeg);
     const saturation = SKY_GRADE.saturation + (SKY_GRADE.saturationUnderSmoke - SKY_GRADE.saturation) * regime + GOLDEN.saturationBoost * golden;
     return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, pm25nEased), smoke, regime, saturation, night: nightBlend(ang.elevationDeg), golden };
-  }, [s.sunDay, clock, pm25nEased, o3nEased, smokeEased, regime]);
+  }, [s.sunDay, s.sunOverride, clock, pm25nEased, o3nEased, smokeEased, regime]);
   const goldenEased = useEased(view.golden, tau, "golden hour");
 
   // Glass parameters as custom properties, once, at the root (§5.6: theme.ts is the source of truth; index.css reads these).
@@ -107,7 +106,7 @@ export default function ScenePage() {
       <div style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars }}>
         {/* The scene: renders continuously while playing, on demand at rest. A click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
         <div style={{ position: "absolute", inset: 0, cursor: "pointer" }} onClick={s.togglePlay} role="button" aria-label={SKY_TOGGLE_LABEL} tabIndex={-1}>
-          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars * starsGate} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={clock} saturation={view.saturation} particles={lens} grain={grain} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={clock} saturation={view.saturation} particles={lens} grain={grain} live={playing} style={{ width: "100%", height: "100%" }} />
           <NightLayer blend={view.night} density={view.smoke} />
           <GoldenLayer blend={goldenEased} density={view.smoke} />
           <SmokeLayer density={view.smoke} regime={view.regime} />

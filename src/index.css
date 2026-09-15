@@ -1524,7 +1524,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* Side-by-side only (laptop): the shorter hero sits on the graph's horizontal centre line, and the graph has a floor above the hero's natural height. In the column layouts each panel takes its content height and the plot stays at its breakpoint minimum. */
 @media (min-width: 1024px) {
   .scene-panel.scene-hero { align-self: center; }
-  .scene-panel.scene-graph { min-height: 384px; --graph-fill: 1; } /* 20 + tabs 32 + 8 + gutter 8 + plot 240 + pulse 32 + axis 24 + 20: the laptop plot at its token height; --graph-fill lets the plot grow into a stretched panel */
+  .scene-panel.scene-graph { min-height: 352px; --graph-fill: 1; } /* 20 + tabs 32 + 8 + gutter 8 + plot 240 + axis 24 + 20: the laptop plot at its token height; --graph-fill lets the plot grow into a stretched panel */
 }
 .scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; border-radius: calc(var(--ctl-pill) / 2); }
 

@@ -188,7 +188,6 @@ export const GRAPH = {
   // One tab at a time, so the tab gets real height: the line is the thing being read.
   // Per breakpoint, chosen so the whole scaffold fits the viewport without scrolling (see .scene-ui in index.css for the matching control sizes). All multiples of 4.
   tabHeight: { laptop: 240, tablet: 176, phone: 120 },
-  pulseRowHeight: { laptop: 32, tablet: 28, phone: 24 },
   axisHeight: { laptop: 24, tablet: 24, phone: 20 },
   labelGutter: 8,
   lineWidth: { aqi: 2.5, channel: 1.75 },
@@ -204,7 +203,7 @@ export const GRAPH = {
   scaleTrackWidth: 4, // the gradient track at the column's left, flush against the plot's right edge, square-ended, the full height of the y axis (2026-09-15)
   scaleCaret: 8, // the value marker: a caret at the track's right, 8 tall and 4 deep, pointing left at the value (2026-09-15: a round thumb read as a control)
   scaleCaretGap: 2, // between the caret's tip and the track
-  transitionBeats: 1.5, // a change of day or tab morphs the line, the fill, the scale and the pulse row over this many beats (D-37, 2026-09-15): the same span as the sun's glide and the dissolve
+  transitionBeats: 1.5, // a change of day or tab morphs the line, the fill, the scale and the caret over this many beats (D-37, 2026-09-15): the same span as the sun's glide and the dissolve
 } as const;
 
 // Opacity scale (§5.5). Tier color is applied through these, not at arbitrary alphas.

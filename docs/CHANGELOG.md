@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — No pulse row (D-39)
+
+The pulse row beneath the plot is gone at every size: it crowded the panel, and the pulse is the thing the ear already has. With it go its height token, its step and hit-count series, the module that built them and the anchors the graph took only for it.
+
 ## 2026-09-15 — The phone graph: taller, tabs across the band, faint lines off, tighter padding
 
 On phones the plot goes from 160 to 240 tall (44 px still spare above the transport on an 844-tall phone; the short-phone steps keep their own heights), the four tabs grow to fill the band from their own text so the longest is never cropped, the faint hour lines are off (the firm four-hour lines stay: dense information on a small display), and the panel's padding tightens to 12 and 8. The faint alpha is a custom property the graph reads per breakpoint, so the token stays one value.

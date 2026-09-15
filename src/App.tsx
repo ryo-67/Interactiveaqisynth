@@ -45,7 +45,6 @@ export default function App() {
             {day && day.length > 0 && (
               <Graph
                 day={day}
-                anchors={a}
                 playheadHour={playing || paused ? playheadHour : null}
                 running={playing}
                 live={live}

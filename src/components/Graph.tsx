@@ -1,6 +1,6 @@
-// Graph — the day as four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of it (§5.3 score panel, rebuilt). Replaces Score.
-// Tabs: AQI (from PM2.5, coloured per EPA category, D-23), PM2.5 µg/m³, O3 ppb, NO2 ppb — one at a time, each with its unit and its own right-edge scale, a line through hourly points with gaps where the hour is null (§4.4 rest). The pulse row is always beneath: the engine's exact 16-step pattern per four-hour bar (graphPulse.ts), four steps under every hour column, each bar labelled with its hit count; a hit brightens when the engine fires it.
-// One clock: the playhead is the session's eased hour — the same number that moves the sun — and the pulse row lights whichever hit mark the playhead is currently over. Lighting marks from the engine's callback instead put two clocks on one row (timer, render and frame latency on one side, the eased hour on the other) and the flashes drifted ahead of the line. The active tab is the caller's state.
+// Graph — the day as four labelled tracks on one hour-aligned x-scale, one playhead through it (the pulse row beneath was removed 2026-09-15, D-39: it crowded the panel and the pulse is heard) (§5.3 score panel, rebuilt). Replaces Score.
+// Tabs: AQI (from PM2.5, coloured per EPA category, D-23), PM2.5 µg/m³, O3 ppb, NO2 ppb — one at a time, each with its unit and its own right-edge scale, a line through hourly points with gaps where the hour is null (§4.4 rest).
+// One clock: the playhead is the session's eased hour — the same number that moves the sun.
 // The graph is a transport surface, as in a DAW: press or drag anywhere on the plot to move the playhead, and the engine seeks with it, playing or paused. Play and pause live in the transport pill.
 import { readingLabel } from "../utils/time";
 import React, { useEffect, useMemo, useRef } from "react";
@@ -8,8 +8,6 @@ import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiSc
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
 import { pmToAQISeries, monotoneCurve } from "./graphSeries";
 import { chipStyle } from "./chip";
-import { pulseSteps, STEPS_PER_HOUR } from "./graphPulse";
-import type { PollutantAnchors } from "../engine/contour";
 import type { Day } from "../engine/SynthEngine";
 
 export type TrackKey = "aqi" | "pm25" | "o3" | "no2";
@@ -17,7 +15,6 @@ export const TRACK_ORDER: TrackKey[] = ["aqi", "pm25", "o3", "no2"];
 
 interface Props {
   day: Day;
-  anchors: PollutantAnchors;
   playheadHour: number | null; // eased, fractional; null = at rest
   running: boolean; // playing: animate; paused: draw the held playhead once
   live: boolean;
@@ -35,7 +32,7 @@ function rgba(s: string): [number, number, number, number] {
 }
 
 
-// A frame (D-37): everything the track and the pulse row draw for one state (a day on a tab), with the line in NORMALIZED height — a fraction of the tab's own scale — so two frames on different scales can be blended point by point. Presence is an alpha, so a reading that exists in one frame and not the other fades rather than pops.
+// A frame (D-37): everything the track draws for one state (a day on a tab), with the line in NORMALIZED height — a fraction of the tab's own scale — so two frames on different scales can be blended point by point. Presence is an alpha, so a reading that exists in one frame and not the other fades rather than pops.
 interface Frame {
   key: string; // the state: tab and day
   dayKey: string;
@@ -45,8 +42,6 @@ interface Frame {
   max: number;
   gridValues: number[];
   isAqi: number; // 1 on the AQI tab: the bar, the wider line and the deeper fill fade with it
-  pulse: Array<boolean | null>;
-  barHits: Array<number | null>;
 }
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
@@ -63,7 +58,7 @@ function lerpFrame(a: Frame, b: Frame, t: number): Frame {
   return { ...b, norm, alpha, colours, max: lerp(a.max, b.max, t), isAqi: lerp(a.isAqi, b.isAqi, t) };
 }
 
-export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, onSeek, lift = 0 }: Props) {
+export function Graph({ day, playheadHour, running, live, tab, onTab, onSeek, lift = 0 }: Props) {
   const theme = useTheme();
   const c = themeColors(theme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -91,13 +86,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
     pm25: day.map((h) => (h.pm25 == null ? null : Math.max(0, h.pm25))),
     o3: day.map((h) => h.o3),
     no2: day.map((h) => h.no2),
-    pulse: pulseSteps(day, anchors),
-    // Hit count per bar, for the row's labels.
-    barHits: Array.from({ length: Math.ceil(day.length / 4) }, (_, b) => {
-      const st = pulseSteps(day, anchors).slice(b * 16, b * 16 + 16);
-      return st[0] == null ? null : st.filter((x) => x === true).length;
-    }),
-  }), [day, anchors]);
+  }), [day]);
 
   // The target frame for this state, and the transition to it. When the state changes (a new day or a new tab) the frame last SHOWN becomes the start, so a change made mid-transition continues from where the line is rather than from where it was going.
   // Which data is on screen: a counter that steps whenever the day array changes identity (a new date, a new borough, a live refresh), so the state's key follows the data rather than the date, and a change of borough morphs too.
@@ -120,8 +109,6 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       max,
       gridValues: tab === "aqi" ? AQI_CATEGORIES.map((k) => k.max).filter((v) => v <= max) : [Math.round(max / 1.08), Math.round(max / 2.16)],
       isAqi: tab === "aqi" ? 1 : 0,
-      pulse: series.pulse,
-      barHits: series.barHits,
     };
   }, [series, tab, lift, c, dayId]); // eslint-disable-line react-hooks/exhaustive-deps
   const transitionRef = useRef<{ from: Frame | null; to: Frame; start: number; ms: number }>({ from: null, to: target, start: 0, ms: 0 });
@@ -144,7 +131,6 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       // Breakpoint from the panel's own width: the panel is ~640 on laptop, ~700 on a portrait tablet, ~320 on a phone.
       const bp: "laptop" | "tablet" | "phone" = cssW < 480 ? "phone" : cssW < 760 ? "tablet" : "laptop";
       // The scene may override the tab height by CSS (--graph-tab-h) where the VIEWPORT is short — a phone's width says nothing about its height.
-      const pulseH = GRAPH.pulseRowHeight[bp];
       const axisH = GRAPH.axisHeight[bp];
       const cssTab = parseInt(getComputedStyle(wrap).getPropertyValue("--graph-tab-h"));
       const minTab = Number.isFinite(cssTab) && cssTab > 0 ? cssTab : GRAPH.tabHeight[bp];
@@ -153,9 +139,9 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const tabs = wrap.firstElementChild as HTMLElement | null;
       // The band is pulled up into the panel's padding, so the space it takes inside the wrap is from the wrap's top to the band's bottom, plus the gap below it.
       const tabsH = tabs ? tabs.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top + parseFloat(getComputedStyle(tabs).marginBottom || "0") : 0;
-      const available = wrap.clientHeight - tabsH - GRAPH.labelGutter - pulseH - axisH;
+      const available = wrap.clientHeight - tabsH - GRAPH.labelGutter - axisH;
       const tabH = fill ? Math.max(minTab, Math.floor(available / 4) * 4) : minTab;
-      const cssH = GRAPH.labelGutter + tabH + pulseH + axisH;
+      const cssH = GRAPH.labelGutter + tabH + axisH;
       // The buffer is whole device pixels at the current ratio, and the canvas box is set to exactly buffer ÷ ratio, so one buffer pixel is one device pixel and every line lands on one; any other pairing resamples the drawing. The ratio includes the visual viewport's pinch scale (trackpad pinch on a Mac, pinch on a phone): that magnifies the page without reflow or a ratio change, and a bitmap drawn at the unmagnified ratio is simply scaled up, which is the one element on the page that can look soft. Capped, because a 5× pinch on a 2× display would be a 100-megapixel buffer.
       const pinch = window.visualViewport?.scale ?? 1;
       const dpr = Math.min((window.devicePixelRatio || 1) * pinch, Math.sqrt(MAX_RENDER_PIXELS / (cssW * cssH)));
@@ -195,14 +181,14 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const plotX = gutterW;
       const plotW = cssW - plotX - barW; // the legend's column abuts the plot: its track begins on the plot's right edge
       const plotRight = plotX + plotW;
-      // The readings are pinned to the plot: the first on the y-axis line, the last on the right edge, so the line has no padding at either end (the y values live in the gutter and cannot collide). colW is the interval between readings; everything on the time axis — grid, area, line, pulse steps, playhead — is plotX + hours * colW.
+      // The readings are pinned to the plot: the first on the y-axis line, the last on the right edge, so the line has no padding at either end (the y values live in the gutter and cannot collide). colW is the interval between readings; everything on the time axis — grid, area, line, playhead — is plotX + hours * colW.
       const colW = n > 1 ? plotW / (n - 1) : plotW;
       plotRef.current = { x: plotX, w: plotW, n };
       const labelPx = parseInt(typeScale.caption.size);
       ctx.font = `${labelPx}px ${families.data}`;
       const lh = labelPx + 4; // label line height inside the canvas
 
-      // Hour grid: a faint line at every reading through everything, a firmer one per four-hour bar (the pulse's bar lines), each running on past the axis as its own tick (5 px at bar starts, 3 otherwise) — one stroke, so the tick never sits on top of the line. Faint ones first, firm ones after, so a firm line covers rather than doubles.
+      // Hour grid: a faint line at every reading through everything, a firmer one per four-hour bar (the bar lines), each running on past the axis as its own tick (5 px at bar starts, 3 otherwise) — one stroke, so the tick never sits on top of the line. Faint ones first, firm ones after, so a firm line covers rather than doubles.
       const axisYForGrid = cssH - axisH;
       for (const pass of [false, true]) {
         const layer = pass ? hair : faint;
@@ -381,48 +367,11 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         y0 += tabH;
       }
 
-      // Pulse row: 16 steps per bar, 4 per hour; hit = a mark, rest = nothing, null bar = a faint dash across it. Each bar is labelled with its hit count. The mark under the playhead is lit for as long as the playhead is over its step — the row and the line share one clock. Hour i's steps run from reading i towards reading i+1, so the last reading's steps fall past the right edge (the hour after the last reading) and are not drawn. On a change of day the previous day's marks and counts fade out as the new day's fade in.
-      {
-        const stepW = colW / STEPS_PER_HOUR;
-        const ph = playheadRef.current;
-        const currentStep = ph == null ? -1 : Math.floor((ph % 24) * STEPS_PER_HOUR);
-        ctx.fillStyle = c.textMuted;
-        ctx.fillText(TRACK_LABELS.pulse, plotX + 4, y0 + labelPx);
-        const pulseSets: Array<[Frame, number]> = fromFrame && fromFrame.dayKey !== toFrame.dayKey ? [[fromFrame, 1 - e], [toFrame, e]] : [[toFrame, 1]];
-        for (const [fr, a] of pulseSets) {
-          ctx.save(); ctx.globalAlpha = a;
-          for (let b = 0; b < fr.barHits.length; b++) {
-            const k = fr.barHits[b];
-            const label = k == null ? "—" : `${k}`;
-            const bx = Math.min(plotRight, plotX + b * 4 * colW + 4 * colW) - ctx.measureText(label).width - 4;
-            ctx.fillStyle = c.textMuted;
-            ctx.fillText(label, bx, y0 + labelPx);
-          }
-          for (let s = 0; s < fr.pulse.length; s++) {
-            const v = fr.pulse[s];
-            const x = plotX + s * stepW;
-            if (x >= plotRight) continue;
-            if (v == null) {
-              if (s % 16 === 0 && fr === toFrame) { hair.fillStyle = firmLine; hair.fillRect(x, y0 + pulseH - 5, Math.min(colW * 4, plotRight - x), 1); }
-              continue;
-            }
-            if (!v) continue;
-            const lit = s === currentStep;
-            ctx.fillStyle = lit ? c.textPrimary : c.textSecondary;
-            const h = lit ? pulseH - lh - 2 : pulseH - lh - 6;
-            // Marks sit at the START of their step, where the playhead is at the moment of the hit.
-            ctx.fillRect(Math.round(x), y0 + pulseH - 3 - h, lit ? 3 : 2, h);
-          }
-          ctx.restore();
-        }
-        y0 += pulseH;
-      }
-
-      // X axis: a line under the pulse row, ticks from the hour grid above; two labels only, drawn after the hairlines are composited below.
+      // X axis: a line under the plot, ticks from the hour grid above; two labels only, drawn after the hairlines are composited below.
       const axisY = cssH - axisH;
       hair.strokeStyle = firmLine;
       hair.beginPath(); hair.moveTo(plotX, axisY + 0.5); hair.lineTo(plotRight, axisY + 0.5); hair.stroke();
-      // Every hairline is in the layer now; composite it once, BENEATH everything drawn so far (the line, the area, the pulse marks, the labels): the hairlines are the bottom of the stack and the line is the top. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
+      // Every hairline is in the layer now; composite it once, BENEATH everything drawn so far (the line, the area, the labels): the hairlines are the bottom of the stack and the line is the top. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
       faint.save(); faint.setTransform(1, 0, 0, 1, 0, 0); faint.globalCompositeOperation = "destination-out"; faint.drawImage(hairCanvas, 0, 0); faint.restore();
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();

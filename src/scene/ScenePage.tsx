@@ -259,7 +259,6 @@ export default function ScenePage() {
               <Glass ref={graphRef} material="frosted" className="scene-panel scene-graph">
                 <Graph
                   day={day}
-                  anchors={s.anchors}
                   playheadHour={playing || paused ? hour : null}
                   running={playing}
                   lift={graphLift}

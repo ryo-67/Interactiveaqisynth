@@ -1441,10 +1441,19 @@ html {
 .scene-strip { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
 .scene-strip::-webkit-scrollbar { display: none; height: 0; }
 .scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-gap); flex: 0 0 auto; min-width: 0; }
-/* The top bar wraps: when three pills do not fit one row, the pins pill drops to its own row rather than shrinking into a clipped strip. */
-.scene-top { flex-wrap: wrap; }
-/* The day group — picker and presets, both choosing the day — sits at the right as a unit, one bar gap between them; when the pins no longer fit beside the picker they wrap under it, right-aligned. */
-.scene-day { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--ui-gap); margin-left: auto; min-width: 0; }
+/* The header has exactly three states, chosen by width (D-28). Nothing wraps on its own; each state is a rule.
+   A (≥1536): one row — borough at the left, the day group (picker · presets) at the right.
+   B (911–1535): two rows — borough centred; picker and presets side by side, centred as a pair.
+   C (≤910): three rows — borough, picker, presets, each centred. */
+.scene-top { flex-wrap: nowrap; }
+.scene-day { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: var(--ui-gap); margin-left: auto; min-width: 0; }
+@media (max-width: 1535px) {
+  .scene-top { flex-direction: column; align-items: center; justify-content: flex-start; }
+  .scene-day { justify-content: center; margin-left: 0; max-width: 100%; }
+}
+@media (max-width: 910px) {
+  .scene-day { flex-direction: column; align-items: center; }
+}
 .scene-mid { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--ui-gap); min-height: 0; }
 .scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; }
 
@@ -1469,9 +1478,6 @@ html {
     --display-size: 72px; --heading-size: 28px; --body-size: 14px; --body-line: 1.5;
     --ui-pad: 24px; --ui-gap: 16px;
   }
-  /* Below laptop width every top pill fits its content and the row centres them; the day group dissolves so its two pills are centred with the borough pill. */
-  .scene-top { flex-wrap: wrap; justify-content: center; }
-  .scene-day { display: contents; }
   .scene-top .glass { flex: 0 1 auto; width: fit-content; max-width: 100%; margin: 0; }
   .scene-mid { flex-direction: column; align-items: stretch; justify-content: center; }
   .scene-panel { flex: 0 1 auto; width: 100%; max-width: 100%; }
@@ -1486,7 +1492,8 @@ html {
     --display-size: 56px; --heading-size: 24px; --body-size: 14px; --body-line: 1.5;
     --ui-pad: 12px; --ui-gap: 8px;
   }
-  .scene-top { flex-direction: column; align-items: center; gap: 8px; }
+  .scene-top { gap: 8px; }
+  .scene-day { gap: 8px; }
   .scene-top .glass { width: fit-content; max-width: 100%; margin: 0; }
   .scene-pill { padding: 0 12px; }
   .scene-pill.scene-borough { padding: 0 12px; }

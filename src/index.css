@@ -1451,8 +1451,9 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-cursor[data-mode="pointer"] .scene-cursor-ring { width: var(--cur-pointer); height: var(--cur-pointer); }
 .scene-cursor[data-mode="play"] .scene-cursor-ring, .scene-cursor[data-mode="pause"] .scene-cursor-ring, .scene-cursor[data-mode="drag"] .scene-cursor-ring { width: var(--cur-glyph-ring); height: var(--cur-glyph-ring); }
 .scene-cursor[data-mode="hidden"] .scene-cursor-ring, .scene-cursor[data-mode="hidden"] .scene-cursor-glyph { opacity: 0; }
-/* Pressed: the ring closes to a filled dot — the one press signal for every clickable (2026-09-15). Only where the ring is empty: over the sky and the graph the glyph inside the ring is the message, so the ring and its icon stay and no dot appears. */
-.scene-cursor[data-pressed="true"][data-mode="ring"] .scene-cursor-ring, .scene-cursor[data-pressed="true"][data-mode="pointer"] .scene-cursor-ring { width: var(--cur-dot); height: var(--cur-dot); background: #ffffff; }
+/* Pressed: the ring closes to a filled dot — the one press signal for every clickable (2026-09-15). Where a glyph sits in the ring (the sky, the graph) the ring closes the same way but fades out as it does, so the press leaves the icon alone at the pointer. */
+.scene-cursor[data-pressed="true"] .scene-cursor-ring { width: var(--cur-dot); height: var(--cur-dot); background: #ffffff; }
+.scene-cursor[data-pressed="true"][data-mode="play"] .scene-cursor-ring, .scene-cursor[data-pressed="true"][data-mode="pause"] .scene-cursor-ring, .scene-cursor[data-pressed="true"][data-mode="drag"] .scene-cursor-ring { opacity: 0; }
 .scene-cursor-glyph { position: absolute; left: 0; top: 0; width: var(--cur-glyph); height: var(--cur-glyph); transform: translate(-50%, -50%); color: #ffffff; opacity: 0; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.5)); transition: opacity var(--cur-ms) ease; }
 .scene-cursor[data-mode="play"] .scene-cursor-glyph[data-glyph="play"], .scene-cursor[data-mode="pause"] .scene-cursor-glyph[data-glyph="pause"], .scene-cursor[data-mode="drag"] .scene-cursor-glyph[data-glyph="drag"] { opacity: 1; }
 

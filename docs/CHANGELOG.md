@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The hero fits its content: number and word on one row, a rule, one sentence
+
+The hero stretched to the graph's height and width with the number stacked over the word and a two-clause sentence. Now it fits its content with one padding on every side: the number and the tier word share a row and a baseline, the number left and the word right; a hairline; the sentence beneath, at most two lines. The sentence's second clause ("At 8 pm, ozone carried the line") is cut, and with it the hour and dominant-pollutant plumbing that fed it. The display size drops from 96 to 64 so the number sits with the word rather than over it.
+
 ## 2026-09-15 — The whole day group lit on a chip's hover; dither against banding; the cursor above the popover
 
 The top bar's day group has carried the class scene-day since D-30, and the calendar's cells were given the same name, so hovering or pressing any chip in the date or preset pills applied the cell's hover and pressed fills to the whole group. The cells are scene-cal-day now. Frosted panels showed bands: the blur quantizes the sky behind them into 8-bit steps, and the night, golden and plume gradients band on their own; a fine white noise at 4% over every glass fill and 5% over the sky's layers breaks the steps. The page cursor is portaled to the body like the popover, since inside the scene root it painted beneath it. Pressed fills are gone: while the pointer is down the cursor's ring closes to a filled dot, one press signal for every clickable instead of a state per element.

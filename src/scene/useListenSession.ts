@@ -46,10 +46,8 @@ export interface ListenSession {
   latest: { reading: HourReading; index: number; hour: number } | null; // latest non-null hour of the loaded day: its index and its clock hour
   rest: { reading: HourReading; index: number; hour: number } | null; // the hour the page reads at rest: the paused or seeked hour if the day has it, else latest
   moodTier: number;
-  moodHour: number;
   // The AQI the mood word describes: the smoothed AQI the tier is computed from while playing, the latest hour's AQI at rest.
   moodAqi: number | null;
-  dominant: Channel | null;
   // Normalized channels for whatever the page is showing right now: the beat while playing, the rest hour otherwise. A null channel is null here (the mood sentence must not name it).
   channels: { pm25: number | null; o3: number | null; no2: number | null };
   skyChannels: { pm25: number | null; o3: number | null; no2: number | null }; // channels for the sky: a null hour holds the last reported value
@@ -254,7 +252,6 @@ export function useListenSession(): ListenSession {
     : rest?.reading.pm25 != null
       ? tierIndexOf(pm25ToAQI(Math.max(0, rest.reading.pm25))!)
       : 0;
-  const moodHour = report ? clockOf(report.hour) : (rest?.hour ?? 0);
   const moodAqi = report
     ? report.smoothedAQI
     : rest?.reading.pm25 != null
@@ -288,19 +285,11 @@ export function useListenSession(): ListenSession {
           no2: normalize(rest.reading.no2, a.no2),
         }
       : { pm25: null, o3: null, no2: null };
-  const dominant = (() => {
-    let best: Channel | null = null;
-    for (const ch of ["pm25", "o3", "no2"] as const) {
-      const v = channels[ch];
-      if (v != null && (best === null || v > (channels[best] ?? -1))) best = ch;
-    }
-    return best;
-  })();
 
   return {
     borough, setBorough, date, setDate, latestDate, dayLoading, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
-    displayAqi, latest, rest, moodTier, moodHour, moodAqi, dominant, channels, skyChannels, devDayKey, setDevDayKey,
+    displayAqi, latest, rest, moodTier, moodAqi, channels, skyChannels, devDayKey, setDevDayKey,
   };
 }
 

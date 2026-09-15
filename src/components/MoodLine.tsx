@@ -1,75 +1,64 @@
-// MoodLine — tier word and mood sentence (§5.2 item 3). The word is the one full-strength appearance of the tier color. The sentence names what you are hearing — {pollutant} is the channel with the highest normalized value at the playhead hour, {hour} is that hour — so the static AQI number (latest reading) and the moving mood never read as a contradiction. Changes only at tier boundaries, 0.5 s blur (§5.4).
+// MoodLine — the hero's content (§5.2 items 2 and 3): the AQI number and the tier word on one row, on one baseline, the number left and the word right; a hairline; the mood sentence beneath. The word is the one full-strength appearance of the tier colour. Word and sentence change only at tier boundaries, with a 0.5 s blur (§5.4); the number never animates and is passed in so it stays outside the blur. The sentence's second clause ("At 8 pm, ozone carried the line") was cut on 2026-09-15 with the panel's re-layout: the panel is one thought now.
 import React, { useEffect, useRef, useState } from "react";
-import { useTheme, themeColors, families, typeScale, space, motion, aqiScaleColor } from "../utils/theme";
-import { TIER_NAMES, MOOD_SENTENCES, POLLUTANT_NAMES } from "../content";
+import { useTheme, themeColors, families, typeScale, motion, aqiScaleColor } from "../utils/theme";
+import { TIER_NAMES, MOOD_SENTENCES } from "../content";
 
 interface Props {
   aqi: number | null; // the AQI the word describes: colours the word on the same scale as the graph (D-27)
   tierIndex: number;
-  hour: number; // playhead hour (or the latest hour before playback)
-  dominant: keyof typeof POLLUTANT_NAMES | null;
+  number: React.ReactNode; // the AQINumber, laid out on the word's row
   lift?: number; // the ramp lift for the hero panel (D-36)
 }
 
-function hourWord(h: number): string {
-  if (h === 0) return "midnight";
-  if (h === 12) return "noon";
-  return h < 12 ? `${h} am` : `${h - 12} pm`;
-}
-
-export function MoodLine({ tierIndex, hour, dominant, aqi, lift = 0 }: Props) {
+export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
   const c = themeColors(useTheme());
   // Hold the displayed tier and swap only when the tier actually changes, with the blur transition.
-  const [shown, setShown] = useState({ tierIndex, hour, dominant });
+  const [shown, setShown] = useState(tierIndex);
   const [blurred, setBlurred] = useState(false);
-  const pending = useRef(shown);
-  pending.current = { tierIndex, hour, dominant };
-
+  const pending = useRef(tierIndex);
+  pending.current = tierIndex;
   useEffect(() => {
-    if (tierIndex === shown.tierIndex) {
-      // same tier: the sentence's hour/pollutant clause updates without ceremony
-      setShown((s) => (s.hour === hour && s.dominant === dominant ? s : { ...s, hour, dominant }));
-      return;
-    }
+    if (tierIndex === shown) return;
     setBlurred(true);
-    const t = setTimeout(() => {
-      setShown(pending.current);
-      setBlurred(false);
-    }, motion.blurMs / 2);
+    const t = setTimeout(() => { setShown(pending.current); setBlurred(false); }, motion.blurMs / 2);
     return () => clearTimeout(t);
-  }, [tierIndex, hour, dominant]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const sentence = MOOD_SENTENCES[shown.tierIndex]
-    .replace("{pollutant}", shown.dominant ? POLLUTANT_NAMES[shown.dominant] : "nothing")
-    .replace("{hour}", hourWord(shown.hour));
+  }, [tierIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const transition = `filter ${motion.blurMs / 2}ms ease, opacity ${motion.blurMs / 2}ms ease`;
+  const blur: React.CSSProperties = { filter: blurred ? "blur(6px)" : "none", opacity: blurred ? 0.4 : 1, transition };
   return (
-    <div style={{ filter: blurred ? "blur(6px)" : "none", opacity: blurred ? 0.4 : 1, transition }}>
-      <div
-        style={{
-          fontFamily: families.serifItalic,
-          fontStyle: "italic",
-          fontSize: `var(--heading-size, ${typeScale.heading.size})`, // the scene scales this per breakpoint
-          lineHeight: "var(--heading-line, 40px)", // in px per breakpoint, so the line box — and the panel — stay on the 4 px grid
-          color: aqi == null ? c.textPrimary : aqiScaleColor(aqi, lift), // the one ramp, at this panel's lift (D-36)
-        }}
-      >
-        {TIER_NAMES[shown.tierIndex]}
+    <>
+      <div className="scene-hero-row">
+        {number}
+        <div
+          style={{
+            ...blur,
+            fontFamily: families.serifItalic,
+            fontStyle: "italic",
+            fontSize: `var(--heading-size, ${typeScale.heading.size})`, // the scene scales this per breakpoint
+            lineHeight: "var(--heading-line, 40px)", // in px per breakpoint, so the line box stays on the 4 px grid
+            color: aqi == null ? c.textPrimary : aqiScaleColor(aqi, lift), // the one ramp, at this panel's lift (D-36)
+            whiteSpace: "nowrap",
+          }}
+        >
+          {TIER_NAMES[shown]}
+        </div>
       </div>
+      <div className="scene-hero-rule" style={{ borderTop: `1px solid ${c.textFaint}` }} />
       <p
         style={{
+          ...blur,
           fontFamily: families.serifItalic,
           fontStyle: "italic",
           fontSize: `var(--body-size, ${typeScale.body.size})`,
           lineHeight: "var(--body-line, 24px)",
           color: c.textSecondary,
-          marginTop: space.xs,
-          maxWidth: "36em",
+          margin: 0,
+          maxWidth: "30ch", // two lines at the longest sentence; the panel's width follows it
         }}
       >
-        {sentence}
+        {MOOD_SENTENCES[shown]}
       </p>
-    </div>
+    </>
   );
 }

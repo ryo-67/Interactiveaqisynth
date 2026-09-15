@@ -22,7 +22,7 @@ import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
 import { DayNav, PinStrip, DayPicker } from "../components/DayNav";
 import { SourceLine } from "../components/SourceLine";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
-import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, space, GOLDEN, CONTROL } from "../utils/theme";
+import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL } from "../utils/theme";
 
 // The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
 const qs = new URLSearchParams(window.location.search);
@@ -253,10 +253,7 @@ export default function ScenePage() {
 
           <div className="scene-mid">
             <Glass ref={heroRef} material="frosted" className="scene-panel scene-hero">
-              <AQINumber value={s.displayAqi} />
-              <div style={{ marginTop: space.md }}>
-                <MoodLine tierIndex={s.moodTier} hour={s.moodHour} dominant={s.dominant} aqi={s.moodAqi} lift={heroLift} />
-              </div>
+              <MoodLine tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} number={<AQINumber value={s.displayAqi} />} />
             </Glass>
             {day && day.length > 0 && (
               <Glass ref={graphRef} material="frosted" className="scene-panel scene-graph">

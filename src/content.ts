@@ -6,15 +6,13 @@ export const TIER_NAMES = ["Easy", "Shallow", "Tight", "Ragged", "Suffocating"] 
 // Mood sentences, one per tier, shown under the mood word (§5.2). {pollutant} is the channel carrying the line this hour (highest normalized value); {hour} is the playhead hour, so the sentence names what you are hearing while the big number stays at the latest reading.
 // PLACEHOLDER — Shoro to write. Two sentences each, drafted only so the layout has true copy to set.
 export const MOOD_SENTENCES: readonly string[] = [
-  "The air is doing almost nothing, and the piece does almost nothing with it. At {hour}, {pollutant} carried the line.",
-  "Something is in the air, thin enough to argue about. At {hour}, {pollutant} carried the line.",
-  "The day has a grip on the music now. At {hour}, {pollutant} carried the line.",
-  "This is air you would mention to someone. At {hour}, {pollutant} carried the line.",
-  "The piece is still the piece, and that is the problem. At {hour}, {pollutant} carried the line.",
+  "The air is doing almost nothing, and the piece does almost nothing with it.",
+  "Something is in the air, thin enough to argue about.",
+  "The day has a grip on the music now.",
+  "This is air you would mention to someone.",
+  "The piece is still the piece, and that is the problem.",
 ];
 
-// Pollutant display names for the mood sentence's data clause.
-export const POLLUTANT_NAMES = { pm25: "fine particulates", o3: "ozone", no2: "nitrogen dioxide" } as const;
 
 // Score legend, one micro line under the canvas (§5.2).
 

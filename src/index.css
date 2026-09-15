@@ -1450,7 +1450,7 @@ html {
 /* Pills that hold bordered chips (day navigation, pins): the side inset equals the vertical inset around the chips, so a border never sits far inside another border. */
 .scene-pill.scene-chips { padding: 0 var(--chip-inset); }
 /* The pins: chips wrap onto further rows instead of scrolling or clipping; the pill grows with them, keeping the same inset top and bottom. */
-.scene-pill.scene-pins { height: auto; min-height: var(--ctl-pill); padding: var(--chip-inset); flex: 1 1 auto; }
+.scene-pill.scene-pins { height: auto; min-height: var(--ctl-pill); padding: var(--chip-inset); flex: 0 1 auto; width: fit-content; }
 .scene-pill.scene-icon-pill { padding: 0; width: var(--ctl-pill); justify-content: center; flex: 0 0 auto; }
 .scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
@@ -1484,6 +1484,7 @@ html {
   }
   .scene-top { flex-direction: column; align-items: stretch; gap: 8px; }
   .scene-top > .glass { width: 100%; }
+  .scene-top > .scene-pins { width: fit-content; max-width: 100%; }
   .scene-pill { padding: 0 12px; }
   .scene-pill.scene-borough { padding: 0 12px; }
   .scene-ui { --chip-inset: 4px; }

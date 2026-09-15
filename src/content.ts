@@ -42,12 +42,12 @@ export const TRACK_UNITS = { aqi: "", pm25: "µg/m³", o3: "ppb", no2: "ppb" } a
 
 // Day navigation. Pin names are Shoro's (from the Figma scaffold, 2026-09-15); the rest are PLACEHOLDERS — Shoro's.
 export const PINS = [
-  { date: "2023-06-07", name: "Wildfire" },
-  { date: "2023-06-30", name: "Hot & Hazy" },
-  { date: "2023-07-12", name: "Ozone Spike" },
-  { date: "2023-02-09", name: "Rush Hour" },
   { date: "2023-10-29", name: "Clear Day" },
-] as const;
+  { date: "2023-02-09", name: "Rush Hour" },
+  { date: "2023-06-30", name: "Summer Haze" },
+  { date: "2023-07-12", name: "Ozone Spike" },
+  { date: "2023-06-07", name: "Wildfire" },
+] as const; // order and names: Shoro, 2026-09-15 — clean to severe, left to right
 // Borough names on phones, where the full row cannot fit at the caption size (445 px of labels for 303 px of room).
 export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhattan: "MN", Brooklyn: "BK", Queens: "QN", Bronx: "BX", "Staten Island": "SI" }; // the official two-letter borough codes (Shoro, 2026-09-15)
 export const NAV_LIVE = "Live";

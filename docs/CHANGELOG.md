@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — Presets clean to severe; the legend as an upright slider; the 50 line
+
+The presets now run Clear Day, Rush Hour, Summer Haze, Ozone Spike, Wildfire, clean to severe left to right, with Hot & Hazy renamed Summer Haze. The AQI legend is styled like the volume slider turned upright: a 4 px gradient track with a 12 px white thumb, shadow beneath and hairline border, so it reads as a control on the page's own terms rather than a coloured bar. The 50 AQI gridline had been skipped by a stale condition; every category boundary is dotted now.
+
 ## 2026-09-15 — A change of day keeps the clock hour; golden hour scaled by visibility
 
 Switching between the live window and an archive day while playing kept the array index, and on the live window index 8 is 11 pm yesterday while on an archive day it is 8 am, so a bright Ozone Spike morning landed in the night and read as the sun's effects dying. The engine is now sought to the new day's index for the old clock hour, which is what "same hour, different air" meant. A seek made after the last beat report now supersedes it for the sky and the mood, so a paused scrub reads the scrubbed hour. Golden hour is scaled by the same visibility term the stars use, (1 − veil)², so a hazy or smoky day has a dim golden hour rather than a super bright one.

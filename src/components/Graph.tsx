@@ -166,7 +166,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         ctx.fillStyle = c.textMuted;
         for (const gv of gridValues) {
           const gy = yFor(gv);
-          if (gv !== gridValues[0] || t !== "aqi") { hair.setLineDash([2, 5]); hair.beginPath(); hair.moveTo(plotX, gy + 0.5); hair.lineTo(plotRight, gy + 0.5); hair.stroke(); hair.setLineDash([]); }
+          { hair.setLineDash([2, 5]); hair.beginPath(); hair.moveTo(plotX, gy + 0.5); hair.lineTo(plotRight, gy + 0.5); hair.stroke(); hair.setLineDash([]); }
           const lab = String(gv);
           ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, gy + labelPx * 0.36); // in the gutter, right-aligned, centred on the gridline
         }
@@ -178,18 +178,25 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const barTop = yFor(max), barBottom = yFor(0);
           const grad = ctx.createLinearGradient(0, barBottom, 0, barTop);
           for (const s of aqiScaleStops(max)) grad.addColorStop(s.offset, s.color);
+          // The legend is styled like the volume slider turned upright: a thin rounded track (GRAPH.scaleTrackWidth) inside the bar's column, and a thumb wider than the track.
+          const trackW = GRAPH.scaleTrackWidth, trackX = barX + (barW - trackW) / 2;
           ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.roundRect(barX + 2, barTop, barW - 4, barBottom - barTop, (barW - 4) / 2);
+          ctx.roundRect(trackX, barTop, trackW, barBottom - barTop, trackW / 2);
           ctx.fill();
           const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (vals[i] != null) return i; return -1; })();
           const cur = hi >= 0 ? vals[hi] : null;
           if (cur != null) {
+            // The thumb: white like the slider's, with a soft shadow beneath and a hairline border, so it reads as a control sitting on the track rather than a dot in the gradient.
             const my = yFor(cur);
-            ctx.fillStyle = c.textPrimary;
-            ctx.strokeStyle = c.bgPanel;
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(barX + barW / 2, my, GRAPH.scaleBarMarker, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.save();
+            ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
+            ctx.fillStyle = "rgba(255,255,255,0.92)";
+            ctx.beginPath(); ctx.arc(barX + barW / 2, my, GRAPH.scaleBarMarker, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            ctx.strokeStyle = "rgba(0,0,0,0.25)";
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(barX + barW / 2, my, GRAPH.scaleBarMarker, 0, Math.PI * 2); ctx.stroke();
           }
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
         }

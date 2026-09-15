@@ -116,6 +116,31 @@ export function themeColors(theme: Theme) {
 // Five-tier color, keyed by tier index (Easy → Suffocating), carried from the v1 palette (D-19 pending none — Shoro confirmed these hues 2026-08-27). The hue appears on exactly four things: mood word (full), O3 line and playhead (medium), pins (subtle, 3b). Everything else is the text hierarchy on the ground.
 export const TIER_COLORS = ["#68d89b", "#e8cf6a", "#e89b6a", "#e86a6a", "#b06ae8"] as const;
 
+// The standard AQI categories (EPA, six), D-23: the graph's AQI line and its legend use these, because visitors read AQI tools against this palette. The five tier colours above remain the piece's own voice on the mood word. Names live in content.ts.
+export const AQI_CATEGORIES = [
+  { max: 50, color: "#00e400" },
+  { max: 100, color: "#ffff00" },
+  { max: 150, color: "#ff7e00" },
+  { max: 200, color: "#ff0000" },
+  { max: 300, color: "#8f3f97" },
+  { max: 500, color: "#7e0023" },
+] as const;
+
+export function aqiCategoryColor(aqi: number): string {
+  for (const c of AQI_CATEGORIES) if (aqi <= c.max) return c.color;
+  return AQI_CATEGORIES[AQI_CATEGORIES.length - 1].color;
+}
+
+// The graph (§5.3 score panel, rebuilt): four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of them.
+export const GRAPH = {
+  trackHeight: { laptop: 56, phone: 40 },
+  pulseRowHeight: { laptop: 18, phone: 14 },
+  axisHeight: 18,
+  labelGutter: 4,
+  lineWidth: { aqi: 2, channel: 1.25 },
+  pulseFlashMs: 140, // a hit mark brightens for this long after the engine fires it
+} as const;
+
 // Opacity scale (§5.5). Tier color is applied through these, not at arbitrary alphas.
 export const opacity = {
   full: 1,
@@ -182,10 +207,15 @@ export const SKY_FADE = { startDeg: 6, endDeg: 0 } as const;
 
 // The literal sun (§5.1). Preetham draws its own disc; Hosek renders an aureole with no disc, so a sprite supplies one that the bloom pass can pick up. Angular diameter is oversized against the real 0.53° so it reads at phone scale. UNDER BENCHMARK in the harness — not yet in the page.
 export const SUN_DISC = {
-  angularDiameterDeg: 2.2,
+  angularDiameterDeg: 6, // 2.2° was invisible at page scale (a 35 px dot inside the aureole). Under benchmark: the harness has a size slider; this is the page's value until Shoro settles it.
+  haloScale: 3.2,        // the soft halo's diameter as a multiple of the core's — the part the bloom pass lifts
+  haloAlpha: 0.55,
   distance: 900,         // inside the default camera far plane (1000); the sky domes draw at the far plane regardless of scale
   coreColor: "#fff6e6",
 } as const;
+
+// Which way the scene camera faces (D-22, Shoro's ruling): south, so the sun arcs left to right across the frame. Track-sun was rejected because a centered sun has no arc. Summer noon (67° on Jun 7) sits above the frame's 63.5° top edge; only its aureole shows.
+export const CAMERA_FACING = "south" as const;
 
 // Hosek-Wilkie's ground albedo (D-20). Urban surfaces sit below 0.25 and cluster near 0.15: dark asphalt shingles measure 0.04–0.10, light concrete 0.35–0.40 fresh ageing to 0.25–0.30. Investigated as the smoke mechanism and rejected — it was never 0, and moving it barely shifts a smoke day.
 export const HOSEK_ALBEDO = 0.15;

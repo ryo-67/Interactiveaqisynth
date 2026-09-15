@@ -1,6 +1,6 @@
 // ScenePage — /scene, the Listen page as the scene (D-19, §5). The sky is a pure function of two things the engine already emits every beat: the hour under the playhead and the smoothed normalized PM2.5. Sun elevation comes from the hour; the model cross-fade, exposure, stars and the plume all follow from those two numbers. Nothing here re-derives a mapping the harness did not judge.
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { SkyView, type CameraFacing } from "./SkyView";
 import { SmokeLayer } from "./SmokeLayer";
 import { skyParamsFor, starOpacity } from "./skyParams";
@@ -11,49 +11,36 @@ import { Transport } from "../components/Transport";
 import { BoroughToggle } from "../components/BoroughToggle";
 import { AQINumber } from "../components/AQINumber";
 import { MoodLine } from "../components/MoodLine";
-import { Score } from "../components/Score";
+import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
+import { DayNav } from "../components/DayNav";
 import { SourceLine } from "../components/SourceLine";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
-import { ThemeContext, GLASS, HOSEK_ALBEDO, NYC_LAT, NYC_LON, motion, space } from "../utils/theme";
+import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, motion, space } from "../utils/theme";
 import { STATUS_LIVE, STATUS_ARCHIVE } from "../content";
 
-// Under benchmark (harness): the literal sun disc and which way the camera faces. Dev URL params only; the page defaults to the framing every judged frame used.
+// The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
 const qs = new URLSearchParams(window.location.search);
-const DISC = qs.get("disc") === "1";
-const FACING = (qs.get("facing") ?? "north") as CameraFacing;
+const DISC = qs.get("disc") !== "0";
+const FACING = (qs.get("facing") ?? CAMERA_FACING) as CameraFacing;
 
-// The sun eases along its path per beat (§5.4): the beat report gives an integer hour, and this tweens toward it over one beat so the playhead glides instead of stepping. Across the loop seam it runs 23 → 24 (= 0) rather than back across the sky. Under reduced motion the sun still moves, because it is the playhead.
-function useEasedHour(target: number): number {
-  const [value, setValue] = useState(target);
-  const fromRef = useRef(target);
-  const startRef = useRef(0);
-  useEffect(() => {
-    let to = target;
-    const from = fromRef.current;
-    if (to < from - 12) to += 24; // wrap forward, never backward
-    startRef.current = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - startRef.current) / motion.beatMs);
-      const e = 1 - Math.pow(1 - t, 3); // ease-out cubic: arrives on the beat, settles rather than snaps
-      const v = from + (to - from) * e;
-      fromRef.current = v % 24;
-      setValue(v % 24);
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target]);
-  return value;
+// Track toggles live in the URL so a view can be sent: ?tracks=aqi,pm25,o3,no2,pulse
+function tracksFromUrl(): Record<TrackKey, boolean> {
+  const raw = qs.get("tracks");
+  const on = raw ? new Set(raw.split(",")) : null;
+  return Object.fromEntries(TRACK_ORDER.map((t) => [t, on ? on.has(t) : true])) as Record<TrackKey, boolean>;
 }
 
 export default function ScenePage() {
   const s = useListenSession();
-  const { day, beat, playing, latest, channels } = s;
+  const { day, beat, playing, channels } = s;
+  const hour = s.playheadHour; // the one clock: sun, playhead and graph all read it
 
-  // The hour under the playhead while playing; the latest reported hour at rest.
-  const targetHour = beat ? beat.hour : (latest?.hour ?? 12);
-  const hour = useEasedHour(targetHour);
+  const [tracks, setTracks] = useState<Record<TrackKey, boolean>>(tracksFromUrl);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    p.set("tracks", TRACK_ORDER.filter((t) => tracks[t]).join(","));
+    window.history.replaceState(null, "", `?${p}`);
+  }, [tracks]);
 
   const view = useMemo(() => {
     const firstTs = day?.[0]?.ts ?? "2023-07-12T00:00:00-04:00";
@@ -93,6 +80,10 @@ export default function ScenePage() {
               <BoroughToggle selected={s.borough} onSelect={s.setBorough} dateLabel={dateLabel} hourLabel={hourLabel} status={s.live ? STATUS_LIVE : STATUS_ARCHIVE} />
             </Glass>
 
+            <Glass material="glass" style={{ pointerEvents: "auto", padding: `${space.xs} ${space.md}`, borderRadius: 20 }}>
+              <DayNav date={s.date} onChange={s.setDate} loading={s.dayLoading} />
+            </Glass>
+
             <Glass material="frosted" style={{ pointerEvents: "auto", padding: `${space.lg} ${space.lg} ${space.md}` }}>
               <AQINumber value={s.displayAqi} />
               <div style={{ marginTop: space.md }}>
@@ -100,9 +91,18 @@ export default function ScenePage() {
               </div>
             </Glass>
 
-            {day && (
+            {day && day.length > 0 && (
               <Glass material="frosted" style={{ pointerEvents: "auto", padding: space.md }}>
-                <Score day={day} anchors={s.anchors} tierIndex={s.moodTier} playheadHour={beat ? beat.hour : null} live={s.live} onToggle={s.togglePlay} />
+                <Graph
+                  day={day}
+                  anchors={s.anchors}
+                  playheadHour={playing ? hour : null}
+                  live={s.live}
+                  tracks={tracks}
+                  onToggleTrack={(t) => setTracks((prev) => ({ ...prev, [t]: !prev[t] }))}
+                  subscribePulse={s.subscribePulse}
+                  onToggle={s.togglePlay}
+                />
               </Glass>
             )}
 

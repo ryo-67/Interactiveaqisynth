@@ -9,7 +9,7 @@ import { skyParamsFor, starOpacity, hazeToAerosol, daylightBlend, RAYLEIGH_DEFAU
 import { GlassSample, GLASS_IMPLS, GLASS_LABELS, type GlassImpl } from "./GlassSamples";
 import { SmokeLayer } from "./SmokeLayer";
 import { sunAnglesAt, sunPositionVector } from "./solar";
-import { CLEAR_NOON_EXPOSURE, HOSEK_ALBEDO, NYC_LAT, NYC_LON, SMOKE, families, typeScale, space } from "../utils/theme";
+import { CLEAR_NOON_EXPOSURE, HOSEK_ALBEDO, NYC_LAT, NYC_LON, SMOKE, SUN_DISC, families, typeScale, space } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
 import type { HourReading } from "../engine/SynthEngine";
 
@@ -39,7 +39,8 @@ export default function SceneTestPage() {
   // Exposure is clock-scheduled (D-20). "auto" follows the schedule; the slider is a manual override for judging one value.
   const [expAuto, setExpAuto] = useState(str("expAuto", "1") === "1");
   const [disc, setDisc] = useState(str("disc", "0") === "1"); // the literal sun, under benchmark
-  const [facing, setFacing] = useState<CameraFacing>(str("facing", "north") as CameraFacing); // north = every frame so far; the sun is behind it
+  const [discDeg, setDiscDeg] = useState(num("discDeg", SUN_DISC.angularDiameterDeg));
+  const [facing, setFacing] = useState<CameraFacing>(str("facing", "south") as CameraFacing); // south per D-22; north remains for comparison with the earlier frames
   const [albedo, setAlbedo] = useState(num("albedo", HOSEK_ALBEDO)); // Hosek's ground-albedo input; ignored by Preetham, which has no such parameter
   // The composited plume (D-20). Manual here rather than tied to the day's PM2.5, so smoke can be judged against a fixed sky; in the scene it is driven by normalized PM2.5.
   const [smoke, setSmoke] = useState(num("smoke", 0));
@@ -85,10 +86,10 @@ export default function SceneTestPage() {
     const p = new URLSearchParams({
       dev: "1", model, day, hour: String(hour), haze: String(haze), ozone: String(ozone),
       rayleigh: String(rayleigh), bloom: String(bloom), exposure: String(exposure), albedo: String(albedo),
-      smoke: String(smoke), smokeHue: String(smokeHue), glass, expAuto: expAuto ? "1" : "0", disc: disc ? "1" : "0", facing,
+      smoke: String(smoke), smokeHue: String(smokeHue), glass, expAuto: expAuto ? "1" : "0", disc: disc ? "1" : "0", discDeg: String(discDeg), facing,
     });
     window.history.replaceState(null, "", `?${p}`);
-  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, glass, expAuto, disc, facing]);
+  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, glass, expAuto, disc, discDeg, facing]);
 
   const view = useMemo(() => {
     const dateForSun = day === "manual" ? "2023-07-12" : day;
@@ -118,7 +119,7 @@ export default function SceneTestPage() {
     // The scene owns the area above the control bar rather than the whole viewport, so the plume's densest band — which sits at the horizon, at the bottom of the frame — is never hidden behind the controls.
     <div style={{ position: "fixed", inset: 0, background: "#05050a", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
-        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} facing={facing} style={{ width: "100%", height: "100%" }} live />
+        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} style={{ width: "100%", height: "100%" }} live />
 
         <SmokeLayer density={smoke} hueDeg={smokeHue} />
 
@@ -172,6 +173,7 @@ export default function SceneTestPage() {
           <Radio name="disc" label="off" checked={!disc} onChange={() => setDisc(false)} />
           <Radio name="disc" label="on" checked={disc} onChange={() => setDisc(true)} />
         </Group>
+        <Slider label="disc °" min={2} max={12} step={0.5} value={discDeg} onChange={setDiscDeg} />
         <Slider label="albedo" min={0} max={0.4} step={0.01} value={albedo} onChange={setAlbedo} />
         <Stepped label="smoke" min={0} max={1} step={0.05} value={smoke} onChange={setSmoke} />
         <Slider label="smoke hue" min={0} max={60} step={1} value={smokeHue} onChange={setSmokeHue} />

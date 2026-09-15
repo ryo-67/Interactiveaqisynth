@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { BoroughToggle } from "./components/BoroughToggle";
 import { AQINumber } from "./components/AQINumber";
 import { MoodLine } from "./components/MoodLine";
-import { Score } from "./components/Score";
+import { Graph, TRACK_ORDER, type TrackKey } from "./components/Graph";
 import { SourceLine } from "./components/SourceLine";
 import { PHASE0_DAYS } from "./fixtures/phase0-days";
 import { ThemeContext, themeColors, space, type Theme } from "./utils/theme";
@@ -12,7 +12,8 @@ import { useListenSession, DEV } from "./scene/useListenSession";
 
 export default function App() {
   const [theme] = useState<Theme>("dark"); // dark is the default; light stays reachable through tokens (DSN-06 is Phase 2)
-  const { borough, setBorough, snapshot, anchors: a, day, live, beat, togglePlay, displayAqi, moodTier, moodHour, dominant, devDayKey, setDevDayKey } = useListenSession();
+  const { borough, setBorough, snapshot, anchors: a, day, live, beat, playing, playheadHour, subscribePulse, togglePlay, displayAqi, moodTier, moodHour, dominant, devDayKey, setDevDayKey } = useListenSession();
+  const [tracks, setTracks] = useState<Record<TrackKey, boolean>>(() => Object.fromEntries(TRACK_ORDER.map((t) => [t, true])) as Record<TrackKey, boolean>);
 
   const c = themeColors(theme);
 
@@ -43,13 +44,15 @@ export default function App() {
           </div>
 
           <div style={{ marginTop: space.xl }}>
-            {day && (
-              <Score
+            {day && day.length > 0 && (
+              <Graph
                 day={day}
                 anchors={a}
-                tierIndex={moodTier}
-                playheadHour={beat ? beat.hour : null}
+                playheadHour={playing ? playheadHour : null}
                 live={live}
+                tracks={tracks}
+                onToggleTrack={(t) => setTracks((prev) => ({ ...prev, [t]: !prev[t] }))}
+                subscribePulse={subscribePulse}
                 onToggle={togglePlay}
               />
             )}

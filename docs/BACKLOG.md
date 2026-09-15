@@ -80,7 +80,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 |---|---|---|---|---|
 | UX-01 | P0 | DONE 2026-08-27 | Load sequence: Listen needs only the last 24 h | Remove health warmup and five sequential historical fetches from first paint. Historical loads when the timeline opens. Fixes BUG-20 |
 | UX-02 | P0 | TODO | Entry moment | Framing copy, first-listen, Tone.start() gesture. Covers any live-fetch latency |
-| UX-03 | P0 | TODO | Timeline with pins and lag gap | Dashed gap from last EPA day to today, label with weeks computed at load. Pins from §2.2. Replaces stitched timeline. Fixes BUG-02, BUG-03 |
+| UX-03 | P0 | PARTIAL 2026-09-15 (DayNav: pagination, pins, calendar; ribbon and drawn lag gap still to do) | Timeline with pins and lag gap | Dashed gap from last EPA day to today, label with weeks computed at load. Pins from §2.2. Replaces stitched timeline. Fixes BUG-02, BUG-03 |
 | UX-04 | P0 | TODO | Counterfactual selector | WHO, Delhi, Lockdown. Visually distinct from pins. §2.3 |
 | UX-05 | P0 | TODO | Pollutant sliders with real-value anchors | PM2.5, O3, NO2. Anchor = current hour's reading. No PM10 slider |
 | UX-06 | P0 | TODO | Speculative state indicator | On AQI number and orbs |
@@ -112,9 +112,11 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | VIZ-03 | P2 | SUPERSEDED 2026-08-27 by D-19 | Orb behavior by mode | Present breathing, past settled |
 | SCN-01 | P0 | DONE 2026-08-27 | Scene prototype at /scene: sky, solar-arc sun, haze, city band, first glass control | D-19 task 2. Canvas 2D holds 60 fps at 4x CPU throttle, 375 px, Suffocating haze (O-14: p99 6.9 ms; no WebGL). Register review pending |
 | SCN-02 | P0 | DONE 2026-09-14 (review pending) | Scene page at /scene on the physically based sky | Hosek/Preetham cross-fade over +6° to 0°, clock-only exposure, composited plume from the engine's smoothed PM2.5, real solar position eased per beat, glass and frosted panels around the existing hero, borough, score, transport and source line. Shares useListenSession with /. Canvas-2D prototype failed review on fidelity and is deleted |
-| SCN-03 | P0 | TODO | Sun disc and camera facing decision | Both under benchmark in the harness (`?disc=1`, `camera` toggle). Facing north puts NYC's daytime sun behind the camera; south keeps it in frame roughly 10–16 h; tracking the sun centers it. Summer noon (67°) is above the 63.5° frame top in every facing. Shoro decides; then the page takes the value |
+| SCN-03 | P0 | PARTIAL 2026-09-15 (facing decided: south, D-22; disc on the page at 6° with a halo; size still under benchmark via the harness slider) | Sun disc and camera facing decision | Both under benchmark in the harness (`?disc=1`, `camera` toggle). Facing north puts NYC's daytime sun behind the camera; south keeps it in frame roughly 10–16 h; tracking the sun centers it. Summer noon (67°) is above the 63.5° frame top in every facing. Shoro decides; then the page takes the value |
 | SCN-04 | P1 | TODO | NO2 visual in the scene | The city band was dropped with the rebuild. Skyline, abstract ground band, or the pulse rendered on a panel (O-15) |
 | SCN-05 | P1 | TODO | Frosted panel contrast measured against the brightest sky stop | GLASS.frostedFillAlpha 0.42 is a first pass. Measure white text on the Jun 7 h14 plume and the Oct 29 noon zenith; raise alpha until 4.5:1 holds |
+| GRA-01 | P0 | DONE 2026-09-15 (review pending) | Graph replaces the score: four labelled tracks, pulse row, one playhead, toggles, EPA legend | Pulse row pinned to the engine by graphPulse.test.ts (7 tests). Playhead reads the session's eased hour, the same clock as the sun |
+| SCN-06 | P1 | TODO | City silhouette spike: a skyline layer between sky and plume, so smoke veils the buildings | O-15. From the Jun 7 photographs: the smoke event reads as buildings disappearing. Harness spike for Shoro to judge; silhouette vs abstract band undecided |
 
 ## Polish
 

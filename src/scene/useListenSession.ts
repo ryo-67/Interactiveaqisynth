@@ -1,10 +1,11 @@
 // useListenSession — the Listen page's state, shared by the typographic page (App) and the scene (ScenePage) so the two never drift: one data load, one engine, one beat report, one play toggle. Extracted from App.tsx unchanged in behavior.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
+import { SynthEngine, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
+import { motion } from "../utils/theme";
 import { normalize, pm25ToAQI, type PollutantAnchors } from "../engine/contour";
 import { tierIndexOf } from "../engine/scales";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
-import { getCurrentAll, getAnchors, clientSeriesAQI, type Borough, type CurrentSnapshot } from "../utils/nycOpenData";
+import { getCurrentAll, getAnchors, getDay, clientSeriesAQI, type Borough, type CurrentSnapshot, type DaySeries } from "../utils/nycOpenData";
 
 // Dev-only fixture select (?dev=1): never renders for a visitor.
 export const DEV = new URLSearchParams(window.location.search).has("dev");
@@ -14,6 +15,14 @@ export type Channel = "pm25" | "o3" | "no2";
 export interface ListenSession {
   borough: Borough;
   setBorough: (b: Borough) => void;
+  // A chosen day (YYYY-MM-DD) from the archive or the live-year route; null = live, the last 24 hours (§2.2 scrubbing).
+  date: string | null;
+  setDate: (d: string | null) => void;
+  dayLoading: boolean;
+  // ONE clock for everything that moves with the phrase: the beat's integer hour eased over one beat (§5.4), wrapping forward at the loop seam. The sun, the playhead and every graph track read this and nothing else.
+  playheadHour: number;
+  // The engine's pulse steps, for anything that flashes on a hit (the pulse row). A subscription rather than state: 4 steps per beat would re-render the page 6 times a second for nothing.
+  subscribePulse: (cb: (p: PulseInfo) => void) => () => void;
   snapshot: CurrentSnapshot | null;
   anchors: PollutantAnchors; // the engine's anchors (falls back to Queens 2023 until the borough's land)
   day: Day | null;
@@ -40,10 +49,14 @@ export function useListenSession(): ListenSession {
   const [playing, setPlaying] = useState(false);
   const [beat, setBeat] = useState<BeatInfo | null>(null);
   const [devDayKey, setDevDayKey] = useState<string>("live");
+  const [date, setDateState] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<DaySeries | null>(null);
+  const [dayLoading, setDayLoading] = useState(false);
 
   const engineRef = useRef<SynthEngine | null>(null);
   if (engineRef.current === null) engineRef.current = new SynthEngine(QUEENS_2023_ANCHORS);
   const prevBoroughRef = useRef<Borough>(borough);
+  const prevDateRef = useRef<string | null>(null);
 
   // First paint loads only the last 24 hours (UX-01); the page renders immediately and fills when it lands.
   useEffect(() => {
@@ -63,9 +76,30 @@ export function useListenSession(): ListenSession {
     };
   }, []);
 
+  // A chosen day loads on demand, for this borough; nothing is fetched until asked (BUG-20).
+  useEffect(() => {
+    if (!date) { setChosen(null); return; }
+    let cancelled = false;
+    setDayLoading(true);
+    (async () => {
+      try {
+        const s = await getDay(borough, date);
+        if (!cancelled) setChosen(s);
+      } catch (err) {
+        console.warn("[App] Day fetch failed:", err);
+        if (!cancelled) setChosen({ hours: [], aqi: { daily: null, hourlyMax: null, latestHour: null }, fallback: null, fetchedAt: null });
+      } finally {
+        if (!cancelled) setDayLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [date, borough]);
+
+  const setDate = useCallback((d: string | null) => setDateState(d), []);
+
   const devFixture = DEV && devDayKey !== "live" ? PHASE0_DAYS.find((d) => d.key === devDayKey) : undefined;
-  const day: Day | null = devFixture ? devFixture.day : (snapshot?.series[borough].hours ?? null);
-  const live = !devFixture;
+  const day: Day | null = devFixture ? devFixture.day : date ? (chosen?.hours ?? null) : (snapshot?.series[borough].hours ?? null);
+  const live = !devFixture && !date;
 
   // Feed the engine. A borough switch keeps the phrase position (§2.1: same hour, different air); a dev fixture switch restarts.
   useEffect(() => {
@@ -77,13 +111,15 @@ export function useListenSession(): ListenSession {
         return;
       }
       const a = await getAnchors(borough);
-      const keepPosition = prevBoroughRef.current !== borough;
+      // A borough switch keeps the phrase position; a chosen day restarts it from hour 0.
+      const keepPosition = prevBoroughRef.current !== borough && prevDateRef.current === date;
       prevBoroughRef.current = borough;
+      prevDateRef.current = date;
       engine.setDay(day, a, { keepPosition });
       setAnchors(a);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [day, borough, devDayKey]);
+  }, [day, borough, devDayKey, date]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -98,6 +134,18 @@ export function useListenSession(): ListenSession {
   useEffect(() => {
     engineRef.current?.onBeat(setBeat);
     return () => engineRef.current?.onBeat(null);
+  }, []);
+
+  // Pulse fan-out: the engine takes one callback; the page may have several listeners.
+  const pulseSubs = useRef(new Set<(p: PulseInfo) => void>());
+  useEffect(() => {
+    const subs = pulseSubs.current;
+    engineRef.current?.onPulse((p) => subs.forEach((cb) => cb(p)));
+    return () => engineRef.current?.onPulse(null);
+  }, []);
+  const subscribePulse = useCallback((cb: (p: PulseInfo) => void) => {
+    pulseSubs.current.add(cb);
+    return () => { pulseSubs.current.delete(cb); };
   }, []);
 
   // Play/pause: the score click, the transport, and Space. Tone.start() must begin inside the gesture's call stack.
@@ -121,10 +169,12 @@ export function useListenSession(): ListenSession {
   }, [togglePlay]);
 
   // ——— Derived display state ———
-  const series = devFixture ? null : (snapshot?.series[borough] ?? null);
+  const series = devFixture ? null : date ? chosen : (snapshot?.series[borough] ?? null);
   const displayAqi = devFixture
     ? (day ? clientSeriesAQI(day).daily : null) // archive semantics for fixture days
-    : (series?.aqi.latestHour ?? null);
+    : date
+      ? (series?.aqi.daily ?? null) // a chosen day shows its daily AQI (§4: daily from EPA where present, else the 24-h mean)
+      : (series?.aqi.latestHour ?? null);
 
   // Latest non-null hour of the loaded day — the resting state before playback.
   const latest = (() => {
@@ -143,6 +193,7 @@ export function useListenSession(): ListenSession {
       ? tierIndexOf(pm25ToAQI(Math.max(0, latest.reading.pm25))!)
       : 0;
   const moodHour = beat ? beat.hour : (latest?.hour ?? 0);
+  const playheadHour = useEasedHour(beat ? beat.hour : (latest?.hour ?? 12));
   const channels = beat
     ? { pm25: beat.pm25n, o3: beat.o3n, no2: beat.no2n }
     : latest
@@ -162,7 +213,32 @@ export function useListenSession(): ListenSession {
   })();
 
   return {
-    borough, setBorough, snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
+    borough, setBorough, date, setDate, dayLoading, playheadHour, subscribePulse,
+    snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, latest, moodTier, moodHour, dominant, channels, devDayKey, setDevDayKey,
   };
+}
+
+// The beat report gives an integer hour; this tweens toward it over one beat so everything on the phrase clock glides instead of stepping. Across the loop seam it runs 23 → 24 (= 0), never backward. Under reduced motion it still moves, because it is the playhead.
+function useEasedHour(target: number): number {
+  const [value, setValue] = useState(target);
+  const fromRef = useRef(target);
+  useEffect(() => {
+    let to = target;
+    const from = fromRef.current;
+    if (to < from - 12) to += 24;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / motion.beatMs);
+      const e = 1 - Math.pow(1 - t, 3); // ease-out cubic: arrives on the beat, settles rather than snaps
+      const v = (from + (to - from) * e) % 24;
+      fromRef.current = v;
+      setValue(v);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+  return value;
 }

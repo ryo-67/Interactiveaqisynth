@@ -30,8 +30,9 @@ interface Props {
   model?: SkyModel;
   // Hosek-Wilkie's third input beside turbidity and solar elevation: ground albedo, the bounce light the lower atmosphere sees.
   albedo?: number;
-  // The literal sun sprite (§5.1), under benchmark. Off by default until judged.
+  // The literal sun sprite (§5.1). Size under benchmark: the harness passes discDeg; the page uses the token.
   disc?: boolean;
+  discDeg?: number;
   // Which way the camera looks. The default camera faces north (−Z), which in New York puts the daytime sun behind the viewer — no disc, Preetham's included, was ever in frame. "south" faces the sun's arc so it crosses left to right; "sun" yaws to the sun's azimuth so it is always horizontally centered. UNDER BENCHMARK with the disc.
   facing?: CameraFacing;
 }
@@ -67,14 +68,21 @@ function getDiscTexture(): CanvasTexture {
 }
 
 // MAPPING (clock → position, O3 → brightness): the disc sits on the sun vector; its brightness is the ozone-driven discBrightness, so a high-ozone afternoon has a harder sun. Additive, so it only ever adds light to the sky behind it.
-function SunDisc({ sunPosition, brightness }: { sunPosition: [number, number, number]; brightness: number }) {
+function SunDisc({ sunPosition, brightness, deg }: { sunPosition: [number, number, number]; brightness: number; deg: number }) {
   const len = Math.hypot(...sunPosition) || 1;
   const pos = sunPosition.map((v) => (v / len) * SUN_DISC.distance) as [number, number, number];
-  const size = 2 * SUN_DISC.distance * Math.tan(((SUN_DISC.angularDiameterDeg / 2) * Math.PI) / 180);
+  const size = 2 * SUN_DISC.distance * Math.tan(((deg / 2) * Math.PI) / 180);
+  const halo = size * SUN_DISC.haloScale;
   return (
-    <sprite position={pos} scale={[size, size, 1]} renderOrder={2}>
-      <spriteMaterial map={getDiscTexture()} color={SUN_DISC.coreColor} blending={AdditiveBlending} depthWrite={false} depthTest={false} opacity={Math.min(1, brightness)} transparent toneMapped />
-    </sprite>
+    <>
+      {/* Halo first (renderOrder 2), core over it (3): both additive, so together they only ever add light. */}
+      <sprite position={pos} scale={[halo, halo, 1]} renderOrder={2}>
+        <spriteMaterial map={getDiscTexture()} color={SUN_DISC.coreColor} blending={AdditiveBlending} depthWrite={false} depthTest={false} opacity={Math.min(1, brightness) * SUN_DISC.haloAlpha} transparent toneMapped />
+      </sprite>
+      <sprite position={pos} scale={[size, size, 1]} renderOrder={3}>
+        <spriteMaterial map={getDiscTexture()} color={SUN_DISC.coreColor} blending={AdditiveBlending} depthWrite={false} depthTest={false} opacity={Math.min(1, brightness)} transparent toneMapped />
+      </sprite>
+    </>
   );
 }
 
@@ -102,7 +110,7 @@ function Exposure({ value }: { value: number }) {
   return null;
 }
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, facing = "north" }: Props) {
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north" }: Props) {
   // Sun elevation and azimuth from the vector itself, so every caller that already passes a sun position gets the fade and the facing for free.
   const len = Math.hypot(...sunPosition) || 1;
   const sunElevationDeg = (Math.asin(Math.max(-1, Math.min(1, sunPosition[1] / len))) * 180) / Math.PI;
@@ -143,8 +151,8 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
           // Hosek-Wilkie takes turbidity, ground albedo and solar elevation. It has no rayleigh or mie inputs: the fitted dataset carries the scattering.
           <HosekSky sunPosition={sunPosition} turbidity={params.turbidity} albedo={albedo} opacity={hosekAlpha} />
         )}
-        {disc && sunElevationDeg > -SUN_DISC.angularDiameterDeg && (
-          <SunDisc sunPosition={sunPosition} brightness={params.discBrightness} />
+        {disc && sunElevationDeg > -discDeg && (
+          <SunDisc sunPosition={sunPosition} brightness={params.discBrightness} deg={discDeg} />
         )}
         {stars > 0 && (
           <Stars radius={100} depth={50} count={stars} factor={4} saturation={0} fade speed={0.4} />

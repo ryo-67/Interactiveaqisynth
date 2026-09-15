@@ -17,7 +17,6 @@ export const MOOD_SENTENCES: readonly string[] = [
 export const POLLUTANT_NAMES = { pm25: "fine particulates", o3: "ozone", no2: "nitrogen dioxide" } as const;
 
 // Score legend, one micro line under the canvas (§5.2).
-export const SCORE_LEGEND = "ozone line · nitrogen dioxide pulse · particulate haze";
 
 // Status words in the borough row.
 export const STATUS_LIVE = "live";
@@ -36,3 +35,24 @@ export const SOURCE_LINE_TYPICAL_NO2 = "NO2 is a typical profile from the archiv
 export const TRANSPORT_PLAY = "Play";
 export const TRANSPORT_PAUSE = "Pause";
 export const TRANSPORT_VOLUME = "Volume";
+
+// The standard AQI category names (EPA). Order matches AQI_CATEGORIES in theme.ts.
+export const AQI_CATEGORY_NAMES = ["Good", "Moderate", "Unhealthy for Sensitive Groups", "Unhealthy", "Very Unhealthy", "Hazardous"] as const;
+
+// Graph track labels and units. Units are the measurements'; the labels are PLACEHOLDERS — Shoro's.
+export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O3", no2: "NO2", pulse: "pulse" } as const;
+export const TRACK_UNITS = { aqi: "", pm25: "µg/m³", o3: "ppb", no2: "ppb" } as const;
+
+// Day navigation. Pin names are from STRATEGY §2.2; the rest are PLACEHOLDERS — Shoro's.
+export const PINS = [
+  { date: "2023-06-07", name: "The smoke" },
+  { date: "2023-06-30", name: "Ozone and smoke" },
+  { date: "2023-07-12", name: "Ozone day" },
+  { date: "2023-02-09", name: "Rush hour" },
+  { date: "2023-10-29", name: "Cleanest" },
+] as const;
+export const NAV_LIVE = "Live";
+export const NAV_PREV = "‹";
+export const NAV_NEXT = "›";
+export const NAV_CALENDAR = "Calendar";
+export const NAV_UNAVAILABLE = "Not yet reported."; // a day past the archive and the EPA feed

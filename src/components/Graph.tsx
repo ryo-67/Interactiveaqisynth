@@ -69,7 +69,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
     let raf = 0;
 
     const draw = () => {
-      const cssW = wrap.clientWidth;
+      const cssW = wrap.getBoundingClientRect().width; // the real, fractional width: clientWidth rounds, and a buffer sized from the rounded width was stretched across the real box by a fraction of a pixel, blurring every line
       // Breakpoint from the panel's own width: the panel is ~640 on laptop, ~700 on a portrait tablet, ~320 on a phone.
       const bp: "laptop" | "tablet" | "phone" = cssW < 480 ? "phone" : cssW < 760 ? "tablet" : "laptop";
       // The scene may override the tab height by CSS (--graph-tab-h) where the VIEWPORT is short — a phone's width says nothing about its height.
@@ -85,14 +85,15 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const tabH = fill ? Math.max(minTab, Math.floor(available / 4) * 4) : minTab;
       const lineTracks: TrackKey[] = [tab];
       const cssH = GRAPH.labelGutter + tabH + pulseH + axisH;
-      // The buffer is whole device pixels at the current ratio (browser zoom changes it), so every line lands on a pixel; a fractional buffer size is truncated and the drawing is blurred by the mismatch.
+      // The buffer is whole device pixels at the current ratio (browser zoom changes it), and the canvas box is set to exactly buffer ÷ ratio, so one buffer pixel is one device pixel and every line lands on one; any other pairing resamples the drawing.
       const dpr = window.devicePixelRatio || 1;
       const bufW = Math.round(cssW * dpr), bufH = Math.round(cssH * dpr);
       if (canvas.width !== bufW || canvas.height !== bufH) {
         canvas.width = bufW;
         canvas.height = bufH;
-        canvas.style.height = `${cssH}px`;
       }
+      canvas.style.width = `${bufW / dpr}px`;
+      canvas.style.height = `${bufH / dpr}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cssW, cssH);
 
@@ -342,7 +343,11 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
     };
     const onRatio = () => { cancelAnimationFrame(raf); draw(); watchRatio(); };
     watchRatio();
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); };
+    // Browser zoom also fires a window resize; redraw when the ratio has moved, whether or not the media query reported it (Firefox rounds resolution queries).
+    let seenDpr = window.devicePixelRatio;
+    const onResize = () => { if (window.devicePixelRatio !== seenDpr) { seenDpr = window.devicePixelRatio; cancelAnimationFrame(raf); draw(); watchRatio(); } };
+    window.addEventListener("resize", onResize);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); };
   }, [series, day, playing, live, tab, c, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
 
   return (
@@ -375,7 +380,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         onPointerMove={(e) => { if (!dragging.current) return; const h = hourAt(e.clientX); if (h != null) onSeek(h); }}
         onPointerUp={(e) => { dragging.current = false; e.currentTarget.releasePointerCapture(e.pointerId); }}
         onPointerCancel={() => { dragging.current = false; }}
-        style={{ width: "100%", display: "block", cursor: "ew-resize", touchAction: "none" }}
+        style={{ display: "block", cursor: "ew-resize", touchAction: "none" }} // width and height are set by draw() to exactly buffer ÷ ratio
         aria-label="24-hour graph; press or drag to move the playhead"
       />
     </div>

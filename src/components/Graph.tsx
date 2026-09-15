@@ -315,10 +315,11 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const axisY = cssH - axisH;
       hair.strokeStyle = firmLine;
       hair.beginPath(); hair.moveTo(plotX, axisY + 0.5); hair.lineTo(plotRight, axisY + 0.5); hair.stroke();
-      // Every hairline is in the layer now; composite it once. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
+      // Every hairline is in the layer now; composite it once, BENEATH everything drawn so far (the line, the area, the pulse marks, the labels): the hairlines are the bottom of the stack and the line is the top. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
       ctx.globalAlpha = fa;
+      ctx.globalCompositeOperation = "destination-over";
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.drawImage(hairCanvas, 0, 0);
       ctx.restore();

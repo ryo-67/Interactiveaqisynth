@@ -34,7 +34,11 @@ export function SourceLine({ borough, hours, fallback }: Props) {
     else if (tags.some((t) => t === "citywide")) borrowed.push(ch);
   }
 
-  const list = (chs: Channel[]) => chs.map((ch) => CHANNEL_LABELS[ch]).join(", ");
+  // "PM2.5 and O3", "PM2.5, O3 and NO2": a spoken list, not a comma dump.
+  const list = (chs: Channel[]) => {
+    const names = chs.map((ch) => CHANNEL_LABELS[ch]);
+    return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  };
   const boroughName = borough === "Citywide" ? "NYC" : borough;
 
   let coverage: string;
@@ -62,6 +66,8 @@ export function SourceLine({ borough, hours, fallback }: Props) {
       {/* Two parts: the sources, then the coverage. One line joined by a separator where there is room; on phone the separator hides and the coverage takes its own line, so the break falls at the sentence rather than wherever the width lands. */}
       <span className="source-base">{SOURCE_LINE_BASE}</span>
       <span className="source-sep"> · </span>
+      {/* A real space before the detail, so selected or read-aloud text does not run the two parts together when the separator is hidden. */}
+      {" "}
       <span className="source-detail">
         {coverage}
         {anyTypical ? ` ${SOURCE_LINE_TYPICAL_NO2}` : ""}

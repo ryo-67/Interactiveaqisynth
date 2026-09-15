@@ -22,14 +22,11 @@ export const POLLUTANT_NAMES = { pm25: "fine particulates", o3: "ozone", no2: "n
 export const STATUS_LIVE = "live";
 export const STATUS_ARCHIVE = "archive";
 
-// Source line (§5.2 footer line three). Coverage clause is built from the source flags, never hardcoded.
-export const SOURCE_LINE_BASE = "Live from AirNow · Archive from EPA";
-export const SOURCE_MONITORS = "{borough} monitors {list}.";
-export const SOURCE_BORROWED = "{borough} monitors {ownList}; {borrowedList} {isAre} citywide.";
-export const SOURCE_AREA_READING = "AirNow area reading."; // zip-code fallback (BUG-12): no borough can honestly be named
-
-// Source-line copy for the D-18 typical-NO2 case (Shoro, 2026-08-27).
-export const SOURCE_LINE_TYPICAL_NO2 = "NO2 is a typical profile from the archive; New York does not publish live NO2.";
+// Source line (§5.3 panel 6). The coverage clause is built from the source flags, never hardcoded. Shortened 2026-09-15 at Shoro's request; Shoro's to revise. Two parts: the sources, then coverage.
+export const SOURCE_LINE_BASE = "AirNow live · EPA archive";
+export const SOURCE_MONITORS = "{borough} measures {list}.";
+export const SOURCE_BORROWED = "{borough} measures {ownList}; {borrowedList} from the citywide reading.";
+export const SOURCE_AREA_READING = "AirNow area reading; no borough detail."; // zip-code fallback (BUG-12): no borough can honestly be named
 
 // Transport (the first glass control, §5.3). PLACEHOLDERS — Shoro's to write.
 export const TRANSPORT_PLAY = "Play";
@@ -53,3 +50,4 @@ export const NAV_PREV = "‹";
 export const NAV_NEXT = "›";
 export const NAV_CALENDAR = "Calendar";
 export const NAV_UNAVAILABLE = "Not yet reported."; // a day past the archive and the EPA feed
+export const SOURCE_LINE_TYPICAL_NO2 = "No live NO2 in New York; a typical archive profile stands in.";

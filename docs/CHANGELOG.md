@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — A change of day keeps the clock hour; golden hour scaled by visibility
+
+Switching between the live window and an archive day while playing kept the array index, and on the live window index 8 is 11 pm yesterday while on an archive day it is 8 am, so a bright Ozone Spike morning landed in the night and read as the sun's effects dying. The engine is now sought to the new day's index for the old clock hour, which is what "same hour, different air" meant. A seek made after the last beat report now supersedes it for the sky and the mood, so a paused scrub reads the scrubbed hour. Golden hour is scaled by the same visibility term the stars use, (1 − veil)², so a hazy or smoky day has a dim golden hour rather than a super bright one.
+
 ## 2026-09-15 — Glide at rest, dissolve while playing (D-32, trial)
 
 While playing, the target keeps moving under a change of day, so the sun's glide bent toward a moving point and headed off in arcs that read as arbitrary. Now a change of day while playing is a cut: the last rendered sky is copied into an overlay and faded out over 1.5 beats while the new day renders beneath with its clock taken as is; the night-blue layer eases so it never pops above the fade. At rest the glide stands. The WebGL buffer is preserved between frames to make the snapshot possible.

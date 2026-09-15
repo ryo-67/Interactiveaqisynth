@@ -188,6 +188,22 @@ export function useListenSession(): ListenSession {
     setPlaying(next);
   }, []);
 
+  // A change of day while playing or paused keeps the CLOCK HOUR, not the array index (§2.1, §2.2: same hour, different air). The two are the same on an archive day, but the live window starts where AirNow's window starts, so index 8 is 8 am on an archive day and 11 pm yesterday on the live one; keeping the index sent a bright morning into the night and read as the sun's effects dying. The engine is sought to the new day's index for the old clock hour; if the new day has no such hour the position stands.
+  const prevDayRef = useRef<Day | null>(null);
+  useEffect(() => {
+    const prev = prevDayRef.current;
+    prevDayRef.current = day;
+    if (!prev || !day || prev === day) return;
+    const idx = playing ? beat?.hour : pausedHour;
+    if (idx == null) return;
+    const k = Math.min(idx, prev.length - 1);
+    if (!prev[k]?.ts) return;
+    const hour = hourOfTs(prev[k].ts);
+    const j = day.findIndex((r) => hourOfTs(r.ts) === hour);
+    if (j >= 0 && j !== idx) seek(j);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day]);
+
   const setVolume = useCallback((db: number) => engineRef.current?.setVolume(db), []);
 
   useEffect(() => {
@@ -219,6 +235,8 @@ export function useListenSession(): ListenSession {
     return null;
   })();
 
+  // The beat report describes the hour being heard; a seek made after it (paused or at rest) supersedes it, so the page reads the seeked hour, not the hour the report described.
+  const report = beat && !(seekAt && seekAt.t > beatAtRef.current) ? beat : null;
   // At rest the page reads one hour of the loaded day: the paused or seeked hour if there is one and the day has it, else the latest reporting hour.
   const rest = pausedHour != null && day && day[pausedHour] ? { reading: day[pausedHour], index: pausedHour, hour: hourOfTs(day[pausedHour].ts) } : latest;
   // Index → clock hour of that reading; identity on an archive day, the window's own hours on the live path. Fractions carry across so the eased position stays smooth.
@@ -230,14 +248,14 @@ export function useListenSession(): ListenSession {
 
   // Mood inputs: the beat report while playing (it describes what you are hearing); the rest hour otherwise.
   const a = anchors ?? QUEENS_2023_ANCHORS;
-  const moodTier = beat
-    ? beat.tierIndex
+  const moodTier = report
+    ? report.tierIndex
     : rest?.reading.pm25 != null
       ? tierIndexOf(pm25ToAQI(Math.max(0, rest.reading.pm25))!)
       : 0;
-  const moodHour = beat ? clockOf(beat.hour) : (rest?.hour ?? 0);
-  const moodAqi = beat
-    ? beat.smoothedAQI
+  const moodHour = report ? clockOf(report.hour) : (rest?.hour ?? 0);
+  const moodAqi = report
+    ? report.smoothedAQI
     : rest?.reading.pm25 != null
       ? pm25ToAQI(Math.max(0, rest.reading.pm25))
       : null;
@@ -250,7 +268,7 @@ export function useListenSession(): ListenSession {
   const playheadClock = transition.clock;
   const paused = !playing && (pausedHour != null || seekAt != null);
   // The sky's inputs: the same channels, but a channel the current hour lacks holds its last reported value from earlier in the day (looked back through the day, so a rest hour with no O3 yet still carries the afternoon's O3). The engine holds its effects the same way across a null hour (§4.4: no data, no movement). AirNow publishes PM2.5 for the newest hour before O3, so without this the afternoon sky fell to its low-ozone end.
-  const heldIndex = beat ? beat.hour : rest?.index;
+  const heldIndex = report ? report.hour : rest?.index;
   const held = (ch: "pm25" | "o3" | "no2"): number | null => {
     if (!day || heldIndex == null) return null;
     for (let i = Math.min(heldIndex, day.length - 1); i >= 0; i--) {
@@ -260,8 +278,8 @@ export function useListenSession(): ListenSession {
     return null;
   };
   const skyChannels = { pm25: held("pm25"), o3: held("o3"), no2: held("no2") };
-  const channels = beat
-    ? { pm25: beat.pm25n, o3: beat.o3n, no2: beat.no2n }
+  const channels = report
+    ? { pm25: report.pm25n, o3: report.o3n, no2: report.no2n }
     : rest
       ? {
           pm25: normalize(rest.reading.pm25 == null ? null : Math.max(0, rest.reading.pm25), a.pm25),

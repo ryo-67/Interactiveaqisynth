@@ -12,6 +12,9 @@ uniform int uCount;
 uniform float uAspect;
 uniform float uDispersion;
 uniform float uRimLight;
+uniform float uSwirl;
+uniform float uWobble;
+uniform float uTime;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec2 disp = vec2(0.0);
@@ -21,14 +24,20 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     vec4 L = uLens[i];
     vec2 d = uv - L.xy;
     d.x *= uAspect; // circular lenses on a non-square frame
-    float r = length(d) / L.z;
+    float ang = atan(d.y, d.x);
+    float ph = float(i) * 1.7;
+    // The outline breathes: the radius varies around the rim with angle and time, so no lens is a disc for long.
+    float wob = 1.0 + uWobble * sin(3.0 * ang + uTime + ph) + 0.5 * uWobble * sin(5.0 * ang - 0.7 * uTime + 2.0 * ph);
+    float R = L.z * wob;
+    float r = length(d) / R;
     if (r < 1.0) {
-      // A sphere-like lens profile: displacement toward the centre grows from the middle and returns to zero at the edge, so the sky inside is magnified and bent and the edge stays continuous with the frame around it.
+      // A sphere-like lens profile: displacement grows from the middle and returns to zero at the edge, so the sky inside is magnified and bent and the edge stays continuous with the frame around it. A tangential term turns the sky inside as well.
       float k = 4.0 * r * (1.0 - r) * (1.0 - r);
       vec2 dir = d / max(length(d), 1e-4);
-      dir.x /= uAspect;
-      disp -= dir * k * L.w * L.z;
-      rim += exp(-pow((r - 0.86) / 0.09, 2.0)) * L.w; // light piles up at the lens edge
+      vec2 tang = vec2(-dir.y, dir.x);
+      dir.x /= uAspect; tang.x /= uAspect;
+      disp += (-dir + tang * uSwirl * sin(uTime * 0.3 + ph)) * k * L.w * R;
+      rim += exp(-pow((r - 0.86) / 0.08, 2.0)) * L.w; // light piles up at the lens edge
     }
   }
   vec2 uvR = clamp(uv + disp * (1.0 + uDispersion), 0.0, 1.0);
@@ -54,6 +63,9 @@ export class LensFieldEffect extends Effect {
         ["uAspect", new Uniform(1)],
         ["uDispersion", new Uniform(PARTICLES.dispersion)],
         ["uRimLight", new Uniform(PARTICLES.rimLight)],
+        ["uSwirl", new Uniform(PARTICLES.swirl)],
+        ["uWobble", new Uniform(PARTICLES.wobble)],
+        ["uTime", new Uniform(0)],
       ]),
     });
     this.lens = lens;
@@ -73,6 +85,7 @@ export class LensFieldEffect extends Effect {
     const l = Math.max(0, Math.min(1, level));
     (this.uniforms.get("uCount") as Uniform).value = Math.round(MAX * l);
     (this.uniforms.get("uAspect") as Uniform).value = aspect;
+    if (drift) (this.uniforms.get("uTime") as Uniform).value = time * PARTICLES.wobbleHz * Math.PI * 2;
     for (let i = 0; i < MAX; i++) {
       const L = this.lens[i];
       if (drift) {

@@ -2,11 +2,11 @@
 import React, { useLayoutEffect, useMemo } from "react";
 import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
-import { EffectComposer, Bloom, HueSaturation, ChromaticAberration, ToneMapping } from "@react-three/postprocessing";
-import { ToneMappingMode } from "postprocessing";
+import { EffectComposer, Bloom, HueSaturation, ChromaticAberration, Noise, ToneMapping } from "@react-three/postprocessing";
+import { ToneMappingMode, BlendFunction } from "postprocessing";
 import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3 } from "three";
 import { LensFieldEffect } from "./LensFieldEffect";
-import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, NYC_LAT } from "../utils/theme";
+import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
 
@@ -36,8 +36,10 @@ interface Props {
   discDeg?: number;
   // Saturation grade on the sky (SKY_GRADE.saturation); the harness overrides it.
   saturation?: number;
-  // Particulate level, 0..1, from ABSOLUTE PM2.5 via particleLevel(): the lens field and the frame's chromatic aberration.
+  // Coarse-particulate level, 0..1, from ABSOLUTE PM2.5 via particleLevel() (PM10 once it is a channel): the lens field and the frame's chromatic aberration.
   particles?: number;
+  // Fine-particulate level, 0..1, from ABSOLUTE PM2.5 via grainLevel(): film grain.
+  grain?: number;
   // Local hour (fractional) for the star field's rotation. Stars turn about the celestial pole 15° an hour, so facing south they rise on the left and set on the right; continuous across midnight.
   hour?: number;
 
@@ -105,6 +107,12 @@ function StarField({ opacity, count, hour }: { opacity: number; count: number; h
 export function particleLevel(pm25: number | null | undefined): number {
   if (pm25 == null) return 0;
   return Math.max(0, Math.min(1, (pm25 - PARTICLES.visibleFromUgm3) / (PARTICLES.fullAtUgm3 - PARTICLES.visibleFromUgm3)));
+}
+// 0 below GRAIN.visibleFromUgm3, 1 at fullAtUgm3, on the grain's curve.
+export function grainLevel(pm25: number | null | undefined): number {
+  if (pm25 == null) return 0;
+  const l = Math.max(0, Math.min(1, (pm25 - GRAIN.visibleFromUgm3) / (GRAIN.fullAtUgm3 - GRAIN.visibleFromUgm3)));
+  return Math.pow(l, GRAIN.curve);
 }
 
 // The lens field (LensFieldEffect) as a composer child: one instance, its state pushed every frame.
@@ -177,7 +185,7 @@ function Exposure({ value }: { value: number }) {
   return null;
 }
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0 }: Props) {
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0 }: Props) {
   const aberration = useMemo(() => new Vector2(PARTICLES.aberrationMax * particles, PARTICLES.aberrationMax * particles), [particles]);
   // Sun elevation and azimuth from the vector itself, so every caller that already passes a sun position gets the fade and the facing for free.
   const len = Math.hypot(...sunPosition) || 1;
@@ -228,6 +236,7 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
           <HueSaturation saturation={saturation} />
           <LensField level={particles} />
           <ChromaticAberration offset={aberration} radialModulation modulationOffset={0.3} />
+          <Noise opacity={GRAIN.opacityMax * grain} blendFunction={BlendFunction.OVERLAY} premultiply />
           <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
         </EffectComposer>
       </Canvas>

@@ -83,15 +83,15 @@ export function hazeToAerosol(haze: number): { turbidity: number; mieCoefficient
 // Rayleigh is held at the three.js Sky model default and is no longer part of what the haze row varies.
 export const RAYLEIGH_DEFAULT = 1;
 
-// The veil's opacity at the zenith for a given particulate density — the same quantity SmokeLayer draws (its in-scatter term, on its curve, at the zenith weight). One number shared by the layer and the stars, so there is no second knob to keep in agreement.
-export function veilAtZenith(pm25n: number | null): number {
+// The veil's density for a given particulate level — the same quantity SmokeLayer draws (its in-scatter alpha on its curve), BEFORE the vertical ramp. The ramp's zenith weight (0.55) is a display choice about where the plume looks thickest; it is not the optical depth, and using it left a full smoke day 49% transmissive with the stars at a quarter strength. One number shared by the layer and the stars, so there is no second knob.
+export function veilDensity(pm25n: number | null): number {
   const d = Math.max(0, Math.min(1, pm25n ?? 0));
-  return SMOKE.inscatter.alphaMax * Math.pow(d, SMOKE.curve) * SMOKE.zenithFactor;
+  return SMOKE.inscatter.alphaMax * Math.pow(d, SMOKE.curve);
 }
 
-// Stars fade in below the horizon and are hidden by haze (§5.2 item 4). The hiding is DERIVED from the veil: a star is a point against raised background, and its contrast falls roughly as the square of the transmitted fraction, so opacity = night × (1 − veil)². Realistic (Shoro's ruling) and not a separate rule.
+// Stars fade in below the horizon and are hidden by haze (§5.2 item 4). The hiding is DERIVED from the veil: a star is a point against raised background, and its contrast falls as the square of the transmitted fraction, so opacity = night × (1 − veil)². Jun 7 (veil 0.92) → 0.6%; a moderate day (density 0.5, veil 0.6) → 16%; a light one (0.2) → 42%.
 export function starOpacity(sunElevationDeg: number, pm25n: number | null): number {
   const night = Math.max(0, Math.min(1, -sunElevationDeg / 8)); // full by ~8° below the horizon
-  const t = 1 - veilAtZenith(pm25n);
+  const t = 1 - veilDensity(pm25n);
   return night * t * t;
 }

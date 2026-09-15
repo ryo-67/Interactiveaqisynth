@@ -281,19 +281,30 @@ export const SKY_GRADE = {
   saturationUnderSmoke: -0.5,
 } as const;
 
-// Particulate as refraction (§5.2 item 2): a screen-space field of soft lenses that bends the rendered sky beneath each one, each colour channel displaced by a different amount so the warp disperses into spectrum, with a faint caustic at the rim. Not objects: no geometry, no perspective ellipses, nothing that reads as a bubble — the sky itself is what refracts. Visibility keys to ABSOLUTE PM2.5 (like SMOKE.orange). Drift stops under prefers-reduced-motion (§5.4).
+// Particulate as refraction (§5.2 item 2): a screen-space field of large, wobbling lenses that bends the rendered sky beneath each one — magnified and swirled inside, each colour channel displaced by a different amount so the warp disperses into spectrum, a caustic at the rim. Not objects: the sky itself refracts. Keys to ABSOLUTE PM2.5 for now; this is the coarse-particle effect and moves to PM10 once that is a channel (DAT-13). Drift stops under prefers-reduced-motion (§5.4).
 export const PARTICLES = {
   visibleFromUgm3: 35, // nothing below the Unhealthy-for-Sensitive-Groups line
   fullAtUgm3: 150,
-  max: 40,                          // lenses in the field at full level
-  radius: { min: 0.05, max: 0.2 },  // fraction of frame height; log-uniform
-  strength: 0.28,                   // displacement at a lens's strongest ring, as a fraction of its radius: visible bending, not a ripple
-  dispersion: 0.35,                 // per-channel displacement difference: red bends most, blue least
-  rimLight: 0.05,                   // caustic brightness at the lens edge
-  fallPerSec: 0.012,                // uv units per second, downward
-  swayPerSec: 0.01,
+  max: 28,                           // lenses in the field at full level
+  radius: { min: 0.12, max: 0.42 },  // fraction of frame height; log-uniform — large
+  strength: 0.55,                    // displacement at a lens's strongest ring, as a fraction of its radius
+  swirl: 0.35,                       // tangential component: the sky inside turns, not only magnifies
+  dispersion: 0.8,                   // per-channel displacement difference: red bends most, blue least — heavy spectral split
+  wobble: 0.22,                      // the lens outline breathes: radius varies around the rim with angle and time
+  wobbleHz: 0.35,
+  rimLight: 0.07,                    // caustic brightness at the lens edge
+  fallPerSec: 0.012,                 // uv units per second, downward
+  swayPerSec: 0.012,
   // Frame-level chromatic aberration in the post chain, rising with the same level.
-  aberrationMax: 0.0035,
+  aberrationMax: 0.006,
+} as const;
+
+// Grain (§5.2 item 2): fine particulate as film grain — per-frame noise in the post chain, rising with ABSOLUTE PM2.5 from ordinary levels, so a moderate day already has texture and a smoke day is rough. The fine-particle effect: stays on PM2.5 when the lenses move to PM10.
+export const GRAIN = {
+  visibleFromUgm3: 12, // the Good/Moderate line
+  fullAtUgm3: 120,
+  opacityMax: 0.45,
+  curve: 0.8,
 } as const;
 
 // Night (D-20 addendum): the analytic models go dark and neutral with the sun down, but a clear night sky reads deep blue — skyglow, airglow and the eye's own shift. A blue gradient is screened over the sky from sunset to −6° (civil twilight's end) and held through the night; particulate damps it, because a hazy night is grey-orange, not blue. FIRST PASS — the harness has a strength slider.

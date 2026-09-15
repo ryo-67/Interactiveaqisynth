@@ -4,7 +4,7 @@
 // Haze and ozone ARE the two data channels, normalized: haze is normalized PM2.5 (p05→0, p95→1), ozone is normalized O3. Picking a real day sets both from the archive at the chosen hour; moving a slider afterwards overrides it.
 // Everything lives in the URL, so any view can be reopened or sent: ?model=hosek&day=2023-06-07&hour=14&haze=0.6&ozone=0.7&glass=css
 import React, { useEffect, useMemo, useState } from "react";
-import { SkyView, particleLevel, type SkyModel, type CameraFacing } from "./SkyView";
+import { SkyView, particleLevel, grainLevel, type SkyModel, type CameraFacing } from "./SkyView";
 import { skyParamsFor, starOpacity, hazeToAerosol, daylightBlend, nightBlend, RAYLEIGH_DEFAULT } from "./skyParams";
 import { GlassSample, GLASS_IMPLS, GLASS_LABELS, type GlassImpl } from "./GlassSamples";
 import { SmokeLayer, smokeRegime } from "./SmokeLayer";
@@ -125,7 +125,7 @@ export default function SceneTestPage() {
     // The scene owns the area above the control bar rather than the whole viewport, so the plume's densest band — which sits at the horizon, at the bottom of the frame — is never hidden behind the controls.
     <div style={{ position: "fixed", inset: 0, background: "#05050a", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
-        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} hour={hour} saturation={saturation + (SKY_GRADE.saturationUnderSmoke - saturation) * smokeRegime(pmAbs)} particles={particleLevel(pmAbs)} style={{ width: "100%", height: "100%" }} live />
+        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} hour={hour} saturation={saturation + (SKY_GRADE.saturationUnderSmoke - saturation) * smokeRegime(pmAbs)} particles={particleLevel(pmAbs)} grain={grainLevel(pmAbs)} style={{ width: "100%", height: "100%" }} live />
 
         <NightLayer blend={view.night} density={smoke} strength={night} />
         <SmokeLayer density={smoke} pm25={pmAbs} hueDeg={smokeHue} />

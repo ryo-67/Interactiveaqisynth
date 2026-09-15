@@ -25,6 +25,8 @@ interface Props {
   onSeek: (hour: number) => void; // press or drag on the plot: move the phrase to that hour
 }
 
+const MAX_RENDER_RATIO = 4; // device ratio × pinch scale; 4 keeps a 2× display crisp through a 2× pinch and bounds the buffer
+
 export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, onSeek }: Props) {
   const theme = useTheme();
   const c = themeColors(theme);
@@ -85,8 +87,9 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const tabH = fill ? Math.max(minTab, Math.floor(available / 4) * 4) : minTab;
       const lineTracks: TrackKey[] = [tab];
       const cssH = GRAPH.labelGutter + tabH + pulseH + axisH;
-      // The buffer is whole device pixels at the current ratio (browser zoom changes it), and the canvas box is set to exactly buffer ÷ ratio, so one buffer pixel is one device pixel and every line lands on one; any other pairing resamples the drawing.
-      const dpr = window.devicePixelRatio || 1;
+      // The buffer is whole device pixels at the current ratio, and the canvas box is set to exactly buffer ÷ ratio, so one buffer pixel is one device pixel and every line lands on one; any other pairing resamples the drawing. The ratio includes the visual viewport's pinch scale (trackpad pinch on a Mac, pinch on a phone): that magnifies the page without reflow or a ratio change, and a bitmap drawn at the unmagnified ratio is simply scaled up, which is the one element on the page that can look soft. Capped, because a 5× pinch on a 2× display would be a 100-megapixel buffer.
+      const pinch = window.visualViewport?.scale ?? 1;
+      const dpr = Math.min(MAX_RENDER_RATIO, (window.devicePixelRatio || 1) * pinch);
       const bufW = Math.round(cssW * dpr), bufH = Math.round(cssH * dpr);
       if (canvas.width !== bufW || canvas.height !== bufH) {
         canvas.width = bufW;
@@ -343,11 +346,13 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
     };
     const onRatio = () => { cancelAnimationFrame(raf); draw(); watchRatio(); };
     watchRatio();
-    // Browser zoom also fires a window resize; redraw when the ratio has moved, whether or not the media query reported it (Firefox rounds resolution queries).
-    let seenDpr = window.devicePixelRatio;
-    const onResize = () => { if (window.devicePixelRatio !== seenDpr) { seenDpr = window.devicePixelRatio; cancelAnimationFrame(raf); draw(); watchRatio(); } };
+    // Browser zoom also fires a window resize; a pinch fires the visual viewport's resize. Redraw when the effective ratio (device ratio × pinch scale) has moved, whether or not the media query reported it (Firefox rounds resolution queries).
+    const effective = () => (window.devicePixelRatio || 1) * (window.visualViewport?.scale ?? 1);
+    let seen = effective();
+    const onResize = () => { const e = effective(); if (e !== seen) { seen = e; cancelAnimationFrame(raf); draw(); watchRatio(); } };
     window.addEventListener("resize", onResize);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); };
+    window.visualViewport?.addEventListener("resize", onResize);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); window.visualViewport?.removeEventListener("resize", onResize); };
   }, [series, day, playing, live, tab, c, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
 
   return (

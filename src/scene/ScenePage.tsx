@@ -9,15 +9,14 @@ import { sunAnglesAt, sunPositionVector, tzOffsetFromTs } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
 import { Transport } from "../components/Transport";
-import { BoroughToggle, DateStatus } from "../components/BoroughToggle";
+import { BoroughToggle } from "../components/BoroughToggle";
 import { AQINumber } from "../components/AQINumber";
 import { MoodLine } from "../components/MoodLine";
 import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
-import { DayNav } from "../components/DayNav";
+import { DayNav, PinStrip } from "../components/DayNav";
 import { SourceLine } from "../components/SourceLine";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
 import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, space } from "../utils/theme";
-import { STATUS_LIVE, STATUS_ARCHIVE } from "../content";
 
 // The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
 const qs = new URLSearchParams(window.location.search);
@@ -83,10 +82,6 @@ export default function ScenePage() {
     return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke, pm25, saturation, night: nightBlend(ang.elevationDeg) };
   }, [day, hour, channels.pm25, channels.o3, smokeEased, pm25Eased]);
 
-  const lastTs = day?.[day.length - 1]?.ts ?? null;
-  const dateLabel = lastTs ? new Date(lastTs).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
-  const hourLabel = lastTs ? lastTs.slice(11, 16) : "—";
-
   // Glass parameters as custom properties, once, at the root (§5.6: theme.ts is the source of truth; index.css reads these).
   const glassVars = {
     "--glass-blur": GLASS.blur, "--glass-saturate": GLASS.saturate, "--glass-fill-alpha": String(GLASS.fillAlpha), "--glass-fill": GLASS.fill,
@@ -104,30 +99,29 @@ export default function ScenePage() {
           <SmokeLayer density={view.smoke} pm25={view.pm25} />
         </div>
 
-        {/* Panels: one centered column over the scene (§5.7). The column itself passes pointer events through to nothing; only the panels catch them. */}
-        <div style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", pointerEvents: "none" }}>
-          <div style={{ maxWidth: "720px", margin: "0 auto", padding: `${space.md} ${space.md} calc(${space.xl} + env(safe-area-inset-bottom))`, display: "flex", flexDirection: "column", gap: space.md, minWidth: 0 }}>
-            {/* Two pills, each one line: the borough words, centred; the date and status beneath, centred. Never on one row, so neither can wrap or misalign. */}
-            <Glass material="glass" style={{ pointerEvents: "auto", alignSelf: "center", maxWidth: "100%", padding: `${space.sm} ${space.lg}` }}>
+        {/* The scaffold (D-26): see .scene-ui in index.css. */}
+        <div className="scene-ui">
+          <div className="scene-top">
+            <Glass material="glass" className="scene-pill scene-borough">
               <BoroughToggle selected={s.borough} onSelect={s.setBorough} />
             </Glass>
-            <Glass material="glass" style={{ pointerEvents: "auto", alignSelf: "center", padding: `${space.xs} ${space.md}`, marginTop: `calc(-1 * ${space.sm})` }}>
-              <DateStatus dateLabel={dateLabel} hourLabel={hourLabel} status={s.live ? STATUS_LIVE : STATUS_ARCHIVE} />
-            </Glass>
-
-            <Glass material="glass" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}`, borderRadius: 20 }}>
+            <Glass material="glass" className="scene-pill">
               <DayNav date={s.date} onChange={s.setDate} loading={s.dayLoading} />
             </Glass>
+            <Glass material="glass" className="scene-pill">
+              <PinStrip date={s.date} onChange={s.setDate} />
+            </Glass>
+          </div>
 
-            <Glass material="frosted" style={{ pointerEvents: "auto", width: "100%", padding: `${space.lg} ${space.lg} ${space.md}` }}>
+          <div className="scene-mid">
+            <Glass material="frosted" className="scene-panel scene-hero">
               <AQINumber value={s.displayAqi} />
               <div style={{ marginTop: space.md }}>
                 <MoodLine tierIndex={s.moodTier} hour={s.moodHour} dominant={s.dominant} />
               </div>
             </Glass>
-
             {day && day.length > 0 && (
-              <Glass material="frosted" style={{ pointerEvents: "auto", width: "100%", padding: space.md }}>
+              <Glass material="frosted" className="scene-panel scene-graph">
                 <Graph
                   day={day}
                   anchors={s.anchors}
@@ -136,30 +130,31 @@ export default function ScenePage() {
                   live={s.live}
                   tab={tab}
                   onTab={setTab}
-                  onToggle={s.togglePlay}
+                  onSeek={s.seek}
                 />
               </Glass>
             )}
+          </div>
 
-            <Glass material="glass" style={{ pointerEvents: "auto", alignSelf: "flex-start" }}>
+          <div className="scene-bottom">
+            <Glass material="glass" className="scene-pill scene-transport">
               <Transport playing={playing} onToggle={s.togglePlay} onVolume={s.setVolume} />
             </Glass>
-
             {day && day.length > 0 && (
-              <Glass material="frosted" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}` }}>
+              <Glass material="frosted" className="scene-source">
                 <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} />
               </Glass>
             )}
-
-            {DEV && (
-              <select value={s.devDayKey} onChange={(e) => s.setDevDayKey(e.target.value)} style={{ pointerEvents: "auto", alignSelf: "flex-start" }}>
-                <option value="live">Live: NYC (last 24 h)</option>
-                {PHASE0_DAYS.map((d) => (
-                  <option key={d.key} value={d.key}>{d.label} (fixture)</option>
-                ))}
-              </select>
-            )}
           </div>
+
+          {DEV && (
+            <select className="scene-dev" value={s.devDayKey} onChange={(e) => s.setDevDayKey(e.target.value)}>
+              <option value="live">Live: NYC (last 24 h)</option>
+              {PHASE0_DAYS.map((d) => (
+                <option key={d.key} value={d.key}>{d.label} (fixture)</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
     </ThemeContext.Provider>

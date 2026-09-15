@@ -298,7 +298,7 @@ The sky table carries the palette; there is no fixed background color. Tier colo
 
 ### §5.7 Responsive
 
-Laptop: scene full-bleed, panels in a single centered column over it, timeline ribbon pinned to the bottom edge. Phone: same scene, panels stack, timeline ribbon pinned above the safe area, borough control scrolls horizontally inside its glass. The scene's particle budget halves on phone.
+Laptop (≥1024): scene full-bleed; a top bar of three pills (borough words, day navigation, pins), the hero and graph side by side centred in the remaining height, a bottom bar with the transport at left and the source line at right (D-26). Phone (<1024): the same pieces in one column — borough, nav, pins as a scrolling strip, hero, graph, source — with the transport pinned above the safe area; the borough words scroll horizontally inside their glass. The scene's particle budget halves on phone.
 
 ### §5.8 Components (hand-styled)
 
@@ -393,6 +393,7 @@ Code
 | D-23 | 2026-09-15 | The graph's AQI line and legend use the standard EPA six-category palette; the five tier colours stay on the mood word | Tier colours for the AQI line too | Visitors read AQI against the palette every AQI tool uses. The tier colours are the piece's own voice and are deliberately not EPA's; putting them on a numeric AQI axis would misread as a wrong legend |
 | D-24 | 2026-09-15 | Glass tone follows the clock: light material with dark text in daylight, dark with light text at night, switching at the middle of the sky's dusk fade | Per-panel pixel sampling of the rendered sky | Sampling answered late (one GPU read per panel, at best every 120 ms) and each panel switched on its own, which read as inconsistency. The clock switches every panel together and at a moment the sky itself is changing |
 | D-25 | 2026-09-15 | One neutral glass surface at every hour; the graph's AQI axis is fixed at 0–300; a day switch never stops the music | Day/night glass tones (D-24); AQI axis autoscaled per day; restart the phrase on a chosen day | The tone switch was unnecessary: a dark translucent fill at 0.62 holds AA for light text under any sky, so one surface is simpler and consistent. A fixed AQI ruler means the line and the standard-colour bar beside it always mean the same thing. The engine now swaps the day under a running transport and lets the smoothers glide, which is the "same hour, different air" rule extended from boroughs to days |
+| D-26 | 2026-09-15 | Page scaffold from Shoro's Figma frame: top bar of three pills (borough · day nav · pins), hero and graph side by side centred, bottom bar (transport · source); phone stacks the same pieces with the transport pinned above the safe area. The graph is a DAW-style transport surface: press or drag moves the playhead and the engine seeks; play/pause live in the transport pill only | Single centred column on every width; tap-the-graph-to-play | The column wasted the desktop and left no room for more visualizations; the frame gives the scene the width. Scrubbing and toggling cannot share one surface |
 | D-14 | 2026-08-26 | The 24-hour graphic score is the primary visual; all controls are typographic | Orbs as centerpiece; dashboard controls; typography-only page | The visual must be the thing being played; chrome reads as SaaS; type alone leaves playback inert |
 
 ---

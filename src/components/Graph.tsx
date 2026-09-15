@@ -1,6 +1,7 @@
 // Graph — the day as four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of it (§5.3 score panel, rebuilt). Replaces Score.
 // Tabs: AQI (from PM2.5, coloured per EPA category, D-23), PM2.5 µg/m³, O3 ppb, NO2 ppb — one at a time, each with its unit and its own right-edge scale, a line through hourly points with gaps where the hour is null (§4.4 rest). The pulse row is always beneath: the engine's exact 16-step pattern per four-hour bar (graphPulse.ts), four steps under every hour column, each bar labelled with its hit count; a hit brightens when the engine fires it.
 // One clock: the playhead is the session's eased hour — the same number that moves the sun — and the pulse row lights whichever hit mark the playhead is currently over. Lighting marks from the engine's callback instead put two clocks on one row (timer, render and frame latency on one side, the eased hour on the other) and the flashes drifted ahead of the line. The active tab is the caller's state.
+// The graph is a transport surface, as in a DAW: press or drag anywhere on the plot to move the playhead, and the engine seeks with it, playing or paused. Play and pause live in the transport pill.
 import React, { useEffect, useMemo, useRef } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
@@ -20,10 +21,10 @@ interface Props {
   live: boolean;
   tab: TrackKey;
   onTab: (t: TrackKey) => void;
-  onToggle: () => void; // tap the graph to play or pause
+  onSeek: (hour: number) => void; // press or drag on the plot: move the phrase to that hour
 }
 
-export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, onToggle }: Props) {
+export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, onSeek }: Props) {
   const theme = useTheme();
   const c = themeColors(theme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,6 +33,16 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
   const playheadRef = useRef<number | null>(playheadHour);
   playheadRef.current = playheadHour;
   const playing = running && playheadHour != null;
+  // The plot's horizontal extent, recorded by draw() so pointer positions map to hours.
+  const plotRef = useRef({ x: 0, w: 1, n: 24 });
+  const dragging = useRef(false);
+  const hourAt = (clientX: number): number | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const { x, w, n } = plotRef.current;
+    const px = clientX - canvas.getBoundingClientRect().left;
+    return Math.max(0, Math.min(n - 0.001, ((px - x) / w) * n));
+  };
 
   const series = useMemo(() => ({
     aqi: pmToAQISeries(day),
@@ -78,6 +89,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const plotW = cssW - (barW ? barW + GRAPH.scaleBarGap : 0);
       const plotRight = plotX + plotW;
       const colW = plotW / n;
+      plotRef.current = { x: plotX, w: plotW, n };
       const labelPx = parseInt(typeScale.caption.size);
       ctx.font = `${labelPx}px ${families.data}`;
       const lh = labelPx + 4; // label line height inside the canvas
@@ -266,7 +278,15 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           );
         })}
       </div>
-      <canvas ref={canvasRef} onClick={onToggle} style={{ width: "100%", display: "block", cursor: "pointer" }} aria-label="24-hour graph; click to play or pause" />
+      <canvas
+        ref={canvasRef}
+        onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); const h = hourAt(e.clientX); if (h != null) onSeek(h); }}
+        onPointerMove={(e) => { if (!dragging.current) return; const h = hourAt(e.clientX); if (h != null) onSeek(h); }}
+        onPointerUp={(e) => { dragging.current = false; e.currentTarget.releasePointerCapture(e.pointerId); }}
+        onPointerCancel={() => { dragging.current = false; }}
+        style={{ width: "100%", display: "block", cursor: "ew-resize", touchAction: "none" }}
+        aria-label="24-hour graph; press or drag to move the playhead"
+      />
     </div>
   );
 }

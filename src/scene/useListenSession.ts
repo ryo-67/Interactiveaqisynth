@@ -21,8 +21,10 @@ export interface ListenSession {
   dayLoading: boolean;
   // ONE clock for everything that moves with the phrase: the beat's integer hour eased over one beat (§5.4), wrapping forward at the loop seam. The sun, the playhead and every graph track read this and nothing else.
   playheadHour: number;
-  // True after a pause: the phrase is held at playheadHour rather than at rest.
+  // True after a pause or a seek: the phrase is held at playheadHour rather than at rest.
   paused: boolean;
+  // Move the phrase to an hour (fractional), playing or not — the graph's scrub.
+  seek: (hour: number) => void;
   snapshot: CurrentSnapshot | null;
   anchors: PollutantAnchors; // the engine's anchors (falls back to Queens 2023 until the borough's land)
   day: Day | null;
@@ -128,9 +130,17 @@ export function useListenSession(): ListenSession {
     else engine.pause();
   }, [playing]);
 
+  const beatAtRef = useRef(0);
   useEffect(() => {
-    engineRef.current?.onBeat(setBeat);
+    engineRef.current?.onBeat((info) => { beatAtRef.current = performance.now(); setBeat(info); });
     return () => engineRef.current?.onBeat(null);
+  }, []);
+
+  // A seek moves the clock immediately; the next beat report (which arrives after it) takes over again.
+  const [seekAt, setSeekAt] = useState<{ hour: number; t: number } | null>(null);
+  const seek = useCallback((hour: number) => {
+    engineRef.current?.seek(hour);
+    setSeekAt({ hour, t: performance.now() });
   }, []);
 
 
@@ -180,8 +190,9 @@ export function useListenSession(): ListenSession {
       ? tierIndexOf(pm25ToAQI(Math.max(0, latest.reading.pm25))!)
       : 0;
   const moodHour = beat ? beat.hour : (latest?.hour ?? 0);
-  const playheadHour = useEasedHour(beat ? beat.hour : (latest?.hour ?? 12), playing);
-  const paused = !playing && beat != null;
+  const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (latest?.hour ?? 12);
+  const playheadHour = useEasedHour(clockTarget, playing);
+  const paused = !playing && (beat != null || seekAt != null);
   const channels = beat
     ? { pm25: beat.pm25n, o3: beat.o3n, no2: beat.no2n }
     : latest
@@ -201,7 +212,7 @@ export function useListenSession(): ListenSession {
   })();
 
   return {
-    borough, setBorough, date, setDate, dayLoading, playheadHour, paused,
+    borough, setBorough, date, setDate, dayLoading, playheadHour, paused, seek,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, latest, moodTier, moodHour, dominant, channels, devDayKey, setDevDayKey,
   };
@@ -211,7 +222,7 @@ export function useListenSession(): ListenSession {
 function useEasedHour(target: number, running: boolean): number {
   const [value, setValue] = useState(target);
   useEffect(() => {
-    if (!running) return; // paused: hold the current value; a fresh play resumes the run from the next beat report
+    if (!running) { setValue(target % 24); return; } // paused: hold (a seek jumps it); a fresh play resumes the run from the next beat report
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {

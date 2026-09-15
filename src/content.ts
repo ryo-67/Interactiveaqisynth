@@ -40,13 +40,13 @@ export const TRANSPORT_VOLUME = "Volume";
 export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O3", no2: "NO2", pulse: "pulse" } as const; // the pulse row's numbers are hits per bar
 export const TRACK_UNITS = { aqi: "", pm25: "µg/m³", o3: "ppb", no2: "ppb" } as const;
 
-// Day navigation. Pin names are from STRATEGY §2.2; the rest are PLACEHOLDERS — Shoro's.
+// Day navigation. Pin names are Shoro's (from the Figma scaffold, 2026-09-15); the rest are PLACEHOLDERS — Shoro's.
 export const PINS = [
-  { date: "2023-06-07", name: "The smoke" },
-  { date: "2023-06-30", name: "Ozone and smoke" },
-  { date: "2023-07-12", name: "Ozone day" },
-  { date: "2023-02-09", name: "Rush hour" },
-  { date: "2023-10-29", name: "Cleanest" },
+  { date: "2023-06-07", name: "Wildfire Smoke" },
+  { date: "2023-06-30", name: "Hot and Hazy" },
+  { date: "2023-07-12", name: "Ozone Spike" },
+  { date: "2023-02-09", name: "Rush Hour Traffic" },
+  { date: "2023-10-29", name: "Clearest Day" },
 ] as const;
 export const NAV_LIVE = "Live";
 export const NAV_PREV = "‹";

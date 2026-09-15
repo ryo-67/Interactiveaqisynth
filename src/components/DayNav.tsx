@@ -63,33 +63,26 @@ export function DayNav({ date, onChange, loading }: Props) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: space.xs }}>
-      <div style={{ display: "flex", alignItems: "center", gap: space.sm, flexWrap: "wrap" }}>
-        <button style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
-        <button style={chip(false)} onClick={prev} aria-label="previous day">{NAV_PREV}</button>
-        <span style={{ fontFamily: families.data, fontSize: typeScale.micro.size, color: c.textPrimary, minWidth: "7.5em", opacity: loading ? 0.5 : 1 }}>
-          {date ? labelOf(date) : NAV_LIVE}
-        </span>
-        <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}>{NAV_NEXT}</button>
-        <button style={chip(open)} onClick={() => setOpen((o) => !o)} aria-expanded={open}>{NAV_CALENDAR}</button>
-      </div>
-
-      <div style={{ display: "flex", gap: space.sm, overflowX: "auto", whiteSpace: "nowrap", paddingBottom: 2 }}>
-        {PINS.map((p) => (
-          <button key={p.date} style={chip(date === p.date)} onClick={() => onChange(p.date)} title={labelOf(p.date)}>{p.name}</button>
-        ))}
-      </div>
+    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: space.sm, whiteSpace: "nowrap" }}>
+      {/* Order per the scaffold: Calendar ‹ date › Live. */}
+      <button style={chip(open)} onClick={() => setOpen((o) => !o)} aria-expanded={open}>{NAV_CALENDAR}</button>
+      <button style={chip(false)} onClick={prev} aria-label="previous day">{NAV_PREV}</button>
+      <span style={{ fontFamily: families.data, fontSize: typeScale.micro.size, color: c.textPrimary, minWidth: "7.5em", textAlign: "center", opacity: loading ? 0.5 : 1 }}>
+        {date ? labelOf(date) : NAV_LIVE}
+      </span>
+      <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}>{NAV_NEXT}</button>
+      <button style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
 
       {open && (
-        <div style={{ marginTop: space.xs, fontFamily: families.data, fontSize: typeScale.micro.size, color: c.textSecondary, maxWidth: 280 }}>
+        <div className="glass frosted" style={{ position: "absolute", top: "100%", left: 0, marginTop: space.xs, padding: space.sm, zIndex: 3, fontFamily: families.data, fontSize: typeScale.micro.size, color: c.textSecondary, width: 280, whiteSpace: "normal" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: space.xs }}>
             <button style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label="previous month">{NAV_PREV}</button>
             <span style={{ color: c.textPrimary }}>{monthLabel}</span>
             <button style={chip(false)} onClick={() => shiftMonth(1)} disabled={view >= yesterday.slice(0, 7)} aria-label="next month">{NAV_NEXT}</button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
-            {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-              <span key={i} style={{ textAlign: "center", color: c.textFaint }}>{d}</span>
+            {["S", "M", "T", "W", "T", "F", "S"].map((dd, i) => (
+              <span key={i} style={{ textAlign: "center", color: c.textFaint }}>{dd}</span>
             ))}
             {grid.map((iso, i) => {
               if (!iso) return <span key={`e${i}`} />;
@@ -114,6 +107,34 @@ export function DayNav({ date, onChange, loading }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// PinStrip — the measured days as chips in one scrolling line (§2.2), its own pill in the scaffold.
+export function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
+  const c = themeColors(useTheme());
+  return (
+    <div style={{ display: "flex", gap: space.sm, overflowX: "auto", whiteSpace: "nowrap", maxWidth: "100%" }}>
+      {PINS.map((p) => {
+        const active = date === p.date;
+        return (
+          <button
+            key={p.date}
+            onClick={() => onChange(p.date)}
+            title={labelOf(p.date)}
+            style={{
+              fontFamily: families.data, fontSize: typeScale.micro.size, cursor: "pointer", flex: "0 0 auto",
+              color: active ? c.textPrimary : c.textMuted,
+              background: active ? "rgba(255,255,255,0.14)" : "none",
+              border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.14)"}`,
+              borderRadius: 999, padding: "4px 10px", lineHeight: 1.2,
+            }}
+          >
+            {p.name}
+          </button>
+        );
+      })}
     </div>
   );
 }

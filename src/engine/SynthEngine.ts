@@ -180,8 +180,9 @@ export class SynthEngine {
     await this.init();
     const transport = Tone.getTransport();
     if (!this.day || transport.state === "started") return;
-    // Resume from a pause: the transport still holds its position, the smoothers their state — the phrase picks up where it paused.
-    if (transport.state === "paused") {
+    // Resume from a pause or a seek: the transport holds its position, the smoothers their state — the phrase picks up from there.
+    if (transport.state === "paused" || this.seeked) {
+      this.seeked = false;
       this.lastBeatTime = this.lastStepTime = -1;
       transport.start("+0.05");
       return;
@@ -195,6 +196,17 @@ export class SynthEngine {
   pause(): void {
     Tone.getTransport().pause();
   }
+
+  // Seek: move the phrase to any point in the day (§2.2 scrubbing, DAW-style). Works while playing — the transport keeps running from the new position and the next beat reads the new hour — and while paused or at rest, where play() then starts from the seeked position. Smoothers carry their state, so the sound glides into the new hour rather than cutting.
+  seek(hourFloat: number): void {
+    const h = ((hourFloat % 24) + 24) % 24;
+    const bar = Math.floor(h / 4), beat = Math.floor(h % 4), sixteenth = Math.floor((h % 1) * 4);
+    const transport = Tone.getTransport();
+    transport.position = `${bar}:${beat}:${sixteenth}`;
+    this.lastBeatTime = this.lastStepTime = -1;
+    this.seeked = true;
+  }
+  private seeked = false;
 
   stop(): void {
     Tone.getTransport().stop();

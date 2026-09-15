@@ -32,7 +32,7 @@ function tabFromUrl(): TrackKey {
 
 export default function ScenePage() {
   const s = useListenSession();
-  const { day, beat, playing, channels } = s;
+  const { day, beat, playing, channels, latest } = s;
   const hour = s.playheadHour; // the one clock: sun, playhead and graph all read it
 
   const [tab, setTab] = useState<TrackKey>(tabFromUrl);
@@ -51,8 +51,10 @@ export default function ScenePage() {
     const params = skyParamsFor(channels.pm25, channels.o3, ang.elevationDeg);
     // MAPPING (PM2.5 → plume density): the engine's own smoothed value while playing (§5.2: the scene never re-derives the smoothing); the latest hour's normalized value at rest.
     const smoke = beat?.pm25nSmoothed ?? channels.pm25 ?? 0;
-    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke, night: nightBlend(ang.elevationDeg) };
-  }, [day, hour, channels.pm25, channels.o3, beat?.pm25nSmoothed]);
+    // Absolute PM2.5 for the veil's colour regime (white haze vs orange smoke): the hour under the playhead, or the latest hour at rest.
+    const pm25 = beat ? beat.pm25 : (latest?.reading.pm25 ?? null);
+    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke, pm25, night: nightBlend(ang.elevationDeg) };
+  }, [day, hour, channels.pm25, channels.o3, beat?.pm25nSmoothed, beat?.pm25, latest]);
 
   const lastTs = day?.[day.length - 1]?.ts ?? null;
   const dateLabel = lastTs ? new Date(lastTs).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
@@ -72,7 +74,7 @@ export default function ScenePage() {
         <div style={{ position: "absolute", inset: 0 }}>
           <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} live={playing} style={{ width: "100%", height: "100%" }} />
           <NightLayer blend={view.night} density={view.smoke} />
-          <SmokeLayer density={view.smoke} />
+          <SmokeLayer density={view.smoke} pm25={view.pm25} />
         </div>
 
         {/* Panels: one centered column over the scene (§5.7). The column itself passes pointer events through to nothing; only the panels catch them. */}

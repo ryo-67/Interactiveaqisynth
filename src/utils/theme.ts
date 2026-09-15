@@ -255,6 +255,8 @@ export const SMOKE = {
   hueDriftDeg: -6,
   // Alpha rises on a curve steeper than linear at the low end, so a normal day's 0.2–0.4 is visibly hazy rather than nothing: alpha ∝ density^curve.
   curve: 0.6,
+  // Which REGIME the veil is in — white haze or orange smoke — keys to ABSOLUTE PM2.5, not the normalized value. Normalization is NYC's own p05→p95 (≈3→20 µg/m³), so a heavy winter traffic day pins at 1.0 exactly like a wildfire day twenty times higher; density (how much veil) rightly uses it, colour must not. The sky visibly discolours when PM2.5 is in the hundreds: neutral at 60, fully orange by 200.
+  orange: { fromUgm3: 60, toUgm3: 200 },
   // Attenuation (multiply): a LIGHT tint that strips blue without crushing luminance; nearly neutral when thin, warm when thick. Capped so a full plume at midday is never darker than the clear sky at the same hour.
   attenuation: {
     saturation: { thin: 0.12, thick: 0.55 },

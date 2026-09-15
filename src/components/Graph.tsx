@@ -2,6 +2,7 @@
 // Tabs: AQI (from PM2.5, coloured per EPA category, D-23), PM2.5 µg/m³, O3 ppb, NO2 ppb — one at a time, each with its unit and its own right-edge scale, a line through hourly points with gaps where the hour is null (§4.4 rest). The pulse row is always beneath: the engine's exact 16-step pattern per four-hour bar (graphPulse.ts), four steps under every hour column, each bar labelled with its hit count; a hit brightens when the engine fires it.
 // One clock: the playhead is the session's eased hour — the same number that moves the sun — and the pulse row lights whichever hit mark the playhead is currently over. Lighting marks from the engine's callback instead put two clocks on one row (timer, render and frame latency on one side, the eased hour on the other) and the flashes drifted ahead of the line. The active tab is the caller's state.
 // The graph is a transport surface, as in a DAW: press or drag anywhere on the plot to move the playhead, and the engine seeks with it, playing or paused. Play and pause live in the transport pill.
+import { hourOfTs } from "../scene/solar";
 import React, { useEffect, useMemo, useRef } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
@@ -271,7 +272,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         const x = Math.round(plotX + i * colW) + 0.5;
         ctx.strokeStyle = c.textFaint;
         ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + (i % 3 === 0 ? 5 : 3)); ctx.stroke();
-        if (i % 3 === 0 && !(live && i === n - 1)) { ctx.fillStyle = c.textMuted; ctx.fillText(String(i), x + 3, cssH - 5); }
+        if (i % 3 === 0 && !(live && i === n - 1)) { ctx.fillStyle = c.textMuted; ctx.fillText(String(hourOfTs(day[i].ts)), x + 3, cssH - 5); } // the clock hour of the reading: 0..21 on an archive day, the window's own hours live
       }
       if (live) { const label = "now"; ctx.fillStyle = c.textMuted; ctx.fillText(label, plotRight - ctx.measureText(label).width - 2, cssH - 5); }
 
@@ -282,10 +283,11 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         ctx.strokeStyle = c.textPrimary;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, axisY); ctx.stroke();
-        const hi = Math.min(n - 1, Math.floor(playheadHour));
-        // Clock time, not an hour count: "9:00 am", "1:00 pm", "12:00 am".
-        const h12 = hi % 12 === 0 ? 12 : hi % 12;
-        const parts: string[] = [`${h12}:00 ${hi < 12 ? "am" : "pm"}`];
+        const hi = Math.max(0, Math.min(n - 1, Math.floor(playheadHour))); // clamped both ways: this indexes the day
+        // Clock time from the reading's own timestamp, not the index: "9:00 am", "1:00 pm", "12:00 am".
+        const hc = hourOfTs(day[hi].ts);
+        const h12 = hc % 12 === 0 ? 12 : hc % 12;
+        const parts: string[] = [`${h12}:00 ${hc < 12 ? "am" : "pm"}`];
         for (const t of lineTracks) { const v = series[t][hi]; parts.push(`${TRACK_LABELS[t]} ${v == null ? "—" : Math.round(v)}`); }
         const label = parts.join(" · ");
         // The readout is a chip, in the site's vocabulary: 24 tall, 8 px side padding, 8 px corners, the panel's dark fill with the chips' hairline border, caption type.

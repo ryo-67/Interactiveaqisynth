@@ -52,7 +52,8 @@ function tabFromUrl(): TrackKey {
 export default function ScenePage() {
   const s = useListenSession();
   const { day, beat, playing, paused, channels, rest } = s;
-  const hour = s.playheadHour; // the one clock: sun, playhead and graph all read it
+  const hour = s.playheadHour; // the one transport position: the graph's playhead reads it as an index
+  const clock = s.playheadClock; // the same position as time of day: the sun and the stars read it
 
   const [tab, setTab] = useState<TrackKey>(tabFromUrl);
   useEffect(() => {
@@ -75,7 +76,7 @@ export default function ScenePage() {
   const view = useMemo(() => {
     const firstTs = day?.[0]?.ts ?? "2023-07-12T00:00:00-04:00";
     const date = firstTs.slice(0, 10);
-    const ang = sunAnglesAt(date, hour, NYC_LAT, NYC_LON, tzOffsetFromTs(firstTs));
+    const ang = sunAnglesAt(date, clock, NYC_LAT, NYC_LON, tzOffsetFromTs(firstTs));
     // MAPPING (PM2.5 → aerosol path, O3 → rayleigh + bloom, clock → exposure + fade): skyParamsFor is the one mapping, shared with the harness.
     const params = skyParamsFor(pm25nEased, o3nEased, ang.elevationDeg);
     // MAPPING (PM2.5 → plume density): the engine's own smoothed value while playing (§5.2: the scene never re-derives the smoothing); the rest hour's normalized value otherwise (the paused or seeked hour of the loaded day, else its latest).
@@ -83,7 +84,7 @@ export default function ScenePage() {
     // MAPPING (smoke regime → sky saturation): the blue is absorbed under smoke, so the grade goes negative as the regime rises.
     const saturation = SKY_GRADE.saturation + (SKY_GRADE.saturationUnderSmoke - SKY_GRADE.saturation) * regime;
     return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, pm25nEased), smoke, regime, saturation, night: nightBlend(ang.elevationDeg) };
-  }, [day, hour, pm25nEased, o3nEased, smokeEased, regime]);
+  }, [day, clock, pm25nEased, o3nEased, smokeEased, regime]);
 
   // Glass parameters as custom properties, once, at the root (§5.6: theme.ts is the source of truth; index.css reads these).
   const glassVars = {
@@ -97,7 +98,7 @@ export default function ScenePage() {
       <div style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars }}>
         {/* The scene: renders continuously while playing, on demand at rest. A click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
         <div style={{ position: "absolute", inset: 0, cursor: "pointer" }} onClick={s.togglePlay} role="button" aria-label={SKY_TOGGLE_LABEL} tabIndex={-1}>
-          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} saturation={view.saturation} particles={lens} grain={grain} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={clock} saturation={view.saturation} particles={lens} grain={grain} live={playing} style={{ width: "100%", height: "100%" }} />
           <NightLayer blend={view.night} density={view.smoke} />
           <SmokeLayer density={view.smoke} regime={view.regime} />
         </div>

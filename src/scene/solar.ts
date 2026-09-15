@@ -43,6 +43,11 @@ export function solarTimes(dateIso: string, lat: number, lon: number, tzOffsetHo
 }
 
 // Offset hours from an ISO local-hour timestamp like "2023-06-07T13:00:00-04:00".
+// The clock hour a reading belongs to, from its own timestamp. An archive day is indexed 0..23 by clock hour, but the live series is the last 24 published hours and starts wherever AirNow's window starts, so the index is the transport position and only the timestamp knows the time of day.
+export function hourOfTs(ts: string): number {
+  return Number(ts.slice(11, 13));
+}
+
 export function tzOffsetFromTs(ts: string): number {
   const m = ts.match(/([+-])(\d{2}):(\d{2})$/);
   if (!m) return -5;

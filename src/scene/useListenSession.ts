@@ -1,4 +1,5 @@
 // useListenSession — the Listen page's state, shared by the typographic page (App) and the scene (ScenePage) so the two never drift: one data load, one engine, one beat report, one play toggle. Extracted from App.tsx unchanged in behavior.
+import { hourOfTs } from "./solar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { motion } from "../utils/theme";
@@ -21,7 +22,8 @@ export interface ListenSession {
   setDate: (d: string | null) => void;
   dayLoading: boolean;
   // ONE clock for everything that moves with the phrase: the beat's integer hour eased over one beat (§5.4), wrapping forward at the loop seam. The sun, the playhead and every graph track read this and nothing else.
-  playheadHour: number;
+  playheadHour: number; // eased transport position: an index into the day (fractional while running)
+  playheadClock: number; // the same position as a clock hour, from the reading's timestamp: the sun and the stars read this
   // True after a pause or a seek: the phrase is held at playheadHour rather than at rest.
   paused: boolean;
   // Move the phrase to an hour (fractional), playing or not — the graph's scrub.
@@ -35,8 +37,8 @@ export interface ListenSession {
   togglePlay: () => void;
   setVolume: (db: number) => void;
   displayAqi: number | null;
-  latest: { reading: HourReading; hour: number } | null; // latest non-null hour of the loaded day
-  rest: { reading: HourReading; hour: number } | null; // the hour the page reads at rest: the paused or seeked hour if the day has it, else latest
+  latest: { reading: HourReading; index: number; hour: number } | null; // latest non-null hour of the loaded day: its index and its clock hour
+  rest: { reading: HourReading; index: number; hour: number } | null; // the hour the page reads at rest: the paused or seeked hour if the day has it, else latest
   moodTier: number;
   moodHour: number;
   // The AQI the mood word describes: the smoothed AQI the tier is computed from while playing, the latest hour's AQI at rest.
@@ -197,13 +199,19 @@ export function useListenSession(): ListenSession {
   const latest = (() => {
     if (!day) return null;
     for (let i = day.length - 1; i >= 0; i--) {
-      if (day[i].pm25 != null || day[i].o3 != null || day[i].no2 != null) return { reading: day[i], hour: Number(day[i].ts.slice(11, 13)) };
+      if (day[i].pm25 != null || day[i].o3 != null || day[i].no2 != null) return { reading: day[i], index: i, hour: hourOfTs(day[i].ts) };
     }
     return null;
   })();
 
   // At rest the page reads one hour of the loaded day: the paused or seeked hour if there is one and the day has it, else the latest reporting hour.
-  const rest = pausedHour != null && day && day[pausedHour] ? { reading: day[pausedHour], hour: pausedHour } : latest;
+  const rest = pausedHour != null && day && day[pausedHour] ? { reading: day[pausedHour], index: pausedHour, hour: hourOfTs(day[pausedHour].ts) } : latest;
+  // Index → clock hour of that reading; identity on an archive day, the window's own hours on the live path. Fractions carry across so the eased position stays smooth.
+  const clockOf = (i: number): number => {
+    if (!day || day.length === 0) return i;
+    const k = Math.min(day.length - 1, Math.max(0, Math.floor(i)));
+    return hourOfTs(day[k].ts) + (i - Math.floor(i));
+  };
 
   // Mood inputs: the beat report while playing (it describes what you are hearing); the rest hour otherwise.
   const a = anchors ?? QUEENS_2023_ANCHORS;
@@ -212,14 +220,15 @@ export function useListenSession(): ListenSession {
     : rest?.reading.pm25 != null
       ? tierIndexOf(pm25ToAQI(Math.max(0, rest.reading.pm25))!)
       : 0;
-  const moodHour = beat ? beat.hour : (rest?.hour ?? 0);
+  const moodHour = beat ? clockOf(beat.hour) : (rest?.hour ?? 0);
   const moodAqi = beat
     ? beat.smoothedAQI
     : rest?.reading.pm25 != null
       ? pm25ToAQI(Math.max(0, rest.reading.pm25))
       : null;
-  const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.hour ?? 12);
+  const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.index ?? 12);
   const playheadHour = useEasedHour(clockTarget, playing);
+  const playheadClock = clockOf(playheadHour);
   const paused = !playing && (pausedHour != null || seekAt != null);
   const channels = beat
     ? { pm25: beat.pm25n, o3: beat.o3n, no2: beat.no2n }
@@ -240,7 +249,7 @@ export function useListenSession(): ListenSession {
   })();
 
   return {
-    borough, setBorough, date, setDate, dayLoading, playheadHour, paused, seek,
+    borough, setBorough, date, setDate, dayLoading, playheadHour, playheadClock, paused, seek,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, latest, rest, moodTier, moodHour, moodAqi, dominant, channels, devDayKey, setDevDayKey,
   };
@@ -259,7 +268,7 @@ function useEasedHour(target: number, running: boolean): number {
       const start = performance.now();
       let raf = 0;
       const tick = (now: number) => {
-        const t = Math.min(1, (now - start) / (motion.beatMs * 0.5));
+        const t = Math.min(1, Math.max(0, (now - start) / (motion.beatMs * 0.5))); // a frame's timestamp can precede the performance.now() that started it by a few ms; never run backwards
         const e = 1 - Math.pow(1 - t, 3);
         const v = ((from + (to - from) * e) % 24 + 24) % 24;
         heldRef.current = v;
@@ -272,7 +281,7 @@ function useEasedHour(target: number, running: boolean): number {
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / motion.beatMs);
+      const t = Math.min(1, Math.max(0, (now - start) / motion.beatMs)); // same clamp: an early frame timestamp made hour 0 read −0.004 for a frame
       heldRef.current = (target + t) % 24;
       setValue(heldRef.current);
       if (t < 1) raf = requestAnimationFrame(tick);

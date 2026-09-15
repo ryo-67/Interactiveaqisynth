@@ -3,7 +3,7 @@
 // O3 → rayleigh, bloom intensity, disc brightness, exposure: photochemical intensity. Ozone is made by strong sun, so a high-ozone afternoon reads bright and white; a low-ozone morning reads deep blue.
 // Clock → sunPosition, star visibility (handled by the caller from solar.ts).
 
-import { SKY_RANGES } from "../utils/theme";
+import { SKY_RANGES, SKY_FADE, CLEAR_NOON_EXPOSURE, NIGHT_EXPOSURE } from "../utils/theme";
 
 export interface SkyParams {
   turbidity: number;
@@ -17,13 +17,19 @@ export interface SkyParams {
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * Math.max(0, Math.min(1, t));
 
-// The Preetham model three.js Sky implements has no night: with the sun below the horizon it still renders a bright sky. Darkness has to come from tone-mapping exposure, so night is an exposure falloff keyed to the sun's elevation. FINDING for review — the falloff shape is a starting value, not a settled one.
-export function nightExposureFactor(sunElevationDeg: number): number {
-  if (sunElevationDeg >= 0) return 1;
-  return Math.max(0.03, 1 + sunElevationDeg / 12); // full dark by ~12° below the horizon (astronomical-ish twilight)
+// 0 at the bottom of the fade band, 1 at the top: how much of the daylight model is on screen. Preetham underneath is always drawn; this is Hosek's alpha over it.
+export function daylightBlend(sunElevationDeg: number): number {
+  const t = (sunElevationDeg - SKY_FADE.endDeg) / (SKY_FADE.startDeg - SKY_FADE.endDeg);
+  return Math.max(0, Math.min(1, t));
 }
 
-// pm25n and o3n are the engine's normalized values (p05 → 0, p95 → 1). Both saturate above 1: an extreme day sits at the ceiling rather than running away. sunElevationDeg, when given, applies the night falloff.
+// MAPPING (clock → exposure): the settled noon value in daylight, the settled night value with the sun down, lerped across the same band the models cross-fade over — one transition, not two. Preetham darkens on its own below the horizon; exposure 0.65 is the value at which that darkness reads as night rather than as an underexposed day.
+export function exposureFor(sunElevationDeg: number): number {
+  const d = daylightBlend(sunElevationDeg);
+  return NIGHT_EXPOSURE + (CLEAR_NOON_EXPOSURE - NIGHT_EXPOSURE) * d;
+}
+
+// pm25n and o3n are the engine's normalized values (p05 → 0, p95 → 1). Both saturate above 1: an extreme day sits at the ceiling rather than running away. sunElevationDeg drives exposure; with no elevation given, noon is assumed.
 // The shape of SKY_RANGES, so a caller can pass a tuned copy instead of the compiled one.
 export interface SkyRanges {
   turbidity: { clear: number; suffocating: number };
@@ -32,7 +38,6 @@ export interface SkyRanges {
   rayleigh: { lowO3: number; highO3: number };
   bloomIntensity: { lowO3: number; highO3: number };
   discBrightness: { lowO3: number; highO3: number };
-  exposure: { lowO3: number; highO3: number };
 }
 
 // `r` overrides the compiled ranges.
@@ -51,9 +56,7 @@ export function skyParamsFor(
     rayleigh: lerp(r.rayleigh.lowO3, r.rayleigh.highO3, o),
     bloomIntensity: o3n == null ? 0 : lerp(r.bloomIntensity.lowO3, r.bloomIntensity.highO3, o),
     discBrightness: lerp(r.discBrightness.lowO3, r.discBrightness.highO3, o),
-    exposure:
-      lerp(r.exposure.lowO3, r.exposure.highO3, o) *
-      (sunElevationDeg == null ? 1 : nightExposureFactor(sunElevationDeg)),
+    exposure: exposureFor(sunElevationDeg ?? 90),
   };
 }
 

@@ -1,6 +1,6 @@
 // HosekSky — the Hosek-Wilkie sky as a drop-in alternative to drei's Preetham <Sky>. Same call shape (sunPosition, turbidity), so SkyView can switch models on a flag.
 // Shader ported from diharaw/sky-models (MIT); coefficients computed on the CPU per frame-of-change and passed as uniforms, which is how the reference implementation drives it.
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import type {} from "@react-three/fiber"; // pulls in the r3f JSX intrinsics (mesh, shaderMaterial, ...)
 import { BackSide, ShaderMaterial, Vector3 } from "three";
 import { hosekCoefficients } from "./hosekWilkie";
@@ -18,6 +18,7 @@ void main() {
 const fragmentShader = /* glsl */ `
 uniform vec3 A, B, C, D, E, F, G, H, I, Z;
 uniform vec3 sunDirection;
+uniform float opacity; // the D-20 cross-fade: this dome draws over Preetham, and this is how much of it shows
 varying vec3 vWorldDirection;
 
 vec3 hosekWilkie(float cosTheta, float gamma, float cosGamma) {
@@ -40,6 +41,7 @@ void main() {
   gl_FragColor = vec4(max(radiance, vec3(0.0)), 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
+  gl_FragColor.a = opacity; // after tone mapping, so the blend happens in display space against the tone-mapped Preetham beneath
 }
 `;
 
@@ -49,10 +51,16 @@ interface Props {
   albedo?: number;
   normalizedSunY?: number;
   distance?: number;
+  opacity?: number; // 1 = full daylight model; drives the cross-fade to Preetham at dusk
 }
 
-export function HosekSky({ sunPosition, turbidity, albedo = 0.1, normalizedSunY = 1.15, distance = 450000 }: Props) {
+export function HosekSky({ sunPosition, turbidity, albedo = 0.1, normalizedSunY = 1.15, distance = 450000, opacity = 1 }: Props) {
   const materialRef = useRef<ShaderMaterial>(null);
+
+  // Opacity changes every beat at dusk; write the uniform in place rather than rebuilding the material (the coefficient uniforms below are keyed on sun/turbidity and rebuild only when those move).
+  useEffect(() => {
+    if (materialRef.current) materialRef.current.uniforms.opacity.value = opacity;
+  }, [opacity]);
 
   const uniforms = useMemo(() => {
     const dir = new Vector3(...sunPosition).normalize();
@@ -66,11 +74,13 @@ export function HosekSky({ sunPosition, turbidity, albedo = 0.1, normalizedSunY 
       G: { value: v3(c.G) }, H: { value: v3(c.H) }, I: { value: v3(c.I) },
       Z: { value: v3(c.Z) },
       sunDirection: { value: dir },
+      opacity: { value: opacity },
     };
   }, [sunPosition, turbidity, albedo, normalizedSunY]);
 
   return (
-    <mesh scale={[distance, distance, distance]} frustumCulled={false}>
+    // renderOrder 1: draw after Preetham (0) so alpha blends over it.
+    <mesh scale={[distance, distance, distance]} frustumCulled={false} renderOrder={1}>
       <boxGeometry args={[1, 1, 1]} />
       <shaderMaterial
         ref={materialRef}
@@ -80,6 +90,7 @@ export function HosekSky({ sunPosition, turbidity, albedo = 0.1, normalizedSunY 
         uniforms={uniforms}
         side={BackSide}
         depthWrite={false}
+        transparent
         toneMapped
       />
     </mesh>

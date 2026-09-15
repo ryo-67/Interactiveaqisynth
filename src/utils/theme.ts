@@ -173,8 +173,19 @@ export const NYC_LON = -73.9857;
 // MAPPING (PM2.5 → turbidity + mieCoefficient): aerosol scattering — what smoke does to light.
 // MAPPING (O3 → rayleigh + bloom intensity + disc brightness): photochemical intensity — ozone is made by strong sun, so high ozone reads bright and white and low ozone reads deep blue.
 // MAPPING (clock → sunPosition + star visibility): the day itself.
-// Tone-mapping exposure that makes a clear noon sky read as a clear day (haze 0, rayleigh at the model default). Settled by eye against the reference; see the scene-test harness.
+// MAPPING (clock → exposure): exposure is clock-only (D-20). Ozone does not touch it; ozone drives rayleigh and bloom. 0.2 is the settled clear-noon value; 0.65 is the settled Preetham night. The schedule lerps between them across SKY_FADE.
 export const CLEAR_NOON_EXPOSURE = 0.2;
+export const NIGHT_EXPOSURE = 0.65;
+
+// MAPPING (sun elevation → which sky model): Hosek-Wilkie for daylight, Preetham for night, cross-faded over this band of solar elevation (D-20). It ends at 0°, not below, because the Hosek dataset is frozen at the horizon: its coefficients stop changing at exactly 0° elevation, so any blend continuing below would fade between a live Preetham and a stuck Hosek.
+export const SKY_FADE = { startDeg: 6, endDeg: 0 } as const;
+
+// The literal sun (§5.1). Preetham draws its own disc; Hosek renders an aureole with no disc, so a sprite supplies one that the bloom pass can pick up. Angular diameter is oversized against the real 0.53° so it reads at phone scale. UNDER BENCHMARK in the harness — not yet in the page.
+export const SUN_DISC = {
+  angularDiameterDeg: 2.2,
+  distance: 900,         // inside the default camera far plane (1000); the sky domes draw at the far plane regardless of scale
+  coreColor: "#fff6e6",
+} as const;
 
 // Hosek-Wilkie's ground albedo (D-20). Urban surfaces sit below 0.25 and cluster near 0.15: dark asphalt shingles measure 0.04–0.10, light concrete 0.35–0.40 fresh ageing to 0.25–0.30. Investigated as the smoke mechanism and rejected — it was never 0, and moving it barely shifts a smoke day.
 export const HOSEK_ALBEDO = 0.15;
@@ -208,7 +219,6 @@ export const SKY_RANGES = {
   rayleigh: { lowO3: 0.6, highO3: 3.0 },
   bloomIntensity: { lowO3: 0.15, highO3: 1.4 },
   discBrightness: { lowO3: 0.6, highO3: 1.6 },
-  exposure: { lowO3: 0.35, highO3: 0.75 },
   starsCount: 1400,
 } as const;
 

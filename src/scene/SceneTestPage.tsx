@@ -4,8 +4,8 @@
 // Haze and ozone ARE the two data channels, normalized: haze is normalized PM2.5 (p05→0, p95→1), ozone is normalized O3. Picking a real day sets both from the archive at the chosen hour; moving a slider afterwards overrides it.
 // Everything lives in the URL, so any view can be reopened or sent: ?model=hosek&day=2023-06-07&hour=14&haze=0.6&ozone=0.7&glass=css
 import React, { useEffect, useMemo, useState } from "react";
-import { SkyView, type SkyModel } from "./SkyView";
-import { skyParamsFor, starOpacity, hazeToAerosol, RAYLEIGH_DEFAULT } from "./skyParams";
+import { SkyView, type SkyModel, type CameraFacing } from "./SkyView";
+import { skyParamsFor, starOpacity, hazeToAerosol, daylightBlend, RAYLEIGH_DEFAULT } from "./skyParams";
 import { GlassSample, GLASS_IMPLS, GLASS_LABELS, type GlassImpl } from "./GlassSamples";
 import { SmokeLayer } from "./SmokeLayer";
 import { sunAnglesAt, sunPositionVector } from "./solar";
@@ -27,7 +27,7 @@ const str = (k: string, d: string) => qs.get(k) ?? d;
 const isDST = (date: string) => date >= `${date.slice(0, 4)}-03-12` && date <= `${date.slice(0, 4)}-11-05`;
 
 export default function SceneTestPage() {
-  const [model, setModel] = useState<SkyModel>(str("model", "preetham") as SkyModel);
+  const [model, setModel] = useState<SkyModel>(str("model", "auto") as SkyModel);
   const [day, setDay] = useState(str("day", "manual"));
   const [hour, setHour] = useState(num("hour", 13));
   const [haze, setHaze] = useState(num("haze", 0));
@@ -36,6 +36,10 @@ export default function SceneTestPage() {
   const [rayleigh, setRayleigh] = useState(num("rayleigh", RAYLEIGH_DEFAULT));
   const [bloom, setBloom] = useState(num("bloom", 0.6));
   const [exposure, setExposure] = useState(num("exposure", CLEAR_NOON_EXPOSURE));
+  // Exposure is clock-scheduled (D-20). "auto" follows the schedule; the slider is a manual override for judging one value.
+  const [expAuto, setExpAuto] = useState(str("expAuto", "1") === "1");
+  const [disc, setDisc] = useState(str("disc", "0") === "1"); // the literal sun, under benchmark
+  const [facing, setFacing] = useState<CameraFacing>(str("facing", "north") as CameraFacing); // north = every frame so far; the sun is behind it
   const [albedo, setAlbedo] = useState(num("albedo", HOSEK_ALBEDO)); // Hosek's ground-albedo input; ignored by Preetham, which has no such parameter
   // The composited plume (D-20). Manual here rather than tied to the day's PM2.5, so smoke can be judged against a fixed sky; in the scene it is driven by normalized PM2.5.
   const [smoke, setSmoke] = useState(num("smoke", 0));
@@ -67,7 +71,8 @@ export default function SceneTestPage() {
       setReading(null);
       return;
     }
-    const rec = archive.find((h) => h.ts.startsWith(day) && Number(h.ts.slice(11, 13)) === hour) ?? null;
+    // Fractional hours (URL only, e.g. hour=17.6) land inside the dusk fade band, which no integer hour reaches on an autumn day; the reading is the enclosing hour's.
+    const rec = archive.find((h) => h.ts.startsWith(day) && Number(h.ts.slice(11, 13)) === Math.floor(hour)) ?? null;
     setReading(rec);
     if (!rec) return;
     const pm25n = normalize(rec.pm25 == null ? null : Math.max(0, rec.pm25), anchors.pm25);
@@ -80,23 +85,25 @@ export default function SceneTestPage() {
     const p = new URLSearchParams({
       dev: "1", model, day, hour: String(hour), haze: String(haze), ozone: String(ozone),
       rayleigh: String(rayleigh), bloom: String(bloom), exposure: String(exposure), albedo: String(albedo),
-      smoke: String(smoke), smokeHue: String(smokeHue), glass,
+      smoke: String(smoke), smokeHue: String(smokeHue), glass, expAuto: expAuto ? "1" : "0", disc: disc ? "1" : "0", facing,
     });
     window.history.replaceState(null, "", `?${p}`);
-  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, glass]);
+  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, glass, expAuto, disc, facing]);
 
   const view = useMemo(() => {
     const dateForSun = day === "manual" ? "2023-07-12" : day;
     const ang = sunAnglesAt(dateForSun, hour, NYC_LAT, NYC_LON, isDST(dateForSun) ? -4 : -5);
     // haze and ozone run through the same mapping the scene uses; rayleigh, bloom and exposure then override what the mapping produced, so they can be judged directly.
     const mapped = skyParamsFor(haze, ozone, ang.elevationDeg);
-    const params = { ...mapped, rayleigh, bloomIntensity: bloom, exposure };
+    const params = { ...mapped, rayleigh, bloomIntensity: bloom, exposure: expAuto ? mapped.exposure : exposure };
     const aer = hazeToAerosol(haze);
+    const blend = model === "auto" ? daylightBlend(ang.elevationDeg) : model === "hosek" ? 1 : 0;
     return {
       params,
       sun: sunPositionVector(ang),
       stars: starOpacity(ang.elevationDeg, haze),
-      mappedReadout: `mapping would give rayleigh ${mapped.rayleigh.toFixed(2)} · bloom ${mapped.bloomIntensity.toFixed(2)} · exposure ${mapped.exposure.toFixed(2)}`,
+      mappedReadout: `mapping would give rayleigh ${mapped.rayleigh.toFixed(2)} · bloom ${mapped.bloomIntensity.toFixed(2)} · exposure ${mapped.exposure.toFixed(2)} (scheduled${expAuto ? ", in use" : ", overridden by slider"})`,
+      fadeReadout: `sun ${ang.elevationDeg.toFixed(1)}° el, ${ang.azimuthDeg.toFixed(0)}° az, camera facing ${facing} → hosek alpha ${blend.toFixed(2)} (${blend >= 1 ? "hosek only" : blend <= 0 ? "preetham only" : "cross-fading"}) · exposure ${params.exposure.toFixed(2)} · disc ${disc ? `on, brightness ${mapped.discBrightness.toFixed(2)}` : "off"}`,
       readout:
         `haze ${haze.toFixed(2)} → turbidity ${aer.turbidity.toFixed(1)}, mie ${aer.mieCoefficient.toFixed(4)}` +
         ` · ozone ${ozone.toFixed(2)}` +
@@ -105,13 +112,13 @@ export default function SceneTestPage() {
         ` · smoke ${smoke.toFixed(2)} @ hue ${smokeHue.toFixed(0)}°` +
         (reading ? ` · real: pm25 ${reading.pm25 ?? "—"} µg/m³, o3 ${reading.o3 ?? "—"} ppb` : " · manual"),
     };
-  }, [day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, model, reading]);
+  }, [day, hour, haze, ozone, rayleigh, bloom, exposure, expAuto, albedo, smoke, smokeHue, model, disc, facing, reading]);
 
   return (
     // The scene owns the area above the control bar rather than the whole viewport, so the plume's densest band — which sits at the horizon, at the bottom of the frame — is never hidden behind the controls.
     <div style={{ position: "fixed", inset: 0, background: "#05050a", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
-        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} style={{ width: "100%", height: "100%" }} live />
+        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} facing={facing} style={{ width: "100%", height: "100%" }} live />
 
         <SmokeLayer density={smoke} hueDeg={smokeHue} />
 
@@ -131,7 +138,7 @@ export default function SceneTestPage() {
         }}
       >
         <Group label="model">
-          <Toggle options={["preetham", "hosek"] as SkyModel[]} value={model} onChange={setModel} />
+          <Toggle options={["auto", "preetham", "hosek"] as SkyModel[]} value={model} onChange={setModel} />
         </Group>
 
         <Group label="day">
@@ -153,7 +160,18 @@ export default function SceneTestPage() {
 
         <Slider label="rayleigh" min={0} max={6} step={0.05} value={rayleigh} onChange={setRayleigh} />
         <Slider label="bloom" min={0} max={3} step={0.05} value={bloom} onChange={setBloom} />
-        <Slider label="exposure" min={0.02} max={1.5} step={0.01} value={exposure} onChange={setExposure} />
+        <Group label="exposure">
+          <Radio name="exp" label="auto" checked={expAuto} onChange={() => setExpAuto(true)} />
+          <Radio name="exp" label="manual" checked={!expAuto} onChange={() => setExpAuto(false)} />
+        </Group>
+        <Slider label="" min={0.02} max={1.5} step={0.01} value={exposure} onChange={(v) => { setExpAuto(false); setExposure(v); }} />
+        <Group label="camera">
+          <Toggle options={["north", "south", "sun"] as CameraFacing[]} value={facing} onChange={setFacing} />
+        </Group>
+        <Group label="sun disc">
+          <Radio name="disc" label="off" checked={!disc} onChange={() => setDisc(false)} />
+          <Radio name="disc" label="on" checked={disc} onChange={() => setDisc(true)} />
+        </Group>
         <Slider label="albedo" min={0} max={0.4} step={0.01} value={albedo} onChange={setAlbedo} />
         <Stepped label="smoke" min={0} max={1} step={0.05} value={smoke} onChange={setSmoke} />
         <Slider label="smoke hue" min={0} max={60} step={1} value={smokeHue} onChange={setSmokeHue} />
@@ -166,6 +184,7 @@ export default function SceneTestPage() {
         </Group>
 
         <div style={{ flexBasis: "100%", color: "rgba(255,255,255,0.62)" }}>{view.readout}</div>
+        <div style={{ flexBasis: "100%", color: "rgba(255,255,255,0.62)" }}>{view.fadeReadout}</div>
         <div style={{ flexBasis: "100%", color: "rgba(255,255,255,0.38)" }}>{view.mappedReadout}</div>
       </div>
     </div>
@@ -193,7 +212,7 @@ function Toggle<T extends string>({ options, value, onChange }: { options: T[]; 
             color: value === o ? "#05050a" : "rgba(255,255,255,0.9)",
             background: value === o ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.1)",
             border: "1px solid rgba(255,255,255,0.25)",
-            borderRadius: i === 0 ? "3px 0 0 3px" : "0 3px 3px 0",
+            borderRadius: i === 0 ? "3px 0 0 3px" : i === options.length - 1 ? "0 3px 3px 0" : "0",
             padding: "4px 10px", cursor: "pointer",
           }}
         >

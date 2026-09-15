@@ -206,12 +206,12 @@ export default function ScenePage() {
   const glassVars = {
     "--glass-blur": GLASS.blur, "--glass-saturate": GLASS.saturate, "--glass-fill-alpha": view.glass.alpha.toFixed(3), "--glass-fill": view.glass.fill, "--glass-lift": view.glass.lift.toFixed(3),
     "--glass-edge-alpha": String(GLASS.edgeAlpha), "--glass-fill-alpha-opaque": String(GLASS.fillAlphaOpaque), "--glass-blur-opaque": GLASS.blurOpaque,
-    "--frosted-blur": GLASS.frostedBlur, "--frosted-fill-alpha": (view.glass.alpha + GLASS.frostedExtraAlpha).toFixed(3),
+    "--frosted-blur": GLASS.frostedBlur, "--frosted-fill-alpha": (view.glass.alpha + GLASS.frostedExtraAlpha).toFixed(3), "--glass-dither": String(GLASS.ditherAlpha), "--sky-dither": String(GLASS.skyDither),
   } as React.CSSProperties;
 
   return (
     <ThemeContext.Provider value="dark">
-      <div className="scene-root" style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--chip-press": String(CONTROL.pressAlpha), "--state-ms": `${CONTROL.stateMs}ms` } as React.CSSProperties}>
+      <div className="scene-root" style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms` } as React.CSSProperties}>
         {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
         <Cursor />
         {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (Cursor.tsx reads data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
@@ -222,6 +222,8 @@ export default function ScenePage() {
           <NightLayer blend={nightEased} density={view.smoke} />
           <GoldenLayer blend={goldenEased} density={view.smoke} />
           <SmokeLayer density={view.smoke} regime={view.regime} />
+          {/* A fine noise over the gradient layers (index.css .scene-sky-dither): they band on their own, and the frost's blur bands them again. */}
+          <div className="scene-sky-dither" aria-hidden />
         </div>
 
         {/* The scaffold (D-26): see .scene-ui in index.css. */}

@@ -135,7 +135,7 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
           return (
             <button
               key={iso}
-              className="scene-day"
+              className="scene-cal-day" // not scene-day: that is the top bar's day group, and the cell's hover once lit the whole group (2026-09-15)
               data-active={sel}
               disabled={out}
               onClick={() => onPick(iso)}

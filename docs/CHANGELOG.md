@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The whole day group lit on a chip's hover; dither against banding; the cursor above the popover
+
+The top bar's day group has carried the class scene-day since D-30, and the calendar's cells were given the same name, so hovering or pressing any chip in the date or preset pills applied the cell's hover and pressed fills to the whole group. The cells are scene-cal-day now. Frosted panels showed bands: the blur quantizes the sky behind them into 8-bit steps, and the night, golden and plume gradients band on their own; a fine white noise at 4% over every glass fill and 5% over the sky's layers breaks the steps. The page cursor is portaled to the body like the popover, since inside the scene root it painted beneath it. Pressed fills are gone: while the pointer is down the cursor's ring closes to a filled dot, one press signal for every clickable instead of a state per element.
+
 ## 2026-09-15 — The page's own cursors; hover and pressed states everywhere; a dismissing press is not a play
 
 The cursor is the page's own element following the pointer, since a cursor image cannot animate: a ring that grows over anything clickable, and grows further while a glyph fades in at its centre over the sky (play, pause) and the graph (Lucide's drag arrows); the native cursor is hidden while it runs, on fine pointers only. Every chip, button, calendar day, borough word and the slider thumb answers the pointer: a lighter fill or a brighter word on hover, a darker fill while pressed (a shrink moved the pill's backdrop with it), 120 ms, none of it under reduced motion. The calendar's cells are 32 px squares centred in their columns; left to the grid they shrank to their text. While a popover is open the sky keeps the ring and the press that dismisses the popover is not also a play or pause: a small store says whether a popover is open and marks the dismissing press, and the sky swallows the click that follows it.

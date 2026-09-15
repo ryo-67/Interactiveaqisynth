@@ -1388,6 +1388,7 @@ html {
   -webkit-backdrop-filter: blur(var(--glass-blur, 18px)) saturate(var(--glass-saturate, 1.6));
   background-color: rgba(var(--glass-fill, 8, 14, 40), var(--glass-fill-alpha, 0.62));
   background-image: linear-gradient(rgba(255, 255, 255, var(--glass-lift, 0)), rgba(255, 255, 255, var(--glass-lift, 0))); /* the night's white lift over the tinted fill (D-35) */
+  position: relative; /* for the dither layer below */
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, var(--glass-edge-alpha, 0.35)),
     inset 0 -1px 0 rgba(0, 0, 0, 0.12),
@@ -1396,6 +1397,10 @@ html {
   box-sizing: border-box;
   max-width: 100%;
 }
+/* Dither (2026-09-15, theme.ts GLASS.ditherAlpha / skyDither): the blur quantizes the sky behind a panel into 8-bit steps that read as bands, and the sky's own gradient layers band too. A fine white noise — a 160 px feTurbulence tile, white with the noise as its alpha, so it never tints — at a few percent breaks the steps: over every glass fill as a pseudo-element beneath the content, and over the sky's layers as one element. */
+.glass::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: var(--glass-dither, 0.04); }
+.glass > * { position: relative; }
+.scene-sky-dither { position: absolute; inset: 0; pointer-events: none; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: var(--sky-dither, 0.05); mix-blend-mode: overlay; }
 .glass.frosted {
   backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
   -webkit-backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
@@ -1424,7 +1429,7 @@ html {
 
 /* prefers-reduced-motion: no materialize/settle transitions on the material */
 @media (prefers-reduced-motion: reduce) {
-  .glass, .scene-popover, .scene-chip, .scene-play, .scene-day, .scene-borough-btn span, .scene-volume::-webkit-slider-thumb, .scene-cursor-ring, .scene-cursor-glyph {
+  .glass, .scene-popover, .scene-chip, .scene-play, .scene-cal-day, .scene-borough-btn span, .scene-volume::-webkit-slider-thumb, .scene-cursor-ring, .scene-cursor-glyph {
     transition: none;
   }
 }
@@ -1441,28 +1446,25 @@ html {
 
 /* ——— The page cursor (2026-09-15, Cursor.tsx, theme.ts CURSOR): an element that follows the pointer, so its ring can grow over a clickable and grow further while a glyph fades in over the sky (play, pause) or the graph (drag); a CSS cursor image cannot animate. The native cursor is hidden while it runs, everywhere including the popover, which is portaled outside the scene. Fine pointers only; the class is set by the component. ——— */
 html.has-cursor, html.has-cursor * { cursor: none !important; }
-.scene-cursor { position: fixed; left: 0; top: 0; z-index: 1000; pointer-events: none; will-change: transform; }
-.scene-cursor-ring { position: absolute; left: 0; top: 0; width: var(--cur-ring); height: var(--cur-ring); transform: translate(-50%, -50%); border-radius: 50%; box-sizing: border-box; border: var(--cur-stroke) solid #ffffff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(0, 0, 0, 0.18); opacity: 1; transition: width var(--cur-ms) ease-out, height var(--cur-ms) ease-out, opacity var(--cur-ms) ease; }
+.scene-cursor { position: fixed; left: 0; top: 0; z-index: 2147483000; pointer-events: none; will-change: transform; } /* on the body, above the popover */
+.scene-cursor-ring { position: absolute; left: 0; top: 0; width: var(--cur-ring); height: var(--cur-ring); transform: translate(-50%, -50%); border-radius: 50%; box-sizing: border-box; border: var(--cur-stroke) solid #ffffff; background: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(0, 0, 0, 0.18); opacity: 1; transition: width var(--cur-ms) ease-out, height var(--cur-ms) ease-out, opacity var(--cur-ms) ease, background-color var(--cur-ms) ease; }
 .scene-cursor[data-mode="pointer"] .scene-cursor-ring { width: var(--cur-pointer); height: var(--cur-pointer); }
 .scene-cursor[data-mode="play"] .scene-cursor-ring, .scene-cursor[data-mode="pause"] .scene-cursor-ring, .scene-cursor[data-mode="drag"] .scene-cursor-ring { width: var(--cur-glyph-ring); height: var(--cur-glyph-ring); }
 .scene-cursor[data-mode="hidden"] .scene-cursor-ring, .scene-cursor[data-mode="hidden"] .scene-cursor-glyph { opacity: 0; }
+/* Pressed: the ring closes to a filled dot and any glyph fades, whatever it was over — the one press signal for every clickable (2026-09-15). */
+.scene-cursor[data-pressed="true"] .scene-cursor-ring { width: var(--cur-dot); height: var(--cur-dot); background: #ffffff; }
+.scene-cursor[data-pressed="true"] .scene-cursor-glyph { opacity: 0; }
 .scene-cursor-glyph { position: absolute; left: 0; top: 0; width: var(--cur-glyph); height: var(--cur-glyph); transform: translate(-50%, -50%); color: #ffffff; opacity: 0; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.5)); transition: opacity var(--cur-ms) ease; }
 .scene-cursor[data-mode="play"] .scene-cursor-glyph[data-glyph="play"], .scene-cursor[data-mode="pause"] .scene-cursor-glyph[data-glyph="pause"], .scene-cursor[data-mode="drag"] .scene-cursor-glyph[data-glyph="drag"] { opacity: 1; }
 
-/* ——— Hover and pressed states (2026-09-15, theme.ts CONTROL.hoverAlpha / hoverActiveAlpha / pressAlpha / stateMs): every clickable answers the pointer. On hover a chip lightens (an active chip a step more, it is already lit), a borough word brightens, the play button and a calendar day take the chip's hover; pressed is a darker fill, never a shrink. The chip fills and the word colours are inline, so these are declared important. ——— */
-.scene-chip, .scene-play, .scene-day, .scene-borough-btn span { transition: background-color var(--state-ms, 120ms) ease, color var(--state-ms, 120ms) ease; }
+/* ——— Hover states (2026-09-15, theme.ts CONTROL.hoverAlpha / hoverActiveAlpha / stateMs): every clickable answers the pointer on hover — a chip lightens (an active chip a step more, it is already lit), a borough word brightens, the play button and a calendar day take the chip's hover. The press is shown by the cursor, not the element: the ring closes to a dot (Cursor.tsx), one signal for every clickable. The chip fills and the word colours are inline, so the hover rules are declared important. ——— */
+.scene-chip, .scene-play, .scene-cal-day, .scene-borough-btn span { transition: background-color var(--state-ms, 120ms) ease, color var(--state-ms, 120ms) ease; }
 .scene-chip:not(:disabled):hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
 .scene-chip[data-active="true"]:not(:disabled):hover { background-color: rgba(255, 255, 255, var(--chip-hover-active, 0.22)) !important; }
-.scene-chip:not(:disabled):active { background-color: rgba(0, 0, 0, var(--chip-press, 0.18)) !important; }
-.scene-chip[data-active="true"]:not(:disabled):active { background-color: rgba(255, 255, 255, 0.06) !important; }
 .scene-chip:disabled { opacity: 0.4; }
 .scene-play:hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
-.scene-play:active { background-color: rgba(0, 0, 0, var(--chip-press, 0.18)) !important; }
-.scene-day:not(:disabled):not([data-active="true"]):hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
-.scene-day:not(:disabled):not([data-active="true"]):active { background-color: rgba(0, 0, 0, var(--chip-press, 0.18)) !important; }
-.scene-day[data-active="true"]:active { background-color: rgba(255, 255, 255, 0.72) !important; }
+.scene-cal-day:not(:disabled):not([data-active="true"]):hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
 .scene-borough-btn:not([aria-selected="true"]):hover span { color: rgba(255, 255, 255, 0.9) !important; }
-.scene-borough-btn:active span, .scene-borough-btn:not([aria-selected="true"]):active span { color: rgba(255, 255, 255, 0.5) !important; } /* the second selector outranks the hover rule above while pressed */
 .scene-volume::-webkit-slider-thumb { transition: transform var(--state-ms, 120ms) ease, box-shadow var(--state-ms, 120ms) ease; }
 .scene-volume:hover::-webkit-slider-thumb { transform: scale(1.12); }
 .scene-volume:active::-webkit-slider-thumb { transform: scale(1.2); box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 1); }

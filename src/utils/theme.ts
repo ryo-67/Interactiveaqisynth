@@ -261,7 +261,6 @@ export const CONTROL = {
   // Hover and pressed states for every clickable (2026-09-15): a chip lightens by hoverAlpha on hover (an active chip by hoverActiveAlpha, since it is already lit), and scales by pressScale while pressed; stateMs is the transition. index.css reads these as custom properties.
   hoverAlpha: 0.10,
   hoverActiveAlpha: 0.22,
-  pressAlpha: 0.18, // pressed: a darker fill (black at this alpha), never a shrink (2026-09-15: a press-in moved the pill's backdrop with it)
   stateMs: 120,
 } as const;
 
@@ -270,6 +269,7 @@ export const CURSOR = {
   ring: 10,
   pointer: 16,
   glyphRing: 28,
+  dot: 8, // pressed: the ring closes to a filled dot of this diameter, the one press signal for every clickable
   glyph: 14,
   stroke: 1.5,
   ms: 160,
@@ -441,6 +441,9 @@ export const GLASS = {
   // Frosted (the content material): heavier blur and a touch more fill than the control material.
   frostedBlur: "28px",
   frostedExtraAlpha: 0.08,
+  // Dither (2026-09-15): the blur quantizes the sky behind a panel into 8-bit steps that read as bands, more so in Chromium; a fine white noise over the fill at this opacity breaks them. skyDither is the same noise over the sky's gradient layers (night, golden, plume), which band on their own.
+  ditherAlpha: 0.04,
+  skyDither: 0.05,
   // prefers-reduced-transparency: the material goes opaque enough to read without the scene
   fillAlphaOpaque: 0.9,
   blurOpaque: "36px",

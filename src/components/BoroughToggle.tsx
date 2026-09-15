@@ -24,6 +24,7 @@ export function BoroughToggle({ selected, onSelect }: Props) {
     <div
       role="tablist"
       aria-label="Borough"
+      className="scene-strip"
       style={{
         display: "flex",
         justifyContent: "center",
@@ -31,7 +32,6 @@ export function BoroughToggle({ selected, onSelect }: Props) {
         gap: "var(--ctl-gap-wide, 16px)",
         height: `var(--ctl-inner, ${CONTROL.inner}px)`,
         whiteSpace: "nowrap",
-        overflowX: "auto",
         maxWidth: "100%",
       }}
     >

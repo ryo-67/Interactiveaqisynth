@@ -1436,6 +1436,9 @@ html {
   position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--ui-gap); padding: var(--ui-pad); pointer-events: none; overflow: hidden;
 }
 .scene-ui .glass, .scene-ui select { pointer-events: auto; }
+/* Horizontal strips (borough words, pins) scroll by touch or wheel with no visible bar: the strip is exactly its content's height, so a bar could only paint over the chips. */
+.scene-strip { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
+.scene-strip::-webkit-scrollbar { display: none; height: 0; }
 .scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-gap); flex: 0 0 auto; min-width: 0; }
 .scene-mid { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--ui-gap); min-height: 0; }
 .scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; }

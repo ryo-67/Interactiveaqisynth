@@ -63,7 +63,7 @@ export function DayNav({ date, onChange, loading }: Props) {
       <button style={chip(open)} onClick={() => setOpen((o) => !o)} aria-expanded={open}>{NAV_CALENDAR}</button>
       <button style={chip(false)} onClick={prev} aria-label="previous day">{NAV_PREV}</button>
       <span style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: `var(--ctl-inner, ${CONTROL.inner}px)`, color: c.textPrimary, minWidth: "8em", textAlign: "center", opacity: loading ? 0.5 : 1 }}>
-        {date ? labelOf(date) : NAV_LIVE}
+        {labelOf(date ?? nyToday())}
       </span>
       <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}>{NAV_NEXT}</button>
       <button style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
@@ -110,7 +110,7 @@ export function DayNav({ date, onChange, loading }: Props) {
 export function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
   const c = themeColors(useTheme());
   return (
-    <div style={{ display: "flex", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, overflowX: "auto", whiteSpace: "nowrap", maxWidth: "100%" }}>
+    <div className="scene-strip" style={{ display: "flex", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap", maxWidth: "100%" }}>
       {PINS.map((p) => {
         const active = date === p.date;
         return (

@@ -20,8 +20,11 @@ export function PlayButton({ playing, onToggle }: { playing: boolean; onToggle: 
       aria-pressed={playing}
       style={{ width: s, height: s, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: `calc(${s} / 2)`, color: c.textPrimary }}
     >
-      {/* Lucide's play and pause (icons.tsx); the play triangle is shifted a unit right there so it reads centred in the round button. */}
-      {playing ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+      {/* Lucide's play and pause (icons.tsx), both mounted in the same cell and cross-faded, so the button transitions from one to the other rather than swapping (2026-09-15); the play triangle is shifted a unit right there so it reads centred in the round button. */}
+      <span style={{ position: "relative", width: 16, height: 16, display: "inline-block" }}>
+        <span aria-hidden style={{ position: "absolute", inset: 0, opacity: playing ? 0 : 1, transition: `opacity ${CONTROL.stateMs}ms ease` }}><PlayIcon size={16} /></span>
+        <span aria-hidden style={{ position: "absolute", inset: 0, opacity: playing ? 1 : 0, transition: `opacity ${CONTROL.stateMs}ms ease` }}><PauseIcon size={16} /></span>
+      </span>
     </button>
   );
 }

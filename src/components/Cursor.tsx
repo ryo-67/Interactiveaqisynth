@@ -22,10 +22,16 @@ export function Cursor() {
       if (tagged) return (tagged.getAttribute("data-cursor") as Mode) || "ring";
       return t.closest(CLICKABLE) ? "pointer" : "ring";
     };
+    let last: [number, number] | null = null;
     const move = (e: PointerEvent) => {
+      last = [e.clientX, e.clientY];
       el.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
       setMode(classify(e.target));
     };
+    // The element under the pointer can change what it asks for without the pointer moving: a click or the space bar flips the sky from play to pause. Re-read the point whenever a data-cursor attribute changes anywhere, so the glyph cross-fades to the other (the glyphs' opacity transitions do the fade).
+    const reread = () => { if (last) setMode(classify(document.elementFromPoint(last[0], last[1]))); };
+    const observer = new MutationObserver(reread);
+    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ["data-cursor"] });
     const leave = (e: PointerEvent) => { if (e.relatedTarget == null) setMode("hidden"); };
     const enter = (e: PointerEvent) => setMode(classify(e.target));
     const down = () => setPressed(true);
@@ -37,6 +43,7 @@ export function Cursor() {
     document.addEventListener("pointerout", leave);
     document.addEventListener("pointerover", enter);
     return () => {
+      observer.disconnect();
       window.removeEventListener("pointerdown", down, true);
       window.removeEventListener("pointerup", up, true);
       window.removeEventListener("pointercancel", up, true);

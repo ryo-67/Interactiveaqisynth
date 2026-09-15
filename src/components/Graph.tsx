@@ -68,11 +68,13 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
 
     const draw = () => {
       const cssW = wrap.clientWidth;
-      const isPhone = cssW < 480;
-      const tabH = isPhone ? GRAPH.tabHeight.phone : GRAPH.tabHeight.laptop;
-      const pulseH = isPhone ? GRAPH.pulseRowHeight.phone : GRAPH.pulseRowHeight.laptop;
+      // Breakpoint from the panel's own width: the panel is ~640 on laptop, ~700 on a portrait tablet, ~320 on a phone.
+      const bp: "laptop" | "tablet" | "phone" = cssW < 480 ? "phone" : cssW < 760 ? "tablet" : "laptop";
+      const tabH = GRAPH.tabHeight[bp];
+      const pulseH = GRAPH.pulseRowHeight[bp];
+      const axisH = GRAPH.axisHeight[bp];
       const lineTracks: TrackKey[] = [tab];
-      const cssH = GRAPH.labelGutter + tabH + pulseH + GRAPH.axisHeight;
+      const cssH = GRAPH.labelGutter + tabH + pulseH + axisH;
       const dpr = window.devicePixelRatio || 1;
       if (canvas.width !== cssW * dpr || canvas.height !== cssH * dpr) {
         canvas.width = cssW * dpr;
@@ -99,7 +101,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         const x = Math.round(plotX + i * colW) + 0.5;
         ctx.strokeStyle = i % 4 === 0 ? c.textFaint : c.gridHair;
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, cssH - GRAPH.axisHeight); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, cssH - axisH); ctx.stroke();
       }
       // The plot's right edge, so the grid never runs under the scale bar.
       ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
@@ -215,7 +217,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       }
 
       // X axis: a tick every hour, a label every three, "now" at the right edge when live.
-      const axisY = cssH - GRAPH.axisHeight;
+      const axisY = cssH - axisH;
       ctx.strokeStyle = c.textFaint;
       ctx.beginPath(); ctx.moveTo(plotX, axisY + 0.5); ctx.lineTo(plotRight, axisY + 0.5); ctx.stroke();
       for (let i = 0; i < n; i++) {
@@ -257,7 +259,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
 
   return (
     <div ref={wrapRef} style={{ width: "100%" }}>
-      <div role="tablist" style={{ display: "flex", gap: CONTROL.gap, height: CONTROL.inner, marginBottom: space.xs, overflowX: "auto", whiteSpace: "nowrap" }}>
+      <div role="tablist" style={{ display: "flex", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, marginBottom: space.xs, overflowX: "auto", whiteSpace: "nowrap" }}>
         {TRACK_ORDER.map((t) => {
           const active = t === tab;
           return (
@@ -270,7 +272,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
                 fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: 1, cursor: "pointer",
                 color: active ? c.textPrimary : c.textMuted,
                 background: "none", border: "none", borderBottom: `2px solid ${active ? c.textPrimary : "transparent"}`,
-                height: CONTROL.inner, boxSizing: "border-box", padding: CONTROL.chipPad, flex: "0 0 auto",
+                height: `var(--ctl-inner, ${CONTROL.inner}px)`, boxSizing: "border-box", padding: CONTROL.chipPad, flex: "0 0 auto",
               }}
             >
               {TRACK_LABELS[t]}{TRACK_UNITS[t] ? ` ${TRACK_UNITS[t]}` : ""}

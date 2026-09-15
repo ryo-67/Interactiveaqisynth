@@ -8,7 +8,7 @@ export function AQINumber({ value }: { value: number | null }) {
     <div
       style={{
         fontFamily: families.serifItalic,
-        fontSize: typeScale.display.size,
+        fontSize: `var(--display-size, ${typeScale.display.size})`, // the scene scales this per breakpoint
         lineHeight: typeScale.display.line,
         fontVariantNumeric: "tabular-nums",
         color: c.textPrimary,

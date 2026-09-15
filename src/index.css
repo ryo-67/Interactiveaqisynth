@@ -1428,28 +1428,57 @@ html {
   }
 }
 
-/* ——— Scene layout (D-26): Shoro's scaffold, on a 4 px grid. Desktop: a top bar of three pills (borough · day nav · pins), the hero and graph side by side centred in the remaining height, a bottom bar (play · volume at left, source at right). Phone: one column, the transport pinned above the safe area. Every pill is 40 tall (28 of content in 6 px of padding); gaps 8 within a group, 20 across a bar; 32 outer. ——— */
-.scene-ui { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 20px; padding: 32px; pointer-events: none; overflow: hidden; }
+/* ——— Scene layout (D-26): Shoro's scaffold, on a 4 px grid, at three breakpoints — laptop (≥1024), tablet (768–1023), phone (<768). The whole scaffold fits the viewport at every one: NOTHING SCROLLS. Sizes step down per breakpoint through the custom properties below (all multiples of 4), which every control reads; the middle band takes the remaining height and its panels are allowed to shrink. ——— */
+.scene-ui {
+  --ctl-pill: 40px; --ctl-inner: 28px; --ctl-gap-wide: 16px; --slider-width: 96px;
+  --display-size: 96px; --heading-size: 34px; --body-size: 15px; --body-line: 1.6;
+  --ui-pad: 32px; --ui-gap: 20px;
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--ui-gap); padding: var(--ui-pad); pointer-events: none; overflow: hidden;
+}
 .scene-ui .glass, .scene-ui select { pointer-events: auto; }
-.scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex: 0 0 auto; min-width: 0; }
-.scene-mid { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: 20px; min-height: 0; }
-.scene-pill { height: 40px; padding: 6px 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; }
-.scene-pill.scene-borough { padding: 6px 24px; }
-.scene-pill.scene-icon-pill { padding: 6px; width: 40px; justify-content: center; }
+.scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-gap); flex: 0 0 auto; min-width: 0; }
+.scene-mid { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--ui-gap); min-height: 0; }
+.scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; }
+.scene-pill.scene-borough { padding: 0 24px; }
+.scene-pill.scene-icon-pill { padding: 0; width: var(--ctl-pill); justify-content: center; flex: 0 0 auto; }
 .scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.scene-panel { flex: 0 1 680px; min-width: 0; }
+.scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
 .scene-panel.scene-hero { padding: 36px 36px 20px; }
 .scene-panel.scene-graph { padding: 20px; }
-.scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: 40px; display: flex; align-items: center; }
+.scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
 .scene-source p, .scene-source div { white-space: normal; }
-.scene-dev { align-self: flex-start; height: 28px; }
+.scene-dev { align-self: flex-start; height: var(--ctl-inner); }
+
+/* Tablet: one column for the middle band; the top bar wraps its three pills onto two rows. */
 @media (max-width: 1023px) {
-  .scene-ui { padding: 16px 16px calc(72px + env(safe-area-inset-bottom)); gap: 12px; overflow-y: auto; overflow-x: hidden; }
-  .scene-top, .scene-mid, .scene-bottom { flex-direction: column; align-items: stretch; gap: 12px; }
-  .scene-mid { justify-content: flex-start; flex: 0 0 auto; }
-  .scene-top > .glass, .scene-panel, .scene-source { width: 100%; max-width: 100%; flex: 0 0 auto; }
-  .scene-pill.scene-borough { padding: 6px 16px; }
-  .scene-panel.scene-hero { padding: 24px 20px 16px; }
+  .scene-ui {
+    --ctl-pill: 36px; --ctl-inner: 24px; --ctl-gap-wide: 12px;
+    --display-size: 72px; --heading-size: 28px; --body-size: 14px; --body-line: 1.5;
+    --ui-pad: 24px; --ui-gap: 16px;
+  }
+  .scene-top { flex-wrap: wrap; }
+  .scene-top > .glass { flex: 1 1 auto; }
+  .scene-mid { flex-direction: column; align-items: stretch; justify-content: center; }
+  .scene-panel { flex: 0 1 auto; width: 100%; max-width: 100%; }
+  .scene-panel.scene-hero { padding: 24px 24px 16px; }
+  .scene-panel.scene-graph { padding: 16px; }
+}
+
+/* Phone: every band stacks; the transport and the source share the bottom row; sizes at their smallest. */
+@media (max-width: 767px) {
+  .scene-ui {
+    --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px; --slider-width: 72px;
+    --display-size: 56px; --heading-size: 24px; --body-size: 14px; --body-line: 1.5;
+    --ui-pad: 12px; --ui-gap: 8px;
+  }
+  .scene-top { flex-direction: column; align-items: stretch; gap: 8px; }
+  .scene-top > .glass { width: 100%; }
+  .scene-pill { padding: 0 12px; }
+  .scene-pill.scene-borough { padding: 0 12px; }
+  .scene-mid { gap: 8px; }
+  .scene-panel.scene-hero { padding: 16px 16px 12px; }
   .scene-panel.scene-graph { padding: 12px; }
-  .scene-transport { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 2; }
+  .scene-bottom { gap: 8px; align-items: stretch; }
+  .scene-source { padding: 4px 12px; font-size: 11px; }
+  .scene-transport { flex: 0 0 auto; }
 }

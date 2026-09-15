@@ -58,11 +58,11 @@ export function DayNav({ date, onChange, loading }: Props) {
   };
 
   return (
-    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: CONTROL.gap, height: CONTROL.inner, whiteSpace: "nowrap" }}>
+    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
       {/* Order per the scaffold: Calendar ‹ date › Live. */}
       <button style={chip(open)} onClick={() => setOpen((o) => !o)} aria-expanded={open}>{NAV_CALENDAR}</button>
       <button style={chip(false)} onClick={prev} aria-label="previous day">{NAV_PREV}</button>
-      <span style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: `${CONTROL.inner}px`, color: c.textPrimary, minWidth: "8em", textAlign: "center", opacity: loading ? 0.5 : 1 }}>
+      <span style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: `var(--ctl-inner, ${CONTROL.inner}px)`, color: c.textPrimary, minWidth: "8em", textAlign: "center", opacity: loading ? 0.5 : 1 }}>
         {date ? labelOf(date) : NAV_LIVE}
       </span>
       <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}>{NAV_NEXT}</button>
@@ -89,7 +89,7 @@ export function DayNav({ date, onChange, loading }: Props) {
                   disabled={out}
                   onClick={() => { onChange(iso); setOpen(false); }}
                   style={{
-                    fontFamily: families.data, fontSize: typeScale.caption.size, textAlign: "center", height: CONTROL.inner, padding: 0,
+                    fontFamily: families.data, fontSize: typeScale.caption.size, textAlign: "center", height: `var(--ctl-inner, ${CONTROL.inner}px)`, padding: 0,
                     color: out ? c.textFaint : sel ? "#05050a" : c.textPrimary,
                     background: sel ? "rgba(255,255,255,0.9)" : "none",
                     border: "none", borderRadius: 4, cursor: out ? "default" : "pointer",
@@ -110,7 +110,7 @@ export function DayNav({ date, onChange, loading }: Props) {
 export function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
   const c = themeColors(useTheme());
   return (
-    <div style={{ display: "flex", gap: CONTROL.gap, height: CONTROL.inner, overflowX: "auto", whiteSpace: "nowrap", maxWidth: "100%" }}>
+    <div style={{ display: "flex", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, overflowX: "auto", whiteSpace: "nowrap", maxWidth: "100%" }}>
       {PINS.map((p) => {
         const active = date === p.date;
         return (

@@ -48,7 +48,7 @@ export function MoodLine({ tierIndex, hour, dominant }: Props) {
         style={{
           fontFamily: families.serifItalic,
           fontStyle: "italic",
-          fontSize: typeScale.heading.size,
+          fontSize: `var(--heading-size, ${typeScale.heading.size})`, // the scene scales this per breakpoint
           lineHeight: typeScale.heading.line,
           color: tierColorAt(shown.tierIndex, "full"),
         }}
@@ -59,8 +59,8 @@ export function MoodLine({ tierIndex, hour, dominant }: Props) {
         style={{
           fontFamily: families.serifItalic,
           fontStyle: "italic",
-          fontSize: typeScale.body.size,
-          lineHeight: typeScale.body.line,
+          fontSize: `var(--body-size, ${typeScale.body.size})`,
+          lineHeight: "var(--body-line, 1.6)",
           color: c.textSecondary,
           marginTop: space.xs,
           maxWidth: "36em",

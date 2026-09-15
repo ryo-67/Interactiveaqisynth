@@ -28,8 +28,8 @@ export function BoroughToggle({ selected, onSelect }: Props) {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        gap: space.md,
-        height: CONTROL.inner,
+        gap: "var(--ctl-gap-wide, 16px)",
+        height: `var(--ctl-inner, ${CONTROL.inner}px)`,
         whiteSpace: "nowrap",
         overflowX: "auto",
         maxWidth: "100%",
@@ -54,8 +54,8 @@ export function BoroughToggle({ selected, onSelect }: Props) {
               textTransform: isSel ? "none" : "uppercase",
               letterSpacing: isSel ? "0" : "0.08em",
               fontSize: typeScale.caption.size,
-              lineHeight: `${CONTROL.inner}px`,
-              height: CONTROL.inner,
+              lineHeight: `var(--ctl-inner, ${CONTROL.inner}px)`,
+              height: `var(--ctl-inner, ${CONTROL.inner}px)`,
               color: isSel ? c.textPrimary : c.textMuted,
             }}
           >

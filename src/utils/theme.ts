@@ -157,9 +157,10 @@ export function aqiScaleStops(max: number): Array<{ offset: number; color: strin
 // The graph (§5.3 score panel, rebuilt): four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of them.
 export const GRAPH = {
   // One tab at a time, so the tab gets real height: the line is the thing being read.
-  tabHeight: { laptop: 240, phone: 168 },
-  pulseRowHeight: { laptop: 32, phone: 24 },
-  axisHeight: 24,
+  // Per breakpoint, chosen so the whole scaffold fits the viewport without scrolling (see .scene-ui in index.css for the matching control sizes). All multiples of 4.
+  tabHeight: { laptop: 240, tablet: 176, phone: 120 },
+  pulseRowHeight: { laptop: 32, tablet: 28, phone: 24 },
+  axisHeight: { laptop: 24, tablet: 24, phone: 20 },
   labelGutter: 8,
   lineWidth: { aqi: 2.5, channel: 1.75 },
   // AQI's y-scale is fixed at the full standard range, 0–500, so the line never rescales between days, nothing is ever clipped (Jun 7 crossed 350 and flatlined at a 300 top), and the bar beside it is the complete ruler including Hazardous.
@@ -212,7 +213,7 @@ export const space = {
   xxl: "48px",
 } as const;
 
-// Control sizing on the same grid: every pill is 40 tall, holding 28-tall content in 6 px of vertical padding; chips, tabs, icon buttons and the slider are all 28. One height, one rhythm, so a row of controls aligns by construction.
+// Control sizing on the same grid: every pill is 40 tall, holding 28-tall content in 6 px of vertical padding; chips, tabs, icon buttons and the slider are all 28. One height, one rhythm, so a row of controls aligns by construction. These are the DESKTOP values and the fallbacks; the scene scales them per breakpoint through CSS custom properties (--ctl-inner, --ctl-pill, --display-size, --heading-size, --body-size) set on .scene-ui, so tablet and phone fit without scrolling. Components read the variables with these as fallbacks.
 export const CONTROL = {
   pillHeight: 40,
   pillPad: "6px 16px",

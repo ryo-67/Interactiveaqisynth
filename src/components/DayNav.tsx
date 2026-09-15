@@ -128,6 +128,8 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
 }
 
 // DayPicker — the phone's one control for the day (§2.2 on phones): a chip naming the current choice that opens a menu of Last 24h and the presets, then "or choose a date" and the calendar. Replaces the arrows, the date chip, the Live chip and the preset strip, which need more width than a phone has.
+// The labels that size the phone chip: Last 24h, the presets, and the longest date the calendar can produce.
+const WIDTH_LABELS = [NAV_LAST_24H, ...PINS.map((p) => p.name), "Sep 30, 2026"];
 export function DayPicker({ date, onChange, loading, latestDate }: Props) {
   const c = themeColors(useTheme());
   const chip = (active: boolean) => chipStyle(c, active);
@@ -147,8 +149,12 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
         aria-haspopup="dialog"
         aria-label={`${NAV_CALENDAR}: ${label}`}
       >
-        {/* No calendar glyph on phones: the caret is the affordance, and the 18 px is what lets the chip share a row with the boroughs from 408 wide. */}
-        <span style={{ color: c.textPrimary }}>{label}</span>
+        {/* No calendar glyph on phones: the caret is the affordance, and the 18 px is what lets the chip share a row with the boroughs from 408 wide. Every label the chip can show is laid out in the same cell — the current one visible, the rest hidden — so the chip's width is the widest label's and never changes as the choice does. */}
+        <span style={{ display: "inline-grid", textAlign: "center" }}>
+          {[label, ...WIDTH_LABELS.filter((l) => l !== label)].map((l, i) => (
+            <span key={l} style={{ gridArea: "1 / 1", color: c.textPrimary, visibility: i === 0 ? "visible" : "hidden" }} aria-hidden={i !== 0}>{l}</span>
+          ))}
+        </span>
         <span aria-hidden style={{ color: c.textMuted, fontSize: "0.8em", marginLeft: 2 }}>{open ? "▴" : "▾"}</span>
       </button>
       {open && createPortal(

@@ -6,7 +6,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { SkyView, particleLevel, grainLevel, type SkyModel, type CameraFacing } from "./SkyView";
 import { skyParamsFor, starOpacity, hazeToAerosol, daylightBlend, nightBlend, RAYLEIGH_DEFAULT } from "./skyParams";
-import { GlassSample, GLASS_IMPLS, GLASS_LABELS, type GlassImpl } from "./GlassSamples";
 import { SmokeLayer, smokeRegime } from "./SmokeLayer";
 import { NightLayer } from "./NightLayer";
 import { sunAnglesAt, sunPositionVector } from "./solar";
@@ -49,7 +48,6 @@ export default function SceneTestPage() {
   const [pmAbs, setPmAbs] = useState(num("pm", 0)); // absolute PM2.5 µg/m³ for the veil's colour regime; a real day sets it from the reading
   const [night, setNight] = useState(num("night", NIGHT.strength)); // the night-blue layer's strength, first pass
   const [saturation, setSaturation] = useState(num("sat", SKY_GRADE.saturation)); // the sky's saturation grade
-  const [glass, setGlass] = useState<GlassImpl | "none">(str("glass", "none") as GlassImpl | "none");
 
   const [archive, setArchive] = useState<HourReading[] | null>(null);
   const [anchors, setAnchors] = useState<PollutantAnchors | null>(null);
@@ -91,10 +89,10 @@ export default function SceneTestPage() {
     const p = new URLSearchParams({
       dev: "1", model, day, hour: String(hour), haze: String(haze), ozone: String(ozone),
       rayleigh: String(rayleigh), bloom: String(bloom), exposure: String(exposure), albedo: String(albedo),
-      smoke: String(smoke), smokeHue: String(smokeHue), pm: String(pmAbs), night: String(night), sat: String(saturation), glass, expAuto: expAuto ? "1" : "0", disc: disc ? "1" : "0", discDeg: String(discDeg), facing,
+      smoke: String(smoke), smokeHue: String(smokeHue), pm: String(pmAbs), night: String(night), sat: String(saturation), expAuto: expAuto ? "1" : "0", disc: disc ? "1" : "0", discDeg: String(discDeg), facing,
     });
     window.history.replaceState(null, "", `?${p}`);
-  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, pmAbs, night, saturation, glass, expAuto, disc, discDeg, facing]);
+  }, [model, day, hour, haze, ozone, rayleigh, bloom, exposure, albedo, smoke, smokeHue, pmAbs, night, saturation, expAuto, disc, discDeg, facing]);
 
   const view = useMemo(() => {
     const dateForSun = day === "manual" ? "2023-07-12" : day;
@@ -130,11 +128,7 @@ export default function SceneTestPage() {
         <NightLayer blend={view.night} density={smoke} strength={night} />
         <SmokeLayer density={smoke} pm25={pmAbs} hueDeg={smokeHue} />
 
-        {glass !== "none" && (
-          <div style={{ position: "absolute", left: "50%", top: "45%", transform: "translate(-50%,-50%)" }}>
-            <GlassSample impl={glass} />
-          </div>
-        )}
+
       </div>
 
       <div
@@ -188,12 +182,7 @@ export default function SceneTestPage() {
         <Slider label="night blue" min={0} max={1} step={0.05} value={night} onChange={setNight} />
         <Slider label="saturation" min={-0.5} max={1} step={0.05} value={saturation} onChange={setSaturation} />
 
-        <Group label="glass">
-          <Radio name="glass" label="off" checked={glass === "none"} onChange={() => setGlass("none")} />
-          {GLASS_IMPLS.map((g) => (
-            <Radio key={g} name="glass" label={g} title={GLASS_LABELS[g]} checked={glass === g} onChange={() => setGlass(g)} />
-          ))}
-        </Group>
+
 
         <div style={{ flexBasis: "100%", color: "rgba(255,255,255,0.62)" }}>{view.readout}</div>
         <div style={{ flexBasis: "100%", color: "rgba(255,255,255,0.62)" }}>{view.fadeReadout}</div>

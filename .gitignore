@@ -5,3 +5,4 @@ build/
 .env*
 scripts/.cache/
 .shots/
+.playwright-mcp/

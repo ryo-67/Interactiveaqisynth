@@ -21,3 +21,11 @@ export function readingLabel(ts: string, withDate: boolean): string {
   const date = `${MONTHS[month - 1]} ${day}${year < nyYear() ? `, ${year}` : ""}`;
   return `${date}, ${time}`;
 }
+
+// A non-finite value reaching an eased state would poison it for good (NaN eases to NaN). Each eased input refuses one and names itself here, once, so the source can be found rather than guessed.
+const warned = new Set<string>();
+export function warnOnce(name: string): void {
+  if (warned.has(name)) return;
+  warned.add(name);
+  console.warn(`[scene] non-finite value for ${name}; holding the last value`);
+}

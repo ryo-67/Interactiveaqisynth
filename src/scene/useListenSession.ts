@@ -1,8 +1,9 @@
 // useListenSession — the Listen page's state, shared by the typographic page (App) and the scene (ScenePage) so the two never drift: one data load, one engine, one beat report, one play toggle. Extracted from App.tsx unchanged in behavior.
-import { hourOfTs } from "../utils/time";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { hourOfTs, warnOnce } from "../utils/time";
+import { solarTimes, tzOffsetFromTs } from "./solar";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
-import { motion } from "../utils/theme";
+import { motion, NYC_LAT, NYC_LON } from "../utils/theme";
 import { normalize, pm25ToAQI, type PollutantAnchors } from "../engine/contour";
 import { tierIndexOf } from "../engine/scales";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
@@ -24,6 +25,8 @@ export interface ListenSession {
   // ONE clock for everything that moves with the phrase: the beat's integer hour eased over one beat (§5.4), wrapping forward at the loop seam. The sun, the playhead and every graph track read this and nothing else.
   playheadHour: number; // eased transport position: an index into the day (fractional while running)
   playheadClock: number; // the same position as a clock hour, from the reading's timestamp: the sun and the stars read this
+  sunDay: { date: string; tz: number } | null; // the date the sun runs on: the old day while its sun sets, the new day from the night leg on
+  starsGate: number; // 0 through the compressed night of a day change (the stars are hidden rather than whipped around), else 1
   // True after a pause or a seek: the phrase is held at playheadHour rather than at rest.
   paused: boolean;
   // Move the phrase to an hour (fractional), playing or not — the graph's scrub.
@@ -229,7 +232,10 @@ export function useListenSession(): ListenSession {
   const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.index ?? 12);
   const playheadHour = useEasedHour(clockTarget, playing);
   // The clock glides where the index cannot: a day switch keeps the transport position but the same index is a different time of day on the new day (live index 23 is 1 pm; an archive day's is 11 pm), and the sun must not jump between them.
-  const playheadClock = useGlidingClock(clockOf(playheadHour), day && day.length > 0 ? day[0].ts : null);
+  const sunDayOf = day && day.length > 0 ? { date: day[0].ts.slice(0, 10), tz: tzOffsetFromTs(day[0].ts) } : null;
+  const sunDayMemo = useMemo(() => sunDayOf, [sunDayOf?.date, sunDayOf?.tz]); // eslint-disable-line react-hooks/exhaustive-deps
+  const transition = useDayTransition(clockOf(playheadHour), sunDayMemo);
+  const playheadClock = transition.clock;
   const paused = !playing && (pausedHour != null || seekAt != null);
   // The sky's inputs: the same channels, but a channel the current hour lacks holds its last reported value from earlier in the day (looked back through the day, so a rest hour with no O3 yet still carries the afternoon's O3). The engine holds its effects the same way across a null hour (§4.4: no data, no movement). AirNow publishes PM2.5 for the newest hour before O3, so without this the afternoon sky fell to its low-ozone end.
   const heldIndex = beat ? beat.hour : rest?.index;
@@ -261,53 +267,77 @@ export function useListenSession(): ListenSession {
   })();
 
   return {
-    borough, setBorough, date, setDate, dayLoading, playheadHour, playheadClock, paused, seek,
+    borough, setBorough, date, setDate, dayLoading, playheadHour, playheadClock, sunDay: transition.sunDay, starsGate: transition.starsGate, paused, seek,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, latest, rest, moodTier, moodHour, moodAqi, dominant, channels, skyChannels, devDayKey, setDevDayKey,
   };
 }
 
 // The beat report says hour h has just STARTED. The clock therefore runs from h toward h+1 over the beat, so the playhead crosses each column in time with the sound and the sun glides continuously; the next report lands as it reaches h+1, and any drift between the audio clock and the frame clock is corrected there. (Easing from the previous hour TO h made the playhead arrive a full beat late, so pulse hits flashed a column ahead of the line.) Across the loop seam it runs 23 → 24 (= 0), never backward. Under reduced motion it still moves, because it is the playhead.
-// The clock follows its target exactly — playback, and a scrub in either direction — except when the DAY changes under the playhead: then it runs FORWARD to the new day's time at CLOCK_GLIDE_S_PER_HOUR seconds per hour of clock (floor one beat), ease-in-out. Forward only, never the shortest way: facing south the sun rises on the left and sets on the right, and a change of day does not run time backwards — 11 pm to 1 pm passes through a sunrise, 1 pm to 11 pm through a sunset. A rate rather than a fixed duration, because a sunset spans about forty minutes of clock: at ten hours per second it was a thirty-millisecond flash; at this rate it is a visible moment. The day change is the trigger, not the size of the step, so a scrub of any length is never mistaken for one. A target that moves during the glide (playback) is re-read each frame, so the glide still lands on it; a second day change restarts from where the clock is. The first day to load is taken as is: a page load is not a day passing.
-const CLOCK_GLIDE_S_PER_HOUR = 0.15; // 10 h → 1.5 s, a full day → 3.6 s
-function useGlidingClock(target: number, dayKey: string | null): number {
-  const [value, setValue] = useState(target);
-  const valueRef = useRef(target);
+// A change of day is one predictable animation, whatever the two times are (§5.2 as amended, D-29): the current sun sets on the right along its own day's path, the night passes briefly with the stars hidden, and the new day's sun rises on the left along ITS path and runs to the target time. A start already at night skips the sunset; a target at night skips the sunrise. Each daylight leg runs at CLOCK_GLIDE_S_PER_HOUR seconds per hour, bounded to [LEG_MIN_S, LEG_MAX_S]; the night is NIGHT_LEG_S. Outside a change of day the clock follows its target exactly — playback, and a scrub in either direction. The sun's DATE switches during the night leg, so the setting sun is the old day's and the rising sun is the new day's, at their own azimuths.
+const CLOCK_GLIDE_S_PER_HOUR = 0.15;
+const LEG_MIN_S = 0.3, LEG_MAX_S = 1.0, NIGHT_LEG_S = 0.4;
+const TWILIGHT_H = 0.6; // hours past sunset / before sunrise at which the sun is safely down (about −6°): where the night leg begins and ends
+interface SunDay { date: string; tz: number }
+interface Leg { from: number; to: number; ms: number; sun: SunDay; night: boolean }
+function useDayTransition(target: number, sunDay: SunDay | null): { clock: number; sunDay: SunDay | null; starsGate: number } {
+  const [state, setState] = useState<{ clock: number; sunDay: SunDay | null; starsGate: number }>({ clock: target, sunDay, starsGate: 1 });
+  const clockRef = useRef(target);
   const targetRef = useRef(target);
   targetRef.current = target;
-  const seenKeyRef = useRef<string | null>(null);
-  const glideRef = useRef<{ from: number; start: number; ms: number } | null>(null);
+  const seenRef = useRef<SunDay | null>(null);
+  const legsRef = useRef<{ legs: Leg[]; i: number; start: number } | null>(null);
   useEffect(() => {
-    const forward = (from: number, to: number) => ((to - from) % 24 + 24) % 24;
-    if (dayKey == null && seenKeyRef.current != null) return; // a day is loading: hold the clock where it is; the day that arrives is the change
-    if (dayKey !== seenKeyRef.current) {
-      const first = seenKeyRef.current == null;
-      seenKeyRef.current = dayKey;
-      if (first || dayKey == null) glideRef.current = null;
-      else glideRef.current = { from: valueRef.current, start: performance.now(), ms: Math.max(motion.beatMs, forward(valueRef.current, target) * CLOCK_GLIDE_S_PER_HOUR * 1000) };
+    if (!sunDay) return; // a day is loading: hold
+    const key = (d: SunDay | null) => (d ? `${d.date}|${d.tz}` : "");
+    if (key(sunDay) !== key(seenRef.current)) {
+      const prev = seenRef.current;
+      seenRef.current = sunDay;
+      if (prev) {
+        const a = solarTimes(prev.date, NYC_LAT, NYC_LON, prev.tz), b = solarTimes(sunDay.date, NYC_LAT, NYC_LON, sunDay.tz);
+        const from = clockRef.current, to = target;
+        const aNight = from <= a.sunrise - TWILIGHT_H || from >= a.sunset + TWILIGHT_H;
+        const bNight = to <= b.sunrise - TWILIGHT_H || to >= b.sunset + TWILIGHT_H;
+        const legMs = (hours: number) => Math.min(LEG_MAX_S, Math.max(LEG_MIN_S, Math.max(0, hours) * CLOCK_GLIDE_S_PER_HOUR)) * 1000;
+        const legs: Leg[] = [];
+        if (!aNight) legs.push({ from, to: a.sunset + TWILIGHT_H, ms: legMs(a.sunset + TWILIGHT_H - from), sun: prev, night: false });
+        const dawn = bNight ? to : b.sunrise - TWILIGHT_H;
+        legs.push({ from: dawn, to: dawn, ms: NIGHT_LEG_S * 1000, sun: sunDay, night: true });
+        if (!bNight) legs.push({ from: dawn, to, ms: legMs(to - dawn), sun: sunDay, night: false });
+        legsRef.current = { legs, i: 0, start: performance.now() };
+      }
     }
-    if (!glideRef.current) { valueRef.current = target; setValue(target); return; }
+    const run = legsRef.current;
+    if (!run) { clockRef.current = target; setState({ clock: target, sunDay, starsGate: 1 }); return; }
     let raf = 0;
     const tick = (now: number) => {
-      const g = glideRef.current!;
-      const t = Math.min(1, (now - g.start) / g.ms);
-      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease-in-out: the day turns, it does not lurch
-      const v = (g.from + forward(g.from, targetRef.current) * e) % 24;
-      valueRef.current = v;
-      setValue(v);
-      if (t < 1) raf = requestAnimationFrame(tick);
-      else { glideRef.current = null; valueRef.current = targetRef.current; setValue(targetRef.current); }
+      const r = legsRef.current;
+      if (!r) return;
+      const leg = r.legs[r.i];
+      const t = Math.min(1, (now - r.start) / leg.ms);
+      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      // The last leg lands on the live target (it may have moved during the animation: playback).
+      const to = r.i === r.legs.length - 1 && !leg.night ? targetRef.current : leg.to;
+      const v = leg.from + (to - leg.from) * e;
+      clockRef.current = ((v % 24) + 24) % 24;
+      setState({ clock: clockRef.current, sunDay: leg.sun, starsGate: leg.night ? 0 : 1 });
+      if (t < 1) { raf = requestAnimationFrame(tick); return; }
+      if (r.i < r.legs.length - 1) { r.i += 1; r.start = now; raf = requestAnimationFrame(tick); return; }
+      legsRef.current = null;
+      clockRef.current = targetRef.current;
+      setState({ clock: targetRef.current, sunDay, starsGate: 1 });
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target, dayKey]);
-  return value;
+  }, [target, sunDay]);
+  return state;
 }
 
 function useEasedHour(target: number, running: boolean): number {
   const [value, setValue] = useState(target);
   const heldRef = useRef(target);
   useEffect(() => {
+    if (!Number.isFinite(target)) { warnOnce("playhead target"); return; } // never let a NaN into the eased state: it would never come back
     if (!running) {
       // At rest or paused: glide to the target over half a beat rather than jump. Linear, in the direction of the seek: the transport position is a line from hour 0 to 23, not a circle, so a scrub from 23 to 8 runs back through the afternoon rather than wrapping through midnight (the playhead would appear to jump to the start, and the clock would follow it).
       const from = heldRef.current;

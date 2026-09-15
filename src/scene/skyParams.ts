@@ -3,7 +3,7 @@
 // O3 → rayleigh, bloom intensity, disc brightness, exposure: photochemical intensity. Ozone is made by strong sun, so a high-ozone afternoon reads bright and white; a low-ozone morning reads deep blue.
 // Clock → sunPosition, star visibility (handled by the caller from solar.ts).
 
-import { SKY_RANGES, SKY_FADE, EXPOSURE_CURVE, NIGHT, SMOKE } from "../utils/theme";
+import { SKY_RANGES, SKY_FADE, EXPOSURE_CURVE, NIGHT, GOLDEN, SMOKE } from "../utils/theme";
 
 export interface SkyParams {
   turbidity: number;
@@ -21,6 +21,14 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * Math.max(0, Math
 export function daylightBlend(sunElevationDeg: number): number {
   const t = (sunElevationDeg - SKY_FADE.endDeg) / (SKY_FADE.startDeg - SKY_FADE.endDeg);
   return Math.max(0, Math.min(1, t));
+}
+
+// How much of the golden-hour grade shows: 0 at GOLDEN.belowDeg, 1 at peakDeg, 0 again at aboveDeg, smooth both sides.
+export function goldenBlend(sunElevationDeg: number): number {
+  const up = (sunElevationDeg - GOLDEN.belowDeg) / (GOLDEN.peakDeg - GOLDEN.belowDeg);
+  const down = (GOLDEN.aboveDeg - sunElevationDeg) / (GOLDEN.aboveDeg - GOLDEN.peakDeg);
+  const t = Math.max(0, Math.min(1, Math.min(up, down)));
+  return t * t * (3 - 2 * t);
 }
 
 // How much of the night-blue layer shows: 1 from NIGHT.fullBelowDeg down, 0 from NIGHT.fadeFromDeg up, across the horizon between.

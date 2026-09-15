@@ -261,6 +261,17 @@ export const EXPOSURE_CURVE: ReadonlyArray<readonly [elevationDeg: number, expos
 export const SKY_FADE = { startDeg: 2, endDeg: -2 } as const;
 
 // The literal sun (§5.1). Preetham draws its own disc; Hosek renders an aureole with no disc, so a sprite supplies one that the bloom pass can pick up. Angular diameter is oversized against the real 0.53° so it reads at phone scale. UNDER BENCHMARK in the harness — not yet in the page.
+// MAPPING (sun elevation → golden hour): a warm grade over the low sun, composited like the night-blue layer. Orange at the horizon, rose above it, violet at the top; strongest with the sun at peakDeg, gone by aboveDeg and belowDeg. Golden hour in life is scattering along a long air path, which the day model renders only faintly at clear-sky turbidity, so this layer supplies the colour. PLACEHOLDER colours and strength — Shoro's to tune in the harness.
+export const GOLDEN = {
+  horizon: "#ff7a1f",
+  mid: "#ff5f8a",
+  zenith: "#6b3fb8",
+  strength: 0.32,
+  peakDeg: 2,
+  belowDeg: -5,
+  aboveDeg: 14,
+} as const;
+
 export const SUN_DISC = {
   angularDiameterDeg: 6, // 2.2° was invisible at page scale (a 35 px dot inside the aureole). Under benchmark: the harness has a size slider; this is the page's value until Shoro settles it.
   haloScale: 3.2,        // the soft halo's diameter as a multiple of the core's — the part the bloom pass lifts

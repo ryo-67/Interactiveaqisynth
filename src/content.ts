@@ -42,11 +42,11 @@ export const TRACK_UNITS = { aqi: "", pm25: "µg/m³", o3: "ppb", no2: "ppb" } a
 
 // Day navigation. Pin names are Shoro's (from the Figma scaffold, 2026-09-15); the rest are PLACEHOLDERS — Shoro's.
 export const PINS = [
-  { date: "2023-06-07", name: "Wildfire Smoke" },
-  { date: "2023-06-30", name: "Hot and Hazy" },
+  { date: "2023-06-07", name: "Wildfire" },
+  { date: "2023-06-30", name: "Hot & Hazy" },
   { date: "2023-07-12", name: "Ozone Spike" },
-  { date: "2023-02-09", name: "Rush Hour Traffic" },
-  { date: "2023-10-29", name: "Clearest Day" },
+  { date: "2023-02-09", name: "Rush Hour" },
+  { date: "2023-10-29", name: "Clear Day" },
 ] as const;
 export const NAV_LIVE = "Live";
 export const NAV_PREV = "‹";

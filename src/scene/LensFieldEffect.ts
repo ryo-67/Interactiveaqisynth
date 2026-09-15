@@ -8,7 +8,7 @@ const MAX = PARTICLES.max;
 
 const fragment = /* glsl */ `
 uniform vec4 uLens[${MAX}]; // x, y in uv; radius in units of frame height; strength
-uniform int uCount;
+uniform float uLevel; // 0..1; lens i is fully in once uLevel·MAX exceeds i+1, and grows in over the unit before
 uniform float uAspect;
 uniform float uDispersion;
 uniform float uRimLight;
@@ -20,8 +20,11 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   vec2 disp = vec2(0.0);
   float rim = 0.0;
   for (int i = 0; i < ${MAX}; i++) {
-    if (i >= uCount) break;
+    // Each lens eases in over its own slice of the level rather than popping when a count crosses an integer.
+    float w = smoothstep(0.0, 1.0, uLevel * float(${MAX}) - float(i));
+    if (w <= 0.0) continue;
     vec4 L = uLens[i];
+    L.w *= w;
     vec2 d = uv - L.xy;
     d.x *= uAspect; // circular lenses on a non-square frame
     float ang = atan(d.y, d.x);
@@ -59,7 +62,7 @@ export class LensFieldEffect extends Effect {
       blendFunction: BlendFunction.NORMAL,
       uniforms: new Map<string, Uniform>([
         ["uLens", new Uniform(lens)],
-        ["uCount", new Uniform(0)],
+        ["uLevel", new Uniform(0)],
         ["uAspect", new Uniform(1)],
         ["uDispersion", new Uniform(PARTICLES.dispersion)],
         ["uRimLight", new Uniform(PARTICLES.rimLight)],
@@ -83,7 +86,7 @@ export class LensFieldEffect extends Effect {
   // Called each frame by the wrapper: level 0..1 sets how many lenses act and how strongly; time drives the drift.
   setState(level: number, aspect: number, time: number, dt: number, drift: boolean): void {
     const l = Math.max(0, Math.min(1, level));
-    (this.uniforms.get("uCount") as Uniform).value = Math.round(MAX * l);
+    (this.uniforms.get("uLevel") as Uniform).value = l;
     (this.uniforms.get("uAspect") as Uniform).value = aspect;
     if (drift) (this.uniforms.get("uTime") as Uniform).value = time * PARTICLES.wobbleHz * Math.PI * 2;
     for (let i = 0; i < MAX; i++) {

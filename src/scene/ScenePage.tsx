@@ -1,6 +1,6 @@
 // ScenePage — /scene, the Listen page as the scene (D-19, §5). The sky is a pure function of two things the engine already emits every beat: the hour under the playhead and the smoothed normalized PM2.5. Sun elevation comes from the hour; the model cross-fade, exposure, stars and the plume all follow from those two numbers. Nothing here re-derives a mapping the harness did not judge.
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SkyView, particleLevel, grainLevel, type CameraFacing } from "./SkyView";
 import { SmokeLayer, smokeRegime } from "./SmokeLayer";
 import { NightLayer } from "./NightLayer";
@@ -16,13 +16,32 @@ import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
 import { DayNav } from "../components/DayNav";
 import { SourceLine } from "../components/SourceLine";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
-import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, space } from "../utils/theme";
+import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, space } from "../utils/theme";
 import { STATUS_LIVE, STATUS_ARCHIVE } from "../content";
 
 // The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
 const qs = new URLSearchParams(window.location.search);
 const DISC = qs.get("disc") !== "0";
 const FACING = (qs.get("facing") ?? CAMERA_FACING) as CameraFacing;
+
+// Eases a number toward its target over `tauMs` (exponential; ~63% of the way per tau), so per-beat steps in the data become continuous motion in the sky. Runs only while the value is off target.
+function useEased(target: number, tauMs: number): number {
+  const [value, setValue] = useState(target);
+  const valueRef = useRef(target);
+  useEffect(() => {
+    let raf = 0, last = performance.now();
+    const tick = (now: number) => {
+      const dt = now - last; last = now;
+      const v = valueRef.current + (target - valueRef.current) * (1 - Math.exp(-dt / tauMs));
+      valueRef.current = Math.abs(target - v) < 1e-3 ? target : v;
+      setValue(valueRef.current);
+      if (valueRef.current !== target) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, tauMs]);
+  return value;
+}
 
 // The graph's active tab lives in the URL so a view can be sent: ?tab=o3
 function tabFromUrl(): TrackKey {
@@ -43,6 +62,12 @@ export default function ScenePage() {
   }, [tab]);
 
 
+  // The particulate inputs, eased: absolute PM2.5 for the regime, lenses, grain and aberration; the veil density for the plume and the stars. Both step once per beat in the data; the sky should not.
+  const pm25Target = beat ? (beat.pm25 ?? 0) : (latest?.reading.pm25 ?? 0);
+  const pm25Eased = useEased(pm25Target, motion.beatMs * 1.5);
+  const smokeTarget = beat?.pm25nSmoothed ?? channels.pm25 ?? 0;
+  const smokeEased = useEased(smokeTarget, motion.beatMs * 1.5);
+
   const view = useMemo(() => {
     const firstTs = day?.[0]?.ts ?? "2023-07-12T00:00:00-04:00";
     const date = firstTs.slice(0, 10);
@@ -50,14 +75,13 @@ export default function ScenePage() {
     // MAPPING (PM2.5 → aerosol path, O3 → rayleigh + bloom, clock → exposure + fade): skyParamsFor is the one mapping, shared with the harness.
     const params = skyParamsFor(channels.pm25, channels.o3, ang.elevationDeg);
     // MAPPING (PM2.5 → plume density): the engine's own smoothed value while playing (§5.2: the scene never re-derives the smoothing); the latest hour's normalized value at rest.
-    const smoke = beat?.pm25nSmoothed ?? channels.pm25 ?? 0;
-    // Absolute PM2.5 for the veil's colour regime (white haze vs orange smoke): the hour under the playhead, or the latest hour at rest.
-    const pm25 = beat ? beat.pm25 : (latest?.reading.pm25 ?? null);
+    const smoke = smokeEased;
+    const pm25 = pm25Eased;
     // MAPPING (smoke regime → sky saturation): the blue is absorbed under smoke, so the grade goes negative as the regime rises.
     const r = smokeRegime(pm25);
     const saturation = SKY_GRADE.saturation + (SKY_GRADE.saturationUnderSmoke - SKY_GRADE.saturation) * r;
     return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke, pm25, saturation, night: nightBlend(ang.elevationDeg) };
-  }, [day, hour, channels.pm25, channels.o3, beat?.pm25nSmoothed, beat?.pm25, latest]);
+  }, [day, hour, channels.pm25, channels.o3, smokeEased, pm25Eased]);
 
   const lastTs = day?.[day.length - 1]?.ts ?? null;
   const dateLabel = lastTs ? new Date(lastTs).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";

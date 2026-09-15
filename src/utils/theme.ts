@@ -276,6 +276,8 @@ export const SMOKE = {
 // Colour grade on the rendered sky, applied in the post chain before tone mapping and beneath the plume: the analytic models tone-map to a bluish grey a clear day should not have. Saturation only; hue is the models'. Shoro's ask was "bluer by default" — this is the dial, first pass, with a harness slider.
 export const SKY_GRADE = {
   saturation: 0.35, // postprocessing HueSaturation: 0 = as rendered, 1 = fully saturated
+  // Under smoke the blue is absorbed before it reaches the eye, so the grade must not put it back: the sky beneath a full plume is DESATURATED (negative), otherwise orange screened over saturated blue comes out muddy purple. Blended by the smoke regime.
+  saturationUnderSmoke: -0.5,
 } as const;
 
 // Night (D-20 addendum): the analytic models go dark and neutral with the sun down, but a clear night sky reads deep blue — skyglow, airglow and the eye's own shift. A blue gradient is screened over the sky from sunset to −6° (civil twilight's end) and held through the night; particulate damps it, because a hazy night is grey-orange, not blue. FIRST PASS — the harness has a strength slider.

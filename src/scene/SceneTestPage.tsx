@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SkyView, type SkyModel, type CameraFacing } from "./SkyView";
 import { skyParamsFor, starOpacity, hazeToAerosol, daylightBlend, nightBlend, RAYLEIGH_DEFAULT } from "./skyParams";
 import { GlassSample, GLASS_IMPLS, GLASS_LABELS, type GlassImpl } from "./GlassSamples";
-import { SmokeLayer } from "./SmokeLayer";
+import { SmokeLayer, smokeRegime } from "./SmokeLayer";
 import { NightLayer } from "./NightLayer";
 import { sunAnglesAt, sunPositionVector } from "./solar";
 import { CLEAR_NOON_EXPOSURE, HOSEK_ALBEDO, NYC_LAT, NYC_LON, SMOKE, SUN_DISC, NIGHT, SKY_GRADE, families, typeScale, space } from "../utils/theme";
@@ -125,7 +125,7 @@ export default function SceneTestPage() {
     // The scene owns the area above the control bar rather than the whole viewport, so the plume's densest band — which sits at the horizon, at the bottom of the frame — is never hidden behind the controls.
     <div style={{ position: "fixed", inset: 0, background: "#05050a", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
-        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} hour={hour} saturation={saturation} style={{ width: "100%", height: "100%" }} live />
+        <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} hour={hour} saturation={saturation + (SKY_GRADE.saturationUnderSmoke - saturation) * smokeRegime(pmAbs)} style={{ width: "100%", height: "100%" }} live />
 
         <NightLayer blend={view.night} density={smoke} strength={night} />
         <SmokeLayer density={smoke} pm25={pmAbs} hueDeg={smokeHue} />

@@ -2,7 +2,7 @@
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
 import React, { useEffect, useMemo, useState } from "react";
 import { SkyView, type CameraFacing } from "./SkyView";
-import { SmokeLayer } from "./SmokeLayer";
+import { SmokeLayer, smokeRegime } from "./SmokeLayer";
 import { NightLayer } from "./NightLayer";
 import { skyParamsFor, starOpacity, nightBlend } from "./skyParams";
 import { sunAnglesAt, sunPositionVector, tzOffsetFromTs } from "./solar";
@@ -16,7 +16,7 @@ import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
 import { DayNav } from "../components/DayNav";
 import { SourceLine } from "../components/SourceLine";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
-import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, space } from "../utils/theme";
+import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, space } from "../utils/theme";
 import { STATUS_LIVE, STATUS_ARCHIVE } from "../content";
 
 // The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
@@ -53,7 +53,10 @@ export default function ScenePage() {
     const smoke = beat?.pm25nSmoothed ?? channels.pm25 ?? 0;
     // Absolute PM2.5 for the veil's colour regime (white haze vs orange smoke): the hour under the playhead, or the latest hour at rest.
     const pm25 = beat ? beat.pm25 : (latest?.reading.pm25 ?? null);
-    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke, pm25, night: nightBlend(ang.elevationDeg) };
+    // MAPPING (smoke regime → sky saturation): the blue is absorbed under smoke, so the grade goes negative as the regime rises.
+    const r = smokeRegime(pm25);
+    const saturation = SKY_GRADE.saturation + (SKY_GRADE.saturationUnderSmoke - SKY_GRADE.saturation) * r;
+    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke, pm25, saturation, night: nightBlend(ang.elevationDeg) };
   }, [day, hour, channels.pm25, channels.o3, beat?.pm25nSmoothed, beat?.pm25, latest]);
 
   const lastTs = day?.[day.length - 1]?.ts ?? null;
@@ -72,7 +75,7 @@ export default function ScenePage() {
       <div style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars }}>
         {/* The scene: renders continuously while playing, on demand at rest. */}
         <div style={{ position: "absolute", inset: 0 }}>
-          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} saturation={view.saturation} live={playing} style={{ width: "100%", height: "100%" }} />
           <NightLayer blend={view.night} density={view.smoke} />
           <SmokeLayer density={view.smoke} pm25={view.pm25} />
         </div>

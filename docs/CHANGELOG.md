@@ -8,7 +8,7 @@ The intermittent "luminance and rayleigh broke" frame was never a bad value; it 
 
 ## 2026-09-15 — A tinted frost keyed to the sky; two AQI ramps (D-35)
 
-The panel fill follows the sky instead of sitting as one grey block on every hour: alpha 0.62 only in clear daylight, where white text needs the darkening (a clear noon sky measured 0.92 behind the hero), thinning to 0.35 at night and under smoke; navy in clear air, umber under smoke and at golden hour so an orange sky is not fought by a cold panel; a faint white lift at night so the panel reads lighter than the sky. The AQI scale now darkens all the way to the EPA purple and maroon for the legend, line and fill, as a standard bar does, while the mood word takes a text ramp of the same hues that clears 3:1 on the panel.
+The panel fill follows the sky instead of sitting as one grey block on every hour: alpha 0.62 only in clear daylight, where white text needs the darkening (a clear noon sky measured 0.92 behind the hero), thinning to 0.35 at night and under smoke; navy in clear air, umber under smoke and at golden hour so an orange sky is not fought by a cold panel; a faint white lift at night so the panel reads lighter than the sky. The AQI scale now darkens all the way to the EPA purple and maroon for the legend, line and fill, as a standard bar does, while the mood word takes a text ramp of the same hues that clears 3:1 on the lightest panel the scene makes (the frosted hero on a clear noon, measured). The veil thins the frost only past a density of 0.4: a clear day carries 0.23 and its sky is bright, so nothing below that counts.
 
 ## 2026-09-15 — One plot width on every tab; tighter sides; hours as "3pm"
 

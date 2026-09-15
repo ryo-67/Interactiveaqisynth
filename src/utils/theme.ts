@@ -124,12 +124,13 @@ export function themeColors(theme: Theme) {
 // The colours are the standard hues lifted to pass WCAG 1.4.11 (≥ 3:1 for graphics) against the dark panel (#0e0e1c, the hard case). The standard values fail for the top two: Very Unhealthy #8f3f97 is 3.0:1 and Hazardous #7e0023 is 1.7:1. Measured: Good 11.0, Moderate 17.8, USG 8.2, Unhealthy 6.3, Very Unhealthy 7.3, Hazardous 6.3.
 // Two ramps of one hue per category (D-35, 2026-09-15): `color` is the DISPLAY ramp for the legend, the line and the fill, darkening all the way to the EPA purple and maroon at the top as a standard AQI bar does (red 0.30 luminance, purple 0.10, maroon 0.045: each step darker by half or more, so red→purple and purple→maroon read as steps, not a blur); `text` is the ramp for the mood WORD, the nearest colour of the same hue that clears 3:1 on the panel (the true maroon is 2.1:1 there, fine for a bar and not for a word). The two agree on hue, not on hex.
 export const AQI_CATEGORIES = [
+  // The text ramp is set against the lightest panel the scene makes: the frosted hero on a clear noon, measured sky (213, 244, 254) behind a 0.70 fill → panel (70, 83, 104), luminance 0.084, so 3:1 needs a text luminance of 0.35. The lower three categories clear it as they are; the upper three are lifted to the same hue at that luminance (2026-09-15).
   { max: 50, color: "#00e400", text: "#00e400" },
   { max: 100, color: "#ffff00", text: "#ffff00" },
   { max: 150, color: "#ff8c1a", text: "#ff8c1a" },
-  { max: 200, color: "#ff5c5c", text: "#ff5c5c" },
-  { max: 300, color: "#8f3f97", text: "#9b4dff" }, // very unhealthy: EPA purple; the word at 4.1:1
-  { max: 500, color: "#7e0023", text: "#c9184a" }, // hazardous: EPA maroon; the word at 3.13:1
+  { max: 200, color: "#ff5c5c", text: "#ff7878" }, // unhealthy: the word one step lighter, 3.06:1 on the noon panel
+  { max: 300, color: "#8f3f97", text: "#b98cff" }, // very unhealthy: EPA purple; the word a lavender of that hue, 3.08:1
+  { max: 500, color: "#7e0023", text: "#ff7a94" }, // hazardous: EPA maroon; the word its hue at 0.37 luminance, 3.16:1
 ] as const;
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
@@ -394,6 +395,8 @@ export const GLASS = {
   liftNight: 0.06, // white over the fill at night, fading out by day
   dayFromDeg: -2, // sun elevation below which the material is at its night alpha…
   dayFullDeg: 10, // …and above which at its day alpha; golden hour thins it on the way
+  veilFrom: 0.4, // veil density from which smoke starts thinning the frost (a clear day carries 0.23 and its sky is bright, so nothing below this counts)…
+  veilFull: 0.9, // …and at which the frost is at its night alpha (a wildfire or summer-haze day sits at 0.92, its sky at 0.05 luminance)
   edgeAlpha: 0.35,
   // Frosted (the content material): heavier blur and a touch more fill than the control material.
   frostedBlur: "28px",

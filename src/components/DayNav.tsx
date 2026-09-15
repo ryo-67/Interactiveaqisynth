@@ -1,5 +1,6 @@
 // DayNav — scrubbing older days (§2.2, UX-03 as page-level navigation): pagination one day at a time, the measured pins as chips, and a hand-built month calendar. Range is January 2020 to yesterday (the archive plus the live-year route); "Live" returns to the last 24 hours. No component libraries; tokens only; copy from content.ts.
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
 import { chipStyle } from "./chip";
 import { PINS, NAV_LIVE, NAV_PREV, NAV_NEXT, NAV_CALENDAR } from "../content";
@@ -10,6 +11,7 @@ interface Props {
   loading?: boolean;
 }
 
+const POPOVER_WIDTH = 288; // 4 px grid; seven 36 px columns plus the panel padding
 const MIN_DATE = "2020-01-01";
 
 // New York's calendar day, not the browser's: a visitor in Tokyo should see the same "yesterday" the archive has.
@@ -28,6 +30,28 @@ function labelOf(iso: string): string {
 export function DayNav({ date, onChange, loading }: Props) {
   const c = themeColors(useTheme());
   const [open, setOpen] = useState(false);
+  // The popover is rendered at the document level (a portal), not inside the pill: the pill has its own backdrop blur, and a blur nested inside another blurred element can only sample what is painted inside its parent, so the graph beneath showed through sharp. Fixed under the Calendar chip, kept inside the viewport, re-placed on resize.
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  useLayoutEffect(() => {
+    if (!open) return;
+    const margin = parseInt(space.sm), gap = parseInt(space.xs);
+    let raf = 0;
+    // Re-measured every frame while open (cheap: one rect), so the popover follows the chip through any reflow, zoom or resize without a listener for each.
+    const place = () => {
+      const r = anchorRef.current?.getBoundingClientRect();
+      if (r && r.width > 0) {
+        const left = Math.max(margin, Math.min(r.left, window.innerWidth - POPOVER_WIDTH - margin));
+        const top = r.bottom + gap;
+        setPos((p) => (p.left === left && p.top === top ? p : { left, top }));
+      }
+      raf = requestAnimationFrame(place);
+    };
+    place();
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
+  // Any choice of day closes the calendar — a date in it, a preset chip (PinStrip, a sibling), or Live — because each one lands as a new `date`.
+  useEffect(() => { setOpen(false); }, [date]);
   const yesterday = useMemo(() => addDays(nyToday(), -1), []);
   const [view, setView] = useState(() => (date ?? yesterday).slice(0, 7)); // YYYY-MM shown in the calendar
 
@@ -58,7 +82,7 @@ export function DayNav({ date, onChange, loading }: Props) {
   };
 
   return (
-    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: `var(--chip-inset, ${CONTROL.gap}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
+    <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: `var(--chip-inset, ${CONTROL.gap}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
       {/* Order per the scaffold: Calendar ‹ date › Live. */}
       <button style={chip(open)} onClick={() => setOpen((o) => !o)} aria-expanded={open}>{NAV_CALENDAR}</button>
       <button style={chip(false)} onClick={prev} aria-label="previous day">{NAV_PREV}</button>
@@ -68,8 +92,8 @@ export function DayNav({ date, onChange, loading }: Props) {
       <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}>{NAV_NEXT}</button>
       <button style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
 
-      {open && (
-        <div className="glass frosted" style={{ position: "absolute", top: "100%", left: 0, marginTop: space.xs, padding: space.sm, zIndex: 3, fontFamily: families.data, fontSize: typeScale.caption.size, color: c.textSecondary, width: 288, whiteSpace: "normal" }}>
+      {open && createPortal(
+        <div className="glass frosted" role="dialog" aria-label={NAV_CALENDAR} style={{ position: "fixed", left: pos.left, top: pos.top, padding: space.sm, zIndex: 20, fontFamily: families.data, fontSize: typeScale.caption.size, color: c.textSecondary, width: POPOVER_WIDTH, whiteSpace: "normal" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: space.xs }}>
             <button style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label="previous month">{NAV_PREV}</button>
             <span style={{ color: c.textPrimary }}>{monthLabel}</span>
@@ -100,7 +124,8 @@ export function DayNav({ date, onChange, loading }: Props) {
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

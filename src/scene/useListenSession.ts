@@ -227,7 +227,8 @@ export function useListenSession(): ListenSession {
       : null;
   const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.index ?? 12);
   const playheadHour = useEasedHour(clockTarget, playing);
-  const playheadClock = clockOf(playheadHour);
+  // The clock glides where the index cannot: a day switch keeps the transport position but the same index is a different time of day on the new day (live index 23 is 1 pm; an archive day's is 11 pm), and the sun must not jump between them.
+  const playheadClock = useGlidingClock(clockOf(playheadHour));
   const paused = !playing && (pausedHour != null || seekAt != null);
   const channels = beat
     ? { pm25: beat.pm25n, o3: beat.o3n, no2: beat.no2n }
@@ -255,6 +256,42 @@ export function useListenSession(): ListenSession {
 }
 
 // The beat report says hour h has just STARTED. The clock therefore runs from h toward h+1 over the beat, so the playhead crosses each column in time with the sound and the sun glides continuously; the next report lands as it reaches h+1, and any drift between the audio clock and the frame clock is corrected there. (Easing from the previous hour TO h made the playhead arrive a full beat late, so pulse hits flashed a column ahead of the line.) Across the loop seam it runs 23 → 24 (= 0), never backward. Under reduced motion it still moves, because it is the playhead.
+// Follows a clock-hour target exactly while it moves continuously (playback: a fraction of an hour per frame) and, when it jumps (a day switch, a seek), runs FORWARD to it at CLOCK_GLIDE_S_PER_HOUR seconds per hour of clock (floor one beat), ease-in-out. Forward only, never the shortest way: facing south the sun rises on the left and sets on the right, and time in this piece does not run backwards — 11 pm to 1 pm passes through a sunrise, 1 pm to 11 pm through a sunset. A rate rather than a fixed duration, because a sunset spans about forty minutes of clock: at ten hours per second it was a thirty-millisecond flash; at this rate it is a visible moment. A moving target during the glide (playing) is re-read each frame, so the glide still lands on it.
+const CLOCK_GLIDE_S_PER_HOUR = 0.15; // 10 h → 1.5 s, a full day → 3.6 s
+function useGlidingClock(target: number): number {
+  const [value, setValue] = useState(target);
+  const valueRef = useRef(target);
+  const targetRef = useRef(target);
+  targetRef.current = target;
+  const glideRef = useRef<{ from: number; start: number; ms: number; target: number } | null>(null);
+  useEffect(() => {
+    const forward = (from: number, to: number) => ((to - from) % 24 + 24) % 24;
+    const near = (from: number, to: number) => { const d = forward(from, to); return d < 0.25 || d > 23.75; };
+    if (!glideRef.current && near(valueRef.current, target)) { valueRef.current = target; setValue(target); return; }
+    // A target that moves a little during a glide (playback: a fraction of an hour per frame) is absorbed; one that jumps again (a second day switch before the first glide has landed) restarts the glide from where the clock is now, with its own duration — reusing the old glide's clock would cram the new distance into whatever time the old one had left.
+    if (glideRef.current && !near(glideRef.current.target, target)) glideRef.current = null;
+    if (!glideRef.current) {
+      const hours = forward(valueRef.current, target);
+      glideRef.current = { from: valueRef.current, start: performance.now(), ms: Math.max(motion.beatMs, hours * CLOCK_GLIDE_S_PER_HOUR * 1000), target };
+    }
+    glideRef.current.target = target;
+    let raf = 0;
+    const tick = (now: number) => {
+      const g = glideRef.current!;
+      const t = Math.min(1, (now - g.start) / g.ms);
+      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease-in-out: the day turns, it does not lurch
+      const v = (g.from + forward(g.from, targetRef.current) * e) % 24;
+      valueRef.current = v;
+      setValue(v);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else { glideRef.current = null; valueRef.current = targetRef.current; setValue(targetRef.current); }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+  return value;
+}
+
 function useEasedHour(target: number, running: boolean): number {
   const [value, setValue] = useState(target);
   const heldRef = useRef(target);

@@ -43,6 +43,13 @@ function useEased(target: number, tauMs: number): number {
   return value;
 }
 
+// The last non-null value of a channel; 0 until one has arrived.
+function useHeld(value: number | null): number {
+  const held = useRef(0);
+  if (value != null) held.current = value;
+  return held.current;
+}
+
 // The graph's active tab lives in the URL so a view can be sent: ?tab=o3
 function tabFromUrl(): TrackKey {
   const t = qs.get("tab") as TrackKey | null;
@@ -70,8 +77,9 @@ export default function ScenePage() {
   const grain = useEased(grainLevel(pm25Target), tau);
   const regime = useEased(smokeRegime(pm25Target), tau);
   const smokeEased = useEased(beat?.pm25nSmoothed ?? channels.pm25 ?? 0, tau);
-  const pm25nEased = useEased(channels.pm25 ?? 0, tau);
-  const o3nEased = useEased(channels.o3 ?? 0, tau);
+  // MAPPING (null hour → hold): a channel the current hour lacks keeps its last reported value for the sky, as the engine does for its effects (§4.4: no data, no movement). AirNow publishes PM2.5 for the newest hour before O3, so treating the gap as zero dropped rayleigh, bloom and the disc to their low-ozone ends and the afternoon went dull.
+  const pm25nEased = useEased(useHeld(channels.pm25), tau);
+  const o3nEased = useEased(useHeld(channels.o3), tau);
 
   const view = useMemo(() => {
     const firstTs = day?.[0]?.ts ?? "2023-07-12T00:00:00-04:00";

@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The clock runs forward; a null hour holds; the calendar is a real popover
+
+A day switch keeps the transport position, but the same index is a different time of day on the new day, so the clock jumped and the sky flickered. The clock now glides: forward only, at a rate per hour of clock with a one-beat floor, because facing south the sun rises on the left and sets on the right and time in this piece does not run backwards — 11 pm to 1 pm passes through a sunrise, 1 pm to 11 pm through a sunset, each a visible moment rather than a flash. A second switch mid-glide restarts from where the clock is. The dull afternoon had a data cause: AirNow publishes PM2.5 for the newest hour before O3, and a missing O3 was read as zero, which dropped rayleigh, bloom and the disc to their low-ozone ends; the sky now holds a channel's last reported value across a null hour, as the engine holds its effects. The calendar renders at the document level: inside the day pill its blur could only sample the pill, so the graph showed through sharp; it closes on any choice of day. The graph redraws when browser zoom changes the pixel ratio, which Firefox does not report as a resize.
+
 ## 2026-09-15 — Pause is immediate
 
 Pausing the transport only stopped the clock: events Tone had already scheduled inside its lookahead still fired, the bed's bar-long notes rang through their 1.2 s release, and the long reverb decayed for 7.5 s, so a pause trailed off for seconds. The mix now sums into one master gain before the destination; pause closes it in 80 ms and releases every held voice under it, resume opens it the same way. The position is untouched, so play still picks up where it stopped.

@@ -1,4 +1,4 @@
-// BoroughToggle — one row of words (§5.2 item 1), always one line, centred. No chrome: the selected borough is italic serif, the rest are UI caps. When the row is wider than its pill it scrolls horizontally rather than wrapping. The date and status live in DateStatus, their own pill.
+// BoroughToggle — one row of words (§5.2 item 1), always one line, centred. No chrome: every word is set in caps with the same tracking; the selected borough changes voice to the italic serif, not case. When the row is wider than its pill it scrolls horizontally rather than wrapping. The date and status live in DateStatus, their own pill.
 import React from "react";
 import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
 import type { Borough } from "../utils/nycOpenData";
@@ -49,10 +49,11 @@ export function BoroughToggle({ selected, onSelect }: Props) {
               padding: 0,
               cursor: "pointer",
               flex: "0 0 auto",
+              // All caps at all times; the selected borough is set in the italic serif, so it keeps the row's rhythm and changes voice rather than case.
               fontFamily: isSel ? families.serifItalic : families.uiCaps,
               fontStyle: isSel ? "italic" : "normal",
-              textTransform: isSel ? "none" : "uppercase",
-              letterSpacing: isSel ? "0" : "0.08em",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
               fontSize: typeScale.caption.size,
               lineHeight: `var(--ctl-inner, ${CONTROL.inner}px)`,
               height: `var(--ctl-inner, ${CONTROL.inner}px)`,

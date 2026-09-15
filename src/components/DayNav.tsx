@@ -3,7 +3,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { createPortal } from "react-dom";
 import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
 import { chipStyle } from "./chip";
-import { PINS, NAV_LIVE, NAV_PREV, NAV_NEXT, NAV_CALENDAR } from "../content";
+import { PINS, NAV_LIVE, NAV_PREV, NAV_NEXT, NAV_CALENDAR, NAV_LAST_24H } from "../content";
 
 interface Props {
   date: string | null; // null = live
@@ -25,6 +25,21 @@ function addDays(iso: string, n: number): string {
 }
 function labelOf(iso: string): string {
   return new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
+// A 12 px calendar glyph in the current text colour: a frame with two binding rings and a row of days. Sized on the 4 px grid, drawn inline so it takes the chip's colour.
+function CalendarIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden focusable="false" style={{ flex: "0 0 auto" }}>
+      <rect x="1" y="2.5" width="10" height="8.5" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1" />
+      <line x1="1" y1="5" x2="11" y2="5" stroke="currentColor" strokeWidth="1" />
+      <line x1="3.5" y1="1" x2="3.5" y2="3.5" stroke="currentColor" strokeWidth="1" />
+      <line x1="8.5" y1="1" x2="8.5" y2="3.5" stroke="currentColor" strokeWidth="1" />
+      <rect x="3" y="6.5" width="1.5" height="1.5" fill="currentColor" />
+      <rect x="5.25" y="6.5" width="1.5" height="1.5" fill="currentColor" />
+      <rect x="7.5" y="6.5" width="1.5" height="1.5" fill="currentColor" />
+    </svg>
+  );
 }
 
 export function DayNav({ date, onChange, loading }: Props) {
@@ -83,12 +98,17 @@ export function DayNav({ date, onChange, loading }: Props) {
 
   return (
     <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: `var(--chip-inset, ${CONTROL.gap}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
-      {/* Order per the scaffold: Calendar ‹ date › Live. */}
-      <button style={chip(open)} onClick={() => setOpen((o) => !o)} aria-expanded={open}>{NAV_CALENDAR}</button>
+      {/* Order: ‹ [calendar icon + date] › Live. The date itself opens the calendar; live reads "Last 24h" with the next arrow disabled. ‹ from live is yesterday's full day; › from yesterday is live again. */}
       <button style={chip(false)} onClick={prev} aria-label="previous day">{NAV_PREV}</button>
-      <span style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: `var(--ctl-inner, ${CONTROL.inner}px)`, color: c.textPrimary, minWidth: "8em", textAlign: "center", opacity: loading ? 0.5 : 1 }}>
-        {labelOf(date ?? nyToday())}
-      </span>
+      <button
+        style={{ ...chip(open), display: "inline-flex", alignItems: "center", gap: 6, minWidth: "8.5em", justifyContent: "center", opacity: loading ? 0.5 : 1 }}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={`${NAV_CALENDAR}: ${date ? labelOf(date) : NAV_LAST_24H}`}
+      >
+        <CalendarIcon />
+        <span style={{ color: c.textPrimary }}>{date ? labelOf(date) : NAV_LAST_24H}</span>
+      </button>
       <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}>{NAV_NEXT}</button>
       <button style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
 

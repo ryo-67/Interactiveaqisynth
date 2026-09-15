@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The date is the calendar
+
+The Calendar chip is gone: the date itself is the chip, with a small calendar glyph on its left, and it opens the picker. When live, it reads "Last 24h" and the next arrow is off; the previous arrow from live is yesterday's full day, and the next arrow from yesterday is live again. One fewer control, and the thing you click is the thing that changes.
+
 ## 2026-09-15 — A change of day is a sunset and a sunrise (D-29); golden hour; eased inputs refuse NaN
 
 The forward-only clock made the reverse of a good transition a sixteen-hour sweep with the stars whipping over the night, and the sun snapped to the new day's seasonal path the moment the day changed. Now every change of day is one animation: the current sun sets on the right along its own day's path, the night passes briefly with the stars hidden, and the new day's sun rises on the left along its path and runs to the target time; a start at night skips the sunset, a target at night skips the sunrise. Bounded legs, the sun's date switching in the dark. Dawn and dusk carry a golden-hour grade, orange at the horizon through rose to violet, strongest with the sun two degrees up and gone by fourteen, damped by smoke like the night blue; the day model renders that scattering only faintly at clear-sky turbidity. Every eased input now refuses a non-finite target, holds its last value and names itself in the console once: an eased state fed a NaN eases to NaN for good, which is the shape of "bloom and rayleigh break and never come back", and the name is how the source gets found next time.

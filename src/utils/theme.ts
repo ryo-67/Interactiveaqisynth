@@ -134,11 +134,12 @@ export function aqiCategoryColor(aqi: number): string {
 
 // The graph (§5.3 score panel, rebuilt): four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of them.
 export const GRAPH = {
-  trackHeight: { laptop: 56, phone: 40 },
-  pulseRowHeight: { laptop: 18, phone: 14 },
-  axisHeight: 18,
-  labelGutter: 4,
-  lineWidth: { aqi: 2, channel: 1.25 },
+  // One tab at a time, so the tab gets real height: the line is the thing being read.
+  tabHeight: { laptop: 240, phone: 170 },
+  pulseRowHeight: { laptop: 30, phone: 24 },
+  axisHeight: 22,
+  labelGutter: 6,
+  lineWidth: { aqi: 2.5, channel: 1.75 },
   pulseFlashMs: 140, // a hit mark brightens for this long after the engine fires it
 } as const;
 
@@ -267,9 +268,10 @@ export const GLASS = {
   frostedFillAlpha: 0.7,
   // The probe's switch points on relative luminance (0..1) of the sky under the panel, with hysteresis so a panel does not flicker at dusk.
   toLightAbove: 0.5,
-  toDarkBelow: 0.36,
-  sampleEveryMs: 400,
-  transitionMs: 260,
+  toDarkBelow: 0.38,
+  // Sampling is six pixel reads per panel, one GPU sync per sample; at 120 ms that is well inside a beat (667 ms), so a panel answers a sky change before the next hour lands. Reading every frame would stall the pipeline every frame.
+  sampleEveryMs: 120,
+  transitionMs: 140,
   // prefers-reduced-transparency: both materials go frosted-opaque
   fillAlphaOpaque: 0.85,
   blurOpaque: "36px",

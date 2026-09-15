@@ -196,7 +196,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
 
         // The area under the line: colour blends horizontally along the line (a stop at every hour's scale colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per tab, day and size, so the playhead's per-frame redraw does not rebuild it.
         const baseY = y0 + lh + inner;
-        const areaKey = `${t}|${n}|${cssW}|${cssH}|${dpr}|${day[0]?.ts ?? ""}|${vals.map((v) => (v == null ? "" : Math.round(v * 10))).join(",")}`;
+        // Keyed on the plot's geometry too (plotX, plotW, the track's y range): plotX is measured from the data font, and when that font arrives after the first draw the edge moves a couple of pixels; the line redraws at the new positions, and a fill cached under the old edge sat visibly off the line.
+        const areaKey = `${t}|${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${day[0]?.ts ?? ""}|${vals.map((v) => (v == null ? "" : Math.round(v * 10))).join(",")}`;
         let area = areaCache.current;
         if (!area || area.key !== areaKey) {
           const off = document.createElement("canvas");

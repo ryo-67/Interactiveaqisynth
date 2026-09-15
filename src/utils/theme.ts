@@ -290,11 +290,11 @@ export const PARTICLES = {
   strength: 0.55,                    // displacement at a lens's strongest ring, as a fraction of its radius
   swirl: 0.35,                       // tangential component: the sky inside turns, not only magnifies
   dispersion: 0.8,                   // per-channel displacement difference: red bends most, blue least — heavy spectral split
-  wobble: 0.22,                      // the lens outline breathes: radius varies around the rim with angle and time
-  wobbleHz: 0.35,
+  wobble: 0.08,                      // the lens outline breathes gently: radius varies around the rim with angle and time — an amplitude of 0.22 pulsed
+  wobbleHz: 0.12,                    // slow: a float, not a throb
   rimLight: 0.07,                    // caustic brightness at the lens edge
-  fallPerSec: 0.012,                 // uv units per second, downward
-  swayPerSec: 0.012,
+  fallPerSec: 0.008,                 // uv units per second, downward
+  swayPerSec: 0.006,
   // Frame-level chromatic aberration in the post chain, rising with the same level.
   aberrationMax: 0.006,
 } as const;

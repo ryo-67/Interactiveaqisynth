@@ -335,9 +335,9 @@ export const SKY_RANGES = {
   turbidity: { clear: 2, suffocating: 6 },
   mieCoefficient: { clear: 0.005, high: 0.02 },
   mieDirectionalG: 0.86, // held, per the brief
-  rayleigh: { lowO3: 0.6, highO3: 3.0 },
-  bloomIntensity: { lowO3: 0.15, highO3: 1.4 },
-  discBrightness: { lowO3: 0.6, highO3: 1.6 },
+  rayleigh: { lowO3: 1.6, highO3: 3.0 }, // low end raised 0.6 → 1.6 (2026-09-15): a low-ozone sky had too little scatter to read as sky. Preetham (night side) only: Hosek-Wilkie has no rayleigh input, so by day ozone reaches the sky through bloom and the disc.
+  bloomIntensity: { lowO3: 0.7, highO3: 1.4 }, // low end raised 0.15 → 0.7 (2026-09-15): a clear low-ozone day must not read duller than a polluted one; ozone now brightens from a bright floor
+  discBrightness: { lowO3: 1.0, highO3: 1.6 }, // low end raised 0.6 → 1.0 with the bloom
   starsCount: 2800, // over the whole sphere (the field rotates), so half are above the horizon at any hour: the same density as the 1,400-star hemisphere the sky was judged with
 } as const;
 

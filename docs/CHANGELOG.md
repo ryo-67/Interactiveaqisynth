@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — Glide at rest, dissolve while playing (D-32, trial)
+
+While playing, the target keeps moving under a change of day, so the sun's glide bent toward a moving point and headed off in arcs that read as arbitrary. Now a change of day while playing is a cut: the last rendered sky is copied into an overlay and faded out over 1.5 beats while the new day renders beneath with its clock taken as is; the night-blue layer eases so it never pops above the fade. At rest the glide stands. The WebGL buffer is preserved between frames to make the snapshot possible.
+
 ## 2026-09-15 — A change of day moves the sun by the shortest path (D-31)
 
 The sunset-then-sunrise sequence of D-29 made a change from 11 am to 7 pm set the sun, raise it again and set it a second time. Now the sun's position itself is interpolated, elevation and azimuth, from where it is to where the new day's time puts it, over 1.5 beats; exposure, the night blue, golden hour and the stars all follow the interpolated elevation. Measured: live noon to Wildfire evening is one arc, 51° down to 3° and 159° round to 297°; the reverse climbs back the same way; live afternoon to Clear Day night is one arc down below the horizon.

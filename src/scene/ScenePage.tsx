@@ -1,7 +1,7 @@
 // ScenePage — /scene, the Listen page as the scene (D-19, §5). The sky is a pure function of two things the engine already emits every beat: the hour under the playhead and the smoothed normalized PM2.5. Sun elevation comes from the hour; the model cross-fade, exposure, stars and the plume all follow from those two numbers. Nothing here re-derives a mapping the harness did not judge.
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
 import { SKY_TOGGLE_LABEL } from "../content";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SkyView, particleLevel, grainLevel, type CameraFacing } from "./SkyView";
 import { SmokeLayer, smokeRegime } from "./SmokeLayer";
 import { NightLayer } from "./NightLayer";
@@ -52,6 +52,8 @@ function tabFromUrl(): TrackKey {
   return t && TRACK_ORDER.includes(t) ? t : "aqi";
 }
 
+const DISSOLVE_BEATS = 1.5; // the dissolve's length on a change of day while playing (D-32): the same span as the glide at rest
+
 export default function ScenePage() {
   const s = useListenSession();
   const { day, beat, playing, paused, channels, skyChannels, rest } = s;
@@ -93,6 +95,34 @@ export default function ScenePage() {
     return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, pm25nEased), smoke, regime, saturation, night: nightBlend(ang.elevationDeg), golden };
   }, [s.sunDay, s.sunOverride, clock, pm25nEased, o3nEased, smokeEased, regime]);
   const goldenEased = useEased(view.golden, tau, "golden hour");
+  const nightEased = useEased(view.night, tau, "night blend"); // eased so a cut between days never pops the blue above the dissolve
+
+  // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
+  const skyBoxRef = useRef<HTMLDivElement>(null);
+  const dissolveCanvasRef = useRef<HTMLCanvasElement>(null);
+  const dissolveSeen = useRef(0);
+  useLayoutEffect(() => {
+    if (s.dissolve === dissolveSeen.current) return;
+    dissolveSeen.current = s.dissolve;
+    const gl = skyBoxRef.current?.querySelector("canvas:not([aria-hidden])") as HTMLCanvasElement | null;
+    const overlay = dissolveCanvasRef.current;
+    if (!gl || !overlay) return;
+    overlay.width = gl.width; overlay.height = gl.height;
+    const ctx = overlay.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(gl, 0, 0);
+    const start = performance.now(), ms = motion.beatMs * DISSOLVE_BEATS;
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / ms);
+      overlay.style.opacity = String(1 - t);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else ctx.clearRect(0, 0, overlay.width, overlay.height);
+    };
+    overlay.style.opacity = "1";
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [s.dissolve]);
 
   // Glass parameters as custom properties, once, at the root (§5.6: theme.ts is the source of truth; index.css reads these).
   const glassVars = {
@@ -105,9 +135,11 @@ export default function ScenePage() {
     <ThemeContext.Provider value="dark">
       <div style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars }}>
         {/* The scene: renders continuously while playing, on demand at rest. A click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
-        <div style={{ position: "absolute", inset: 0, cursor: "pointer" }} onClick={s.togglePlay} role="button" aria-label={SKY_TOGGLE_LABEL} tabIndex={-1}>
+        <div ref={skyBoxRef} style={{ position: "absolute", inset: 0, cursor: "pointer" }} onClick={s.togglePlay} role="button" aria-label={SKY_TOGGLE_LABEL} tabIndex={-1}>
           <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={clock} saturation={view.saturation} particles={lens} grain={grain} live={playing} style={{ width: "100%", height: "100%" }} />
-          <NightLayer blend={view.night} density={view.smoke} />
+          {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
+          <canvas ref={dissolveCanvasRef} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />
+          <NightLayer blend={nightEased} density={view.smoke} />
           <GoldenLayer blend={goldenEased} density={view.smoke} />
           <SmokeLayer density={view.smoke} regime={view.regime} />
         </div>

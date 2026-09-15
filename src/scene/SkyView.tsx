@@ -202,7 +202,7 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
       <Canvas
         camera={{ position: [0, 0, 0], fov: FOV_DEG }}
         // Tone mapping must be set explicitly: r3f v8 applies its ACES default through a pre-three-r155 code path (it writes outputEncoding alongside toneMapping), which no longer lands on three 0.172, leaving the renderer at NoToneMapping — and with no tone mapping the exposure value is inert, because the shaders' tonemapping_fragment compiles to a no-op.
-        gl={{ antialias: true, toneMapping: ACESFilmicToneMapping }}
+        gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true }} // preserved so the scene can snapshot the last frame for a dissolve (D-32)
         // Cap device pixel ratio: at DPR 2 the bloom pass costs four times the pixels for no visible gain.
         dpr={[1, 1.75]}
         frameloop={live ? "always" : "demand"}

@@ -96,8 +96,10 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const n = day.length;
       // The AQI tab keeps a scale bar at the RIGHT, on the line's own fixed y-scale: the standard category colours as one smooth vertical gradient, with a marker at the value under the playhead (the latest hour at rest).
       const barW = tab === "aqi" ? GRAPH.scaleBarWidth : 0;
-      const plotX = 0;
-      const plotW = cssW - (barW ? barW + GRAPH.scaleBarGap : 0);
+      // A left gutter holds the y-axis values, right-aligned against the plot's first line, so they never sit on the area fill. Sized to the widest value the tab can show.
+      const gutterW = Math.ceil(ctx.measureText("500").width) + GRAPH.axisGutterPad * 2;
+      const plotX = gutterW;
+      const plotW = cssW - plotX - (barW ? barW + GRAPH.scaleBarGap : 0);
       const plotRight = plotX + plotW;
       const colW = plotW / n;
       plotRef.current = { x: plotX, w: plotW, n };
@@ -136,7 +138,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const gy = yFor(gv);
           if (gv !== gridValues[0] || t !== "aqi") { ctx.setLineDash([2, 5]); ctx.beginPath(); ctx.moveTo(plotX, gy + 0.5); ctx.lineTo(plotRight, gy + 0.5); ctx.stroke(); ctx.setLineDash([]); }
           const lab = String(gv);
-          ctx.fillText(lab, plotX + 4, gy - 3); // y-axis values sit just inside the plot's left edge, above their gridline
+          ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, gy + labelPx * 0.36); // in the gutter, right-aligned, centred on the gridline
         }
 
         // AQI: the scale bar at the right. One smooth gradient through the category colours, each colour placed at its own upper boundary so the transitions fall where the categories change; the marker sits at the value under the playhead.

@@ -166,6 +166,7 @@ export const GRAPH = {
   // AQI's y-scale is fixed at the full standard range, 0–500, so the line never rescales between days, nothing is ever clipped (Jun 7 crossed 350 and flatlined at a 300 top), and the bar beside it is the complete ruler including Hazardous.
   aqiScaleMax: 500,
   // The AQI scale bar at the right of the AQI tab: the standard category colours as one smooth vertical gradient on that scale, marker at the current value.
+  axisGutterPad: 4, // around the y-axis values in the left gutter
   scaleBarWidth: 16,
   scaleBarGap: 8,
   scaleBarMarker: 4,

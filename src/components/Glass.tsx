@@ -6,11 +6,11 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
-export function Glass({ material = "glass", className, children, ...rest }: Props) {
+export const Glass = React.forwardRef<HTMLDivElement, Props>(function Glass({ material = "glass", className, children, ...rest }, ref) {
   const cls = ["glass", material === "frosted" ? "frosted" : "", className ?? ""].filter(Boolean).join(" ");
   return (
-    <div className={cls} {...rest}>
+    <div ref={ref} className={cls} {...rest}>
       {children}
     </div>
   );
-}
+});

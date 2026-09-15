@@ -24,6 +24,7 @@ interface Props {
   tab: TrackKey;
   onTab: (t: TrackKey) => void;
   onSeek: (hour: number) => void; // press or drag on the plot: move the phrase to that hour
+  lift?: number; // the ramp lift for this panel (D-36): 0 the dark end, 1 the light end
 }
 
 const MAX_RENDER_PIXELS = 24e6; // the buffer's pixel budget: the render ratio (device ratio × pinch scale) is capped where the buffer would exceed it, so a small plot stays crisp through a deep pinch and a large one cannot allocate hundreds of megabytes
@@ -33,7 +34,7 @@ function rgba(s: string): [number, number, number, number] {
   return m ? [Number(m[1]), Number(m[2]), Number(m[3]), m[4] == null ? 1 : Number(m[4])] : [255, 255, 255, 1];
 }
 
-export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, onSeek }: Props) {
+export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, onSeek, lift = 0 }: Props) {
   const theme = useTheme();
   const c = themeColors(theme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -186,7 +187,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           // The track runs the full height of the y axis — from the grid's top to the baseline — not only 0 to 500: the axis continues above 500, and so does the hazardous colour (the gradient is laid out 0 → 500 and clamps beyond). Square-ended and flush against the plot's right edge, so it reads as the axis's colour rather than a separate control.
           const barTop = GRAPH.labelGutter, barBottom = yFor(0);
           const grad = ctx.createLinearGradient(0, barBottom, 0, yFor(max));
-          for (const s of aqiScaleStops(max)) grad.addColorStop(s.offset, s.color);
+          for (const s of aqiScaleStops(max, lift)) grad.addColorStop(s.offset, s.color);
           const trackW = GRAPH.scaleTrackWidth, trackX = barX;
           ctx.fillStyle = grad;
           ctx.fillRect(trackX, barTop, trackW, barBottom - barTop);
@@ -211,7 +212,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         // The area under the line: colour blends horizontally along the line (a stop at every hour's scale colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per tab, day and size, so the playhead's per-frame redraw does not rebuild it.
         const baseY = y0 + lh + inner;
         // Keyed on the plot's geometry too (plotX, plotW, the track's y range): plotX is measured from the data font, and when that font arrives after the first draw the edge moves a couple of pixels; the line redraws at the new positions, and a fill cached under the old edge sat visibly off the line.
-        const areaKey = `${t}|${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${day[0]?.ts ?? ""}|${vals.map((v) => (v == null ? "" : Math.round(v * 10))).join(",")}`;
+        const areaKey = `${t}|${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${lift.toFixed(2)}|${day[0]?.ts ?? ""}|${vals.map((v) => (v == null ? "" : Math.round(v * 10))).join(",")}`;
         let area = areaCache.current;
         if (!area || area.key !== areaKey) {
           const off = document.createElement("canvas");
@@ -243,7 +244,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const colour = o.createLinearGradient(0, 0, plotW, 0);
           for (let i = 0; i < n; i++) {
             const v = vals[i];
-            colour.addColorStop(Math.min(1, Math.max(0, (i * colW) / plotW)), v == null ? "rgba(255,255,255,0)" : t === "aqi" ? aqiScaleColor(v) : "rgb(255,255,255)");
+            colour.addColorStop(Math.min(1, Math.max(0, (i * colW) / plotW)), v == null ? "rgba(255,255,255,0)" : t === "aqi" ? aqiScaleColor(v, lift) : "rgb(255,255,255)");
           }
           o.fillStyle = colour;
           o.fillRect(0, 0, plotW, cssH);
@@ -270,8 +271,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const x0 = plotX + (i - 1) * colW, x1 = plotX + i * colW;
           if (t === "aqi") {
             const seg = ctx.createLinearGradient(x0, yFor(a), x1, yFor(b));
-            seg.addColorStop(0, aqiScaleColor(a));
-            seg.addColorStop(1, aqiScaleColor(b));
+            seg.addColorStop(0, aqiScaleColor(a, lift));
+            seg.addColorStop(1, aqiScaleColor(b, lift));
             ctx.strokeStyle = seg;
           } else ctx.strokeStyle = c.textSecondary;
           ctx.beginPath();
@@ -293,7 +294,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           ctx.save();
           ctx.setLineDash([2, 4]);
           ctx.lineWidth = 1;
-          ctx.strokeStyle = t === "aqi" ? aqiScaleColor(v) : c.textMuted;
+          ctx.strokeStyle = t === "aqi" ? aqiScaleColor(v, lift) : c.textMuted;
           ctx.beginPath(); ctx.moveTo(plotX + lastIdx * colW, y); ctx.lineTo(plotRight, y); ctx.stroke();
           ctx.restore();
         }
@@ -302,7 +303,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const v = vals[i];
           if (v == null) continue;
           if ((i === 0 || vals[i - 1] == null) && (i === n - 1 || vals[i + 1] == null)) {
-            ctx.fillStyle = t === "aqi" ? aqiScaleColor(v) : c.textSecondary;
+            ctx.fillStyle = t === "aqi" ? aqiScaleColor(v, lift) : c.textSecondary;
             ctx.fillRect(plotX + i * colW - 1, yFor(v) - 1, 2, 2);
           }
         }
@@ -413,7 +414,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
     window.addEventListener("resize", onResize);
     window.visualViewport?.addEventListener("resize", onResize);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); window.visualViewport?.removeEventListener("resize", onResize); };
-  }, [series, day, playing, live, tab, c, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
+  }, [series, day, playing, live, tab, c, lift, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
 
   return (
     <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>

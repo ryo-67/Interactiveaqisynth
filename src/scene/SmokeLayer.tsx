@@ -21,12 +21,27 @@ export function smokeRegime(pm25: number | null | undefined): number {
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const STOPS = [0, 0.35, 0.62, 0.82, 1];
 
-function ramp(d: number, alphaMax: number, hue: number, sat: number, light: (t: number) => number): string {
+// One stop of either term at vertical fraction t (0 top, 1 bottom): hue, saturation, lightness (0..1) and alpha. The gradient strings below are built from it, and panelLuminance.ts evaluates it at a panel's band, so the predicted panel and the drawn plume can never disagree.
+export function smokeStop(kind: "attenuation" | "inscatter", density: number, regime: number, t: number, hueDeg: number = SMOKE.hueDeg): { h: number; s: number; l: number; a: number } {
+  const d = Math.max(0, Math.min(1, density)), r = Math.max(0, Math.min(1, regime));
+  const h = hueDeg + SMOKE.hueDriftDeg * r;
   const strength = Math.pow(d, SMOKE.curve); // steeper at the low end: a normal day is visibly hazy
+  const weight = SMOKE.zenithFactor + (1 - SMOKE.zenithFactor) * Math.pow(t, SMOKE.horizonBias);
+  if (kind === "attenuation") {
+    // A light warm tint that strips blue, deepening a little toward the horizon. Kept light on purpose — this term must not carry the darkening.
+    return { h, s: lerp(SMOKE.attenuation.saturation.thin, SMOKE.attenuation.saturation.thick, r), l: lerp(SMOKE.attenuation.lightness.thin, SMOKE.attenuation.lightness.thick, Math.pow(t, 0.8) * r), a: SMOKE.attenuation.alphaMax * strength * weight };
+  }
+  // The plume's own light. Bright orange-tan overhead, deeper and more saturated toward the horizon where the path is longest.
+  const v = Math.pow(t, 1.4);
+  const thin = lerp(SMOKE.inscatter.lightness.thin.zenith, SMOKE.inscatter.lightness.thin.horizon, v);
+  const thick = lerp(SMOKE.inscatter.lightness.thick.zenith, SMOKE.inscatter.lightness.thick.horizon, v);
+  return { h, s: lerp(SMOKE.inscatter.saturation.thin, SMOKE.inscatter.saturation.thick, r), l: lerp(thin, thick, r), a: SMOKE.inscatter.alphaMax * strength * weight };
+}
+
+function ramp(kind: "attenuation" | "inscatter", d: number, r: number, hueDeg?: number): string {
   const parts = STOPS.map((t) => {
-    const weight = SMOKE.zenithFactor + (1 - SMOKE.zenithFactor) * Math.pow(t, SMOKE.horizonBias);
-    const alpha = alphaMax * strength * weight;
-    return `hsla(${hue.toFixed(1)}, ${(sat * 100).toFixed(0)}%, ${(light(t) * 100).toFixed(0)}%, ${alpha.toFixed(3)}) ${(t * 100).toFixed(0)}%`;
+    const c = smokeStop(kind, d, r, t, hueDeg);
+    return `hsla(${c.h.toFixed(1)}, ${(c.s * 100).toFixed(0)}%, ${(c.l * 100).toFixed(0)}%, ${c.a.toFixed(3)}) ${(t * 100).toFixed(0)}%`;
   });
   return `linear-gradient(to bottom, ${parts.join(", ")})`;
 }
@@ -36,32 +51,10 @@ export const SmokeLayer = React.memo(function SmokeLayer({ density, regime = 0, 
   if (d <= 0.001) return null;
   const r = Math.max(0, Math.min(1, regime)); // colour follows the regime; alpha follows density
 
-  const hue = (hueDeg ?? SMOKE.hueDeg) + SMOKE.hueDriftDeg * r;
   // Absolute, not fixed: the scene owns its own box above the control bar, so the plume's densest band stays visible.
   const base: React.CSSProperties = { position: "absolute", inset: 0, pointerEvents: "none" };
-
-  // Attenuation: a light warm tint that strips blue, deepening a little toward the horizon. Kept light on purpose — this term must not carry the darkening.
-  const attenuation = ramp(
-    d,
-    SMOKE.attenuation.alphaMax,
-    hue,
-    lerp(SMOKE.attenuation.saturation.thin, SMOKE.attenuation.saturation.thick, r),
-    (t) => lerp(SMOKE.attenuation.lightness.thin, SMOKE.attenuation.lightness.thick, Math.pow(t, 0.8) * r),
-  );
-
-  // In-scatter: the plume's own light. Bright orange-tan overhead, deeper and more saturated toward the horizon where the path is longest.
-  const inscatter = ramp(
-    d,
-    SMOKE.inscatter.alphaMax,
-    hue,
-    lerp(SMOKE.inscatter.saturation.thin, SMOKE.inscatter.saturation.thick, r),
-    (t) => {
-      const v = Math.pow(t, 1.4);
-      const thin = lerp(SMOKE.inscatter.lightness.thin.zenith, SMOKE.inscatter.lightness.thin.horizon, v);
-      const thick = lerp(SMOKE.inscatter.lightness.thick.zenith, SMOKE.inscatter.lightness.thick.horizon, v);
-      return lerp(thin, thick, r);
-    },
-  );
+  const attenuation = ramp("attenuation", d, r, hueDeg);
+  const inscatter = ramp("inscatter", d, r, hueDeg);
 
   return (
     <>

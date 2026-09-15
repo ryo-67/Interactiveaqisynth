@@ -8,6 +8,7 @@ import { NightLayer } from "./NightLayer";
 import { GoldenLayer } from "./GoldenLayer";
 import { warnOnce } from "../utils/time";
 import { skyParamsFor, starOpacity, nightBlend, goldenBlend, veilDensity } from "./skyParams";
+import { predictPanel, rampLiftFor, type RGB } from "./panelLuminance";
 import { sunAnglesAt, sunPositionVector } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
@@ -127,6 +128,50 @@ export default function ScenePage() {
   }, [view, lens, grain, clock]);
   const nightEased = useEased(view.night, tau, "night blend"); // eased so a cut between days never pops the blue above the dissolve
 
+  // The ramp lift (D-36): the sky canvas is sampled behind each frosted panel four times a second (a 4×4 average of the region plus the frost's blur radius, since the blur reaches that far), the DOM layers and the glass are applied to the sample by panelLuminance.ts, and the predicted panel's luminance sets how far the AQI ramp on that panel is lifted toward its light end. Each panel gets its own: the graph sits lower in the frame than the hero and measured up to a third brighter. Eased like every other sky input so the colours glide.
+  const heroRef = useRef<HTMLDivElement>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
+  type Sample = { rgb: RGB; t: number };
+  const [skySamples, setSkySamples] = useState<{ hero: Sample; graph: Sample }>({ hero: { rgb: [40, 60, 90], t: 0.6 }, graph: { rgb: [40, 60, 90], t: 0.6 } });
+  useEffect(() => {
+    const tiny = document.createElement("canvas"); tiny.width = 4; tiny.height = 4;
+    const tctx = tiny.getContext("2d", { willReadFrequently: true });
+    const sampleBehind = (gl: HTMLCanvasElement, el: HTMLElement | null, cr: DOMRect): Sample | null => {
+      if (!el || !tctx) return null;
+      const hr = el.getBoundingClientRect();
+      const sx = gl.width / cr.width, sy = gl.height / cr.height, pad = parseFloat(GLASS.frostedBlur);
+      const x = Math.max(0, (hr.left - cr.left - pad) * sx), y = Math.max(0, (hr.top - cr.top - pad) * sy);
+      const w = Math.min(gl.width - x, (hr.width + 2 * pad) * sx), h = Math.min(gl.height - y, (hr.height + 2 * pad) * sy);
+      if (w <= 0 || h <= 0) return null;
+      tctx.drawImage(gl, x, y, w, h, 0, 0, 4, 4);
+      const d = tctx.getImageData(0, 0, 4, 4).data;
+      let r = 0, g = 0, b = 0;
+      for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+      const n = d.length / 4;
+      return { rgb: [r / n, g / n, b / n], t: (hr.top + hr.height / 2 - cr.top) / cr.height };
+    };
+    const changed = (a: Sample, b: Sample) => Math.abs(a.rgb[0] - b.rgb[0]) + Math.abs(a.rgb[1] - b.rgb[1]) + Math.abs(a.rgb[2] - b.rgb[2]) > 3 || Math.abs(a.t - b.t) > 0.01;
+    const tick = () => {
+      const gl = skyBoxRef.current?.querySelector("canvas:not([aria-hidden])") as HTMLCanvasElement | null;
+      if (!gl || gl.width === 0) return;
+      const cr = gl.getBoundingClientRect();
+      if (cr.width === 0 || cr.height === 0) return;
+      const hero = sampleBehind(gl, heroRef.current, cr), graph = sampleBehind(gl, graphRef.current, cr);
+      setSkySamples((prev) => {
+        const h = hero ?? prev.hero, g = graph ?? prev.graph;
+        return changed(h, prev.hero) || changed(g, prev.graph) ? { hero: h, graph: g } : prev;
+      });
+    };
+    const id = setInterval(tick, 250);
+    tick();
+    return () => clearInterval(id);
+  }, []);
+  const predict = (sm: Sample) => predictPanel({ sky: sm.rgb, t: sm.t, smoke: { density: view.smoke, regime: view.regime }, night: nightEased, golden: goldenEased, glass: { alpha: view.glass.alpha + GLASS.frostedExtraAlpha, fill: view.glass.fill, lift: view.glass.lift } });
+  const panels = useMemo(() => ({ hero: predict(skySamples.hero), graph: predict(skySamples.graph) }), [skySamples, view.smoke, view.regime, view.glass, nightEased, goldenEased]); // eslint-disable-line react-hooks/exhaustive-deps
+  const heroLift = useEased(rampLiftFor(panels.hero.luminance), tau, "hero ramp lift");
+  const graphLift = useEased(rampLiftFor(panels.graph.luminance), tau, "graph ramp lift");
+  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, graph: graphLift } }; // a handle for measurement, like the sky's __sky
+
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
   const skyBoxRef = useRef<HTMLDivElement>(null);
   const dissolveCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -200,19 +245,20 @@ export default function ScenePage() {
           </div>
 
           <div className="scene-mid">
-            <Glass material="frosted" className="scene-panel scene-hero">
+            <Glass ref={heroRef} material="frosted" className="scene-panel scene-hero">
               <AQINumber value={s.displayAqi} />
               <div style={{ marginTop: space.md }}>
-                <MoodLine tierIndex={s.moodTier} hour={s.moodHour} dominant={s.dominant} aqi={s.moodAqi} />
+                <MoodLine tierIndex={s.moodTier} hour={s.moodHour} dominant={s.dominant} aqi={s.moodAqi} lift={heroLift} />
               </div>
             </Glass>
             {day && day.length > 0 && (
-              <Glass material="frosted" className="scene-panel scene-graph">
+              <Glass ref={graphRef} material="frosted" className="scene-panel scene-graph">
                 <Graph
                   day={day}
                   anchors={s.anchors}
                   playheadHour={playing || paused ? hour : null}
                   running={playing}
+                  lift={graphLift}
                   live={s.live}
                   tab={tab}
                   onTab={setTab}

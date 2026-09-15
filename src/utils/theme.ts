@@ -122,47 +122,57 @@ export function themeColors(theme: Theme) {
 
 // The standard AQI categories (EPA, six), D-23/D-27: the ONE colour scheme. The graph's line and bar, and the mood word, all take their colour from aqiScaleColor(aqi) — the word is the colour of its own AQI on the same scale as the line, so the two never disagree. The former five tier colours are deleted.
 // The colours are the standard hues lifted to pass WCAG 1.4.11 (≥ 3:1 for graphics) against the dark panel (#0e0e1c, the hard case). The standard values fail for the top two: Very Unhealthy #8f3f97 is 3.0:1 and Hazardous #7e0023 is 1.7:1. Measured: Good 11.0, Moderate 17.8, USG 8.2, Unhealthy 6.3, Very Unhealthy 7.3, Hazardous 6.3.
-// Two ramps of one hue per category (D-35, 2026-09-15): `color` is the DISPLAY ramp for the legend, the line and the fill, darkening all the way to the EPA purple and maroon at the top as a standard AQI bar does (red 0.30 luminance, purple 0.10, maroon 0.045: each step darker by half or more, so red→purple and purple→maroon read as steps, not a blur); `text` is the ramp for the mood WORD, the nearest colour of the same hue that clears 3:1 on the panel (the true maroon is 2.1:1 there, fine for a bar and not for a word). The two agree on hue, not on hex.
+// One ramp with two ends (D-36, 2026-09-15): the same six hues, `dark` set for 3:1 on the darkest panel the scene makes and `light` for 3:1 on the brightest, blended by the ramp lift the scene derives from the predicted panel (panelLuminance.ts). The legend, the line, the fill and the mood word all read the one ramp at the one lift, so they never disagree within a state; between states the scale lightens as the panel does, the way the material does. Contrast is luminance only: a saturated violet at 0.25 measured 2.0:1 on the smoke panel, so the top of the scale has to be lighter than the red on bright panels, and there the step from red is a change of hue rather than a fall into dark.
 export const AQI_CATEGORIES = [
-  // The text ramp is set against the lightest panel the scene makes: the frosted hero on a clear noon, measured sky (213, 244, 254) behind a 0.70 fill → panel (70, 83, 104), luminance 0.084, so 3:1 needs a text luminance of 0.35. The lower three categories clear it as they are; the upper three are lifted to the same hue at that luminance (2026-09-15).
-  { max: 50, color: "#00e400", text: "#00e400" },
-  { max: 100, color: "#ffff00", text: "#ffff00" },
-  { max: 150, color: "#ff8c1a", text: "#ff8c1a" },
-  { max: 200, color: "#ff5c5c", text: "#ff7878" }, // unhealthy: the word one step lighter, 3.06:1 on the noon panel
-  // The display ramp's top: set for 3:1 (AA for graphics) on the smoke-day panel, the darkest warm frost the scene makes, measured composited at (130, 69, 33), luminance 0.095: a line there needs 0.385. The EPA purple and maroon (0.12, 0.05) and the saturated #b45cff/#ff2e63 (0.25, 0.24) all sat under it and read washed out against the orange. These are the same hues at 0.41: violet 3.2:1, crimson 3.1:1 there (2026-09-15). The top two words take the same colours: the earlier text ramp measured 2.9:1 on that hero.
-  { max: 300, color: "#cc94ff", text: "#cc94ff" }, // very unhealthy: violet at 0.41 luminance
-  { max: 500, color: "#ff85a0", text: "#ff85a0" }, // hazardous: crimson at 0.41 luminance
+  { max: 50, dark: "#00e400", light: "#00e400" },
+  { max: 100, dark: "#ffff00", light: "#ffff00" },
+  { max: 150, dark: "#ff8c1a", light: "#ffcc9e" }, // orange, 0.40 → 0.67
+  { max: 200, dark: "#ff5c5c", light: "#ffcaca" }, // red, 0.30 → 0.68
+  { max: 300, dark: "#bf70ff", light: "#e8ccff" }, // violet, 0.30 → 0.67
+  { max: 500, dark: "#ff5c85", light: "#ffc8d6" }, // crimson, 0.31 → 0.67
 ] as const;
+// The panels the ramp's ends are set for, as WCAG luminance of composited frosted panels measured 2026-09-15: the night hero (45, 69, 125) at the dark end, and at the light end the brightest any panel reached, the graph panel on a hazy morning (122, 115, 109). At 0.065 a colour needs 0.295 for 3:1; at 0.19 it needs 0.67. Each panel predicts its own luminance and lifts the ramp it draws linearly between the two.
+export const RAMP = { panelDark: 0.065, panelBright: 0.19 } as const;
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
 type Stops = Array<{ at: number; rgb: [number, number, number] }>;
-const aqiStops = (key: "color" | "text"): Stops => {
-  const hex = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const hex = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const aqiStops = (key: "dark" | "light"): Stops => {
   let lo = 0;
   return AQI_CATEGORIES.map((c) => { const at = (lo + c.max) / 2; lo = c.max; return { at, rgb: hex(c[key]) }; });
 };
-const AQI_STOPS = aqiStops("color");
-const AQI_TEXT_STOPS = aqiStops("text");
+const DARK_STOPS = aqiStops("dark");
+const LIGHT_STOPS = aqiStops("light");
+// The stops at a lift, blended end to end IN LINEAR LIGHT, so a colour's luminance rises in step with the lift (the panel's luminance is what the lift tracks); blended in sRGB the midpoint measured 8% short of the 3:1 it was set for. The last lift's stops are kept, since a draw asks for many colours at one lift.
+const toLinear = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+const toSrgb = (v: number) => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+let liftCache: { lift: number; stops: Stops } | null = null;
+function stopsAt(lift: number): Stops {
+  const l = Math.max(0, Math.min(1, Number.isFinite(lift) ? lift : 0));
+  if (liftCache && liftCache.lift === l) return liftCache.stops;
+  const stops = DARK_STOPS.map((s, i) => ({ at: s.at, rgb: s.rgb.map((x, k) => toSrgb(toLinear(x) + (toLinear(LIGHT_STOPS[i].rgb[k]) - toLinear(x)) * l)) as [number, number, number] }));
+  liftCache = { lift: l, stops };
+  return stops;
+}
 function rampColor(stops: Stops, aqi: number): string {
   const v = Math.max(0, aqi);
-  if (v <= stops[0].at) return `rgb(${stops[0].rgb.join(",")})`;
+  const rgb = (c: [number, number, number]) => `rgb(${c.map(Math.round).join(",")})`;
+  if (v <= stops[0].at) return rgb(stops[0].rgb);
   for (let i = 1; i < stops.length; i++) {
     const a = stops[i - 1], b = stops[i];
     if (v <= b.at) {
       const t = (v - a.at) / (b.at - a.at);
-      const m = a.rgb.map((x, k) => Math.round(x + (b.rgb[k] - x) * t));
-      return `rgb(${m.join(",")})`;
+      return rgb(a.rgb.map((x, k) => x + (b.rgb[k] - x) * t) as [number, number, number]);
     }
   }
-  return `rgb(${stops[stops.length - 1].rgb.join(",")})`;
+  return rgb(stops[stops.length - 1].rgb);
 }
-export function aqiScaleColor(aqi: number): string { return rampColor(AQI_STOPS, aqi); }
-// The mood word's colour: the same hue as the line at that AQI, on the ramp that stays readable on the panel.
-export function aqiTextColor(aqi: number): string { return rampColor(AQI_TEXT_STOPS, aqi); }
+// The colour of an AQI on the ramp at a lift (0 = the dark end, 1 = the light end).
+export function aqiScaleColor(aqi: number, lift = 0): string { return rampColor(stopsAt(lift), aqi); }
 // The gradient's stops, on a 0..max scale, for a canvas or CSS gradient drawn with the same rule.
-export function aqiScaleStops(max: number): Array<{ offset: number; color: string }> {
-  const stops = AQI_STOPS.filter((s) => s.at <= max).map((s) => ({ offset: s.at / max, color: `rgb(${s.rgb.join(",")})` }));
-  return [{ offset: 0, color: aqiScaleColor(0) }, ...stops, { offset: 1, color: aqiScaleColor(max) }];
+export function aqiScaleStops(max: number, lift = 0): Array<{ offset: number; color: string }> {
+  const stops = stopsAt(lift).filter((s) => s.at <= max).map((s) => ({ offset: s.at / max, color: `rgb(${s.rgb.map(Math.round).join(",")})` }));
+  return [{ offset: 0, color: aqiScaleColor(0, lift) }, ...stops, { offset: 1, color: aqiScaleColor(max, lift) }];
 }
 
 // The graph (§5.3 score panel, rebuilt): four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of them.

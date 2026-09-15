@@ -53,10 +53,10 @@ export function SourceLine({ borough, hours, fallback }: Props) {
     <div
       style={{
         fontFamily: families.uiCaps,
-        fontSize: typeScale.micro.size,
-        lineHeight: typeScale.micro.line,
-        letterSpacing: "0.06em",
-        color: c.textFaint,
+        fontSize: typeScale.caption.size,
+        lineHeight: 1.5,
+        // Secondary, not faint: faint is a line token (0.18 alpha) and fails AA as text. Secondary holds ≥ 6:1 on the panel fill.
+        color: c.textSecondary,
       }}
     >
       {SOURCE_LINE_BASE} · {coverage}

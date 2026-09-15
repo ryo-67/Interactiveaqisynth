@@ -148,8 +148,8 @@ export default function ScenePage() {
   return (
     <ThemeContext.Provider value="dark">
       <div style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars }}>
-        {/* The scene: renders continuously while playing, on demand at rest. A click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
-        <div ref={skyBoxRef} style={{ position: "absolute", inset: 0, cursor: "pointer" }} onClick={s.togglePlay} role="button" aria-label={SKY_TOGGLE_LABEL} tabIndex={-1}>
+        {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
+        <div ref={skyBoxRef} style={{ position: "absolute", inset: 0, cursor: phone ? "default" : "pointer" }} onClick={phone ? undefined : s.togglePlay} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
           <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={clock} saturation={view.saturation} particles={lens} grain={grain} live={playing} style={{ width: "100%", height: "100%" }} />
           {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
           <canvas ref={dissolveCanvasRef} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />

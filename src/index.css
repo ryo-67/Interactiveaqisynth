@@ -1495,7 +1495,7 @@ html {
 /* Phone: every band stacks; the transport and the source share the bottom row; sizes at their smallest. */
 @media (max-width: 767px) {
   .scene-ui {
-    --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px; --slider-width: 72px;
+    --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px; --slider-width: 100%; /* the volume slider fills its pill, which takes most of the row */
     --display-size: 56px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
     --ui-pad: 12px; --ui-gap: 8px;
   }
@@ -1509,10 +1509,12 @@ html {
   .scene-mid { gap: 8px; }
   .scene-panel.scene-hero { padding: 16px 16px 12px; }
   .scene-panel.scene-graph { padding: 12px; }
-  /* Phone: the play and volume pills on their own row, the source line full width beneath them. */
+  /* Phone: the play and volume pills centred on their own row — the volume pill taking most of it — and the source line full width beneath them, its text centred. */
   .scene-bottom { flex-direction: column; align-items: stretch; gap: 8px; }
-  .scene-transport { flex: 0 0 auto; align-self: flex-start; }
-  .scene-source { width: 100%; padding: 8px 12px; }
+  .scene-transport { flex: 0 0 auto; align-self: center; width: 100%; justify-content: center; }
+  .scene-transport > .scene-pill:last-child { flex: 1 1 auto; max-width: 280px; }
+  .scene-source { width: 100%; padding: 8px 12px; justify-content: center; }
+  .scene-source p, .scene-source div { text-align: center; }
 }
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */

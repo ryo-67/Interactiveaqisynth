@@ -40,6 +40,7 @@ export function VolumeSlider({ onVolume }: { onVolume: (db: number) => void }) {
       type="range" min={0} max={1} step={0.01} value={vol}
       aria-label={TRANSPORT_VOLUME}
       onChange={(e) => { const v = Number(e.target.value); setVol(v); onVolume(sliderToDb(v)); }}
+      className="scene-volume"
       style={{ width: `var(--slider-width, ${CONTROL.sliderWidth}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, margin: 0, display: "block", accentColor: "rgba(255,255,255,0.85)" }}
     />
   );

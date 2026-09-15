@@ -128,14 +128,14 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         // Baseline, the scale's top value at the right, and a mid gridline with its value so the line can be read against numbers.
         ctx.strokeStyle = c.textFaint;
         ctx.beginPath(); ctx.moveTo(plotX, y0 + lh + inner + 0.5); ctx.lineTo(plotRight, y0 + lh + inner + 0.5); ctx.stroke();
-        // Gridlines with values: the category boundaries on AQI (a fixed ruler), top and middle on the others.
+        // Gridlines with values at the left: the category boundaries on AQI (a fixed ruler), top and middle on the others.
         const gridValues = t === "aqi" ? AQI_CATEGORIES.map((k) => k.max).filter((v) => v <= max) : [Math.round(max / 1.08), Math.round(max / 2.16)];
         ctx.fillStyle = c.textMuted;
         for (const gv of gridValues) {
           const gy = yFor(gv);
           if (gv !== gridValues[0] || t !== "aqi") { ctx.setLineDash([2, 5]); ctx.beginPath(); ctx.moveTo(plotX, gy + 0.5); ctx.lineTo(plotRight, gy + 0.5); ctx.stroke(); ctx.setLineDash([]); }
           const lab = String(gv);
-          ctx.fillText(lab, plotRight - ctx.measureText(lab).width - 4, gy - 3);
+          ctx.fillText(lab, plotX + 4, gy - 3); // y-axis values sit just inside the plot's left edge, above their gridline
         }
 
         // AQI: the scale bar at the right. One smooth gradient through the category colours, each colour placed at its own upper boundary so the transitions fall where the categories change; the marker sits at the value under the playhead.

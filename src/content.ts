@@ -24,8 +24,8 @@ export const STATUS_ARCHIVE = "archive";
 
 // Source line (§5.3 panel 6). The coverage clause is built from the source flags, never hardcoded. Shortened 2026-09-15 at Shoro's request; Shoro's to revise. Two parts: the sources, then coverage.
 export const SOURCE_LINE_BASE = "Live from AirNow · Archive from EPA";
-export const SOURCE_MONITORS = "{borough} measures {list}.";
-export const SOURCE_BORROWED = "{borough} measures {ownList}; {borrowedList} from the citywide reading.";
+// The source line carries the sources and, only when they apply, two disclosures: a channel the borough borrows from the citywide reading (SOURCE_BORROWED, D-16) and live NO2 being a typical archive day (SOURCE_LINE_TYPICAL_NO2, D-18). Which pollutants a borough measures is no longer spelled out — it read as a wall.
+export const SOURCE_BORROWED = "{borough}'s {list} {isAre} the citywide reading."; // D-16 disclosure, only when a borough has no monitor for a channel (Brooklyn's O3). PLACEHOLDER — Shoro's.
 export const SOURCE_AREA_READING = "AirNow area reading; no borough detail."; // zip-code fallback (BUG-12): no borough can honestly be named
 
 // Transport (the first glass control, §5.3). PLACEHOLDERS — Shoro's to write.
@@ -46,6 +46,8 @@ export const PINS = [
   { date: "2023-02-09", name: "Rush Hour" },
   { date: "2023-10-29", name: "Clear Day" },
 ] as const;
+// Borough names on phones, where the full row cannot fit at the caption size (445 px of labels for 303 px of room). PLACEHOLDERS — Shoro's.
+export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhattan: "MNH", Brooklyn: "BKN", Queens: "QNS", Bronx: "BX", "Staten Island": "SI" };
 export const NAV_LIVE = "Live";
 export const NAV_PREV = "‹";
 export const NAV_NEXT = "›";

@@ -1438,6 +1438,7 @@ html {
 }
 .scene-ui .glass, .scene-ui select { pointer-events: auto; }
 /* Horizontal strips (borough words, pins) scroll by touch or wheel with no visible bar: the strip is exactly its content's height, so a bar could only paint over the chips. */
+.scene-borough .borough-short { display: none; } /* full names from tablet up; the phone block flips the pair */
 .scene-strip { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
 .scene-strip::-webkit-scrollbar { display: none; height: 0; }
 .scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-gap); flex: 0 0 auto; min-width: 0; }
@@ -1513,6 +1514,9 @@ html {
   .scene-pill.scene-borough { padding: 0 12px; }
   .scene-pill.scene-chips { padding: 0 var(--chip-inset); }
   .scene-pill.scene-pins { padding: var(--chip-inset); }
+  /* Phones: short borough names, so all six stay on one line without a scroll. */
+  .scene-borough .borough-long { display: none; }
+  .scene-borough .borough-short { display: block; }
 }
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */

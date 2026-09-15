@@ -1,4 +1,5 @@
 // BoroughToggle — one row of words (§5.2 item 1), always one line, centred. No chrome: every word is set in caps with the same tracking; the selected borough changes to the same face's bold italic, not case or size, so both states share one baseline. When the row is wider than its pill it scrolls horizontally rather than wrapping. The date and status live in DateStatus, their own pill.
+import { BOROUGH_SHORT } from "../content";
 import React from "react";
 import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
 import type { Borough } from "../utils/nycOpenData";
@@ -68,8 +69,11 @@ export function BoroughToggle({ selected, onSelect }: Props) {
               whiteSpace: "nowrap",
             }}
           >
-            <span aria-hidden={isSel} style={variant(false, !isSel)}>{LABELS[b]}</span>
-            <span aria-hidden={!isSel} style={variant(true, isSel)}>{LABELS[b]}</span>
+            {/* Full name from tablet up, short name on phones (index.css switches the pair); each pair keeps both weights in the cell. */}
+            <span className="borough-long" aria-hidden={isSel} style={variant(false, !isSel)}>{LABELS[b]}</span>
+            <span className="borough-long" aria-hidden={!isSel} style={variant(true, isSel)}>{LABELS[b]}</span>
+            <span className="borough-short" aria-hidden={isSel} style={variant(false, !isSel)}>{BOROUGH_SHORT[b]}</span>
+            <span className="borough-short" aria-hidden={!isSel} style={variant(true, isSel)}>{BOROUGH_SHORT[b]}</span>
           </button>
         );
       })}

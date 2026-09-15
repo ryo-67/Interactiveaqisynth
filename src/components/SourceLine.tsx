@@ -1,13 +1,7 @@
-// SourceLine — footer line three (§5.2): sources and coverage, muted, as fact. The coverage clause is built from the hour records' source flags, never from a hardcoded list; borrowed channels are disclosed here and drawn identically in the score. When any channel is typical, the D-18 sentence follows.
+// SourceLine — footer line three (§5.2): the sources, muted, as fact, and only when it applies the one disclosure that matters: live NO2 is a typical archive day (D-18). Whether a channel is typical is read from the hour records' source flags, never from a hardcoded list.
 import React, { useLayoutEffect, useRef } from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
-import {
-  SOURCE_LINE_BASE,
-  SOURCE_MONITORS,
-  SOURCE_BORROWED,
-  SOURCE_AREA_READING,
-  SOURCE_LINE_TYPICAL_NO2,
-} from "../content";
+import { SOURCE_LINE_BASE, SOURCE_BORROWED, SOURCE_AREA_READING, SOURCE_LINE_TYPICAL_NO2 } from "../content";
 import type { Borough } from "../utils/nycOpenData";
 import type { Day } from "../engine/SynthEngine";
 
@@ -23,35 +17,22 @@ interface Props {
 export function SourceLine({ borough, hours, fallback }: Props) {
   const c = themeColors(useTheme());
 
-  // A channel counts as the borough's own if any hour this day is 'own'; borrowed if it only ever arrives as 'citywide'; typical likewise.
-  const own: Channel[] = [];
+  // A channel is borrowed when the borough never reports it itself and carries the citywide value instead (D-16: substitution with provenance — Brooklyn's O3). Live NO2 arrives flagged 'typical' (D-18); an archive day carries real NO2 and says nothing more.
   const borrowed: Channel[] = [];
   let anyTypical = false;
   for (const ch of Object.keys(CHANNEL_LABELS) as Channel[]) {
     const tags = hours.filter((h) => h[ch] != null).map((h) => h.source[ch]);
     if (tags.some((t) => t === "typical")) anyTypical = true;
-    if (tags.some((t) => t === "own")) own.push(ch);
-    else if (tags.some((t) => t === "citywide")) borrowed.push(ch);
+    if (!tags.some((t) => t === "own") && tags.some((t) => t === "citywide")) borrowed.push(ch);
   }
-
-  // "PM2.5 and O3", "PM2.5, O3 and NO2": a spoken list, not a comma dump.
-  const list = (chs: Channel[]) => {
-    const names = chs.map((ch) => CHANNEL_LABELS[ch]);
-    return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-  };
+  // "O3", "O3 and NO2": a spoken list.
+  const names = borrowed.map((ch) => CHANNEL_LABELS[ch]);
+  const list = names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
   const boroughName = borough === "Citywide" ? "NYC" : borough;
-
-  let coverage: string;
-  if (fallback === "zipcode") {
-    coverage = SOURCE_AREA_READING;
-  } else if (borrowed.length === 0) {
-    coverage = SOURCE_MONITORS.replace("{borough}", boroughName).replace("{list}", list(own));
-  } else {
-    coverage = SOURCE_BORROWED.replace("{borough}", boroughName)
-      .replace("{ownList}", list(own))
-      .replace("{borrowedList}", list(borrowed))
-      .replace("{isAre}", borrowed.length === 1 ? "is" : "are");
-  }
+  const parts = fallback === "zipcode"
+    ? [SOURCE_AREA_READING]
+    : [borrowed.length ? SOURCE_BORROWED.replace("{borough}", boroughName).replace("{list}", list).replace("{isAre}", borrowed.length === 1 ? "is" : "are") : null, anyTypical ? SOURCE_LINE_TYPICAL_NO2 : null];
+  const detail = parts.filter((p): p is string => p != null).join(" ") || null;
 
   // Hug the text even when it wraps: fit-content on a wrapping block is the container's width, so after layout the panel (the parent glass, when it is sized to content) is set to its widest rendered line plus its padding. That line still fits exactly, so nothing re-wraps. Re-measured on resize.
   const ref = useRef<HTMLDivElement>(null);
@@ -90,13 +71,14 @@ export function SourceLine({ borough, hours, fallback }: Props) {
     >
       {/* Two parts: the sources, then the coverage. One line joined by a separator where there is room; on phone the separator hides and the coverage takes its own line, so the break falls at the sentence rather than wherever the width lands. */}
       <span className="source-base">{SOURCE_LINE_BASE}</span>
-      <span className="source-sep"> · </span>
-      {/* A real space before the detail, so selected or read-aloud text does not run the two parts together when the separator is hidden. */}
-      {" "}
-      <span className="source-detail">
-        {coverage}
-        {anyTypical ? ` ${SOURCE_LINE_TYPICAL_NO2}` : ""}
-      </span>
+      {detail && (
+        <>
+          <span className="source-sep"> · </span>
+          {/* A real space before the detail, so selected or read-aloud text does not run the two parts together when the separator is hidden. */}
+          {" "}
+          <span className="source-detail">{detail}</span>
+        </>
+      )}
     </div>
   );
 }

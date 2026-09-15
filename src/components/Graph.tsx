@@ -201,7 +201,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           areaCache.current = area;
         }
         // The fill and the line are clipped to the plot itself: with the first and last readings on the bounds, the stroke's width and round caps would otherwise spill over the y-axis line and the right edge.
-        ctx.save(); ctx.beginPath(); ctx.rect(plotX + 1, 0, plotW - 2, cssH); ctx.clip(); // inset one pixel: the axis line and the right edge line own their columns
+        // From the column after the axis line to the column of the right edge line (both lines sit at Math.round(x) + 0.5, so they own exactly those columns): the fill meets both lines with no gap and never paints over them.
+        ctx.save(); ctx.beginPath(); ctx.rect(plotX + 1, 0, Math.round(plotRight) - plotX - 1, cssH); ctx.clip();
         ctx.drawImage(area.canvas, 0, 0, area.canvas.width, area.canvas.height, plotX, 0, plotW, cssH);
 
         // The line. AQI segments are gradients between the scale colour at each end — the same rule the bar is drawn with, so a point on the line and the bar at that height always match; the others are the secondary text colour.

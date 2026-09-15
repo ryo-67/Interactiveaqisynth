@@ -1,7 +1,7 @@
 // SourceLine — footer line three (§5.2): the sources, muted, as fact, and only when it applies the one disclosure that matters: live NO2 is a typical archive day (D-18). Whether a channel is typical is read from the hour records' source flags, never from a hardcoded list.
 import React, { useLayoutEffect, useRef } from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
-import { SOURCE_LINE_BASE, SOURCE_BORROWED, SOURCE_AREA_READING, SOURCE_LINE_TYPICAL_NO2 } from "../content";
+import { SOURCE_LINE_BASE, SOURCE_URL_AIRNOW, SOURCE_URL_EPA, SOURCE_BORROWED, SOURCE_AREA_READING, SOURCE_LINE_TYPICAL_NO2 } from "../content";
 import type { Borough } from "../utils/nycOpenData";
 import type { Day } from "../engine/SynthEngine";
 
@@ -14,8 +14,25 @@ interface Props {
   fallback: "zipcode" | null;
 }
 
+// The locked base line with its two source names as links to the agencies. The string stays whole in content.ts; the names are found in it here, so a rewording that keeps the names keeps the links.
+const SOURCES: Array<[name: string, url: string]> = [["AirNow", SOURCE_URL_AIRNOW], ["EPA", SOURCE_URL_EPA]];
+function linkSources(line: string, style: React.CSSProperties): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  let rest = line;
+  while (rest.length) {
+    const hit = SOURCES.map(([name, url]) => ({ i: rest.indexOf(name), name, url })).filter((h) => h.i >= 0).sort((a, b) => a.i - b.i)[0];
+    if (!hit) { out.push(rest); break; }
+    if (hit.i > 0) out.push(rest.slice(0, hit.i));
+    out.push(<a key={out.length} className="source-link" href={hit.url} target="_blank" rel="noopener noreferrer" style={style}>{hit.name}</a>);
+    rest = rest.slice(hit.i + hit.name.length);
+  }
+  return out;
+}
+
 export function SourceLine({ borough, hours, fallback }: Props) {
   const c = themeColors(useTheme());
+  // Links read as the line does; the underline appears on hover and keyboard focus only (index.css .source-link). AA is the text colour's.
+  const linkStyle: React.CSSProperties = { color: "inherit", textUnderlineOffset: 2 };
 
   // A channel is borrowed when the borough never reports it itself and carries the citywide value instead (D-16: substitution with provenance — Brooklyn's O3). Live NO2 arrives flagged 'typical' (D-18); an archive day carries real NO2 and says nothing more.
   const borrowed: Channel[] = [];
@@ -70,7 +87,7 @@ export function SourceLine({ borough, hours, fallback }: Props) {
       }}
     >
       {/* Two parts: the sources, then the coverage. One line joined by a separator where there is room; on phone the separator hides and the coverage takes its own line, so the break falls at the sentence rather than wherever the width lands. */}
-      <span className="source-base">{SOURCE_LINE_BASE}</span>
+      <span className="source-base">{linkSources(SOURCE_LINE_BASE, linkStyle)}</span>
       {detail && (
         <>
           <span className="source-sep"> · </span>

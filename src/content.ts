@@ -23,9 +23,11 @@ export const STATUS_LIVE = "live";
 export const STATUS_ARCHIVE = "archive";
 
 // Source line (§5.3 panel 6). The coverage clause is built from the source flags, never hardcoded. Shortened 2026-09-15 at Shoro's request; Shoro's to revise. Two parts: the sources, then coverage.
-export const SOURCE_LINE_BASE = "Live from AirNow · Archive from EPA";
+export const SOURCE_LINE_BASE = "Live from AirNow · Archive from EPA"; // LOCKED (Shoro, 2026-09-15). Rendered with AirNow and EPA as links.
+export const SOURCE_URL_AIRNOW = "https://www.airnow.gov/";
+export const SOURCE_URL_EPA = "https://www.epa.gov/outdoor-air-quality-data";
 // The source line carries the sources and, only when they apply, two disclosures: a channel the borough borrows from the citywide reading (SOURCE_BORROWED, D-16) and live NO2 being a typical archive day (SOURCE_LINE_TYPICAL_NO2, D-18). Which pollutants a borough measures is no longer spelled out — it read as a wall.
-export const SOURCE_BORROWED = "{borough}'s {list} {isAre} the citywide reading."; // D-16 disclosure, only when a borough has no monitor for a channel (Brooklyn's O3). PLACEHOLDER — Shoro's.
+export const SOURCE_BORROWED = "{borough}'s {list} {isAre} citywide."; // D-16 disclosure, only when a borough has no monitor for a channel (Brooklyn's O3). PLACEHOLDER — Shoro's.
 export const SOURCE_AREA_READING = "AirNow area reading; no borough detail."; // zip-code fallback (BUG-12): no borough can honestly be named
 
 // Transport (the first glass control, §5.3). PLACEHOLDERS — Shoro's to write.
@@ -53,4 +55,4 @@ export const NAV_PREV = "‹";
 export const NAV_NEXT = "›";
 export const NAV_CALENDAR = "Calendar";
 export const NAV_UNAVAILABLE = "Not yet reported."; // a day past the archive and the EPA feed
-export const SOURCE_LINE_TYPICAL_NO2 = "NO2 is a typical archive day; NYC has no live NO2."; // D-18 disclosure; Shoro's to revise
+export const SOURCE_LINE_TYPICAL_NO2 = "NO2 is typical, not live."; // D-18 disclosure; Shoro's to revise

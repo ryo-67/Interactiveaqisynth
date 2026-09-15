@@ -1439,6 +1439,9 @@ html {
 .scene-ui .glass, .scene-ui select { pointer-events: auto; }
 /* Horizontal strips (borough words, pins) scroll by touch or wheel with no visible bar: the strip is exactly its content's height, so a bar could only paint over the chips. */
 .scene-borough .borough-short { display: none; } /* full names from tablet up; the phone block flips the pair */
+/* Source links: plain until hovered or focused, then underlined. */
+.source-link { text-decoration: none; }
+.source-link:hover, .source-link:focus-visible { text-decoration: underline; }
 .scene-strip { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
 .scene-strip::-webkit-scrollbar { display: none; height: 0; }
 .scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-gap); flex: 0 0 auto; min-width: 0; }

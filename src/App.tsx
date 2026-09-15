@@ -1,5 +1,6 @@
 // App — the typographic Listen page (sprint 3a). Its state lives in useListenSession, shared with the scene at /scene (D-19), so the two pages play the same data through the same engine. The scene replaces this page once it passes review.
 import React, { useState } from "react";
+import { readingLabel } from "./utils/time";
 import { BoroughToggle, DateStatus } from "./components/BoroughToggle";
 import { AQINumber } from "./components/AQINumber";
 import { MoodLine } from "./components/MoodLine";
@@ -21,7 +22,7 @@ export default function App() {
   const dateLabel = lastTs
     ? new Date(lastTs).toLocaleDateString("en-US", { month: "short", day: "numeric" })
     : "—";
-  const hourLabel = lastTs ? lastTs.slice(11, 16) : "—";
+  const hourLabel = lastTs ? readingLabel(lastTs, false) : "—";
 
   return (
     <ThemeContext.Provider value={theme}>

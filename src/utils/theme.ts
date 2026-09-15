@@ -122,35 +122,41 @@ export function themeColors(theme: Theme) {
 
 // The standard AQI categories (EPA, six), D-23/D-27: the ONE colour scheme. The graph's line and bar, and the mood word, all take their colour from aqiScaleColor(aqi) — the word is the colour of its own AQI on the same scale as the line, so the two never disagree. The former five tier colours are deleted.
 // The colours are the standard hues lifted to pass WCAG 1.4.11 (≥ 3:1 for graphics) against the dark panel (#0e0e1c, the hard case). The standard values fail for the top two: Very Unhealthy #8f3f97 is 3.0:1 and Hazardous #7e0023 is 1.7:1. Measured: Good 11.0, Moderate 17.8, USG 8.2, Unhealthy 6.3, Very Unhealthy 7.3, Hazardous 6.3.
+// Two ramps of one hue per category (D-35, 2026-09-15): `color` is the DISPLAY ramp for the legend, the line and the fill, darkening all the way to the EPA purple and maroon at the top as a standard AQI bar does (red 0.30 luminance, purple 0.10, maroon 0.045: each step darker by half or more, so red→purple and purple→maroon read as steps, not a blur); `text` is the ramp for the mood WORD, the nearest colour of the same hue that clears 3:1 on the panel (the true maroon is 2.1:1 there, fine for a bar and not for a word). The two agree on hue, not on hex.
 export const AQI_CATEGORIES = [
-  { max: 50, color: "#00e400" },
-  { max: 100, color: "#ffff00" },
-  { max: 150, color: "#ff8c1a" },
-  { max: 200, color: "#ff5c5c" },
-  // The top of the scale darkens, as Apple's AQI ramp does: red at luminance 0.30, violet 0.20, maroon 0.14. The maroon is as deep as the dark panel allows — 3.13:1, the floor the line and the mood word need (2026-09-15).
-  { max: 300, color: "#9b4dff" }, // very unhealthy: full saturation, 4.1:1
-  { max: 500, color: "#c9184a" }, // hazardous: the EPA maroon's hue, 3.13:1
+  { max: 50, color: "#00e400", text: "#00e400" },
+  { max: 100, color: "#ffff00", text: "#ffff00" },
+  { max: 150, color: "#ff8c1a", text: "#ff8c1a" },
+  { max: 200, color: "#ff5c5c", text: "#ff5c5c" },
+  { max: 300, color: "#8f3f97", text: "#9b4dff" }, // very unhealthy: EPA purple; the word at 4.1:1
+  { max: 500, color: "#7e0023", text: "#c9184a" }, // hazardous: EPA maroon; the word at 3.13:1
 ] as const;
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
-const AQI_STOPS: Array<{ at: number; rgb: [number, number, number] }> = (() => {
+type Stops = Array<{ at: number; rgb: [number, number, number] }>;
+const aqiStops = (key: "color" | "text"): Stops => {
   const hex = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   let lo = 0;
-  return AQI_CATEGORIES.map((c) => { const at = (lo + c.max) / 2; lo = c.max; return { at, rgb: hex(c.color) }; });
-})();
-export function aqiScaleColor(aqi: number): string {
+  return AQI_CATEGORIES.map((c) => { const at = (lo + c.max) / 2; lo = c.max; return { at, rgb: hex(c[key]) }; });
+};
+const AQI_STOPS = aqiStops("color");
+const AQI_TEXT_STOPS = aqiStops("text");
+function rampColor(stops: Stops, aqi: number): string {
   const v = Math.max(0, aqi);
-  if (v <= AQI_STOPS[0].at) return `rgb(${AQI_STOPS[0].rgb.join(",")})`;
-  for (let i = 1; i < AQI_STOPS.length; i++) {
-    const a = AQI_STOPS[i - 1], b = AQI_STOPS[i];
+  if (v <= stops[0].at) return `rgb(${stops[0].rgb.join(",")})`;
+  for (let i = 1; i < stops.length; i++) {
+    const a = stops[i - 1], b = stops[i];
     if (v <= b.at) {
       const t = (v - a.at) / (b.at - a.at);
       const m = a.rgb.map((x, k) => Math.round(x + (b.rgb[k] - x) * t));
       return `rgb(${m.join(",")})`;
     }
   }
-  return `rgb(${AQI_STOPS[AQI_STOPS.length - 1].rgb.join(",")})`;
+  return `rgb(${stops[stops.length - 1].rgb.join(",")})`;
 }
+export function aqiScaleColor(aqi: number): string { return rampColor(AQI_STOPS, aqi); }
+// The mood word's colour: the same hue as the line at that AQI, on the ramp that stays readable on the panel.
+export function aqiTextColor(aqi: number): string { return rampColor(AQI_TEXT_STOPS, aqi); }
 // The gradient's stops, on a 0..max scale, for a canvas or CSS gradient drawn with the same rule.
 export function aqiScaleStops(max: number): Array<{ offset: number; color: string }> {
   const stops = AQI_STOPS.filter((s) => s.at <= max).map((s) => ({ offset: s.at / max, color: `rgb(${s.rgb.join(",")})` }));
@@ -380,13 +386,18 @@ export const SKY_RANGES = {
 export const GLASS = {
   blur: "18px",
   saturate: "1.6",
-  // One neutral surface at every hour (D-25): a dark translucent fill with light text. Fill alpha is set by the worst case, white text on a white sky: 255·(1−0.62)+10·0.62 ≈ 103 luminance → 4.9:1 against the 0.9-alpha primary, so AA holds under any sky without a tone switch. Adaptive tones (D-24) were tried and dropped as unnecessary.
-  fillAlpha: 0.62,
-  fill: "10, 10, 22",
+  // A tinted frost keyed to the sky (D-35, amending D-25's one neutral surface). The fill's ALPHA follows the light: fillAlphaDay where white text needs the darkening — the worst case is a clear noon sky behind the hero, measured at 0.92 luminance, where 255·(1−0.62)+navy·0.62 ≈ 100 → 4.9:1 against the 0.9-alpha primary — thinning to fillAlphaNight when the sky is dark (dusk, night, smoke, haze: most of the piece), so more of the sky shows through. The fill's HUE follows the sky: navy in clear air, umber under smoke and at golden hour, so the panel never sits as a cold block on an orange sky. At night a faint white lift so the panel reads lighter than the sky, as a frost does.
+  fillAlphaDay: 0.62,
+  fillAlphaNight: 0.35,
+  fill: "8, 14, 40", // navy: the tint of clear air
+  fillWarm: "44, 22, 8", // umber: the tint under smoke and golden light
+  liftNight: 0.06, // white over the fill at night, fading out by day
+  dayFromDeg: -2, // sun elevation below which the material is at its night alpha…
+  dayFullDeg: 10, // …and above which at its day alpha; golden hour thins it on the way
   edgeAlpha: 0.35,
   // Frosted (the content material): heavier blur and a touch more fill than the control material.
   frostedBlur: "28px",
-  frostedFillAlpha: 0.7,
+  frostedExtraAlpha: 0.08,
   // prefers-reduced-transparency: the material goes opaque enough to read without the scene
   fillAlphaOpaque: 0.9,
   blurOpaque: "36px",

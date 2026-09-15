@@ -122,8 +122,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       hair.lineWidth = 1;
 
       const n = day.length;
-      // The AQI tab keeps a scale bar at the RIGHT, on the line's own fixed y-scale: the standard category colours as one smooth vertical gradient, with a marker at the value under the playhead (the latest hour at rest).
-      const barW = tab === "aqi" ? GRAPH.scaleBarWidth : 0;
+      // The AQI tab keeps a scale bar at the RIGHT, on the line's own fixed y-scale: the standard category colours as one smooth vertical gradient, with a marker at the value under the playhead (the latest hour at rest). Its column is reserved on EVERY tab, so the plot is the same width whichever tab is up and the lines land on the same x positions (2026-09-15); the bar is an addition beside the plot, not a change to it.
+      const barW = GRAPH.scaleBarWidth;
       // A left gutter holds the y-axis values, right-aligned against the plot's first line, so they never sit on the area fill. Sized to the widest value the tab can show.
       const gutterW = Math.ceil(ctx.measureText("500").width) + GRAPH.axisGutterPad * 2;
       const plotX = gutterW;
@@ -367,7 +367,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, axisY); ctx.stroke();
         const hi = Math.max(0, Math.min(n - 1, Math.floor(playheadHour))); // clamped both ways: this indexes the day
-        // Clock time from the reading's own timestamp, not the index. The date joins it only on the live window, whose readings straddle two days ("Sep 14, 6:00 pm"); a chosen day already names its date in the axis label, so its chip is just "4:00 am".
+        // Clock time from the reading's own timestamp, not the index. The date joins it only on the live window, whose readings straddle two days ("Sep 14, 6pm"); a chosen day already names its date in the axis label, so its chip is just "4am".
         const parts: string[] = [readingLabel(day[hi].ts, live)];
         for (const t of lineTracks) { const v = series[t][hi]; parts.push(`${TRACK_LABELS[t]} ${v == null ? "—" : Math.round(v)}`); }
         const label = parts.join(" · ");
@@ -412,7 +412,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
   return (
     <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
       {/* The tabs are a header band attached to the top of the graph container, built to the preset bar's spec (§5.3): the same chips (chip.ts), the same 4 px gaps with a roomier 8 px inset, the band spanning the container edge to edge so the container's own top corners round it and its bottom is square, and no line, fill or shadow of its own — the band and the graph are one container. */}
-      <div role="tablist" style={{ position: "relative", display: "flex", alignItems: "center", flex: "0 0 auto", gap: CONTROL.gap, height: `calc(var(--ctl-inner, ${CONTROL.inner}px) + ${GRAPH.tabsInset * 2}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad, 20px)) ${GRAPH.tabsGap}px`, padding: `0 ${GRAPH.tabsInset}px`, boxSizing: "border-box", overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", scrollbarWidth: "none" }}>
+      <div role="tablist" style={{ position: "relative", display: "flex", alignItems: "center", flex: "0 0 auto", gap: CONTROL.gap, height: `calc(var(--ctl-inner, ${CONTROL.inner}px) + ${GRAPH.tabsInset * 2}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad-x, 16px)) ${GRAPH.tabsGap}px`, padding: `0 ${GRAPH.tabsInset}px`, boxSizing: "border-box", overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", scrollbarWidth: "none" }}>
         {TRACK_ORDER.map((t) => {
           const active = t === tab;
           return (

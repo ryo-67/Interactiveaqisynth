@@ -1,6 +1,6 @@
 // MoodLine — tier word and mood sentence (§5.2 item 3). The word is the one full-strength appearance of the tier color. The sentence names what you are hearing — {pollutant} is the channel with the highest normalized value at the playhead hour, {hour} is that hour — so the static AQI number (latest reading) and the moving mood never read as a contradiction. Changes only at tier boundaries, 0.5 s blur (§5.4).
 import React, { useEffect, useRef, useState } from "react";
-import { useTheme, themeColors, families, typeScale, space, motion, aqiScaleColor } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, motion, aqiTextColor } from "../utils/theme";
 import { TIER_NAMES, MOOD_SENTENCES, POLLUTANT_NAMES } from "../content";
 
 interface Props {
@@ -51,7 +51,7 @@ export function MoodLine({ tierIndex, hour, dominant, aqi }: Props) {
           fontStyle: "italic",
           fontSize: `var(--heading-size, ${typeScale.heading.size})`, // the scene scales this per breakpoint
           lineHeight: "var(--heading-line, 40px)", // in px per breakpoint, so the line box — and the panel — stay on the 4 px grid
-          color: aqi == null ? c.textPrimary : aqiScaleColor(aqi), // one scheme with the graph
+          color: aqi == null ? c.textPrimary : aqiTextColor(aqi), // the line's hue at this AQI, on the ramp that reads on the panel (D-35)
         }}
       >
         {TIER_NAMES[shown.tierIndex]}

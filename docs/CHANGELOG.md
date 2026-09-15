@@ -2,6 +2,18 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The washed-out sky, found: the lens effect was discarding the bloom
+
+The intermittent "luminance and rayleigh broke" frame was never a bad value; it was the effect chain's order. The lens field samples the input buffer at displaced coordinates, and without the CONVOLUTION attribute the composer merged it into the bloom's pass, where it re-sampled the raw scene and passed the raw pixels on, discarding the bloom and the saturation grade computed before it. The r3f effect wrappers rebuilt every effect whose props changed (their constructor args are keyed on a JSON of the props) and appended each rebuilt effect at the end of the list, so the order shuffled with every eased change and bloom survived only when it happened to land after the lens. Now the lens declares itself a convolution and gets its own pass; every effect is one instance for the life of the canvas with its values set in place, so the pass chain is built once; a watchdog checks each frame that the chain still carries the bloom and the tone-mapping effect, that the exposure is finite and that the context is alive, and logs a snapshot the first time it is not. Sky inputs are also checked for non-finite values before they reach the renderer.
+
+## 2026-09-15 — A tinted frost keyed to the sky; two AQI ramps (D-35)
+
+The panel fill follows the sky instead of sitting as one grey block on every hour: alpha 0.62 only in clear daylight, where white text needs the darkening (a clear noon sky measured 0.92 behind the hero), thinning to 0.35 at night and under smoke; navy in clear air, umber under smoke and at golden hour so an orange sky is not fought by a cold panel; a faint white lift at night so the panel reads lighter than the sky. The AQI scale now darkens all the way to the EPA purple and maroon for the legend, line and fill, as a standard bar does, while the mood word takes a text ramp of the same hues that clears 3:1 on the panel.
+
+## 2026-09-15 — One plot width on every tab; tighter sides; hours as "3pm"
+
+The legend's column is reserved on every graph tab, so the plot is the same width whichever tab is up and the readings land on the same x positions; the legend is an addition beside the plot. The graph panel's side padding is one step tighter than its vertical padding (16/12 instead of 20/16), and the short-phone steps set the same variables the tab band reads, so the band spans the panel edge to edge at every size. Every hour is written "3pm": the data is hourly, so minutes were noise.
+
 ## 2026-09-15 — Phones from 408 wide: the header on one row
 
 With the day control reduced to one chip, the phone header can be one row where the two pills fit: the chip drops its calendar glyph on phones (the caret is the affordance) and the gap between the pills is 12, so the borough codes and the widest chip label need 404 with page padding. From 408 they share a row; below that they stack. Any one phone always gets the same layout.

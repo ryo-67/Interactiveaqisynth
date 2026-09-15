@@ -12,10 +12,10 @@ function nyYear(): number {
   return Number(new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric" }).format(new Date()));
 }
 
-// "2:00 pm"; with the date "Sep 14, 2:00 pm"; from an earlier year "Jun 7, 2023, 4:00 am".
+// "2pm"; with the date "Sep 14, 2pm"; from an earlier year "Jun 7, 2023, 4am". Hours only: the data is hourly, so minutes would be noise (2026-09-15).
 export function readingLabel(ts: string, withDate: boolean): string {
   const h = hourOfTs(ts);
-  const time = `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? "am" : "pm"}`;
+  const time = `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? "am" : "pm"}`;
   if (!withDate) return time;
   const year = Number(ts.slice(0, 4)), month = Number(ts.slice(5, 7)), day = Number(ts.slice(8, 10));
   const date = `${MONTHS[month - 1]} ${day}${year < nyYear() ? `, ${year}` : ""}`;

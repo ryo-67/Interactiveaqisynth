@@ -1,9 +1,9 @@
 // SkyView — one physically based sky, rendered with the real drei <Sky>, <Stars>, and postprocessing <Bloom>. Used by the /scene-test harness and (next sprint) by the scene itself. Static: no engine, no clock; the caller passes the hour.
-import React, { useLayoutEffect, useMemo } from "react";
+import React, { useLayoutEffect, useMemo, useCallback, useRef, useEffect } from "react";
 import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
-import { EffectComposer, Bloom, HueSaturation, ChromaticAberration, Noise, ToneMapping } from "@react-three/postprocessing";
-import { ToneMappingMode, BlendFunction } from "postprocessing";
+import { EffectComposer } from "@react-three/postprocessing";
+import { ToneMappingMode, BlendFunction, BloomEffect, HueSaturationEffect, ChromaticAberrationEffect, NoiseEffect, ToneMappingEffect, EffectPass, type Effect, type EffectComposer as EffectComposerImpl } from "postprocessing";
 import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3 } from "three";
 import { LensFieldEffect } from "./LensFieldEffect";
 import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT, SKY_CAMERA } from "../utils/theme";
@@ -115,13 +115,63 @@ export function grainLevel(pm25: number | null | undefined): number {
   return Math.pow(l, GRAIN.curve);
 }
 
-// The lens field (LensFieldEffect) as a composer child: one instance, its state pushed every frame.
+// The grade, created once. The r3f effect wrappers rebuild an effect whenever a prop changes (their constructor args are keyed on a JSON of the props), so the eased bloom, saturation, aberration and grain were disposing and re-creating effects and passes on nearly every frame; a frame drawn between the old pass leaving and the new one arriving is the raw render, no bloom and no tone mapping, which is the intermittent washed-out sky (2026-09-15). Now each effect is one instance for the life of the canvas and its values are set in place; the composer's children never change, so its pass chain is built once.
+interface Fx { bloom: BloomEffect; hueSat: HueSaturationEffect; lens: LensFieldEffect; aberration: ChromaticAberrationEffect; noise: NoiseEffect; tone: ToneMappingEffect }
+function makeFx(): Fx {
+  return {
+    bloom: new BloomEffect({ blendFunction: BlendFunction.ADD, intensity: 0, luminanceThreshold: 0.55, luminanceSmoothing: 0.35, mipmapBlur: true }),
+    hueSat: new HueSaturationEffect({ saturation: 0 }),
+    lens: new LensFieldEffect(),
+    aberration: new ChromaticAberrationEffect({ offset: new Vector2(0, 0), radialModulation: true, modulationOffset: 0.3 }),
+    noise: new NoiseEffect({ blendFunction: BlendFunction.OVERLAY, premultiply: true }),
+    tone: new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC }),
+  };
+}
+// Pushes the frame's values into the effects. Set on change and the canvas told to repaint (an on-demand canvas repaints only when told); the lens field also needs the clock, so it is fed every frame.
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-function LensField({ level }: { level: number }) {
-  const effect = useMemo(() => new LensFieldEffect(), []);
+function Grade({ fx, bloom, saturation, particles, grain }: { fx: Fx; bloom: number; saturation: number; particles: number; grain: number }) {
   const size = useThree((s) => s.size);
-  useFrame((state, dt) => effect.setState(level, size.width / size.height, state.clock.elapsedTime, dt, !REDUCED_MOTION));
-  return <primitive object={effect} />;
+  useLayoutEffect(() => {
+    fx.bloom.intensity = bloom;
+    fx.hueSat.saturation = saturation;
+    // MAPPING (particulate → chromatic aberration): the offset rises with the lens level, zero when there is none, so at wildfire density the whole frame fringes toward its edges.
+    const ab = PARTICLES.aberrationMax * particles;
+    fx.aberration.offset.set(ab, ab);
+    // MAPPING (fine particulate → grain): film grain over the frame, its opacity the grain level on GRAIN's curve.
+    fx.noise.blendMode.opacity.value = GRAIN.opacityMax * grain;
+    invalidate();
+  }, [fx, bloom, saturation, particles, grain]);
+  useFrame((state, dt) => fx.lens.setState(particles, size.width / size.height, state.clock.elapsedTime, dt, !REDUCED_MOTION));
+  return null;
+}
+
+// Watchdog for the washed-out sky: every frame it checks that the composer's pass chain still carries the bloom and the tone-mapping effect, that the exposure is finite, and that the WebGL context is alive. (The renderer's own toneMapping flag is not checked: three applies it only when drawing to the canvas, and the composer draws the scene to a target, so the flag is inert while the chain is whole.) The first anomaly is logged once, with a snapshot of the inputs, so the next occurrence names its cause instead of being a screenshot.
+function SkyWatchdog({ composerRef, fx, snapshot }: { composerRef: React.RefObject<EffectComposerImpl>; fx: Fx; snapshot: () => Record<string, unknown> }) {
+  const gl = useThree((s) => s.gl);
+  const reported = useRef(false);
+  useEffect(() => {
+    const el = gl.domElement;
+    const lost = (e: Event) => { e.preventDefault(); console.error("[sky] WebGL context lost", snapshot()); };
+    const restored = () => { console.warn("[sky] WebGL context restored", snapshot()); invalidate(); };
+    el.addEventListener("webglcontextlost", lost);
+    el.addEventListener("webglcontextrestored", restored);
+    return () => { el.removeEventListener("webglcontextlost", lost); el.removeEventListener("webglcontextrestored", restored); };
+  }, [gl, snapshot]);
+  useFrame(() => {
+    if (reported.current) return;
+    const bad: string[] = [];
+    const composer = composerRef.current;
+    if (!composer) bad.push("no composer");
+    else {
+      const effects = composer.passes.flatMap((p) => (p instanceof EffectPass && p.enabled ? (p as unknown as { effects: Effect[] }).effects : [])); // the pass keeps its list private; read for the check only
+      if (!effects.includes(fx.bloom)) bad.push("bloom pass missing");
+      if (!effects.includes(fx.tone)) bad.push("tone-mapping pass missing");
+    }
+    if (!Number.isFinite(gl.toneMappingExposure)) bad.push(`exposure=${gl.toneMappingExposure}`);
+    if (gl.getContext().isContextLost()) bad.push("context lost");
+    if (bad.length) { reported.current = true; console.error(`[sky] renderer anomaly: ${bad.join(", ")}`, snapshot()); }
+  });
+  return null;
 }
 
 // A soft radial sprite: bright core, fast falloff. Built once; the bloom pass does the glow.
@@ -162,13 +212,13 @@ function SunDisc({ sunPosition, brightness, deg }: { sunPosition: [number, numbe
 }
 
 // Dev-only handle so the renderer and scene can be inspected from the console (?dev=1 harness only).
-function DevHandle() {
+function DevHandle({ composerRef, fx }: { composerRef: React.RefObject<EffectComposerImpl>; fx: Fx }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   useLayoutEffect(() => {
-    (window as unknown as Record<string, unknown>).__sky = { gl, scene, camera };
-  }, [gl, scene, camera]);
+    (window as unknown as Record<string, unknown>).__sky = { gl, scene, camera, composerRef, fx };
+  }, [gl, scene, camera, composerRef, fx]);
   return null;
 }
 
@@ -185,8 +235,24 @@ function Exposure({ value }: { value: number }) {
   return null;
 }
 
+// The renderer's configuration, one object for the life of the module: r3f compares the gl prop with the renderer on every render and re-applies it when they differ, and the composer sets the renderer's toneMapping to none, so a fresh object literal here had r3f writing toneMapping back every render (harmless in the composer's pass, three only tone-maps when drawing to the canvas, but churn all the same). Tone mapping is set explicitly because r3f v8's ACES default goes through a pre-three-r155 path that no longer lands on three 0.172. preserveDrawingBuffer so the scene can snapshot the last frame for a dissolve (D-32).
+const GL_CONFIG = { antialias: true, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true } as const;
+
 export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0 }: Props) {
-  const aberration = useMemo(() => new Vector2(PARTICLES.aberrationMax * particles, PARTICLES.aberrationMax * particles), [particles]);
+  // The grade's effects, once per canvas; the composer's children are one memoized element so its pass chain is never rebuilt (see Fx).
+  // ORDER (2026-09-15, measured): lens; tone mapping; bloom; saturation; aberration; noise. This is the order the sky was tuned against. The wrappers re-appended every re-created effect at the end of the list, so after the first eased change the chain settled into this order, with tone mapping BEFORE the bloom and the grade: the bloom's blur is taken from the HDR input of its pass and added onto the mapped image with nothing mapping it again, so the sun's glow goes to white — that is the glow every exposure and bloom value was judged on. The physically ordered chain (bloom and grade before tone mapping) is what showed on a fresh mount before any change, and reads as the dim, washed-out sky. The lens comes first, in its own pass (CONVOLUTION), so the frame it refracts is the raw sky and nothing it re-samples is lost.
+  const fx = useMemo(makeFx, []);
+  const chain = useMemo(() => (
+    <>
+      <primitive object={fx.lens} />
+      <primitive object={fx.tone} />
+      <primitive object={fx.bloom} />
+      <primitive object={fx.hueSat} />
+      <primitive object={fx.aberration} />
+      <primitive object={fx.noise} />
+    </>
+  ), [fx]);
+  const composerRef = useRef<EffectComposerImpl>(null);
   // Sun elevation and azimuth from the vector itself, so every caller that already passes a sun position gets the fade and the facing for free.
   const len = Math.hypot(...sunPosition) || 1;
   const sunElevationDeg = (Math.asin(Math.max(-1, Math.min(1, sunPosition[1] / len))) * 180) / Math.PI;
@@ -196,13 +262,14 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
   const hosekAlpha = model === "hosek" ? 1 : model === "preetham" ? 0 : daylightBlend(sunElevationDeg);
   // "above": pitch up by half the vertical fov plus a margin, so the horizon falls at or below the bottom edge. The previous fixed 0.32 rad left the bottom edge 12.7 degrees BELOW the horizon, which rendered the dome's ground half — invisible only while the control bar happened to cover it. "edge"/"fade": horizon sits at the vertical middle.
   const cameraRotationX = groundMode === "above" ? ABOVE_HORIZON_PITCH_RAD : 0;
+  // What the watchdog prints if the renderer misbehaves: every input this frame.
+  const snapshot = useCallback(() => ({ params, sunPosition, sunElevationDeg, hosekAlpha, starOpacity, saturation, particles, grain, hour, live }), [params, sunPosition, sunElevationDeg, hosekAlpha, starOpacity, saturation, particles, grain, hour, live]);
 
   return (
     <div style={{ position: "relative", ...style }}>
       <Canvas
         camera={{ position: [0, 0, 0], fov: FOV_DEG }}
-        // Tone mapping must be set explicitly: r3f v8 applies its ACES default through a pre-three-r155 code path (it writes outputEncoding alongside toneMapping), which no longer lands on three 0.172, leaving the renderer at NoToneMapping — and with no tone mapping the exposure value is inert, because the shaders' tonemapping_fragment compiles to a no-op.
-        gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true }} // preserved so the scene can snapshot the last frame for a dissolve (D-32)
+        gl={GL_CONFIG}
         // Cap device pixel ratio: at DPR 2 the bloom pass costs four times the pixels for no visible gain.
         dpr={[1, 1.75]}
         frameloop={live ? "always" : "demand"}
@@ -210,7 +277,9 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
       >
         <CameraRig pitch={cameraRotationX} yaw={yaw} />
         <Exposure value={params.exposure} />
-        <DevHandle />
+        <Grade fx={fx} bloom={params.bloomIntensity} saturation={saturation} particles={particles} grain={grain} />
+        <SkyWatchdog composerRef={composerRef} fx={fx} snapshot={snapshot} />
+        <DevHandle composerRef={composerRef} fx={fx} />
         {/* Preetham always draws beneath (opaque, renderOrder 0); Hosek draws over it with alpha = hosekAlpha and is unmounted once fully faded, so night costs one dome, not two. */}
         {hosekAlpha < 1 && (
           <Sky
@@ -230,15 +299,8 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
           <SunDisc sunPosition={sunPosition} brightness={params.discBrightness} deg={discDeg} />
         )}
         {starOpacity > 0.001 && <StarField opacity={starOpacity} count={SKY_RANGES.starsCount} hour={hour} />}
-        {/* The composer always mounts: the grade and the tone-mapping pass are part of the sky at every hour, not only when bloom is on. Order: bloom; the saturation grade before tone mapping, so it lifts the sky's own colour rather than the mapped result; chromatic aberration rising with particulate (zero offset when there is none), so at wildfire density the whole frame fringes toward its edges; ACES tone mapping last. EffectComposer's children must all be elements, so nothing here is conditional. */}
-        <EffectComposer>
-          <Bloom intensity={params.bloomIntensity} luminanceThreshold={0.55} luminanceSmoothing={0.35} mipmapBlur />
-          <HueSaturation saturation={saturation} />
-          <LensField level={particles} />
-          <ChromaticAberration offset={aberration} radialModulation modulationOffset={0.3} />
-          <Noise opacity={GRAIN.opacityMax * grain} blendFunction={BlendFunction.OVERLAY} premultiply />
-          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-        </EffectComposer>
+        {/* The composer always mounts: the grade and the tone-mapping pass are part of the sky at every hour, not only when bloom is on. The order is fixed where `chain` is built. */}
+        <EffectComposer ref={composerRef}>{chain}</EffectComposer>
       </Canvas>
       {groundMode === "fade" && (
         // A neutral band the sky fades into, instead of sky-below-horizon reading as fog.

@@ -1,6 +1,6 @@
 // LensFieldEffect — particulate as a refraction of the sky itself (§5.2 item 2). A screen-space field of soft lenses displaces the rendered frame beneath each one, magnifying and bending the sky, with each colour channel displaced by a slightly different amount so the warp disperses into spectrum, and a faint caustic at each rim. Nothing is drawn as an object: no geometry, so no perspective ellipses and nothing that reads as a bubble — the sky is what refracts.
 // MAPPING (PM2.5 → lens count and strength): level 0..1 from absolute PM2.5 (particleLevel); the number of active lenses and their strength rise with it. Lenses drift slowly; drift stops under prefers-reduced-motion.
-import { Effect, BlendFunction } from "postprocessing";
+import { Effect, BlendFunction, EffectAttribute } from "postprocessing";
 import { Uniform, Vector4 } from "three";
 import { PARTICLES } from "../utils/theme";
 
@@ -62,6 +62,8 @@ export class LensFieldEffect extends Effect {
     const lens = Array.from({ length: MAX }, () => new Vector4(0, 0, 0.1, 0));
     super("LensFieldEffect", fragment, {
       blendFunction: BlendFunction.NORMAL,
+      // CONVOLUTION: the shader samples inputBuffer at displaced coordinates, so it must run in a pass of its own that reads the previous pass's output. Without the attribute the composer merged it into the bloom's pass, where inputBuffer is the raw scene: the lens re-sampled that and handed on the raw pixels, discarding the bloom and the grade computed before it in the same pass. The r3f wrappers re-created effects on every change and appended each at the end of the list, so the order shuffled and bloom survived only when it happened to land after the lens — the intermittent washed-out sky (found 2026-09-15).
+      attributes: EffectAttribute.CONVOLUTION,
       uniforms: new Map<string, Uniform>([
         ["uLens", new Uniform(lens)],
         ["uLevel", new Uniform(0)],

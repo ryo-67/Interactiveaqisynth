@@ -6,7 +6,7 @@ import { EffectComposer, Bloom, HueSaturation, ChromaticAberration, Noise, ToneM
 import { ToneMappingMode, BlendFunction } from "postprocessing";
 import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3 } from "three";
 import { LensFieldEffect } from "./LensFieldEffect";
-import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT } from "../utils/theme";
+import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT, SKY_CAMERA } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
 
@@ -14,8 +14,8 @@ export type GroundMode = "above" | "fade" | "edge";
 
 // Framing rule (row 5, option (a)): only above-horizon sky in frame, at every viewport size.
 // three's `fov` is the VERTICAL field of view and does not change with aspect, so the visible vertical span is always ±FOV_DEG/2 around the camera pitch. Pitching up by half the fov puts the bottom edge exactly on the horizon; the margin pushes it just below, so the horizon sits at or under the bottom edge and never inside the frame. Being vertical-only, this holds at any aspect ratio or box height without further work.
-const FOV_DEG = 62;
-const HORIZON_MARGIN_DEG = 1.5;
+const FOV_DEG = SKY_CAMERA.fovDeg;
+const HORIZON_MARGIN_DEG = SKY_CAMERA.horizonMarginDeg;
 const ABOVE_HORIZON_PITCH_RAD = ((FOV_DEG / 2 + HORIZON_MARGIN_DEG) * Math.PI) / 180;
 // "auto" is the D-20 split: Hosek-Wilkie above the fade band, Preetham below it, cross-faded between. The two fixed values remain for the harness, so either model can be inspected alone.
 export type SkyModel = "auto" | "preetham" | "hosek";

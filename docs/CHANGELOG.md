@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The sun's path is planned on screen (D-33)
+
+A setting sun that swung toward the edge of the frame dipped and then climbed again on screen. The cause was structural: the path was chosen in azimuth and elevation but judged on screen, and the camera's rectilinear projection bends constant-elevation paths upward toward the edges. The path is now planned in the camera's own screen space: a straight line on screen while the sun is visible, which is monotonic by construction; angles while it is unseen, behind the camera or below the horizon, with the exit and entry on the frame's edge. A pure module with unit tests over the cases that failed: live 4 pm to Ozone Spike 11 pm goes down and right and out; the reverse comes in at the edge and climbs; noon to a sun behind the camera goes down and right and out without ever going over the top.
+
 ## 2026-09-15 — Presets clean to severe; the legend as an upright slider; the 50 line
 
 The presets now run Clear Day, Rush Hour, Summer Haze, Ozone Spike, Wildfire, clean to severe left to right, with Hot & Hazy renamed Summer Haze. The AQI legend is styled like the volume slider turned upright: a 4 px gradient track with a 12 px white thumb, shadow beneath and hairline border, so it reads as a control on the page's own terms rather than a coloured bar. The 50 AQI gridline had been skipped by a stale condition; every category boundary is dotted now.

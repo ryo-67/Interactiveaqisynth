@@ -1,9 +1,10 @@
 // useListenSession — the Listen page's state, shared by the typographic page (App) and the scene (ScenePage) so the two never drift: one data load, one engine, one beat report, one play toggle. Extracted from App.tsx unchanged in behavior.
 import { hourOfTs, warnOnce } from "../utils/time";
 import { sunAnglesAt, tzOffsetFromTs, type SunAngles } from "./solar";
+import { sunAlongPath } from "./sunPath";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
-import { motion, NYC_LAT, NYC_LON } from "../utils/theme";
+import { motion, NYC_LAT, NYC_LON, CAMERA_FACING } from "../utils/theme";
 import { normalize, pm25ToAQI, type PollutantAnchors } from "../engine/contour";
 import { tierIndexOf } from "../engine/scales";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
@@ -304,9 +305,8 @@ export function useListenSession(): ListenSession {
 }
 
 // The beat report says hour h has just STARTED. The clock therefore runs from h toward h+1 over the beat, so the playhead crosses each column in time with the sound and the sun glides continuously; the next report lands as it reaches h+1, and any drift between the audio clock and the frame clock is corrected there. (Easing from the previous hour TO h made the playhead arrive a full beat late, so pulse hits flashed a column ahead of the line.) Across the loop seam it runs 23 → 24 (= 0), never backward. Under reduced motion it still moves, because it is the playhead.
-// A change of day moves the sun by the shortest path (D-31, amending D-29): from where it is in the sky to where the new day's time puts it, elevation and azimuth each interpolated directly, over SUN_GLIDE_BEATS beats, ease-in-out, whatever the two times and dates. Everything the sky derives from elevation — exposure, the night blue, golden hour, the stars' visibility — follows the interpolated sun, and the clock the stars turn on takes the shortest way round too. No sunset-then-sunrise sequence: 11 am to 7 pm is one arc down and to the right; 11 pm to 3 pm is one arc up. That is the glide AT REST. While PLAYING a change of day is a cut shown as a dissolve (D-32): the target keeps moving during playback, so a glide bends toward a moving point and the sun heads off in arcs that read as arbitrary; the page fades the last rendered frame out over the new sky instead. Outside a change of day the sun is where the clock puts it, exactly — playback, and a scrub in either direction. A target that moves during the glide (playback) is re-read each frame, so the glide lands on it; a second change restarts from where the sun is.
+// A change of day moves the sun from where it is to where the new day's time puts it over SUN_GLIDE_BEATS beats, ease-in-out, along a path planned in the camera's screen space (sunPath.ts, D-33 amending D-31): straight on screen while the sun is visible, so it never reverses on screen, and in angles while it is unseen. Everything the sky derives from elevation — exposure, the night blue, golden hour, the stars' visibility — follows the interpolated sun, and the clock the stars turn on takes the shortest way round too. No sunset-then-sunrise sequence: 11 am to 7 pm is one arc down and to the right; 11 pm to 3 pm is one arc up. That is the glide AT REST. While PLAYING a change of day is a cut shown as a dissolve (D-32): the target keeps moving during playback, so a glide bends toward a moving point and the sun heads off in arcs that read as arbitrary; the page fades the last rendered frame out over the new sky instead. Outside a change of day the sun is where the clock puts it, exactly — playback, and a scrub in either direction. A target that moves during the glide (playback) is re-read each frame, so the glide lands on it; a second change restarts from where the sun is.
 const SUN_GLIDE_BEATS = 1.5;
-// Elevation straight from A to B, azimuth the short way round: the sun goes down (or up) and left or right, monotonically in both. Not the great circle between the two directions: for a morning sun and an evening sun, nearly opposite in azimuth, that arc passes over the zenith — measured 51° → 63° → 3° — and the disc rose on screen before leaving the frame.
 interface SunDay { date: string; tz: number }
 interface SunState { clock: number; sun: SunAngles | null; dissolve: number } // sun: the interpolated position during a glide, else null (the page computes it from the day and the clock). dissolve: a counter the page watches — each increment is a change of day made while playing, to be shown as a dissolve of the rendered sky rather than a glide (D-32).
 function useSunTransition(target: number, sunDay: SunDay | null, playing: boolean): SunState {
@@ -343,10 +343,8 @@ function useSunTransition(target: number, sunDay: SunDay | null, playing: boolea
       const t = Math.min(1, (now - g.start) / g.ms);
       const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       const to = sunAnglesAt(sunDay.date, targetRef.current, NYC_LAT, NYC_LON, sunDay.tz); // re-read: the target may be moving
-      const sun: SunAngles = {
-        elevationDeg: g.from.elevationDeg + (to.elevationDeg - g.from.elevationDeg) * e,
-        azimuthDeg: ((g.from.azimuthDeg + shortest(g.from.azimuthDeg, to.azimuthDeg, 360) * e) % 360 + 360) % 360,
-      };
+      // The path is planned in the camera's screen space (sunPath.ts, D-33): straight on screen while visible, angles while unseen. The sky box fills the viewport, so its aspect is the viewport's.
+      const sun = sunAlongPath(g.from, to, e, { facingDeg: CAMERA_FACING === "south" ? 180 : 0, aspect: window.innerWidth / Math.max(1, window.innerHeight) });
       const clock = ((g.fromClock + shortest(g.fromClock, targetRef.current, 24) * e) % 24 + 24) % 24;
       clockRef.current = clock;
       sunRef.current = sun;

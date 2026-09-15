@@ -284,6 +284,8 @@ export const SUN_DISC = {
 
 // Which way the scene camera faces (D-22, Shoro's ruling): south, so the sun arcs left to right across the frame. Track-sun was rejected because a centered sun has no arc. Summer noon (67° on Jun 7) sits above the frame's 63.5° top edge; only its aureole shows.
 export const CAMERA_FACING = "south" as const;
+// The scene camera (SkyView): vertical field of view and the margin that keeps the horizon just under the bottom edge. Shared with sunPath.ts, which plans a day change's sun motion in this camera's screen space.
+export const SKY_CAMERA = { fovDeg: 62, horizonMarginDeg: 1.5 } as const;
 
 // Hosek-Wilkie's ground albedo (D-20). Urban surfaces sit below 0.25 and cluster near 0.15: dark asphalt shingles measure 0.04–0.10, light concrete 0.35–0.40 fresh ageing to 0.25–0.30. Investigated as the smoke mechanism and rejected — it was never 0, and moving it barely shifts a smoke day.
 export const HOSEK_ALBEDO = 0.15;

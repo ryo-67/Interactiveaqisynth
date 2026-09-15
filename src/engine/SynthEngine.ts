@@ -5,7 +5,7 @@
 
 import * as Tone from "tone";
 import { normalize, pm25ToAQI, SmoothedAQI, melodyMidi, type PollutantAnchors } from "./contour";
-import { euclidHit, barK } from "./euclid";
+import { euclidHit, barK, barAndStep } from "./euclid";
 import { TIERS, tierIndexOf, chordMidi, midiToFreq } from "./scales";
 
 export type SourceTag = "own" | "citywide" | "typical"; // typical = live NO2 filled from the archive profile (D-18)
@@ -194,6 +194,13 @@ export class SynthEngine {
     Tone.getTransport().start("+0.05", pos);
   }
 
+  // Tone schedules callbacks ahead of the audible moment (its lookahead, ~100 ms). Anything the page draws from a callback waits for that moment, so a flash or a playhead step lands with the sound rather than before it.
+  private deferToAudible(time: number, fn: () => void): void {
+    const ms = Math.max(0, (time - Tone.now()) * 1000);
+    if (ms < 4) fn();
+    else setTimeout(fn, ms);
+  }
+
   private onBeatTick(time: number): void {
     const day = this.day;
     if (!day) return;
@@ -267,7 +274,7 @@ export class SynthEngine {
       this.melody.triggerAttackRelease(midiToFreq(melodyMidi(o3n, tier.semis, MELODY_ROOT_MIDI)), tier.melodyNoteLength, time);
     }
 
-    this.beatCallback?.({
+    this.deferToAudible(time, () => this.beatCallback?.({
       hour,
       tierIndex: this.curTier,
       scaleName: tier.scaleName,
@@ -285,7 +292,7 @@ export class SynthEngine {
       o3n,
       no2n,
       pm25nSmoothed,
-    });
+    }));
   }
 
   // Pulse (§3.2): FM percussive hit on each Euclidean step, pitched at the current chord root +1 octave so it always agrees with the bed. k = null (whole bar of missing NO2) = silence (§4.4).
@@ -295,9 +302,7 @@ export class SynthEngine {
     this.lastStepTime = time;
 
     const transport = Tone.getTransport();
-    const ticks = transport.getTicksAtTime(time);
-    const step = Math.round(ticks / (transport.PPQ / 4)) % 16;
-    const bar = Math.floor(Math.round(ticks / transport.PPQ) / 4) % 6;
+    const { bar, step } = barAndStep(transport.getTicksAtTime(time), transport.PPQ);
     const barState = this.bars[bar];
     if (!barState || barState.k == null) return;
     if (euclidHit(step, barState.k, 16, barState.rotation)) {
@@ -305,7 +310,7 @@ export class SynthEngine {
       const f = midiToFreq(this.curChordRootMidi + 12);
       this.pulse.triggerAttackRelease(f * 2, "32n", time);
       this.pulse.frequency.exponentialRampToValueAtTime(f, time + 0.03);
-      this.pulseCallback?.({ hour: bar * 4 + Math.floor(step / 4), step });
+      this.deferToAudible(time, () => this.pulseCallback?.({ hour: bar * 4 + Math.floor(step / 4), step }));
     }
   }
 }

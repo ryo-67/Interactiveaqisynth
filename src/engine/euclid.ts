@@ -14,3 +14,9 @@ export function barK(no2nValues: ReadonlyArray<number | null>): number | null {
   const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
   return Math.min(11, Math.max(3, Math.round(3 + 8 * mean)));
 }
+
+// Where the transport is, as a bar and a sixteenth step, from its tick count. The step is rounded to the nearest sixteenth (the scheduler fires a hair early or late); the bar is then derived FROM THE STEP, never from a separately rounded beat — rounding the beat put the last two sixteenths of every bar into the next bar, so they played the next bar's pattern and reported the next bar's hour.
+export function barAndStep(ticks: number, ppq: number, bars = 6): { bar: number; step: number } {
+  const stepAbs = Math.round(ticks / (ppq / 4));
+  return { bar: Math.floor(stepAbs / 16) % bars, step: stepAbs % 16 };
+}

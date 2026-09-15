@@ -118,14 +118,15 @@ export function themeColors(theme: Theme) {
 // Five-tier color, keyed by tier index (Easy → Suffocating), carried from the v1 palette (D-19 pending none — Shoro confirmed these hues 2026-08-27). The hue appears on exactly four things: mood word (full), O3 line and playhead (medium), pins (subtle, 3b). Everything else is the text hierarchy on the ground.
 export const TIER_COLORS = ["#68d89b", "#e8cf6a", "#e89b6a", "#e86a6a", "#b06ae8"] as const;
 
-// The standard AQI categories (EPA, six), D-23: the graph's AQI line and its legend use these, because visitors read AQI tools against this palette. The five tier colours above remain the piece's own voice on the mood word. Names live in content.ts.
+// The standard AQI categories (EPA, six), D-23: the graph's AQI line and its legend use these, because visitors read AQI tools against this palette. The five tier colours above remain the piece's own voice on the mood word.
+// The colours are the standard hues lifted to pass WCAG 1.4.11 (≥ 3:1 for graphics) against the dark panel (#0e0e1c, the hard case). The standard values fail for the top two: Very Unhealthy #8f3f97 is 3.0:1 and Hazardous #7e0023 is 1.7:1. Measured: Good 11.0, Moderate 17.8, USG 8.2, Unhealthy 6.3, Very Unhealthy 7.3, Hazardous 6.3.
 export const AQI_CATEGORIES = [
   { max: 50, color: "#00e400" },
   { max: 100, color: "#ffff00" },
-  { max: 150, color: "#ff7e00" },
-  { max: 200, color: "#ff0000" },
-  { max: 300, color: "#8f3f97" },
-  { max: 500, color: "#7e0023" },
+  { max: 150, color: "#ff8c1a" },
+  { max: 200, color: "#ff5c5c" },
+  { max: 300, color: "#c48ae0" },
+  { max: 500, color: "#e0708e" },
 ] as const;
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
@@ -278,6 +279,17 @@ export const SKY_GRADE = {
   saturation: 0.35, // postprocessing HueSaturation: 0 = as rendered, 1 = fully saturated
   // Under smoke the blue is absorbed before it reaches the eye, so the grade must not put it back: the sky beneath a full plume is DESATURATED (negative), otherwise orange screened over saturated blue comes out muddy purple. Blended by the smoke regime.
   saturationUnderSmoke: -0.5,
+} as const;
+
+// Floating particulate (§5.2 item 2): points drifting in the near field, count and opacity from normalized PM2.5. Size will come from PM10 once it is a channel (DAT-13); until then it is fixed. Drift stops under prefers-reduced-motion (§5.4).
+export const PARTICLES = {
+  max: 700,
+  sizePx: 2.4,
+  opacityMax: 0.6,
+  curve: 0.7,          // opacity ∝ density^curve
+  fallPerSec: 0.35,    // world units per second, downward
+  swayPerSec: 0.25,
+  box: 24,             // half-size of the cube of particles around the camera, world units
 } as const;
 
 // Night (D-20 addendum): the analytic models go dark and neutral with the sun down, but a clear night sky reads deep blue — skyglow, airglow and the eye's own shift. A blue gradient is screened over the sky from sunset to −6° (civil twilight's end) and held through the night; particulate damps it, because a hazy night is grey-orange, not blue. FIRST PASS — the harness has a strength slider.

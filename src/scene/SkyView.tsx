@@ -1,11 +1,11 @@
 // SkyView — one physically based sky, rendered with the real drei <Sky>, <Stars>, and postprocessing <Bloom>. Used by the /scene-test harness and (next sprint) by the scene itself. Static: no engine, no clock; the caller passes the hour.
 import React, { useLayoutEffect, useMemo } from "react";
-import { Canvas, useThree, invalidate } from "@react-three/fiber";
+import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { EffectComposer, Bloom, HueSaturation, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector3 } from "three";
-import { SKY_RANGES, SUN_DISC, SKY_GRADE, NYC_LAT } from "../utils/theme";
+import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, NYC_LAT } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
 
@@ -35,6 +35,8 @@ interface Props {
   discDeg?: number;
   // Saturation grade on the sky (SKY_GRADE.saturation); the harness overrides it.
   saturation?: number;
+  // Floating particulate density, 0..1 (normalized PM2.5).
+  particles?: number;
   // Local hour (fractional) for the star field's rotation. Stars turn about the celestial pole 15° an hour, so facing south they rise on the left and set on the right; continuous across midnight.
   hour?: number;
 
@@ -95,6 +97,40 @@ function StarField({ opacity, count, hour }: { opacity: number; count: number; h
         <pointsMaterial size={1.6} sizeAttenuation={false} color="#ffffff" transparent opacity={opacity} depthWrite={false} blending={AdditiveBlending} toneMapped={false} />
       </points>
     </group>
+  );
+}
+
+// MAPPING (PM2.5 → floating particulate): a cube of points around the camera, seeded once, falling and swaying slowly; opacity ∝ density^curve, so a clear day shows nothing and a heavy one fills the near field. They live in the scene, so the composer's grade, bloom and tone mapping treat them as part of the sky, and the plume above veils them like everything else.
+const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+function ParticleField({ density }: { density: number }) {
+  const geometry = useMemo(() => {
+    const rnd = mulberry32(19730607);
+    const n = PARTICLES.max, b = PARTICLES.box;
+    const pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { pos[i * 3] = (rnd() * 2 - 1) * b; pos[i * 3 + 1] = (rnd() * 2 - 1) * b; pos[i * 3 + 2] = (rnd() * 2 - 1) * b; }
+    const g = new BufferGeometry();
+    g.setAttribute("position", new Float32BufferAttribute(pos, 3));
+    return g;
+  }, []);
+  const phase = useMemo(() => { const rnd = mulberry32(7); return Float32Array.from({ length: PARTICLES.max }, () => rnd() * Math.PI * 2); }, []);
+  useFrame((state, dt) => {
+    if (REDUCED_MOTION) return;
+    const attr = geometry.getAttribute("position") as Float32BufferAttribute;
+    const a = attr.array as Float32Array;
+    const b = PARTICLES.box, t = state.clock.elapsedTime;
+    for (let i = 0; i < PARTICLES.max; i++) {
+      a[i * 3 + 1] -= PARTICLES.fallPerSec * dt;
+      a[i * 3] += Math.sin(t * 0.6 + phase[i]) * PARTICLES.swayPerSec * dt;
+      if (a[i * 3 + 1] < -b) a[i * 3 + 1] += 2 * b;
+      if (a[i * 3] > b) a[i * 3] -= 2 * b; else if (a[i * 3] < -b) a[i * 3] += 2 * b;
+    }
+    attr.needsUpdate = true;
+  });
+  const opacity = PARTICLES.opacityMax * Math.pow(Math.max(0, Math.min(1, density)), PARTICLES.curve);
+  return (
+    <points geometry={geometry} renderOrder={1} frustumCulled={false}>
+      <pointsMaterial size={PARTICLES.sizePx} sizeAttenuation={false} color="#ffffff" transparent opacity={opacity} depthWrite={false} toneMapped={false} />
+    </points>
   );
 }
 
@@ -159,7 +195,7 @@ function Exposure({ value }: { value: number }) {
   return null;
 }
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation }: Props) {
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0 }: Props) {
   // Sun elevation and azimuth from the vector itself, so every caller that already passes a sun position gets the fade and the facing for free.
   const len = Math.hypot(...sunPosition) || 1;
   const sunElevationDeg = (Math.asin(Math.max(-1, Math.min(1, sunPosition[1] / len))) * 180) / Math.PI;
@@ -203,6 +239,7 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
           <SunDisc sunPosition={sunPosition} brightness={params.discBrightness} deg={discDeg} />
         )}
         {starOpacity > 0.001 && <StarField opacity={starOpacity} count={SKY_RANGES.starsCount} hour={hour} />}
+        {particles > 0.02 && <ParticleField density={particles} />}
         {/* The composer always mounts: the grade and the tone-mapping pass are part of the sky at every hour, not only when bloom is on. */}
         <EffectComposer>
           <Bloom

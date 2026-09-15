@@ -32,7 +32,7 @@ function tabFromUrl(): TrackKey {
 
 export default function ScenePage() {
   const s = useListenSession();
-  const { day, beat, playing, channels, latest } = s;
+  const { day, beat, playing, paused, channels, latest } = s;
   const hour = s.playheadHour; // the one clock: sun, playhead and graph all read it
 
   const [tab, setTab] = useState<TrackKey>(tabFromUrl);
@@ -75,7 +75,7 @@ export default function ScenePage() {
       <div style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars }}>
         {/* The scene: renders continuously while playing, on demand at rest. */}
         <div style={{ position: "absolute", inset: 0 }}>
-          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} saturation={view.saturation} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} saturation={view.saturation} particles={view.smoke} live={playing} style={{ width: "100%", height: "100%" }} />
           <NightLayer blend={view.night} density={view.smoke} />
           <SmokeLayer density={view.smoke} pm25={view.pm25} />
         </div>
@@ -107,7 +107,8 @@ export default function ScenePage() {
                 <Graph
                   day={day}
                   anchors={s.anchors}
-                  playheadHour={playing ? hour : null}
+                  playheadHour={playing || paused ? hour : null}
+                  running={playing}
                   live={s.live}
                   tab={tab}
                   onTab={setTab}

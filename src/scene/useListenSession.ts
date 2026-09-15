@@ -21,6 +21,8 @@ export interface ListenSession {
   dayLoading: boolean;
   // ONE clock for everything that moves with the phrase: the beat's integer hour eased over one beat (§5.4), wrapping forward at the loop seam. The sun, the playhead and every graph track read this and nothing else.
   playheadHour: number;
+  // True after a pause: the phrase is held at playheadHour rather than at rest.
+  paused: boolean;
   snapshot: CurrentSnapshot | null;
   anchors: PollutantAnchors; // the engine's anchors (falls back to Queens 2023 until the borough's land)
   day: Day | null;
@@ -118,14 +120,12 @@ export function useListenSession(): ListenSession {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day, borough, devDayKey, date]);
 
+  // Pause, not stop: the transport holds its position and the last beat report stays, so the page shows where it paused and play resumes from there.
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
     if (playing) void engine.play();
-    else {
-      engine.stop();
-      setBeat(null);
-    }
+    else engine.pause();
   }, [playing]);
 
   useEffect(() => {
@@ -180,7 +180,8 @@ export function useListenSession(): ListenSession {
       ? tierIndexOf(pm25ToAQI(Math.max(0, latest.reading.pm25))!)
       : 0;
   const moodHour = beat ? beat.hour : (latest?.hour ?? 0);
-  const playheadHour = useEasedHour(beat ? beat.hour : (latest?.hour ?? 12));
+  const playheadHour = useEasedHour(beat ? beat.hour : (latest?.hour ?? 12), playing);
+  const paused = !playing && beat != null;
   const channels = beat
     ? { pm25: beat.pm25n, o3: beat.o3n, no2: beat.no2n }
     : latest
@@ -200,16 +201,17 @@ export function useListenSession(): ListenSession {
   })();
 
   return {
-    borough, setBorough, date, setDate, dayLoading, playheadHour,
+    borough, setBorough, date, setDate, dayLoading, playheadHour, paused,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, latest, moodTier, moodHour, dominant, channels, devDayKey, setDevDayKey,
   };
 }
 
 // The beat report says hour h has just STARTED. The clock therefore runs from h toward h+1 over the beat, so the playhead crosses each column in time with the sound and the sun glides continuously; the next report lands as it reaches h+1, and any drift between the audio clock and the frame clock is corrected there. (Easing from the previous hour TO h made the playhead arrive a full beat late, so pulse hits flashed a column ahead of the line.) Across the loop seam it runs 23 → 24 (= 0), never backward. Under reduced motion it still moves, because it is the playhead.
-function useEasedHour(target: number): number {
+function useEasedHour(target: number, running: boolean): number {
   const [value, setValue] = useState(target);
   useEffect(() => {
+    if (!running) return; // paused: hold the current value; a fresh play resumes the run from the next beat report
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
@@ -220,6 +222,6 @@ function useEasedHour(target: number): number {
     setValue(target % 24);
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target]);
+  }, [target, running]);
   return value;
 }

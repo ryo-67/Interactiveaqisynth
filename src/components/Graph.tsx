@@ -16,13 +16,14 @@ interface Props {
   day: Day;
   anchors: PollutantAnchors;
   playheadHour: number | null; // eased, fractional; null = at rest
+  running: boolean; // playing: animate; paused: draw the held playhead once
   live: boolean;
   tab: TrackKey;
   onTab: (t: TrackKey) => void;
   onToggle: () => void; // tap the graph to play or pause
 }
 
-export function Graph({ day, anchors, playheadHour, live, tab, onTab, onToggle }: Props) {
+export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, onToggle }: Props) {
   const theme = useTheme();
   const c = themeColors(theme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -30,7 +31,7 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, onToggle }
   // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
   const playheadRef = useRef<number | null>(playheadHour);
   playheadRef.current = playheadHour;
-  const playing = playheadHour != null;
+  const playing = running && playheadHour != null;
 
   const series = useMemo(() => ({
     aqi: pmToAQISeries(day),
@@ -240,7 +241,7 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, onToggle }
     const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); draw(); });
     ro.observe(wrap);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, [series, day, playing, live, tab, c]);
+  }, [series, day, playing, live, tab, c, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
 
   return (
     <div ref={wrapRef} style={{ width: "100%" }}>

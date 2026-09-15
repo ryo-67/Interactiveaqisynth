@@ -178,10 +178,22 @@ export class SynthEngine {
 
   async play(): Promise<void> {
     await this.init();
-    if (!this.day || Tone.getTransport().state === "started") return;
+    const transport = Tone.getTransport();
+    if (!this.day || transport.state === "started") return;
+    // Resume from a pause: the transport still holds its position, the smoothers their state — the phrase picks up where it paused.
+    if (transport.state === "paused") {
+      this.lastBeatTime = this.lastStepTime = -1;
+      transport.start("+0.05");
+      return;
+    }
     this.smoother.reset();
     this.hazeSmoother.reset();
     this.startTransport();
+  }
+
+  // Pause holds the position (Tone's pause keeps it; stop would reset to 0), so play() resumes from the same beat.
+  pause(): void {
+    Tone.getTransport().pause();
   }
 
   stop(): void {

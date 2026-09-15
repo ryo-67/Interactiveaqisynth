@@ -129,9 +129,9 @@ export const AQI_CATEGORIES = [
   { max: 100, color: "#ffff00", text: "#ffff00" },
   { max: 150, color: "#ff8c1a", text: "#ff8c1a" },
   { max: 200, color: "#ff5c5c", text: "#ff7878" }, // unhealthy: the word one step lighter, 3.06:1 on the noon panel
-  // The display ramp's top: the EPA purple and maroon (0.12 and 0.05 luminance) read as black next to the bright four below; these are the same hues fully saturated at 0.25 and 0.24, so the top of the scale carries its contrast against the frost as the lower colours do, and the change from red is a change of hue rather than a fall into dark (2026-09-15).
-  { max: 300, color: "#b45cff", text: "#b98cff" }, // very unhealthy: saturated violet; the word a lavender of that hue, 3.08:1
-  { max: 500, color: "#ff2e63", text: "#ff7a94" }, // hazardous: saturated crimson; the word its hue at 0.37 luminance, 3.16:1
+  // The display ramp's top: set for 3:1 (AA for graphics) on the smoke-day panel, the darkest warm frost the scene makes, measured composited at (130, 69, 33), luminance 0.095: a line there needs 0.385. The EPA purple and maroon (0.12, 0.05) and the saturated #b45cff/#ff2e63 (0.25, 0.24) all sat under it and read washed out against the orange. These are the same hues at 0.41: violet 3.2:1, crimson 3.1:1 there (2026-09-15). The top two words take the same colours: the earlier text ramp measured 2.9:1 on that hero.
+  { max: 300, color: "#cc94ff", text: "#cc94ff" }, // very unhealthy: violet at 0.41 luminance
+  { max: 500, color: "#ff85a0", text: "#ff85a0" }, // hazardous: crimson at 0.41 luminance
 ] as const;
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.

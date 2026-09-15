@@ -111,11 +111,10 @@ export function useListenSession(): ListenSession {
         return;
       }
       const a = await getAnchors(borough);
-      // A borough switch keeps the phrase position; a chosen day restarts it from hour 0.
-      const keepPosition = prevBoroughRef.current !== borough && prevDateRef.current === date;
+      // Any switch — borough or day — keeps the phrase position: the music does not stop, the next beat reads the new air (§2.1, §2.2).
       prevBoroughRef.current = borough;
       prevDateRef.current = date;
-      engine.setDay(day, a, { keepPosition });
+      engine.setDay(day, a, { keepPosition: true });
       setAnchors(a);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

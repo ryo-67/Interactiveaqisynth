@@ -141,7 +141,9 @@ export const GRAPH = {
   axisHeight: 22,
   labelGutter: 6,
   lineWidth: { aqi: 2.5, channel: 1.75 },
-  // The AQI scale bar at the left of the AQI tab: the standard category colours as a vertical gradient on the line's own y-scale, marker at the current value.
+  // AQI's y-scale is fixed so the line never rescales between days and the bar beside it is always the same ruler. 300 is the top of Very Unhealthy; hours above it ride the top edge (Jun 7's peak does).
+  aqiScaleMax: 300,
+  // The AQI scale bar at the right of the AQI tab: the standard category colours as one smooth vertical gradient on that scale, marker at the current value.
   scaleBarWidth: 14,
   scaleBarGap: 8,
   scaleBarMarker: 4,
@@ -263,17 +265,15 @@ export const SKY_RANGES = {
 export const GLASS = {
   blur: "18px",
   saturate: "1.6",
-  // Two tones, chosen by the clock (D-24): light material with dark text in daylight, dark material with light text at night, switching at the middle of the sky's own dusk fade so every panel changes together and consistently. Per-panel pixel sampling was tried and rejected: it answered late and each panel switched on its own. Fill alpha is set so text holds AA at the worst case for each tone — white text on a white sky through the dark fill: 255·(1−0.62)+10·0.62 ≈ 103 → 4.9:1 against the 0.9-alpha primary; dark text on a black sky through the light fill is the mirror.
+  // One neutral surface at every hour (D-25): a dark translucent fill with light text. Fill alpha is set by the worst case, white text on a white sky: 255·(1−0.62)+10·0.62 ≈ 103 luminance → 4.9:1 against the 0.9-alpha primary, so AA holds under any sky without a tone switch. Adaptive tones (D-24) were tried and dropped as unnecessary.
   fillAlpha: 0.62,
-  fillDark: "10, 10, 22",
-  fillLight: "255, 255, 255",
+  fill: "10, 10, 22",
   edgeAlpha: 0.35,
   // Frosted (the content material): heavier blur and a touch more fill than the control material.
   frostedBlur: "28px",
   frostedFillAlpha: 0.7,
-  transitionMs: 140,
-  // prefers-reduced-transparency: both materials go frosted-opaque
-  fillAlphaOpaque: 0.85,
+  // prefers-reduced-transparency: the material goes opaque enough to read without the scene
+  fillAlphaOpaque: 0.9,
   blurOpaque: "36px",
 } as const;
 

@@ -1382,41 +1382,29 @@ html {
   }
 }
 
-/* ——— Glass material (STRATEGY §5.3), parameters from theme.ts GLASS via custom properties set at the scene root. Two materials (glass, frosted) × two tones (dark, light); the tone follows the sky under the panel. Fallbacks per §5.4 below are part of the material. ——— */
+/* ——— Glass material (STRATEGY §5.3, D-25): one neutral translucent surface, parameters from theme.ts GLASS via custom properties set at the scene root. Two materials: glass (controls) and frosted (content). Fallbacks per §5.4 below are part of the material. ——— */
 .glass {
   backdrop-filter: blur(var(--glass-blur, 18px)) saturate(var(--glass-saturate, 1.6));
   -webkit-backdrop-filter: blur(var(--glass-blur, 18px)) saturate(var(--glass-saturate, 1.6));
-  border-radius: 999px;
-  transition: background-color var(--glass-transition, 260ms) ease, box-shadow var(--glass-transition, 260ms) ease, color var(--glass-transition, 260ms) ease;
-  box-sizing: border-box;
-  max-width: 100%;
-}
-.glass.dark {
-  background-color: rgba(var(--glass-fill-dark, 10, 10, 22), var(--glass-fill-alpha, 0.62));
+  background-color: rgba(var(--glass-fill, 10, 10, 22), var(--glass-fill-alpha, 0.62));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, var(--glass-edge-alpha, 0.35)),
     inset 0 -1px 0 rgba(0, 0, 0, 0.12),
     0 8px 32px rgba(0, 0, 0, 0.18);
-}
-.glass.light {
-  background-color: rgba(var(--glass-fill-light, 255, 255, 255), var(--glass-fill-alpha, 0.62));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.08),
-    0 8px 32px rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 .glass.frosted {
   backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
   -webkit-backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
+  background-color: rgba(var(--glass-fill, 10, 10, 22), var(--frosted-fill-alpha, 0.7));
   border-radius: 20px;
 }
-.glass.frosted.dark { background-color: rgba(var(--glass-fill-dark, 10, 10, 22), var(--frosted-fill-alpha, 0.7)); }
-.glass.frosted.light { background-color: rgba(var(--glass-fill-light, 255, 255, 255), var(--frosted-fill-alpha, 0.7)); }
 
 /* prefers-reduced-transparency: the material goes frosted-opaque enough to read without the scene */
 @media (prefers-reduced-transparency: reduce) {
-  .glass.dark, .glass.frosted.dark { background-color: rgba(30, 30, 40, var(--glass-fill-alpha-opaque, 0.9)); }
-  .glass.light, .glass.frosted.light { background-color: rgba(246, 244, 240, var(--glass-fill-alpha-opaque, 0.9)); }
+  .glass, .glass.frosted { background-color: rgba(30, 30, 40, var(--glass-fill-alpha-opaque, 0.9)); }
   .glass {
     backdrop-filter: blur(var(--glass-blur-opaque, 36px));
     -webkit-backdrop-filter: blur(var(--glass-blur-opaque, 36px));
@@ -1425,8 +1413,7 @@ html {
 
 /* prefers-contrast: near-solid panel with a contrasting border */
 @media (prefers-contrast: more) {
-  .glass.light, .glass.frosted.light { background-color: rgba(255, 255, 255, 0.96); border: 1px solid rgba(0, 0, 0, 0.9); }
-  .glass.dark, .glass.frosted.dark { background-color: rgba(0, 0, 0, 0.94); border: 1px solid rgba(255, 255, 255, 0.9); }
+  .glass, .glass.frosted { background-color: rgba(0, 0, 0, 0.94); border: 1px solid rgba(255, 255, 255, 0.9); }
   .glass {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

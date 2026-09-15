@@ -134,7 +134,7 @@ export class SynthEngine {
   }
 
   // Precompute per-bar Euclidean state from the day's NO2. Rotation = bar-start hour mod 16 (§3.5).
-  // keepPosition (borough switch, §2.1): the phrase continues from the current beat in the new day — same hour, different air. Without it (dev select, timeline scrub) the phrase restarts at the start hour.
+  // keepPosition (borough or day switch, §2.1/§2.2): the phrase continues from the current beat in the new day — same hour, different air. The transport is NOT stopped and restarted: the next beat simply reads the new day, and the tier and haze smoothers carry their state so the sound glides to the new values over the next beats (α = 0.3) instead of cutting. Without keepPosition (dev fixture select) the phrase restarts at the start hour with fresh smoothers.
   setDay(day: Day, anchors?: PollutantAnchors, opts?: { keepPosition?: boolean }): void {
     if (anchors) this.anchors = anchors;
     this.day = day;
@@ -145,13 +145,13 @@ export class SynthEngine {
     }
     const transport = Tone.getTransport();
     const wasPlaying = transport.state === "started";
-    const heldPosition = opts?.keepPosition ? transport.position.toString() : null;
+    if (wasPlaying && opts?.keepPosition) return;
     transport.stop();
-    this.smoother.reset(); // new day (or new borough's air) = new seed; within a day the state carries across the wrap
+    this.smoother.reset(); // a restart is a new seed; within a day the state carries across the wrap
     this.hazeSmoother.reset();
     if (wasPlaying) {
       this.lastBeatTime = this.lastStepTime = -1;
-      transport.start("+0.05", heldPosition ?? `${Math.floor(this.startHour / 4)}:${this.startHour % 4}:0`);
+      transport.start("+0.05", `${Math.floor(this.startHour / 4)}:${this.startHour % 4}:0`);
     }
   }
 

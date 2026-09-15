@@ -3,10 +3,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { SkyView, type CameraFacing } from "./SkyView";
 import { SmokeLayer } from "./SmokeLayer";
-import { skyParamsFor, starOpacity, daylightBlend } from "./skyParams";
+import { skyParamsFor, starOpacity } from "./skyParams";
 import { sunAnglesAt, sunPositionVector, tzOffsetFromTs } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
-import { Glass, type GlassTone } from "../components/Glass";
+import { Glass } from "../components/Glass";
 import { Transport } from "../components/Transport";
 import { BoroughToggle } from "../components/BoroughToggle";
 import { AQINumber } from "../components/AQINumber";
@@ -50,9 +50,7 @@ export default function ScenePage() {
     const params = skyParamsFor(channels.pm25, channels.o3, ang.elevationDeg);
     // MAPPING (PM2.5 → plume density): the engine's own smoothed value while playing (§5.2: the scene never re-derives the smoothing); the latest hour's normalized value at rest.
     const smoke = beat?.pm25nSmoothed ?? channels.pm25 ?? 0;
-    // MAPPING (clock → glass tone, D-24): light material in daylight, dark at night, switching at the middle of the same dusk band the sky models cross-fade over.
-    const tone: GlassTone = daylightBlend(ang.elevationDeg) >= 0.5 ? "light" : "dark";
-    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke, tone };
+    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, channels.pm25), smoke };
   }, [day, hour, channels.pm25, channels.o3, beat?.pm25nSmoothed]);
 
   const lastTs = day?.[day.length - 1]?.ts ?? null;
@@ -61,10 +59,9 @@ export default function ScenePage() {
 
   // Glass parameters as custom properties, once, at the root (§5.6: theme.ts is the source of truth; index.css reads these).
   const glassVars = {
-    "--glass-blur": GLASS.blur, "--glass-saturate": GLASS.saturate, "--glass-fill-alpha": String(GLASS.fillAlpha),
-    "--glass-fill-dark": GLASS.fillDark, "--glass-fill-light": GLASS.fillLight,
+    "--glass-blur": GLASS.blur, "--glass-saturate": GLASS.saturate, "--glass-fill-alpha": String(GLASS.fillAlpha), "--glass-fill": GLASS.fill,
     "--glass-edge-alpha": String(GLASS.edgeAlpha), "--glass-fill-alpha-opaque": String(GLASS.fillAlphaOpaque), "--glass-blur-opaque": GLASS.blurOpaque,
-    "--frosted-blur": GLASS.frostedBlur, "--frosted-fill-alpha": String(GLASS.frostedFillAlpha), "--glass-transition": `${GLASS.transitionMs}ms`,
+    "--frosted-blur": GLASS.frostedBlur, "--frosted-fill-alpha": String(GLASS.frostedFillAlpha),
   } as React.CSSProperties;
 
   return (
@@ -79,15 +76,15 @@ export default function ScenePage() {
         {/* Panels: one centered column over the scene (§5.7). The column itself passes pointer events through to nothing; only the panels catch them. */}
         <div style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", pointerEvents: "none" }}>
           <div style={{ maxWidth: "720px", margin: "0 auto", padding: `${space.md} ${space.md} calc(${space.xl} + env(safe-area-inset-bottom))`, display: "flex", flexDirection: "column", gap: space.md, minWidth: 0 }}>
-            <Glass tone={view.tone} material="glass" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}`, borderRadius: 20 }}>
+            <Glass material="glass" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}`, borderRadius: 20 }}>
               <BoroughToggle selected={s.borough} onSelect={s.setBorough} dateLabel={dateLabel} hourLabel={hourLabel} status={s.live ? STATUS_LIVE : STATUS_ARCHIVE} />
             </Glass>
 
-            <Glass tone={view.tone} material="glass" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}`, borderRadius: 20 }}>
+            <Glass material="glass" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}`, borderRadius: 20 }}>
               <DayNav date={s.date} onChange={s.setDate} loading={s.dayLoading} />
             </Glass>
 
-            <Glass tone={view.tone} material="frosted" style={{ pointerEvents: "auto", width: "100%", padding: `${space.lg} ${space.lg} ${space.md}` }}>
+            <Glass material="frosted" style={{ pointerEvents: "auto", width: "100%", padding: `${space.lg} ${space.lg} ${space.md}` }}>
               <AQINumber value={s.displayAqi} />
               <div style={{ marginTop: space.md }}>
                 <MoodLine tierIndex={s.moodTier} hour={s.moodHour} dominant={s.dominant} />
@@ -95,7 +92,7 @@ export default function ScenePage() {
             </Glass>
 
             {day && day.length > 0 && (
-              <Glass tone={view.tone} material="frosted" style={{ pointerEvents: "auto", width: "100%", padding: space.md }}>
+              <Glass material="frosted" style={{ pointerEvents: "auto", width: "100%", padding: space.md }}>
                 <Graph
                   day={day}
                   anchors={s.anchors}
@@ -109,12 +106,12 @@ export default function ScenePage() {
               </Glass>
             )}
 
-            <Glass tone={view.tone} material="glass" style={{ pointerEvents: "auto", alignSelf: "flex-start" }}>
+            <Glass material="glass" style={{ pointerEvents: "auto", alignSelf: "flex-start" }}>
               <Transport playing={playing} onToggle={s.togglePlay} onVolume={s.setVolume} />
             </Glass>
 
             {day && day.length > 0 && (
-              <Glass tone={view.tone} material="frosted" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}` }}>
+              <Glass material="frosted" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}` }}>
                 <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} />
               </Glass>
             )}

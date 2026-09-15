@@ -226,6 +226,19 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           ctx.lineTo(x1, yFor(b));
           ctx.stroke();
         }
+        // Trailing hours not yet reported (a live channel AirNow has not published for the newest hours) hold the last value as a dotted flat line to the right edge: the line does not simply stop, and the dots say "not yet" rather than "zero".
+        let lastIdx = -1;
+        for (let i = n - 1; i >= 0; i--) if (vals[i] != null) { lastIdx = i; break; }
+        if (lastIdx >= 0 && lastIdx < n - 1) {
+          const v = vals[lastIdx]!;
+          const y = yFor(v);
+          ctx.save();
+          ctx.setLineDash([2, 4]);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = t === "aqi" ? aqiScaleColor(v) : c.textMuted;
+          ctx.beginPath(); ctx.moveTo(plotX + lastIdx * colW, y); ctx.lineTo(plotRight, y); ctx.stroke();
+          ctx.restore();
+        }
         // Isolated points (a reporting hour between two nulls) still show.
         for (let i = 0; i < n; i++) {
           const v = vals[i];

@@ -261,19 +261,19 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const cv = hi >= 0 ? norm[hi] : null;
           if (cv != null && alpha[hi] > 0.005) {
             // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. On the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base on the column's outer edge.
-            // Drawn in the glass vocabulary: a translucent light fill, a soft shadow cast down and right, a fine edge, and a brighter top edge where the light catches it — the chips' inset highlight, in miniature.
+            // Drawn to the volume slider's knob recipe (index.css .scene-volume): an opaque white fill, lit from above, with a soft shadow beneath and a hairline edge. One fill, one shadow: strokes over an anti-aliased fill this small doubled its outline.
             ctx.globalAlpha = cur.isAqi * alpha[hi];
             const my = yOf(cv);
             const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX + trackW + GRAPH.scaleCaretGap;
             const caret = () => { ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.lineTo(tipX + d, my + h / 2); ctx.closePath(); };
+            const knob = ctx.createLinearGradient(0, my - h / 2, 0, my + h / 2);
+            knob.addColorStop(0, "#ffffff"); knob.addColorStop(1, "#ececf2");
             ctx.save();
-            ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1.5;
-            ctx.fillStyle = "rgba(255,255,255,0.55)";
+            ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 1;
+            ctx.fillStyle = knob;
             caret(); ctx.fill();
             ctx.restore();
-            ctx.lineWidth = 1; ctx.lineJoin = "round";
-            ctx.strokeStyle = "rgba(255,255,255,0.7)"; caret(); ctx.stroke(); // the edge
-            ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.stroke(); // the lit top edge
+            ctx.lineWidth = 0.5; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(0,0,0,0.14)"; caret(); ctx.stroke(); // the hairline edge
           }
           ctx.restore();
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();

@@ -190,19 +190,16 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const cur = hi >= 0 ? vals[hi] : null;
           if (cur != null) {
             // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. The primary text colour, on the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base lands on the column's outer edge.
-            // Drawn as a small glass element: the chip's light fill, a soft shadow beneath and a hairline border.
+            // Drawn as a small glass element: the chip's light fill and a soft shadow.
             const my = yFor(cur);
             const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX + trackW + GRAPH.scaleCaretGap;
             const caret = () => { ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.lineTo(tipX + d, my + h / 2); ctx.closePath(); };
+            // A shadow, not a border: the caret is lit from above like the glass chips, so it casts down and right and has no dark outline.
             ctx.save();
-            ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
+            ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
             ctx.fillStyle = "rgba(255,255,255,0.92)";
             caret(); ctx.fill();
             ctx.restore();
-            ctx.strokeStyle = "rgba(0,0,0,0.25)";
-            ctx.lineWidth = 1;
-            ctx.lineJoin = "round";
-            caret(); ctx.stroke();
           }
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
         }
@@ -415,7 +412,9 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
   return (
     <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
       {/* The tabs are a header band across the panel, not chips floating over the plot: pulled out to the panel's edges (the panel's padding is --graph-pad), a hairline along its bottom, the active tab's underline sitting on that hairline, tabs abutting with their own padding so the first label lines up with the panel's padding. */}
-      <div role="tablist" style={{ display: "flex", flex: "0 0 auto", gap: 0, height: `var(--ctl-inner, ${CONTROL.inner}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad, 20px)) ${GRAPH.tabsGap}px`, padding: `0 calc(var(--graph-pad, 20px) - ${GRAPH.tabPad}px)`, borderBottom: `1px solid ${c.textFaint}`, overflowX: "auto", whiteSpace: "nowrap", boxSizing: "content-box" }}>
+      <div role="tablist" style={{ position: "relative", display: "flex", flex: "0 0 auto", gap: 0, height: `var(--ctl-inner, ${CONTROL.inner}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad, 20px)) ${GRAPH.tabsGap}px`, padding: `0 calc(var(--graph-pad, 20px) - ${GRAPH.tabPad}px)`, overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", boxSizing: "content-box", scrollbarWidth: "none" }}>
+        {/* The hairline is inside the band, on its bottom edge, so the tabs (the band's full height, underline at their bottom) never overflow it: the band cannot scroll vertically, and the active underline sits exactly on the line. */}
+        <span aria-hidden style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 1, background: c.textFaint, pointerEvents: "none" }} />
         {TRACK_ORDER.map((t) => {
           const active = t === tab;
           return (
@@ -428,7 +427,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
                 fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: 1, cursor: "pointer",
                 color: active ? c.textPrimary : c.textMuted,
                 background: "none", border: "none", borderBottom: `2px solid ${active ? c.textPrimary : "transparent"}`,
-                height: `calc(var(--ctl-inner, ${CONTROL.inner}px) + 1px)`, marginBottom: -1, boxSizing: "border-box", padding: `0 ${GRAPH.tabPad}px`, flex: "0 0 auto",
+                height: "100%", boxSizing: "border-box", padding: `0 ${GRAPH.tabPad}px`, flex: "0 0 auto", position: "relative",
               }}
             >
               {TRACK_LABELS[t]}{TRACK_UNITS[t] ? ` ${TRACK_UNITS[t]}` : ""}

@@ -171,8 +171,8 @@ export const GRAPH = {
   aqiScaleMax: 500,
   // The AQI scale bar at the right of the AQI tab: the standard category colours as one smooth vertical gradient on that scale, marker at the current value.
   axisGutterPad: 4, // around the y-axis values in the left gutter
-  tabPad: 12, // a tab's side padding; the band's own padding is the panel's padding minus this, so the first label sits on the panel's padding line
-  tabsGap: 12, // between the band's hairline and the plot
+  tabPad: 16, // a tab's side padding; the band's own padding is the panel's padding minus this, so the first label sits on the panel's padding line (12 read as too tight, 2026-09-15)
+  tabsGap: 16, // between the band's hairline and the plot
   scaleBarWidth: 16, // the legend's column
   scaleTrackWidth: 4, // the gradient track inside it, like the volume slider's track turned upright (2026-09-15)
   scaleBarGap: 8,

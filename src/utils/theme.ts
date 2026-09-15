@@ -126,13 +126,14 @@ export function themeColors(theme: Theme) {
 export const AQI_CATEGORIES = [
   { max: 50, dark: "#00e400", light: "#00e400" },
   { max: 100, dark: "#ffff00", light: "#ffff00" },
-  { max: 150, dark: "#ff8c1a", light: "#ffcc9e" }, // orange, 0.40 → 0.67
-  { max: 200, dark: "#ff5c5c", light: "#ffcaca" }, // red, 0.30 → 0.68
-  { max: 300, dark: "#bf70ff", light: "#e8ccff" }, // violet, 0.30 → 0.67
-  { max: 500, dark: "#ff5c85", light: "#ffc8d6" }, // crimson, 0.31 → 0.67
+  // Each end is the most saturated colour of its hue at the luminance 3:1 needs there (R pinned at 255 for the warm hues, B for the violet): chroma is spent on luminance, so a denser frost is what buys saturation.
+  { max: 150, dark: "#ff8c1a", light: "#ffa64d" }, // orange, 0.40 → 0.49
+  { max: 200, dark: "#ff5050", light: "#ffa0a0" }, // red, 0.28 → 0.49
+  { max: 300, dark: "#bd6bff", light: "#d6a6ff" }, // violet, 0.29 → 0.49
+  { max: 500, dark: "#ff527e", light: "#ff9fb7" }, // crimson, 0.29 → 0.49
 ] as const;
-// The panels the ramp's ends are set for, as WCAG luminance of composited frosted panels measured 2026-09-15: the night hero (45, 69, 125) at the dark end, and at the light end the brightest any panel reached, the graph panel on a hazy morning (122, 115, 109). At 0.065 a colour needs 0.295 for 3:1; at 0.19 it needs 0.67. Each panel predicts its own luminance and lifts the ramp it draws linearly between the two.
-export const RAMP = { panelDark: 0.065, panelBright: 0.19 } as const;
+// The panels the ramp's ends are set for, as WCAG luminance of composited frosted panels measured 2026-09-15 with the denser frost: the night graph (0.057) at the dark end, the hazy-noon hero (0.130) at the light end, the brightest any panel reached. At 0.058 a colour needs 0.27 for 3:1; at 0.13 it needs 0.49. Each panel predicts its own luminance and lifts the ramp it draws linearly between the two; the light end is placed at 0.12 and the dark colours a step above their floor so the measured minimum along the legend carries about 5% of margin (it read 2.92 to 3.02 with none).
+export const RAMP = { panelDark: 0.058, panelBright: 0.12 } as const;
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
 type Stops = Array<{ at: number; rgb: [number, number, number] }>;
@@ -154,25 +155,32 @@ function stopsAt(lift: number): Stops {
   liftCache = { lift: l, stops };
   return stops;
 }
+// Between two categories the blend is in linear light too: blended in sRGB, red to violet passes through a magenta 4% darker than either end, and the line and the legend dipped under 3:1 there.
+const mixLinear = (a: [number, number, number], b: [number, number, number], t: number): [number, number, number] => a.map((x, k) => toSrgb(toLinear(x) + (toLinear(b[k]) - toLinear(x)) * t)) as [number, number, number];
 function rampColor(stops: Stops, aqi: number): string {
   const v = Math.max(0, aqi);
   const rgb = (c: [number, number, number]) => `rgb(${c.map(Math.round).join(",")})`;
   if (v <= stops[0].at) return rgb(stops[0].rgb);
   for (let i = 1; i < stops.length; i++) {
     const a = stops[i - 1], b = stops[i];
-    if (v <= b.at) {
-      const t = (v - a.at) / (b.at - a.at);
-      return rgb(a.rgb.map((x, k) => x + (b.rgb[k] - x) * t) as [number, number, number]);
-    }
+    if (v <= b.at) return rgb(mixLinear(a.rgb, b.rgb, (v - a.at) / (b.at - a.at)));
   }
   return rgb(stops[stops.length - 1].rgb);
 }
 // The colour of an AQI on the ramp at a lift (0 = the dark end, 1 = the light end).
 export function aqiScaleColor(aqi: number, lift = 0): string { return rampColor(stopsAt(lift), aqi); }
 // The gradient's stops, on a 0..max scale, for a canvas or CSS gradient drawn with the same rule.
+// A canvas gradient interpolates in sRGB, so between each pair of category stops three intermediate stops are placed at the linear-light blend, and the gradient follows the line's own colours to within a rounding.
 export function aqiScaleStops(max: number, lift = 0): Array<{ offset: number; color: string }> {
-  const stops = stopsAt(lift).filter((s) => s.at <= max).map((s) => ({ offset: s.at / max, color: `rgb(${s.rgb.map(Math.round).join(",")})` }));
-  return [{ offset: 0, color: aqiScaleColor(0, lift) }, ...stops, { offset: 1, color: aqiScaleColor(max, lift) }];
+  const out: Array<{ offset: number; color: string }> = [{ offset: 0, color: aqiScaleColor(0, lift) }];
+  const stops = stopsAt(lift);
+  for (let i = 0; i < stops.length; i++) {
+    if (stops[i].at > max) break;
+    if (i > 0) for (const f of [0.25, 0.5, 0.75]) { const at = stops[i - 1].at + (stops[i].at - stops[i - 1].at) * f; if (at <= max) out.push({ offset: at / max, color: aqiScaleColor(at, lift) }); }
+    out.push({ offset: stops[i].at / max, color: aqiScaleColor(stops[i].at, lift) });
+  }
+  out.push({ offset: 1, color: aqiScaleColor(max, lift) });
+  return out;
 }
 
 // The graph (§5.3 score panel, rebuilt): four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of them.
@@ -401,8 +409,8 @@ export const GLASS = {
   blur: "18px",
   saturate: "1.6",
   // A tinted frost keyed to the sky (D-35, amending D-25's one neutral surface). The fill's ALPHA follows the light: fillAlphaDay where white text needs the darkening — the worst case is a clear noon sky behind the hero, measured at 0.92 luminance, where 255·(1−0.62)+navy·0.62 ≈ 100 → 4.9:1 against the 0.9-alpha primary — thinning to fillAlphaNight when the sky is dark (dusk, night, smoke, haze: most of the piece), so more of the sky shows through. The fill's HUE follows the sky: navy in clear air, umber under smoke and at golden hour, so the panel never sits as a cold block on an orange sky. At night a faint white lift so the panel reads lighter than the sky, as a frost does.
-  fillAlphaDay: 0.50, // the lightest that holds 4.5:1 for the primary text on the clear-noon hero, measured from the composited page: 0.48 read 4.49:1 there, 0.50 leaves a margin (2026-09-15). The look asks for the night's 0.35 by day too; that reads 3.5:1 there, so this is the floor, not the taste
-  fillAlphaNight: 0.35,
+  fillAlphaDay: 0.56, // 0.50 → 0.56 (2026-09-15): a touch denser across the board so the AQI ramp can be more saturated at 3:1 (a darker panel needs a darker, so more saturated, colour); 0.48 was the 4.5:1 floor for the primary text on the clear-noon hero. The look asks for the night's 0.35 by day too; that reads 3.5:1 there, so this is the floor, not the taste
+  fillAlphaNight: 0.40, // 0.35 → 0.40 (2026-09-15), with the day fill, for the ramp
   fill: "8, 14, 40", // navy: the tint of clear air
   fillWarm: "44, 22, 8", // umber: the tint under smoke and golden light
   liftNight: 0.06, // white over the fill at night, fading out by day

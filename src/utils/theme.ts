@@ -188,7 +188,7 @@ export const families = {
 // Named type scale (§5.5): [fontSize, lineHeight].
 export const typeScale = {
   display: { size: "96px", line: 1.0 }, // the AQI number
-  heading: { size: "34px", line: 1.15 }, // mood word
+  heading: { size: "34px", line: 40 / 34 }, // mood word; a 40 px line box, on the grid
   body: { size: "15px", line: 1.6 }, // mood sentence
   caption: { size: "12px", line: 1.4 }, // borough row, legend
   // Georgia's italic capitals sit visibly shorter than Inter's at the same size; the selected borough word is set larger by this factor so the two cap heights match on the row.
@@ -208,13 +208,13 @@ export const space = {
   xxl: "48px",
 } as const;
 
-// Control sizing on the same grid: every pill is 40 tall, holding 28-tall content in 6 px of vertical padding; chips, tabs, icon buttons and the slider are all 28. One height, one rhythm, so a row of controls aligns by construction. These are the DESKTOP values and the fallbacks; the scene scales them per breakpoint through CSS custom properties (--ctl-inner, --ctl-pill, --display-size, --heading-size, --body-size) set on .scene-ui, so tablet and phone fit without scrolling. Components read the variables with these as fallbacks.
+// Control sizing on the same grid: every pill is 40 tall, holding 32-tall content in 4 px of inset; chips, tabs, icon buttons and the slider are all 32, and corners are half the height (20 and 16), so every space, size and radius is a multiple of 4. One height, one rhythm, so a row of controls aligns by construction. These are the DESKTOP values and the fallbacks; the scene scales them per breakpoint through CSS custom properties (--ctl-inner, --ctl-pill, --display-size, --heading-size, --body-size) set on .scene-ui, so tablet and phone fit without scrolling. Components read the variables with these as fallbacks.
 export const CONTROL = {
   pillHeight: 40,
-  pillPad: "6px 16px",
-  inner: 28,          // chips, tabs, icon buttons, slider track box
+  pillPad: "4px 16px",
+  inner: 32,          // chips, tabs, icon buttons, slider track box: 32 in a 40 pill leaves a 4 px inset, on the grid
   chipPad: "0 12px",
-  gap: 8,             // between chips inside a pill
+  gap: 4,             // between chips inside a pill — the same 4 as the inset, so chips and pill edges align
   groupGap: 8,        // between pills in a group (play · volume)
   barGap: 20,         // between pills across a bar, and between the bars (from the scaffold)
   panelRadius: 20,

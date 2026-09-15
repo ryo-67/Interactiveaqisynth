@@ -16,7 +16,7 @@ export function PlayButton({ playing, onToggle }: { playing: boolean; onToggle: 
       onClick={onToggle}
       aria-label={playing ? TRANSPORT_PAUSE : TRANSPORT_PLAY}
       aria-pressed={playing}
-      style={{ width: s, height: s, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 999, cursor: "pointer", color: c.textPrimary }}
+      style={{ width: s, height: s, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: `calc(${s} / 2)`, cursor: "pointer", color: c.textPrimary }}
     >
       {/* Glyphs on a 16-unit box: a triangle for play, two 4-wide bars for pause. */}
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden focusable="false">

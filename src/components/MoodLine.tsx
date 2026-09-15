@@ -50,7 +50,7 @@ export function MoodLine({ tierIndex, hour, dominant, aqi }: Props) {
           fontFamily: families.serifItalic,
           fontStyle: "italic",
           fontSize: `var(--heading-size, ${typeScale.heading.size})`, // the scene scales this per breakpoint
-          lineHeight: typeScale.heading.line,
+          lineHeight: "var(--heading-line, 40px)", // in px per breakpoint, so the line box — and the panel — stay on the 4 px grid
           color: aqi == null ? c.textPrimary : aqiScaleColor(aqi), // one scheme with the graph
         }}
       >
@@ -61,7 +61,7 @@ export function MoodLine({ tierIndex, hour, dominant, aqi }: Props) {
           fontFamily: families.serifItalic,
           fontStyle: "italic",
           fontSize: `var(--body-size, ${typeScale.body.size})`,
-          lineHeight: "var(--body-line, 1.6)",
+          lineHeight: "var(--body-line, 24px)",
           color: c.textSecondary,
           marginTop: space.xs,
           maxWidth: "36em",

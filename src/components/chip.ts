@@ -1,4 +1,4 @@
-// chip — the one small-control style (§5.3): 28 tall, 12 px side padding, pill radius, caption type. Used by the day navigation, the pins and any other chip so they align by construction.
+// chip — the one small-control style (§5.3): 32 tall (24 on phone), 12 px side padding, corners half the height, caption type. Used by the day navigation, the pins and any other chip so they align by construction.
 import React from "react";
 import { CONTROL, families, typeScale } from "../utils/theme";
 import type { themeColors } from "../utils/theme";
@@ -11,7 +11,7 @@ export function chipStyle(c: ReturnType<typeof themeColors>, active: boolean, ex
     color: active ? c.textPrimary : c.textMuted,
     background: active ? "rgba(255,255,255,0.14)" : "none",
     border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.14)"}`,
-    borderRadius: 999,
+    borderRadius: `calc(var(--ctl-inner, ${CONTROL.inner}px) / 2)`, // fully round, and a multiple of 4 because the height is
     ...extra,
   };
 }

@@ -1430,10 +1430,10 @@ html {
 
 /* ——— Scene layout (D-26): Shoro's scaffold, on a 4 px grid, at three breakpoints — laptop (≥1024), tablet (768–1023), phone (<768). The whole scaffold fits the viewport at every one: NOTHING SCROLLS. Sizes step down per breakpoint through the custom properties below (all multiples of 4), which every control reads; the middle band takes the remaining height and its panels are allowed to shrink. ——— */
 .scene-ui {
-  --ctl-pill: 40px; --ctl-inner: 28px; --ctl-gap-wide: 16px; --slider-width: 96px;
-  --display-size: 96px; --heading-size: 34px; --body-size: 15px; --body-line: 1.6;
+  --ctl-pill: 40px; --ctl-inner: 32px; --ctl-gap-wide: 16px; --slider-width: 96px;
+  --display-size: 96px; --heading-size: 34px; --heading-line: 40px; --body-size: 15px; --body-line: 24px;
   --ui-pad: 32px; --ui-gap: 20px;
-  --chip-inset: 6px; /* the inset around chips inside a pill AND the gap between them — one value, so chips and pill edges align */
+  --chip-inset: 4px; /* the inset around chips inside a pill AND the gap between them — one value, on the grid, so chips and pill edges align */
   position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--ui-gap); padding: var(--ui-pad); pointer-events: none; overflow: hidden;
 }
 .scene-ui .glass, .scene-ui select { pointer-events: auto; }
@@ -1455,7 +1455,7 @@ html {
   .scene-day { flex-direction: column; align-items: center; }
 }
 .scene-mid { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--ui-gap); min-height: 0; }
-.scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; }
+.scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; border-radius: calc(var(--ctl-pill) / 2); }
 
 .scene-pill.scene-borough { padding: 0 24px; }
 /* Pills that hold bordered chips (day navigation, pins): the side inset equals the vertical inset around the chips, so a border never sits far inside another border. */
@@ -1474,8 +1474,8 @@ html {
 /* Tablet: one column for the middle band; the top bar wraps its three pills onto two rows. */
 @media (max-width: 1023px) {
   .scene-ui {
-    --ctl-pill: 36px; --ctl-inner: 24px; --ctl-gap-wide: 12px;
-    --display-size: 72px; --heading-size: 28px; --body-size: 14px; --body-line: 1.5;
+    --ctl-gap-wide: 12px;
+    --display-size: 72px; --heading-size: 28px; --heading-line: 32px; --body-size: 14px; --body-line: 20px;
     --ui-pad: 24px; --ui-gap: 16px;
   }
   .scene-top .glass { flex: 0 1 auto; width: fit-content; max-width: 100%; margin: 0; }
@@ -1489,7 +1489,7 @@ html {
 @media (max-width: 767px) {
   .scene-ui {
     --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px; --slider-width: 72px;
-    --display-size: 56px; --heading-size: 24px; --body-size: 14px; --body-line: 1.5;
+    --display-size: 56px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
     --ui-pad: 12px; --ui-gap: 8px;
   }
   .scene-top { gap: 8px; }
@@ -1497,7 +1497,6 @@ html {
   .scene-top .glass { width: fit-content; max-width: 100%; margin: 0; }
   .scene-pill { padding: 0 12px; }
   .scene-pill.scene-borough { padding: 0 12px; }
-  .scene-ui { --chip-inset: 4px; }
   .scene-pill.scene-chips { padding: 0 var(--chip-inset); }
   .scene-pill.scene-pins { padding: var(--chip-inset); }
   .scene-mid { gap: 8px; }
@@ -1510,13 +1509,13 @@ html {
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */
 @media (max-width: 767px) and (max-height: 720px) {
-  .scene-ui { --display-size: 48px; --heading-size: 20px; --body-size: 13px; --body-line: 1.4; --graph-tab-h: 88px; }
+  .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; }
   .scene-panel.scene-hero { padding: 12px 16px 8px; }
   .scene-panel.scene-graph { padding: 8px 12px; }
 }
-/* The shortest phones (640 tall): pills tighten to 28 and the graph to 72, which is the floor at which the tabs and the axis still read. */
+/* The shortest phones (640 tall): the graph tightens to 72, which is the floor at which the tabs and the axis still read; the pills stay 32 so every size stays on the grid. */
 @media (max-width: 767px) and (max-height: 660px) {
-  .scene-ui { --ctl-pill: 28px; --graph-tab-h: 72px; --ui-gap: 8px; }
+  .scene-ui { --graph-tab-h: 72px; --ui-gap: 8px; }
   .scene-panel.scene-hero { padding: 8px 12px 8px; }
   .scene-panel.scene-graph { padding: 8px 12px 4px; }
 }

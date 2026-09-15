@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The archive ends where EPA's data ends
+
+The day navigation had assumed yesterday was the last playable day. EPA publishes with a lag — six weeks at the time of writing — so yesterday was an empty day. The last available day is now looked up in two stages, the static archive's last day at once and the current-year route's last published day when it answers, and that day bounds everything: the previous arrow from live lands on it, the next arrow past it returns to live, the calendar opens on its month from live and disables everything after it, and a line under the calendar says how far the data goes.
+
 ## 2026-09-15 — The date is the calendar
 
 The Calendar chip is gone: the date itself is the chip, with a small calendar glyph on its left, and it opens the picker. When live, it reads "Last 24h" and the next arrow is off; the previous arrow from live is yesterday's full day, and the next arrow from yesterday is live again. One fewer control, and the thing you click is the thing that changes.

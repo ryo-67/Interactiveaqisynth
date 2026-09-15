@@ -8,7 +8,7 @@ import { normalize, pm25ToAQI, type PollutantAnchors } from "../engine/contour";
 import { tierIndexOf } from "../engine/scales";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
 import { PINS } from "../content";
-import { getCurrentAll, getAnchors, getDay, clientSeriesAQI, type Borough, type CurrentSnapshot, type DaySeries } from "../utils/nycOpenData";
+import { getCurrentAll, getAnchors, getDay, clientSeriesAQI, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
 
 // Dev-only fixture select (?dev=1): never renders for a visitor.
 export const DEV = new URLSearchParams(window.location.search).has("dev");
@@ -23,6 +23,7 @@ export interface ListenSession {
   setDate: (d: string | null) => void;
   dayLoading: boolean;
   // ONE clock for everything that moves with the phrase: the beat's integer hour eased over one beat (§5.4), wrapping forward at the loop seam. The sun, the playhead and every graph track read this and nothing else.
+  latestDate: string | null; // the last day the archive can play; null until known
   playheadHour: number; // eased transport position: an index into the day (fractional while running)
   playheadClock: number; // the same position as a clock hour, from the reading's timestamp: the sun and the stars read this
   sunDay: { date: string; tz: number } | null; // the date the sun runs on: the old day while its sun sets, the new day from the night leg on
@@ -58,6 +59,16 @@ export function useListenSession(): ListenSession {
   const [borough, setBorough] = useState<Borough>("Citywide");
   const [snapshot, setSnapshot] = useState<CurrentSnapshot | null>(null);
   const [anchors, setAnchors] = useState<PollutantAnchors | null>(null);
+  // The last day the archive can play (UX-03): the static archive's last day at once, then the last day EPA has published this year when the route answers. Nothing past it is offered anywhere.
+  const [latestDate, setLatestDate] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try { const d = await getArchiveLastDate(borough); if (!cancelled) setLatestDate((cur) => (cur && cur > d ? cur : d)); } catch { /* the static archive is missing: leave null, the nav waits */ }
+      try { const d = await getLatestAvailableDate(borough); if (!cancelled && d) setLatestDate((cur) => (cur && cur > d ? cur : d)); } catch (err) { console.warn("[App] latest available date:", err); }
+    })();
+    return () => { cancelled = true; };
+  }, [borough]);
   const [playing, setPlaying] = useState(false);
   const [beat, setBeat] = useState<BeatInfo | null>(null);
   const [devDayKey, setDevDayKey] = useState<string>("live");
@@ -267,7 +278,7 @@ export function useListenSession(): ListenSession {
   })();
 
   return {
-    borough, setBorough, date, setDate, dayLoading, playheadHour, playheadClock, sunDay: transition.sunDay, starsGate: transition.starsGate, paused, seek,
+    borough, setBorough, date, setDate, latestDate, dayLoading, playheadHour, playheadClock, sunDay: transition.sunDay, starsGate: transition.starsGate, paused, seek,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, latest, rest, moodTier, moodHour, moodAqi, dominant, channels, skyChannels, devDayKey, setDevDayKey,
   };

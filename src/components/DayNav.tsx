@@ -1,23 +1,20 @@
-// DayNav — scrubbing older days (§2.2, UX-03 as page-level navigation): pagination one day at a time, the measured pins as chips, and a hand-built month calendar. Range is January 2020 to yesterday (the archive plus the live-year route); "Live" returns to the last 24 hours. No component libraries; tokens only; copy from content.ts.
+// DayNav — scrubbing older days (§2.2, UX-03 as page-level navigation): pagination one day at a time, the measured pins as chips, and a hand-built month calendar. Range is January 2020 to the archive's last available day (the static archive plus the live-year route; EPA lags real time, so yesterday is never assumed); "Live" returns to the last 24 hours. No component libraries; tokens only; copy from content.ts.
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
 import { chipStyle } from "./chip";
-import { PINS, NAV_LIVE, NAV_PREV, NAV_NEXT, NAV_CALENDAR, NAV_LAST_24H } from "../content";
+import { PINS, NAV_LIVE, NAV_PREV, NAV_NEXT, NAV_CALENDAR, NAV_LAST_24H, CAL_AVAILABLE_UNTIL } from "../content";
 
 interface Props {
   date: string | null; // null = live
   onChange: (date: string | null) => void;
   loading?: boolean;
+  latestDate: string | null; // the last day the archive can play; null until known
 }
 
 const POPOVER_WIDTH = 288; // 4 px grid; seven 36 px columns plus the panel padding
 const MIN_DATE = "2020-01-01";
 
-// New York's calendar day, not the browser's: a visitor in Tokyo should see the same "yesterday" the archive has.
-function nyToday(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
 function addDays(iso: string, n: number): string {
   const d = new Date(iso + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + n);
@@ -42,7 +39,7 @@ function CalendarIcon() {
   );
 }
 
-export function DayNav({ date, onChange, loading }: Props) {
+export function DayNav({ date, onChange, loading, latestDate }: Props) {
   const c = themeColors(useTheme());
   const [open, setOpen] = useState(false);
   // The popover is rendered at the document level (a portal), not inside the pill: the pill has its own backdrop blur, and a blur nested inside another blurred element can only sample what is painted inside its parent, so the graph beneath showed through sharp. Fixed under the Calendar chip, kept inside the viewport, re-placed on resize.
@@ -67,16 +64,24 @@ export function DayNav({ date, onChange, loading }: Props) {
   }, [open]);
   // Any choice of day closes the calendar — a date in it, a preset chip (PinStrip, a sibling), or Live — because each one lands as a new `date`.
   useEffect(() => { setOpen(false); }, [date]);
-  const yesterday = useMemo(() => addDays(nyToday(), -1), []);
-  const [view, setView] = useState(() => (date ?? yesterday).slice(0, 7)); // YYYY-MM shown in the calendar
+  // The last day that can be played: the archive's last available day, never simply yesterday (EPA publishes with a lag). Until it is known, nothing past the pins is offered.
+  const last = latestDate;
+  const [view, setView] = useState(() => (date ?? latestDate ?? PINS[0].date).slice(0, 7)); // YYYY-MM shown in the calendar
+  // Opening the calendar from live shows the last available day's month.
+  useEffect(() => { if (open && !date && last) setView(last.slice(0, 7)); }, [open, date, last]);
 
   const chip = (active: boolean) => chipStyle(c, active);
 
-  const prev = () => onChange(addDays(date ?? nyToday(), -1) < MIN_DATE ? MIN_DATE : addDays(date ?? nyToday(), -1));
+  // ‹ from live is the last available day; › past it is live again.
+  const prev = () => {
+    if (!date) { if (last) onChange(last); return; }
+    const p = addDays(date, -1);
+    onChange(p < MIN_DATE ? MIN_DATE : p);
+  };
   const next = () => {
     if (!date) return;
     const n = addDays(date, 1);
-    onChange(n > yesterday ? null : n);
+    onChange(!last || n > last ? null : n);
   };
 
   // Calendar grid for the viewed month.
@@ -99,7 +104,7 @@ export function DayNav({ date, onChange, loading }: Props) {
   return (
     <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: `var(--chip-inset, ${CONTROL.gap}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
       {/* Order: ‹ [calendar icon + date] › Live. The date itself opens the calendar; live reads "Last 24h" with the next arrow disabled. ‹ from live is yesterday's full day; › from yesterday is live again. */}
-      <button style={chip(false)} onClick={prev} aria-label="previous day">{NAV_PREV}</button>
+      <button style={chip(false)} onClick={prev} aria-label="previous day" disabled={!date && !last}>{NAV_PREV}</button>
       <button
         style={{ ...chip(open), display: "inline-flex", alignItems: "center", gap: 6, minWidth: "8.5em", justifyContent: "center", opacity: loading ? 0.5 : 1 }}
         onClick={() => setOpen((o) => !o)}
@@ -117,7 +122,7 @@ export function DayNav({ date, onChange, loading }: Props) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: space.xs }}>
             <button style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label="previous month">{NAV_PREV}</button>
             <span style={{ color: c.textPrimary }}>{monthLabel}</span>
-            <button style={chip(false)} onClick={() => shiftMonth(1)} disabled={view >= yesterday.slice(0, 7)} aria-label="next month">{NAV_NEXT}</button>
+            <button style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label="next month">{NAV_NEXT}</button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs }}>
             {["S", "M", "T", "W", "T", "F", "S"].map((dd, i) => (
@@ -125,7 +130,7 @@ export function DayNav({ date, onChange, loading }: Props) {
             ))}
             {grid.map((iso, i) => {
               if (!iso) return <span key={`e${i}`} />;
-              const out = iso < MIN_DATE || iso > yesterday;
+              const out = iso < MIN_DATE || !last || iso > last;
               const sel = iso === date;
               return (
                 <button
@@ -143,6 +148,10 @@ export function DayNav({ date, onChange, loading }: Props) {
                 </button>
               );
             })}
+          </div>
+          {/* What the range is, stated: the archive's last available day. */}
+          <div style={{ marginTop: space.xs, textAlign: "center", color: c.textMuted }}>
+            {CAL_AVAILABLE_UNTIL.replace("{date}", last ? labelOf(last) : "…")}
           </div>
         </div>,
         document.body,

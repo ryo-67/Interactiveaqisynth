@@ -138,6 +138,25 @@ export async function getDay(borough: Borough, date: string): Promise<DaySeries>
   return { hours: day?.hours ?? [], aqi: day?.aqi ?? { daily: null, hourlyMax: null, latestHour: null }, fallback: null, fetchedAt: null };
 }
 
+// The last day the archive can play, in two stages. The static archive's last day answers at once (its last hour's date); the current-year route then refines it to the last day EPA has published, which lags real time by days to weeks. Yesterday is never assumed: a day is available only if it has hours.
+export async function getArchiveLastDate(borough: Borough): Promise<string> {
+  const year = new Date().getFullYear() - 1;
+  const hours = await archiveYear(borough, year);
+  return hours.length ? hours[hours.length - 1].ts.slice(0, 10) : `${year}-12-31`;
+}
+export async function getLatestAvailableDate(borough: Borough): Promise<string | null> {
+  const now = new Date();
+  const year = now.getFullYear();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const to = iso(new Date(now.getTime() - 86400000));
+  const fromDate = new Date(now.getTime() - 45 * 86400000);
+  const from = fromDate.getFullYear() < year ? `${year}-01-01` : iso(fromDate);
+  if (from > to) return null;
+  const json = await fetchJson<HistoricalResponse>(`/api/aqi/historical?borough=${encodeURIComponent(borough)}&from=${from}&to=${to}`, 120000);
+  const withData = json.days.filter((d) => d.hours.length > 0).map((d) => d.date).sort();
+  return withData.length ? withData[withData.length - 1] : null;
+}
+
 // Normalization anchors from the archive build (p05/p95 per borough per pollutant over 2020–2025, §3.10).
 let anchorsPromise: Promise<Record<string, PollutantAnchors>> | null = null;
 

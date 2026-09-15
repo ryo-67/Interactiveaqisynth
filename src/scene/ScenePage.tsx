@@ -122,7 +122,7 @@ export default function ScenePage() {
             {/* The day group: picker and presets together, since both choose the day. Right-aligned as a unit on laptop; dissolves into the centred row below that. */}
             <div className="scene-day">
               <Glass material="glass" className="scene-pill scene-chips">
-                <DayNav date={s.date} onChange={s.setDate} loading={s.dayLoading} />
+                <DayNav date={s.date} onChange={s.setDate} loading={s.dayLoading} latestDate={s.latestDate} />
               </Glass>
               <Glass material="glass" className="scene-pill scene-chips scene-pins">
                 <PinStrip date={s.date} onChange={s.setDate} />

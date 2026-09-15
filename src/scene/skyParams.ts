@@ -3,7 +3,7 @@
 // O3 → rayleigh, bloom intensity, disc brightness, exposure: photochemical intensity. Ozone is made by strong sun, so a high-ozone afternoon reads bright and white; a low-ozone morning reads deep blue.
 // Clock → sunPosition, star visibility (handled by the caller from solar.ts).
 
-import { SKY_RANGES, SKY_FADE, CLEAR_NOON_EXPOSURE, NIGHT_EXPOSURE, NIGHT } from "../utils/theme";
+import { SKY_RANGES, SKY_FADE, CLEAR_NOON_EXPOSURE, NIGHT_EXPOSURE, NIGHT, SMOKE } from "../utils/theme";
 
 export interface SkyParams {
   turbidity: number;
@@ -83,8 +83,15 @@ export function hazeToAerosol(haze: number): { turbidity: number; mieCoefficient
 // Rayleigh is held at the three.js Sky model default and is no longer part of what the haze row varies.
 export const RAYLEIGH_DEFAULT = 1;
 
-// Stars fade in below the horizon and are hidden by haze (§5.2 item 4): particulate scatters skyglow and swallows point sources first, so a hazy night has fewer stars than a clear one. Shoro's ruling: realistic, keep it.
+// The veil's opacity at the zenith for a given particulate density — the same quantity SmokeLayer draws (its in-scatter term, on its curve, at the zenith weight). One number shared by the layer and the stars, so there is no second knob to keep in agreement.
+export function veilAtZenith(pm25n: number | null): number {
+  const d = Math.max(0, Math.min(1, pm25n ?? 0));
+  return SMOKE.inscatter.alphaMax * Math.pow(d, SMOKE.curve) * SMOKE.zenithFactor;
+}
+
+// Stars fade in below the horizon and are hidden by haze (§5.2 item 4). The hiding is DERIVED from the veil: a star is a point against raised background, and its contrast falls roughly as the square of the transmitted fraction, so opacity = night × (1 − veil)². Realistic (Shoro's ruling) and not a separate rule.
 export function starOpacity(sunElevationDeg: number, pm25n: number | null): number {
   const night = Math.max(0, Math.min(1, -sunElevationDeg / 8)); // full by ~8° below the horizon
-  return night * (1 - Math.min(1, pm25n ?? 0));
+  const t = 1 - veilAtZenith(pm25n);
+  return night * t * t;
 }

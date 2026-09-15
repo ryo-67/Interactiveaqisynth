@@ -1,10 +1,11 @@
 // SkyView — one physically based sky, rendered with the real drei <Sky>, <Stars>, and postprocessing <Bloom>. Used by the /scene-test harness and (next sprint) by the scene itself. Static: no engine, no clock; the caller passes the hour.
-import React, { useLayoutEffect, useMemo, useRef } from "react";
+import React, { useLayoutEffect, useMemo } from "react";
 import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { EffectComposer, Bloom, HueSaturation, ChromaticAberration, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
-import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3, SphereGeometry, MeshPhysicalMaterial, Matrix4, Color, type InstancedMesh } from "three";
+import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3 } from "three";
+import { LensFieldEffect } from "./LensFieldEffect";
 import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, NYC_LAT } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
@@ -35,7 +36,7 @@ interface Props {
   discDeg?: number;
   // Saturation grade on the sky (SKY_GRADE.saturation); the harness overrides it.
   saturation?: number;
-  // Floating particulate level, 0..1, from ABSOLUTE PM2.5 via particleLevel(): the floaters and the frame's chromatic aberration.
+  // Particulate level, 0..1, from ABSOLUTE PM2.5 via particleLevel(): the lens field and the frame's chromatic aberration.
   particles?: number;
   // Local hour (fractional) for the star field's rotation. Stars turn about the celestial pole 15° an hour, so facing south they rise on the left and set on the right; continuous across midnight.
   hour?: number;
@@ -106,70 +107,13 @@ export function particleLevel(pm25: number | null | undefined): number {
   return Math.max(0, Math.min(1, (pm25 - PARTICLES.visibleFromUgm3) / (PARTICLES.fullAtUgm3 - PARTICLES.visibleFromUgm3)));
 }
 
-// MAPPING (PM2.5 → floating particulate): glass orbs in the near field, seeded once, drifting slowly. Instanced spheres with a physical material whose transmission renders the scene behind them and refracts it — so each orb carries a bent, dispersed image of the sky — lit from the sun's direction with a hemisphere fill. The visible count rises with the level (the rest are scaled to nothing), so a clear day has none and a wildfire day fills the near field.
+// The lens field (LensFieldEffect) as a composer child: one instance, its state pushed every frame.
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-const _m = new Matrix4();
-function ParticleField({ level, sunPosition }: { level: number; sunPosition: [number, number, number] }) {
-  const ref = useRef<InstancedMesh>(null);
-  const seed = useMemo(() => {
-    const rnd = mulberry32(19730607);
-    const n = PARTICLES.max, b = PARTICLES.box;
-    const pos = new Float32Array(n * 3), rad = new Float32Array(n), phase = new Float32Array(n);
-    const lr = Math.log(PARTICLES.radius.max / PARTICLES.radius.min);
-    for (let i = 0; i < n; i++) {
-      let x = 0, y = 0, z = 0;
-      do { x = (rnd() * 2 - 1) * b; y = (rnd() * 2 - 1) * b; z = (rnd() * 2 - 1) * b; } while (Math.hypot(x, y, z) < PARTICLES.near);
-      pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
-      rad[i] = PARTICLES.radius.min * Math.exp(rnd() * lr);
-      phase[i] = rnd() * Math.PI * 2;
-    }
-    return { pos, rad, phase };
-  }, []);
-  const geometry = useMemo(() => new SphereGeometry(1, 24, 16), []);
-  const material = useMemo(() => {
-    const m = new MeshPhysicalMaterial({
-      color: new Color("#ffffff"),
-      transmission: 1,
-      thickness: PARTICLES.thickness,
-      ior: PARTICLES.ior,
-      roughness: PARTICLES.roughness,
-      metalness: 0,
-      specularIntensity: PARTICLES.specularIntensity,
-      iridescence: PARTICLES.iridescence,
-      iridescenceIOR: PARTICLES.iridescenceIOR,
-      transparent: true,
-      depthWrite: false,
-    });
-    m.dispersion = PARTICLES.dispersion;
-    return m;
-  }, []);
-  const visible = Math.round(PARTICLES.max * Math.max(0, Math.min(1, level)));
-  useFrame((state, dt) => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    const { pos, rad, phase } = seed;
-    const b = PARTICLES.box, t = state.clock.elapsedTime;
-    for (let i = 0; i < PARTICLES.max; i++) {
-      if (!REDUCED_MOTION) {
-        pos[i * 3 + 1] -= PARTICLES.fallPerSec * dt;
-        pos[i * 3] += Math.sin(t * 0.5 + phase[i]) * PARTICLES.swayPerSec * dt;
-        if (pos[i * 3 + 1] < -b) pos[i * 3 + 1] += 2 * b;
-        if (pos[i * 3] > b) pos[i * 3] -= 2 * b; else if (pos[i * 3] < -b) pos[i * 3] += 2 * b;
-      }
-      const r = i < visible ? rad[i] : 0;
-      _m.makeScale(r, r, r).setPosition(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
-      mesh.setMatrixAt(i, _m);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-  });
-  const sun = new Vector3(...sunPosition).normalize().multiplyScalar(50);
-  return (
-    <>
-      <directionalLight position={sun} intensity={PARTICLES.sunLight} color="#fff3e0" />
-      <hemisphereLight args={["#9fc3ff", "#3a2a1a", PARTICLES.skyLight]} />
-      <instancedMesh ref={ref} args={[geometry, material, PARTICLES.max]} frustumCulled={false} renderOrder={2} />
-    </>
-  );
+function LensField({ level }: { level: number }) {
+  const effect = useMemo(() => new LensFieldEffect(), []);
+  const size = useThree((s) => s.size);
+  useFrame((state, dt) => effect.setState(level, size.width / size.height, state.clock.elapsedTime, dt, !REDUCED_MOTION));
+  return <primitive object={effect} />;
 }
 
 // A soft radial sprite: bright core, fast falloff. Built once; the bloom pass does the glow.
@@ -278,11 +222,11 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
           <SunDisc sunPosition={sunPosition} brightness={params.discBrightness} deg={discDeg} />
         )}
         {starOpacity > 0.001 && <StarField opacity={starOpacity} count={SKY_RANGES.starsCount} hour={hour} />}
-        {particles > 0.02 && <ParticleField level={particles} sunPosition={sunPosition} />}
         {/* The composer always mounts: the grade and the tone-mapping pass are part of the sky at every hour, not only when bloom is on. Order: bloom; the saturation grade before tone mapping, so it lifts the sky's own colour rather than the mapped result; chromatic aberration rising with particulate (zero offset when there is none), so at wildfire density the whole frame fringes toward its edges; ACES tone mapping last. EffectComposer's children must all be elements, so nothing here is conditional. */}
         <EffectComposer>
           <Bloom intensity={params.bloomIntensity} luminanceThreshold={0.55} luminanceSmoothing={0.35} mipmapBlur />
           <HueSaturation saturation={saturation} />
+          <LensField level={particles} />
           <ChromaticAberration offset={aberration} radialModulation modulationOffset={0.3} />
           <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
         </EffectComposer>

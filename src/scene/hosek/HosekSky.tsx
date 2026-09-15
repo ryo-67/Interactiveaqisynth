@@ -57,26 +57,28 @@ interface Props {
 export function HosekSky({ sunPosition, turbidity, albedo = 0.1, normalizedSunY = 1.15, distance = 450000, opacity = 1 }: Props) {
   const materialRef = useRef<ShaderMaterial>(null);
 
-  // Opacity changes every beat at dusk; write the uniform in place rather than rebuilding the material (the coefficient uniforms below are keyed on sun/turbidity and rebuild only when those move).
-  useEffect(() => {
-    if (materialRef.current) materialRef.current.uniforms.opacity.value = opacity;
-  }, [opacity]);
+  // Uniforms are allocated once. Every prop change writes into them in place: keying the material on the sun vector rebuilt the material — and recompiled the shader — on every frame the sun moved, which is every frame during playback.
+  const uniforms = useMemo(() => ({
+    A: { value: new Vector3() }, B: { value: new Vector3() }, C: { value: new Vector3() },
+    D: { value: new Vector3() }, E: { value: new Vector3() }, F: { value: new Vector3() },
+    G: { value: new Vector3() }, H: { value: new Vector3() }, I: { value: new Vector3() },
+    Z: { value: new Vector3() },
+    sunDirection: { value: new Vector3(0, 1, 0) },
+    opacity: { value: 1 },
+  }), []);
 
-  const uniforms = useMemo(() => {
+  useEffect(() => {
     const dir = new Vector3(...sunPosition).normalize();
     // Sun zenith angle from its elevation; the dataset is only defined above the horizon, so clamp there and let exposure carry the night.
     const sunTheta = Math.acos(Math.min(1, Math.max(0, dir.y)));
     const c = hosekCoefficients(sunTheta, Math.min(10, Math.max(1, turbidity)), albedo, normalizedSunY);
-    const v3 = (t: [number, number, number]) => new Vector3(t[0], t[1], t[2]);
-    return {
-      A: { value: v3(c.A) }, B: { value: v3(c.B) }, C: { value: v3(c.C) },
-      D: { value: v3(c.D) }, E: { value: v3(c.E) }, F: { value: v3(c.F) },
-      G: { value: v3(c.G) }, H: { value: v3(c.H) }, I: { value: v3(c.I) },
-      Z: { value: v3(c.Z) },
-      sunDirection: { value: dir },
-      opacity: { value: opacity },
-    };
-  }, [sunPosition, turbidity, albedo, normalizedSunY]);
+    (["A", "B", "C", "D", "E", "F", "G", "H", "I", "Z"] as const).forEach((k) => uniforms[k].value.set(...c[k]));
+    uniforms.sunDirection.value.copy(dir);
+  }, [uniforms, sunPosition, turbidity, albedo, normalizedSunY]);
+
+  useEffect(() => {
+    uniforms.opacity.value = opacity;
+  }, [uniforms, opacity]);
 
   return (
     // renderOrder 1: draw after Preetham (0) so alpha blends over it.
@@ -84,7 +86,6 @@ export function HosekSky({ sunPosition, turbidity, albedo = 0.1, normalizedSunY 
       <boxGeometry args={[1, 1, 1]} />
       <shaderMaterial
         ref={materialRef}
-        key={JSON.stringify(sunPosition) + turbidity + albedo}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms}

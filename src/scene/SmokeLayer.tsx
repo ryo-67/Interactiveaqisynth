@@ -23,7 +23,7 @@ function ramp(d: number, alphaMax: number, hue: number, sat: number, light: (t: 
   return `linear-gradient(to bottom, ${parts.join(", ")})`;
 }
 
-export function SmokeLayer({ density, hueDeg }: Props) {
+export const SmokeLayer = React.memo(function SmokeLayer({ density, hueDeg }: Props) {
   const d = Math.max(0, Math.min(1, density));
   if (d <= 0.001) return null;
 
@@ -55,4 +55,4 @@ export function SmokeLayer({ density, hueDeg }: Props) {
       <div aria-hidden style={{ ...base, background: inscatter, mixBlendMode: "screen" }} />
     </>
   );
-}
+}, (a, b) => Math.round(a.density * 200) === Math.round(b.density * 200) && a.hueDeg === b.hueDeg);

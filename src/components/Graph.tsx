@@ -29,6 +29,10 @@ export function Graph({ day, anchors, playheadHour, live, tracks, onToggleTrack,
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const lastPulse = useRef<{ index: number; at: number } | null>(null);
+  // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
+  const playheadRef = useRef<number | null>(playheadHour);
+  playheadRef.current = playheadHour;
+  const playing = playheadHour != null;
 
   const series = useMemo(() => ({
     aqi: pmToAQISeries(day),
@@ -173,8 +177,9 @@ export function Graph({ day, anchors, playheadHour, live, tracks, onToggleTrack,
       if (live) { const label = "now"; ctx.fillStyle = c.textFaint; ctx.fillText(label, cssW - ctx.measureText(label).width - 2, cssH - 4); }
 
       // Playhead: the eased hour, one line through every track, with the hour's values printed at its head.
+      const playheadHour = playheadRef.current;
       if (playheadHour != null && n > 0) {
-        const x = Math.min(cssW - 0.5, Math.round(playheadHour * colW) + 0.5);
+        const x = Math.min(cssW - 0.5, playheadHour * colW);
         ctx.strokeStyle = c.textPrimary;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, axisY); ctx.stroke();
@@ -190,14 +195,14 @@ export function Graph({ day, anchors, playheadHour, live, tracks, onToggleTrack,
         ctx.fillText(label, lx + 4, GRAPH.labelGutter + 10);
       }
 
-      if (playheadHour != null) raf = requestAnimationFrame(draw);
+      if (playing) raf = requestAnimationFrame(draw);
     };
 
     draw();
-    const ro = new ResizeObserver(draw);
+    const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); draw(); });
     ro.observe(wrap);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, [series, day, playheadHour, live, tracks, c]);
+  }, [series, day, playing, live, tracks, c]);
 
   return (
     <div ref={wrapRef} style={{ width: "100%" }}>

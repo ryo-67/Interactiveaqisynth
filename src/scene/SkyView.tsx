@@ -1,10 +1,10 @@
 // SkyView — one physically based sky, rendered with the real drei <Sky>, <Stars>, and postprocessing <Bloom>. Used by the /scene-test harness and (next sprint) by the scene itself. Static: no engine, no clock; the caller passes the hour.
 import React, { useLayoutEffect } from "react";
 import { Canvas, useThree, invalidate } from "@react-three/fiber";
-import { Sky, Stars } from "@react-three/drei";
+import { Sky } from "@react-three/drei";
 import { EffectComposer, Bloom, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
-import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture } from "three";
+import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute } from "three";
 import { SKY_RANGES, SUN_DISC } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
@@ -47,6 +47,45 @@ function CameraRig({ pitch, yaw }: { pitch: number; yaw: number }) {
     invalidate();
   }, [camera, pitch, yaw]);
   return null;
+}
+
+// The star field. drei's <Stars> re-rolls its geometry whenever count changes, and a count driven by the eased hour changed every frame at dusk — so the sky re-shuffled 1,400 stars sixty times a second. This one is built once from a seeded generator (the same sky every night, every mount) and fades through material opacity alone.
+function mulberry32(seed: number) {
+  let a = seed;
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let starGeometry: BufferGeometry | null = null;
+function getStarGeometry(count: number): BufferGeometry {
+  if (starGeometry) return starGeometry;
+  const rnd = mulberry32(20230607);
+  const pos = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    // Uniform on the upper hemisphere, radius ~ 100..150 so the field has depth against the dome at the far plane.
+    const u = rnd(), v = rnd();
+    const theta = 2 * Math.PI * u;
+    const y = 0.05 + 0.95 * v; // above the horizon only
+    const r = Math.sqrt(1 - y * y);
+    const d = 100 + 50 * rnd();
+    pos[i * 3] = d * r * Math.cos(theta);
+    pos[i * 3 + 1] = d * y;
+    pos[i * 3 + 2] = d * r * Math.sin(theta);
+  }
+  starGeometry = new BufferGeometry();
+  starGeometry.setAttribute("position", new Float32BufferAttribute(pos, 3));
+  return starGeometry;
+}
+function StarField({ opacity, count }: { opacity: number; count: number }) {
+  const geometry = getStarGeometry(count);
+  return (
+    <points geometry={geometry} renderOrder={1} frustumCulled={false}>
+      <pointsMaterial size={1.6} sizeAttenuation={false} color="#ffffff" transparent opacity={opacity} depthWrite={false} blending={AdditiveBlending} toneMapped={false} />
+    </points>
+  );
 }
 
 // A soft radial sprite: bright core, fast falloff. Built once; the bloom pass does the glow.
@@ -120,7 +159,6 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
   const hosekAlpha = model === "hosek" ? 1 : model === "preetham" ? 0 : daylightBlend(sunElevationDeg);
   // "above": pitch up by half the vertical fov plus a margin, so the horizon falls at or below the bottom edge. The previous fixed 0.32 rad left the bottom edge 12.7 degrees BELOW the horizon, which rendered the dome's ground half — invisible only while the control bar happened to cover it. "edge"/"fade": horizon sits at the vertical middle.
   const cameraRotationX = groundMode === "above" ? ABOVE_HORIZON_PITCH_RAD : 0;
-  const stars = Math.round(SKY_RANGES.starsCount * starOpacity);
 
   return (
     <div style={{ position: "relative", ...style }}>
@@ -154,9 +192,7 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
         {disc && sunElevationDeg > -discDeg && (
           <SunDisc sunPosition={sunPosition} brightness={params.discBrightness} deg={discDeg} />
         )}
-        {stars > 0 && (
-          <Stars radius={100} depth={50} count={stars} factor={4} saturation={0} fade speed={0.4} />
-        )}
+        {starOpacity > 0.001 && <StarField opacity={starOpacity} count={SKY_RANGES.starsCount} />}
         {params.bloomIntensity > 0.01 && (
           <EffectComposer>
             <Bloom

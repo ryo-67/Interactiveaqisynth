@@ -25,7 +25,12 @@ interface Props {
   onSeek: (hour: number) => void; // press or drag on the plot: move the phrase to that hour
 }
 
-const MAX_RENDER_RATIO = 4; // device ratio × pinch scale; 4 keeps a 2× display crisp through a 2× pinch and bounds the buffer
+const MAX_RENDER_PIXELS = 24e6; // the buffer's pixel budget: the render ratio (device ratio × pinch scale) is capped where the buffer would exceed it, so a small plot stays crisp through a deep pinch and a large one cannot allocate hundreds of megabytes
+// Hairlines: every faint line the graph draws — hour lines, ticks, baselines, dashed gridlines, the null-bar dashes — is drawn OPAQUE into one layer and the layer is composited once at the hairline alpha. Drawn straight onto the canvas each translucent line doubled where it crossed another (little bright squares at every intersection, ticks over hour lines); in one opaque layer a crossing is just a pixel, and the fainter hour lines are a dimmer grey painted first so the firm lines simply cover them.
+function rgba(s: string): [number, number, number, number] {
+  const m = s.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\s*\)/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3]), m[4] == null ? 1 : Number(m[4])] : [255, 255, 255, 1];
+}
 
 export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, onSeek }: Props) {
   const theme = useTheme();
@@ -34,6 +39,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
   const wrapRef = useRef<HTMLDivElement>(null);
   // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
   const areaCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
+  const hairRef = useRef<HTMLCanvasElement | null>(null); // the opaque hairline layer, reused across draws
   const playheadRef = useRef<number | null>(playheadHour);
   playheadRef.current = playheadHour;
   const playing = running && playheadHour != null;
@@ -89,7 +95,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const cssH = GRAPH.labelGutter + tabH + pulseH + axisH;
       // The buffer is whole device pixels at the current ratio, and the canvas box is set to exactly buffer ÷ ratio, so one buffer pixel is one device pixel and every line lands on one; any other pairing resamples the drawing. The ratio includes the visual viewport's pinch scale (trackpad pinch on a Mac, pinch on a phone): that magnifies the page without reflow or a ratio change, and a bitmap drawn at the unmagnified ratio is simply scaled up, which is the one element on the page that can look soft. Capped, because a 5× pinch on a 2× display would be a 100-megapixel buffer.
       const pinch = window.visualViewport?.scale ?? 1;
-      const dpr = Math.min(MAX_RENDER_RATIO, (window.devicePixelRatio || 1) * pinch);
+      const dpr = Math.min((window.devicePixelRatio || 1) * pinch, Math.sqrt(MAX_RENDER_PIXELS / (cssW * cssH)));
       const bufW = Math.round(cssW * dpr), bufH = Math.round(cssH * dpr);
       if (canvas.width !== bufW || canvas.height !== bufH) {
         canvas.width = bufW;
@@ -99,6 +105,19 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       canvas.style.height = `${bufH / dpr}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cssW, cssH);
+      // The hairline layer (see rgba() above): same buffer, same transform, cleared each draw.
+      const hairCanvas = hairRef.current ?? (hairRef.current = document.createElement("canvas"));
+      if (hairCanvas.width !== bufW || hairCanvas.height !== bufH) { hairCanvas.width = bufW; hairCanvas.height = bufH; }
+      const hair = hairCanvas.getContext("2d")!;
+      hair.setTransform(dpr, 0, 0, dpr, 0, 0);
+      hair.clearRect(0, 0, cssW, cssH);
+      const [fr, fg, fb, fa] = rgba(c.textFaint);
+      const [, , , ha] = rgba(c.gridHair);
+      const firmLine = `rgb(${fr},${fg},${fb})`;
+      const k = Math.min(1, ha / fa); // the faint lines' share of the layer alpha, expressed as a dimmer opaque grey
+      const dim = fr > 127 ? Math.round(255 * k) : Math.round(255 * (1 - k));
+      const hairLine = `rgb(${dim},${dim},${dim})`;
+      hair.lineWidth = 1;
 
       const n = day.length;
       // The AQI tab keeps a scale bar at the RIGHT, on the line's own fixed y-scale: the standard category colours as one smooth vertical gradient, with a marker at the value under the playhead (the latest hour at rest).
@@ -115,12 +134,15 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       ctx.font = `${labelPx}px ${families.data}`;
       const lh = labelPx + 4; // label line height inside the canvas
 
-      // Hour grid: a faint line at every reading through everything, a firmer one per four-hour bar (the pulse's bar lines).
-      for (let i = 0; i < n; i++) {
-        const x = Math.round(plotX + i * colW) + 0.5;
-        ctx.strokeStyle = i % 4 === 0 ? c.textFaint : c.gridHair;
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, cssH - axisH); ctx.stroke();
+      // Hour grid: a faint line at every reading through everything, a firmer one per four-hour bar (the pulse's bar lines), each running on past the axis as its own tick (5 px at bar starts, 3 otherwise) — one stroke, so the tick never sits on top of the line. Faint ones first, firm ones after, so a firm line covers rather than doubles.
+      const axisYForGrid = cssH - axisH;
+      for (const pass of [false, true]) {
+        hair.strokeStyle = pass ? firmLine : hairLine;
+        for (let i = 0; i < n; i++) {
+          if ((i % 4 === 0) !== pass) continue;
+          const x = Math.round(plotX + i * colW) + 0.5;
+          hair.beginPath(); hair.moveTo(x, GRAPH.labelGutter); hair.lineTo(x, axisYForGrid + (pass ? 5 : 3)); hair.stroke();
+        }
       }
       // The plot's right edge, so the grid never runs under the scale bar.
       ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
@@ -137,14 +159,14 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         const yFor = (v: number) => y0 + lh + (1 - Math.min(v, max) / max) * inner;
 
         // Baseline, the scale's top value at the right, and a mid gridline with its value so the line can be read against numbers.
-        ctx.strokeStyle = c.textFaint;
-        ctx.beginPath(); ctx.moveTo(plotX, y0 + lh + inner + 0.5); ctx.lineTo(plotRight, y0 + lh + inner + 0.5); ctx.stroke();
+        hair.strokeStyle = firmLine;
+        hair.beginPath(); hair.moveTo(plotX, y0 + lh + inner + 0.5); hair.lineTo(plotRight, y0 + lh + inner + 0.5); hair.stroke();
         // Gridlines with values at the left: the category boundaries on AQI (a fixed ruler), top and middle on the others.
         const gridValues = t === "aqi" ? AQI_CATEGORIES.map((k) => k.max).filter((v) => v <= max) : [Math.round(max / 1.08), Math.round(max / 2.16)];
         ctx.fillStyle = c.textMuted;
         for (const gv of gridValues) {
           const gy = yFor(gv);
-          if (gv !== gridValues[0] || t !== "aqi") { ctx.setLineDash([2, 5]); ctx.beginPath(); ctx.moveTo(plotX, gy + 0.5); ctx.lineTo(plotRight, gy + 0.5); ctx.stroke(); ctx.setLineDash([]); }
+          if (gv !== gridValues[0] || t !== "aqi") { hair.setLineDash([2, 5]); hair.beginPath(); hair.moveTo(plotX, gy + 0.5); hair.lineTo(plotRight, gy + 0.5); hair.stroke(); hair.setLineDash([]); }
           const lab = String(gv);
           ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, gy + labelPx * 0.36); // in the gutter, right-aligned, centred on the gridline
         }
@@ -276,7 +298,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const x = plotX + s * stepW;
           if (x >= plotRight) continue;
           if (v == null) {
-            if (s % 16 === 0) { ctx.fillStyle = c.textFaint; ctx.fillRect(x, y0 + pulseH - 5, Math.min(colW * 4, plotRight - x), 1); }
+            if (s % 16 === 0) { hair.fillStyle = firmLine; hair.fillRect(x, y0 + pulseH - 5, Math.min(colW * 4, plotRight - x), 1); }
             continue;
           }
           if (!v) continue;
@@ -291,13 +313,16 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
 
       // X axis: a tick at every reading, firmer at bar starts; two labels only — the first reading's date and time at the left ("Sep 14, 2:00 pm"; the year only when it is not this year) and "now" at the right when live, else the last reading's time. Hour numbers read as a 24-hour clock and confused the rolling live window.
       const axisY = cssH - axisH;
-      ctx.strokeStyle = c.textFaint;
-      ctx.beginPath(); ctx.moveTo(plotX, axisY + 0.5); ctx.lineTo(plotRight, axisY + 0.5); ctx.stroke();
-      for (let i = 0; i < n; i++) {
-        const x = Math.round(plotX + i * colW) + 0.5;
-        ctx.strokeStyle = c.textFaint;
-        ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + (i % 4 === 0 ? 5 : 3)); ctx.stroke();
-      }
+      hair.strokeStyle = firmLine;
+      hair.beginPath(); hair.moveTo(plotX, axisY + 0.5); hair.lineTo(plotRight, axisY + 0.5); hair.stroke();
+      // Every hairline is in the layer now; composite it once. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
+      ctx.globalAlpha = fa;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(hairCanvas, 0, 0);
+      ctx.restore();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (n > 0) {
         ctx.fillStyle = c.textMuted;
         ctx.fillText(readingLabel(day[0].ts, true), plotX + 2, cssH - 5);

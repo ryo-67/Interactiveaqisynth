@@ -180,7 +180,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const grad = ctx.createLinearGradient(0, barBottom, 0, barTop);
           for (const s of aqiScaleStops(max)) grad.addColorStop(s.offset, s.color);
           // The legend is styled like the volume slider turned upright: a thin rounded track (GRAPH.scaleTrackWidth) inside the bar's column, and a thumb wider than the track.
-          const trackW = GRAPH.scaleTrackWidth, trackX = barX + (barW - trackW) / 2;
+          const trackW = GRAPH.scaleTrackWidth, trackX = barX + 2; // the track sits at the column's left so the caret, its border and its shadow fit inside the column on the right
           ctx.fillStyle = grad;
           ctx.beginPath();
           ctx.roundRect(trackX, barTop, trackW, barBottom - barTop, trackW / 2);
@@ -188,16 +188,20 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (vals[i] != null) return i; return -1; })();
           const cur = hi >= 0 ? vals[hi] : null;
           if (cur != null) {
-            // The marker is a caret at the track's left, pointing at the value: a reading, not a control. The primary text colour, on the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track.
+            // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. The primary text colour, on the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base lands on the column's outer edge.
+            // Drawn as a small glass element: the chip's light fill, a soft shadow beneath and a hairline border.
             const my = yFor(cur);
-            const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX - GRAPH.scaleCaretGap;
-            ctx.fillStyle = c.textPrimary;
-            ctx.beginPath();
-            ctx.moveTo(tipX, my);
-            ctx.lineTo(tipX - d, my - h / 2);
-            ctx.lineTo(tipX - d, my + h / 2);
-            ctx.closePath();
-            ctx.fill();
+            const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX + trackW + GRAPH.scaleCaretGap;
+            const caret = () => { ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.lineTo(tipX + d, my + h / 2); ctx.closePath(); };
+            ctx.save();
+            ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
+            ctx.fillStyle = "rgba(255,255,255,0.92)";
+            caret(); ctx.fill();
+            ctx.restore();
+            ctx.strokeStyle = "rgba(0,0,0,0.25)";
+            ctx.lineWidth = 1;
+            ctx.lineJoin = "round";
+            caret(); ctx.stroke();
           }
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
         }

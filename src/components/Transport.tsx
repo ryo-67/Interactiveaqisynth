@@ -14,10 +14,11 @@ export function PlayButton({ playing, onToggle }: { playing: boolean; onToggle: 
   const s = `var(--ctl-inner, ${CONTROL.inner}px)`;
   return (
     <button
+      className="scene-play"
       onClick={onToggle}
       aria-label={playing ? TRANSPORT_PAUSE : TRANSPORT_PLAY}
       aria-pressed={playing}
-      style={{ width: s, height: s, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: `calc(${s} / 2)`, cursor: "pointer", color: c.textPrimary }}
+      style={{ width: s, height: s, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: `calc(${s} / 2)`, color: c.textPrimary }}
     >
       {/* Lucide's play and pause (icons.tsx); the play triangle is shifted a unit right there so it reads centred in the round button. */}
       {playing ? <PauseIcon size={16} /> : <PlayIcon size={16} />}

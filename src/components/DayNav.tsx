@@ -5,6 +5,7 @@ import { useTheme, themeColors, families, typeScale, space, CONTROL, motion } fr
 import { chipStyle } from "./chip";
 import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, CAL_AVAILABLE_UNTIL, PICK_OR_DATE } from "../content";
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from "./icons";
+import { setPopoverOpen, markOutsideDismiss } from "./popoverStore";
 
 interface Props {
   date: string | null; // null = live
@@ -65,6 +66,7 @@ function useDismiss(open: boolean, close: () => void, anchorRef: React.RefObject
       const t = e.target as Node;
       if (anchorRef.current?.contains(t)) return;
       if ((t as Element).closest?.(".scene-popover")) return;
+      markOutsideDismiss(); // the same press must not also toggle the sky
       close();
     };
     window.addEventListener("keydown", onKey);
@@ -77,6 +79,7 @@ function useDismiss(open: boolean, close: () => void, anchorRef: React.RefObject
 function usePresence(open: boolean): { mounted: boolean; visible: boolean } {
   const [mounted, setMounted] = useState(open);
   const [visible, setVisible] = useState(false);
+  useEffect(() => setPopoverOpen(open), [open]); // the page knows while one is open
   useEffect(() => {
     if (open) {
       setMounted(true);
@@ -117,9 +120,9 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: space.xs }}>
-        <button style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label="previous month"><ChevronLeftIcon /></button>
+        <button className="scene-chip" style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label="previous month"><ChevronLeftIcon /></button>
         <span style={{ color: c.textPrimary }}>{monthLabel}</span>
-        <button style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label="next month"><ChevronRightIcon /></button>
+        <button className="scene-chip" style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label="next month"><ChevronRightIcon /></button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs, fontFamily: families.data, letterSpacing: 0 }}>
         {["S", "M", "T", "W", "T", "F", "S"].map((dd, i) => (
@@ -132,13 +135,15 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
           return (
             <button
               key={iso}
+              className="scene-day"
+              data-active={sel}
               disabled={out}
               onClick={() => onPick(iso)}
               style={{
                 fontFamily: families.data, fontSize: typeScale.caption.size, textAlign: "center", height: `var(--ctl-inner, ${CONTROL.inner}px)`, padding: 0,
                 color: out ? c.textFaint : sel ? "#05050a" : c.textPrimary,
                 background: sel ? "rgba(255,255,255,0.9)" : "none",
-                border: "none", borderRadius: 4, cursor: out ? "default" : "pointer",
+                border: "none", borderRadius: 4,
               }}
             >
               {Number(iso.slice(8, 10))}
@@ -173,6 +178,8 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
   return (
     <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
       <button
+        className="scene-chip"
+        data-active={open}
         style={{ ...chip(open), display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center", opacity: loading ? 0.5 : 1 }}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -193,7 +200,7 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
             {options.map((o) => {
               const active = o.date === date;
               return (
-                <button key={o.name} role="option" aria-selected={active} onClick={() => { onChange(o.date); setOpen(false); }} style={{ ...chip(active), width: "100%", justifyContent: "center", textAlign: "center", display: "flex" }}>
+                <button key={o.name} className="scene-chip" data-active={active} role="option" aria-selected={active} onClick={() => { onChange(o.date); setOpen(false); }} style={{ ...chip(active), width: "100%", justifyContent: "center", textAlign: "center", display: "flex" }}>
                   {o.name}
                 </button>
               );
@@ -239,8 +246,10 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
   return (
     <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: `var(--chip-inset, ${CONTROL.gap}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
       {/* Order: ‹ [calendar icon + date] › Live. The date itself opens the calendar; live reads "Last 24h" with the next arrow disabled. ‹ from live is yesterday's full day; › from yesterday is live again. */}
-      <button style={chip(false)} onClick={prev} aria-label="previous day" disabled={!date && !last}><ChevronLeftIcon /></button>
+      <button className="scene-chip" style={chip(false)} onClick={prev} aria-label="previous day" disabled={!date && !last}><ChevronLeftIcon /></button>
       <button
+        className="scene-chip"
+        data-active={open}
         style={{ ...chip(open), display: "inline-flex", alignItems: "center", gap: 6, minWidth: "8em", justifyContent: "center", opacity: loading ? 0.5 : 1 }}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -250,8 +259,8 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
         {/* The date keeps the data face: it is a reading, not a control label. */}
         <span style={{ color: c.textPrimary, fontFamily: families.data, letterSpacing: 0 }}>{date ? labelOf(date) : NAV_LAST_24H}</span>
       </button>
-      <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}><ChevronRightIcon /></button>
-      <button style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
+      <button className="scene-chip" style={chip(false)} onClick={next} aria-label="next day" disabled={!date}><ChevronRightIcon /></button>
+      <button className="scene-chip" data-active={date === null} style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
 
       {presence.mounted && createPortal(
         <div className="glass frosted scene-popover" role="dialog" aria-label={NAV_CALENDAR} style={{ ...popoverStyle(c, presence.visible), left: pos.left, top: pos.top }}>
@@ -297,6 +306,8 @@ export function PinStrip({ date, onChange }: { date: string | null; onChange: (d
             key={p.date}
             onClick={() => onChange(p.date)}
             title={labelOf(p.date)}
+            className="scene-chip"
+            data-active={active}
             style={chipStyle(c, active)}
           >
             {p.name}

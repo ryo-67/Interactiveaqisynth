@@ -12,6 +12,8 @@ import { predictPanel, rampLiftFor, type RGB } from "./panelLuminance";
 import { sunAnglesAt, sunPositionVector } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
+import { cursorVars } from "../components/cursors";
+import { usePopoverOpen, consumeSuppressedClick } from "../components/popoverStore";
 import { PlayButton, VolumeSlider } from "../components/Transport";
 import { BoroughToggle } from "../components/BoroughToggle";
 import { AQINumber } from "../components/AQINumber";
@@ -20,7 +22,7 @@ import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
 import { DayNav, PinStrip, DayPicker } from "../components/DayNav";
 import { SourceLine } from "../components/SourceLine";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
-import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, space, GOLDEN } from "../utils/theme";
+import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, space, GOLDEN, CONTROL } from "../utils/theme";
 
 // The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
 const qs = new URLSearchParams(window.location.search);
@@ -199,6 +201,8 @@ export default function ScenePage() {
     return () => cancelAnimationFrame(raf);
   }, [s.dissolve]);
 
+  const popoverOpen = usePopoverOpen();
+  const cursors = useMemo(cursorVars, []);
   // Glass parameters as custom properties at the root (§5.6: theme.ts is the source of truth; index.css reads these). The fill, its alpha and the lift follow the sky (D-35) and change with the clock; the rest are constants.
   const glassVars = {
     "--glass-blur": GLASS.blur, "--glass-saturate": GLASS.saturate, "--glass-fill-alpha": view.glass.alpha.toFixed(3), "--glass-fill": view.glass.fill, "--glass-lift": view.glass.lift.toFixed(3),
@@ -208,9 +212,10 @@ export default function ScenePage() {
 
   return (
     <ThemeContext.Provider value="dark">
-      <div style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars }}>
+      <div className="scene-root" style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars, ...cursors, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--press-scale": String(CONTROL.pressScale), "--state-ms": `${CONTROL.stateMs}ms` } as React.CSSProperties}>
         {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
-        <div ref={skyBoxRef} style={{ position: "absolute", inset: 0, cursor: phone ? "default" : "pointer" }} onClick={phone ? undefined : s.togglePlay} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
+        {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (index.css, data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
+        <div ref={skyBoxRef} className="scene-sky" data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onClick={phone ? undefined : () => { if (consumeSuppressedClick()) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
           <SkyView params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={{ width: "100%", height: "100%" }} />
           {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
           <canvas ref={dissolveCanvasRef} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />

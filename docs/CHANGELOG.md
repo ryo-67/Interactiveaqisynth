@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The page's own cursors; hover and pressed states everywhere; a dismissing press is not a play
+
+The cursor is a ring by default, a heavier ring over anything clickable, and over the sky the play or pause glyph, white with a soft shadow, so the sky reads as the transport it is; browsers that cannot show an SVG cursor fall back to their own. Every chip, button, calendar day, borough word and the slider thumb answers the pointer: a lighter fill or a brighter word on hover, a small shrink while pressed, 120 ms, none of it under reduced motion. While a popover is open the sky keeps the ring and the press that dismisses the popover is not also a play or pause: a small store says whether a popover is open and marks the dismissing press, and the sky swallows the click that follows it.
+
 ## 2026-09-15 — The calendar popover animates in and out, centred on the picker bar
 
 The popover cut in and out; now it stays mounted through a 180 ms exit and enters from a hidden first frame, opacity with a 4 px settle from the bar it hangs from, none of it under prefers-reduced-motion. On wider viewports it is centred on the picker bar's own centreline instead of hanging from its left edge; on phones it stays centred in the viewport. Its strings are on the UI face with the chips; the calendar grid keeps the data face. Escape and a press outside now close it: a popover with an exit and no way out but its own chip read as stuck.

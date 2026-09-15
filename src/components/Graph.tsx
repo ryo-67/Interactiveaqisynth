@@ -492,7 +492,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         {TRACK_ORDER.map((t) => {
           const active = t === tab;
           return (
-            <button key={t} role="tab" aria-selected={active} onClick={() => onTab(t)} style={chipStyle(c, active)}>
+            <button key={t} className="scene-chip" data-active={active} role="tab" aria-selected={active} onClick={() => onTab(t)} style={chipStyle(c, active)}>
               {TRACK_LABELS[t]}{TRACK_UNITS[t] ? ` ${TRACK_UNITS[t]}` : ""}
             </button>
           );

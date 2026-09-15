@@ -55,6 +55,7 @@ export function BoroughToggle({ selected, onSelect }: Props) {
         return (
           <button
             key={b}
+            className="scene-borough-btn"
             role="tab"
             aria-selected={isSel}
             onClick={() => onSelect(b)}
@@ -62,7 +63,6 @@ export function BoroughToggle({ selected, onSelect }: Props) {
               background: "none",
               border: "none",
               padding: 0,
-              cursor: "pointer",
               flex: "0 0 auto",
               display: "inline-grid",
               height: `var(--ctl-inner, ${CONTROL.inner}px)`,

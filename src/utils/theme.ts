@@ -258,6 +258,20 @@ export const CONTROL = {
   panelRadius: 20,
   sliderWidth: 96,
   chipTracking: "0.04em", // 0.48 px at the 12 px desktop chip, scaling with the chip's type (2026-09-15)
+  // Hover and pressed states for every clickable (2026-09-15): a chip lightens by hoverAlpha on hover (an active chip by hoverActiveAlpha, since it is already lit), and scales by pressScale while pressed; stateMs is the transition. index.css reads these as custom properties.
+  hoverAlpha: 0.10,
+  hoverActiveAlpha: 0.22,
+  pressScale: 0.96,
+  stateMs: 120,
+} as const;
+
+// Cursors (2026-09-15): the page's own, as SVG data URIs built by cursors.ts. A ring is the default, a heavier ring over anything clickable, and over the sky the play or pause glyph so the sky reads as the transport it is. All white with a soft dark shadow so they read on any sky; 32 px, the size every browser accepts. Browsers that cannot show an SVG cursor fall back to their own.
+export const CURSOR = {
+  size: 32,
+  ring: { radius: 5, stroke: 1.5 },
+  pointer: { radius: 7, stroke: 2 },
+  colour: "#ffffff",
+  shadow: "rgba(0,0,0,0.5)",
 } as const;
 
 // The four motion profiles (§5.4). Everything moves on the 90 BPM grid or not at all; drift is the one continuous exception (particulate, not rhythmic).

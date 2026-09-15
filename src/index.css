@@ -1424,7 +1424,7 @@ html {
 
 /* prefers-reduced-motion: no materialize/settle transitions on the material */
 @media (prefers-reduced-motion: reduce) {
-  .glass, .scene-popover {
+  .glass, .scene-popover, .scene-chip, .scene-play, .scene-day, .scene-borough-btn, .scene-volume::-webkit-slider-thumb {
     transition: none;
   }
 }
@@ -1438,6 +1438,29 @@ html {
   position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--ui-gap); padding: var(--ui-pad); pointer-events: none; overflow: hidden;
 }
 .scene-ui .glass, .scene-ui select { pointer-events: auto; }
+
+/* ——— Cursors (2026-09-15, theme.ts CURSOR via cursors.ts): a ring by default, a heavier ring over anything clickable, the play or pause glyph over the sky. Each declaration falls back to the browser's own where an SVG cursor is not supported. The graph keeps its resize cursor: it is scrubbed, not clicked. ——— */
+.scene-root { cursor: var(--cursor-ring), auto; }
+.scene-root button:not(:disabled), .scene-root [role="button"], .scene-root .scene-volume, .scene-root a { cursor: var(--cursor-pointer), pointer; }
+.scene-root button:disabled { cursor: var(--cursor-ring), default; }
+.scene-sky[data-cursor="play"] { cursor: var(--cursor-play), pointer; }
+.scene-sky[data-cursor="pause"] { cursor: var(--cursor-pause), pointer; }
+.scene-sky[data-cursor="ring"] { cursor: var(--cursor-ring), auto; }
+
+/* ——— Hover and pressed states (2026-09-15, theme.ts CONTROL.hoverAlpha / hoverActiveAlpha / pressScale / stateMs): every clickable answers the pointer. Chips lighten on hover (an active chip a step more, it is already lit) and shrink by the press scale while pressed; the borough words brighten; the play button and the calendar days take the chip's hover; the slider thumb grows under the pointer. The chip fills are inline (chip.ts), so the hover fills are declared important. ——— */
+.scene-chip, .scene-play, .scene-day, .scene-borough-btn { transition: background-color var(--state-ms, 120ms) ease, color var(--state-ms, 120ms) ease, transform var(--state-ms, 120ms) ease, filter var(--state-ms, 120ms) ease; }
+.scene-chip:not(:disabled):hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
+.scene-chip[data-active="true"]:not(:disabled):hover { background-color: rgba(255, 255, 255, var(--chip-hover-active, 0.22)) !important; }
+.scene-chip:not(:disabled):active, .scene-day:not(:disabled):active, .scene-play:active, .scene-borough-btn:active { transform: scale(var(--press-scale, 0.96)); }
+.scene-chip:disabled { opacity: 0.4; }
+.scene-play:hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
+.scene-day:not(:disabled):not([data-active="true"]):hover { background-color: rgba(255, 255, 255, var(--chip-hover, 0.1)) !important; }
+.scene-borough-btn:not([aria-selected="true"]):hover { filter: brightness(1.4); }
+.scene-volume::-webkit-slider-thumb { transition: transform var(--state-ms, 120ms) ease, box-shadow var(--state-ms, 120ms) ease; }
+.scene-volume:hover::-webkit-slider-thumb { transform: scale(1.12); }
+.scene-volume:active::-webkit-slider-thumb { transform: scale(1.2); box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 1); }
+.scene-volume:hover::-moz-range-thumb { transform: scale(1.12); }
+.scene-volume:active::-moz-range-thumb { transform: scale(1.2); }
 
 /* ——— The volume slider (2026-09-15): a native range, drawn by hand. The track is a 4 px hairline, the played share the primary white and the rest a darker translucent groove; the thumb is an opaque white knob with a hairline edge and a soft shadow, the way a system slider draws it — a translucent, blurred thumb let the track show through it and its ring read heavy. The graph's caret is drawn to the same recipe. Chromium/WebKit and Firefox each need their own pseudo-elements; the values are the same. ——— */
 .scene-volume { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; --vol-track: 4px; --vol-thumb: 16px; --vol-fill: rgba(255, 255, 255, 0.9); --vol-rest: rgba(0, 0, 0, 0.32); --vol-knob: linear-gradient(to bottom, #ffffff, #ececf2); --vol-knob-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 1); }

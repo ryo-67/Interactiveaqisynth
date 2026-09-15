@@ -157,7 +157,7 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
             {options.map((o) => {
               const active = o.date === date;
               return (
-                <button key={o.name} role="option" aria-selected={active} onClick={() => { onChange(o.date); setOpen(false); }} style={{ ...chip(active), width: "100%", justifyContent: "flex-start", textAlign: "left", display: "flex" }}>
+                <button key={o.name} role="option" aria-selected={active} onClick={() => { onChange(o.date); setOpen(false); }} style={{ ...chip(active), width: "100%", justifyContent: "center", textAlign: "center", display: "flex" }}>
                   {o.name}
                 </button>
               );

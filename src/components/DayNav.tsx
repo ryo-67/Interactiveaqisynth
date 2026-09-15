@@ -3,7 +3,8 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { createPortal } from "react-dom";
 import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
 import { chipStyle } from "./chip";
-import { PINS, NAV_LIVE, NAV_PREV, NAV_NEXT, NAV_CALENDAR, NAV_LAST_24H, CAL_AVAILABLE_UNTIL, PICK_OR_DATE } from "../content";
+import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, CAL_AVAILABLE_UNTIL, PICK_OR_DATE } from "../content";
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from "./icons";
 
 interface Props {
   date: string | null; // null = live
@@ -24,20 +25,6 @@ function labelOf(iso: string): string {
   return new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-// A 12 px calendar glyph in the current text colour: a frame with two binding rings and a row of days. Sized on the 4 px grid, drawn inline so it takes the chip's colour.
-function CalendarIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden focusable="false" style={{ flex: "0 0 auto" }}>
-      <rect x="1" y="2.5" width="10" height="8.5" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1" />
-      <line x1="1" y1="5" x2="11" y2="5" stroke="currentColor" strokeWidth="1" />
-      <line x1="3.5" y1="1" x2="3.5" y2="3.5" stroke="currentColor" strokeWidth="1" />
-      <line x1="8.5" y1="1" x2="8.5" y2="3.5" stroke="currentColor" strokeWidth="1" />
-      <rect x="3" y="6.5" width="1.5" height="1.5" fill="currentColor" />
-      <rect x="5.25" y="6.5" width="1.5" height="1.5" fill="currentColor" />
-      <rect x="7.5" y="6.5" width="1.5" height="1.5" fill="currentColor" />
-    </svg>
-  );
-}
 
 // The popover is rendered at the document level (a portal), not inside the pill: the pill has its own backdrop blur, and a blur nested inside another blurred element can only sample what is painted inside its parent, so the graph beneath showed through sharp. Fixed under the anchor, kept inside the viewport, re-measured every frame while open (cheap: one rect) so it follows the anchor through any reflow, zoom or resize.
 function usePopoverPosition(open: boolean, anchorRef: React.RefObject<HTMLDivElement>, width: number): { left: number; top: number } {
@@ -90,9 +77,9 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: space.xs }}>
-        <button style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label="previous month">{NAV_PREV}</button>
+        <button style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label="previous month"><ChevronLeftIcon /></button>
         <span style={{ color: c.textPrimary }}>{monthLabel}</span>
-        <button style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label="next month">{NAV_NEXT}</button>
+        <button style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label="next month"><ChevronRightIcon /></button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs }}>
         {["S", "M", "T", "W", "T", "F", "S"].map((dd, i) => (
@@ -152,10 +139,10 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
         {/* No calendar glyph on phones: the caret is the affordance, and the 18 px is what lets the chip share a row with the boroughs from 408 wide. Every label the chip can show is laid out in the same cell — the current one visible, the rest hidden — so the chip's width is the widest label's and never changes as the choice does. */}
         <span style={{ display: "inline-grid", textAlign: "center" }}>
           {[label, ...WIDTH_LABELS.filter((l) => l !== label)].map((l, i) => (
-            <span key={l} style={{ gridArea: "1 / 1", color: c.textPrimary, visibility: i === 0 ? "visible" : "hidden" }} aria-hidden={i !== 0}>{l}</span>
+            <span key={l} style={{ gridArea: "1 / 1", color: c.textPrimary, fontFamily: families.data, letterSpacing: 0, visibility: i === 0 ? "visible" : "hidden" }} aria-hidden={i !== 0}>{l}</span>
           ))}
         </span>
-        <span aria-hidden style={{ color: c.textMuted, fontSize: "0.8em", marginLeft: 2 }}>{open ? "▴" : "▾"}</span>
+        <span aria-hidden style={{ color: c.textMuted, marginLeft: 2, display: "inline-flex" }}>{open ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}</span>
       </button>
       {open && createPortal(
         <div className="glass frosted" role="dialog" aria-label={NAV_CALENDAR} style={{ ...popoverStyle(c), left: pos.left, top: pos.top }}>
@@ -206,17 +193,18 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
   return (
     <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: `var(--chip-inset, ${CONTROL.gap}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
       {/* Order: ‹ [calendar icon + date] › Live. The date itself opens the calendar; live reads "Last 24h" with the next arrow disabled. ‹ from live is yesterday's full day; › from yesterday is live again. */}
-      <button style={chip(false)} onClick={prev} aria-label="previous day" disabled={!date && !last}>{NAV_PREV}</button>
+      <button style={chip(false)} onClick={prev} aria-label="previous day" disabled={!date && !last}><ChevronLeftIcon /></button>
       <button
         style={{ ...chip(open), display: "inline-flex", alignItems: "center", gap: 6, minWidth: "8em", justifyContent: "center", opacity: loading ? 0.5 : 1 }}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={`${NAV_CALENDAR}: ${date ? labelOf(date) : NAV_LAST_24H}`}
       >
-        <CalendarIcon />
-        <span style={{ color: c.textPrimary }}>{date ? labelOf(date) : NAV_LAST_24H}</span>
+        <CalendarIcon size={14} />
+        {/* The date keeps the data face: it is a reading, not a control label. */}
+        <span style={{ color: c.textPrimary, fontFamily: families.data, letterSpacing: 0 }}>{date ? labelOf(date) : NAV_LAST_24H}</span>
       </button>
-      <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}>{NAV_NEXT}</button>
+      <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}><ChevronRightIcon /></button>
       <button style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
 
       {open && createPortal(

@@ -204,6 +204,7 @@ export const GRAPH = {
   scaleTrackWidth: 4, // the gradient track at the column's left, flush against the plot's right edge, square-ended, the full height of the y axis (2026-09-15)
   scaleCaret: 8, // the value marker: a caret at the track's right, 8 tall and 4 deep, pointing left at the value (2026-09-15: a round thumb read as a control)
   scaleCaretGap: 2, // between the caret's tip and the track
+  transitionBeats: 1.5, // a change of day or tab morphs the line, the fill, the scale and the pulse row over this many beats (D-37, 2026-09-15): the same span as the sun's glide and the dissolve
 } as const;
 
 // Opacity scale (§5.5). Tier color is applied through these, not at arbitrary alphas.
@@ -219,7 +220,8 @@ export const opacity = {
 export const families = {
   serifItalic: 'Georgia, "Times New Roman", serif', // editorial serif — mood word, mood sentence, the AQI number (styled italic at use)
   data: '"SF Mono", "Roboto Mono", Menlo, monospace', // tabular data face — the number, hour marks
-  uiCaps: 'system-ui, "Helvetica Neue", sans-serif', // UI caps — unselected boroughs, source line (uppercase + letterspacing at use)
+  uiCaps: 'system-ui, "Helvetica Neue", sans-serif', // UI caps — the borough row, source line (uppercase + letterspacing at use)
+  ui: '"Inter", system-ui, "Helvetica Neue", sans-serif', // UI face (2026-09-15): every chip and button other than the borough row; tracked by CONTROL.chipTracking. The date and the graph's own labels stay on the data face.
 } as const;
 
 // Named type scale (§5.5): [fontSize, lineHeight].
@@ -255,6 +257,7 @@ export const CONTROL = {
   barGap: 20,         // between pills across a bar, and between the bars (from the scaffold)
   panelRadius: 20,
   sliderWidth: 96,
+  chipTracking: "0.04em", // 0.48 px at the 12 px desktop chip, scaling with the chip's type (2026-09-15)
 } as const;
 
 // The four motion profiles (§5.4). Everything moves on the 90 BPM grid or not at all; drift is the one continuous exception (particulate, not rhythmic).

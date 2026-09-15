@@ -7,7 +7,7 @@ export function chipStyle(c: ReturnType<typeof themeColors>, active: boolean, ex
   return {
     display: "inline-flex", alignItems: "center", justifyContent: "center",
     height: `var(--ctl-inner, ${CONTROL.inner}px)`, padding: CONTROL.chipPad, boxSizing: "border-box", flex: "0 0 auto",
-    fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: 1, cursor: "pointer", whiteSpace: "nowrap",
+    fontFamily: families.ui, letterSpacing: CONTROL.chipTracking, fontSize: typeScale.caption.size, lineHeight: 1, cursor: "pointer", whiteSpace: "nowrap",
     color: active ? c.textPrimary : c.textMuted,
     background: active ? "rgba(255,255,255,0.14)" : "none",
     border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.14)"}`,

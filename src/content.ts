@@ -51,8 +51,6 @@ export const PINS = [
 // Borough names on phones, where the full row cannot fit at the caption size (445 px of labels for 303 px of room).
 export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhattan: "MN", Brooklyn: "BK", Queens: "QN", Bronx: "BX", "Staten Island": "SI" }; // the official two-letter borough codes (Shoro, 2026-09-15)
 export const NAV_LIVE = "Live";
-export const NAV_PREV = "‹";
-export const NAV_NEXT = "›";
 export const NAV_CALENDAR = "Calendar"; // the date chip's accessible name and the popover's
 export const NAV_LAST_24H = "Last 24h";
 export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}";

@@ -4,7 +4,7 @@
 // The graph is a transport surface, as in a DAW: press or drag anywhere on the plot to move the playhead, and the engine seeks with it, playing or paused. Play and pause live in the transport pill.
 import { readingLabel } from "../utils/time";
 import React, { useEffect, useMemo, useRef } from "react";
-import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
 import { pmToAQISeries, monotoneCurve } from "./graphSeries";
 import { chipStyle } from "./chip";
@@ -32,6 +32,35 @@ const MAX_RENDER_PIXELS = 24e6; // the buffer's pixel budget: the render ratio (
 function rgba(s: string): [number, number, number, number] {
   const m = s.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\s*\)/);
   return m ? [Number(m[1]), Number(m[2]), Number(m[3]), m[4] == null ? 1 : Number(m[4])] : [255, 255, 255, 1];
+}
+
+
+// A frame (D-37): everything the track and the pulse row draw for one state (a day on a tab), with the line in NORMALIZED height — a fraction of the tab's own scale — so two frames on different scales can be blended point by point. Presence is an alpha, so a reading that exists in one frame and not the other fades rather than pops.
+interface Frame {
+  key: string; // the state: tab and day
+  dayKey: string;
+  norm: Array<number | null>;
+  alpha: number[];
+  colours: Array<[number, number, number] | null>; // the line's colour at each reading
+  max: number;
+  gridValues: number[];
+  isAqi: number; // 1 on the AQI tab: the bar, the wider line and the deeper fill fade with it
+  pulse: Array<boolean | null>;
+  barHits: Array<number | null>;
+}
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+function lerpFrame(a: Frame, b: Frame, t: number): Frame {
+  const n = Math.max(a.norm.length, b.norm.length);
+  const norm: Array<number | null> = [], alpha: number[] = [], colours: Array<[number, number, number] | null> = [];
+  for (let i = 0; i < n; i++) {
+    const na = a.norm[i] ?? null, nb = b.norm[i] ?? null;
+    norm.push(na == null && nb == null ? null : lerp(na ?? nb!, nb ?? na!, t));
+    alpha.push(lerp(a.alpha[i] ?? 0, b.alpha[i] ?? 0, t));
+    const ca = a.colours[i] ?? b.colours[i] ?? null, cb = b.colours[i] ?? a.colours[i] ?? null;
+    colours.push(ca && cb ? [lerp(ca[0], cb[0], t), lerp(ca[1], cb[1], t), lerp(ca[2], cb[2], t)] : null);
+  }
+  return { ...b, norm, alpha, colours, max: lerp(a.max, b.max, t), isAqi: lerp(a.isAqi, b.isAqi, t) };
 }
 
 export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, onSeek, lift = 0 }: Props) {
@@ -70,6 +99,37 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
     }),
   }), [day, anchors]);
 
+  // The target frame for this state, and the transition to it. When the state changes (a new day or a new tab) the frame last SHOWN becomes the start, so a change made mid-transition continues from where the line is rather than from where it was going.
+  // Which data is on screen: a counter that steps whenever the day array changes identity (a new date, a new borough, a live refresh), so the state's key follows the data rather than the date, and a change of borough morphs too.
+  const dayIdRef = useRef({ day, id: 0 });
+  if (dayIdRef.current.day !== day) dayIdRef.current = { day, id: dayIdRef.current.id + 1 };
+  const dayId = dayIdRef.current.id;
+  const target = useMemo<Frame>(() => {
+    const vals = series[tab];
+    const present = vals.filter((v): v is number => v != null);
+    const floor = tab === "pm25" ? 20 : tab === "o3" ? 40 : 30;
+    // Scale. AQI is FIXED at the full 0–500 (GRAPH.aqiScaleMax), so the line never rescales between days, nothing clips, and the bar beside it is always the same complete ruler. The other channels have no standard ruler and take the day's own max, floored so a quiet day is not stretched to look dramatic; that changes only when the day changes.
+    const max = tab === "aqi" ? GRAPH.aqiScaleMax : Math.max(floor, ...present) * 1.08;
+    const secondary = rgba(c.textSecondary);
+    return {
+      key: `${tab}|${dayId}`,
+      dayKey: `${dayId}`,
+      norm: vals.map((v) => (v == null ? null : Math.min(v, max) / max)),
+      alpha: vals.map((v) => (v == null ? 0 : 1)),
+      colours: vals.map((v) => (v == null ? null : tab === "aqi" ? (rgba(aqiScaleColor(v, lift)).slice(0, 3) as [number, number, number]) : [secondary[0], secondary[1], secondary[2]])),
+      max,
+      gridValues: tab === "aqi" ? AQI_CATEGORIES.map((k) => k.max).filter((v) => v <= max) : [Math.round(max / 1.08), Math.round(max / 2.16)],
+      isAqi: tab === "aqi" ? 1 : 0,
+      pulse: series.pulse,
+      barHits: series.barHits,
+    };
+  }, [series, tab, lift, c, dayId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const transitionRef = useRef<{ from: Frame | null; to: Frame; start: number; ms: number }>({ from: null, to: target, start: 0, ms: 0 });
+  const shownRef = useRef<Frame | null>(null);
+  if (transitionRef.current.to.key !== target.key) {
+    // A new state: start from what is on screen now. The tab band's chips have already moved; the line follows over GRAPH.transitionBeats.
+    transitionRef.current = { from: shownRef.current ?? transitionRef.current.to, to: target, start: performance.now(), ms: motion.beatMs * GRAPH.transitionBeats };
+  } else transitionRef.current.to = target; // the same state re-described (a lift or theme change): no morph
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -95,7 +155,6 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const tabsH = tabs ? tabs.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top + parseFloat(getComputedStyle(tabs).marginBottom || "0") : 0;
       const available = wrap.clientHeight - tabsH - GRAPH.labelGutter - pulseH - axisH;
       const tabH = fill ? Math.max(minTab, Math.floor(available / 4) * 4) : minTab;
-      const lineTracks: TrackKey[] = [tab];
       const cssH = GRAPH.labelGutter + tabH + pulseH + axisH;
       // The buffer is whole device pixels at the current ratio, and the canvas box is set to exactly buffer ÷ ratio, so one buffer pixel is one device pixel and every line lands on one; any other pairing resamples the drawing. The ratio includes the visual viewport's pinch scale (trackpad pinch on a Mac, pinch on a phone): that magnifies the page without reflow or a ratio change, and a bitmap drawn at the unmagnified ratio is simply scaled up, which is the one element on the page that can look soft. Capped, because a 5× pinch on a 2× display would be a 100-megapixel buffer.
       const pinch = window.visualViewport?.scale ?? 1;
@@ -155,72 +214,83 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       // The plot's right edge, so the grid never runs under the scale bar.
       ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
 
-      // Tracks.
+      // Tracks: the one line track (the tab), drawn from the SHOWN frame. The shown frame is the target frame, or during a transition the blend of the frame last shown and the target (see Frame below): every value at a blend of its two normalized heights, every colour at a blend, every presence at a blend of its alphas, the scale's top at a blend. So a change of day morphs the line from the old shape to the new, and a change of tab morphs it from the old track to the new on a scale that rescales as it goes (D-37).
+      const now = performance.now();
+      const tr = transitionRef.current;
+      let e = 1;
+      if (tr.from) { e = easeInOut(Math.min(1, (now - tr.start) / tr.ms)); if (e >= 1) tr.from = null; }
+      const cur = tr.from ? lerpFrame(tr.from, tr.to, e) : tr.to;
+      shownRef.current = cur;
+      const transitioning = tr.from != null;
+      const fromFrame = tr.from, toFrame = tr.to;
       let y0 = GRAPH.labelGutter;
-      for (const t of lineTracks) {
-        const vals = series[t];
-        const curve = monotoneCurve(vals);
-        const present = vals.filter((v): v is number => v != null);
-        // Scale. AQI is FIXED at the full 0–500 (GRAPH.aqiScaleMax), so the line never rescales between days, nothing clips, and the bar beside it is always the same complete ruler. The other channels have no standard ruler and take the day's own max, floored so a quiet day is not stretched to look dramatic; that changes only when the day changes.
-        const floor = t === "pm25" ? 20 : t === "o3" ? 40 : 30;
-        const max = t === "aqi" ? GRAPH.aqiScaleMax : Math.max(floor, ...present) * 1.08;
+      {
+        const { norm, alpha, max, colours } = cur;
+        const curve = monotoneCurve(norm);
         const inner = tabH - lh - 2;
-        const yFor = (v: number) => y0 + lh + (1 - Math.min(v, max) / max) * inner;
+        const yOf = (f: number) => y0 + lh + (1 - Math.min(f, 1)) * inner; // f: a fraction of the shown scale
+        const rgbaOf = (col: [number, number, number] | null, a: number) => col ? `rgba(${col.map(Math.round).join(",")},${a.toFixed(3)})` : "rgba(255,255,255,0)";
 
-        // Baseline, the scale's top value at the right, and a mid gridline with its value so the line can be read against numbers.
+        // Baseline. Gridlines at the target's values, each at the height its value has on the SHOWN scale, so a value's line slides as the scale rescales rather than jumping; the labels cross-fade, the previous frame's out and the target's in.
         hair.strokeStyle = firmLine;
         hair.beginPath(); hair.moveTo(plotX, y0 + lh + inner + 0.5); hair.lineTo(plotRight, y0 + lh + inner + 0.5); hair.stroke();
-        // Gridlines with values at the left: the category boundaries on AQI (a fixed ruler), top and middle on the others.
-        const gridValues = t === "aqi" ? AQI_CATEGORIES.map((k) => k.max).filter((v) => v <= max) : [Math.round(max / 1.08), Math.round(max / 2.16)];
-        ctx.fillStyle = c.textMuted;
-        for (const gv of gridValues) {
-          const gy = yFor(gv);
-          { hair.setLineDash([2, 5]); hair.beginPath(); hair.moveTo(plotX, gy + 0.5); hair.lineTo(plotRight, gy + 0.5); hair.stroke(); hair.setLineDash([]); }
-          const lab = String(gv);
-          ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, gy + labelPx * 0.36); // in the gutter, right-aligned, centred on the gridline
+        for (const gv of toFrame.gridValues) {
+          const f = gv / max; if (f > 1.001) continue;
+          const gy = yOf(f);
+          hair.setLineDash([2, 5]); hair.beginPath(); hair.moveTo(plotX, gy + 0.5); hair.lineTo(plotRight, gy + 0.5); hair.stroke(); hair.setLineDash([]);
+        }
+        const labelSets: Array<[number[], number]> = fromFrame ? [[fromFrame.gridValues, 1 - e], [toFrame.gridValues, e]] : [[toFrame.gridValues, 1]];
+        for (const [values, a] of labelSets) {
+          ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = c.textMuted;
+          for (const gv of values) { const f = gv / max; if (f > 1.001) continue; const lab = String(gv); ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, yOf(f) + labelPx * 0.36); }
+          ctx.restore();
         }
 
-        // AQI: the scale bar at the right. One smooth gradient through the category colours, each colour placed at its own upper boundary so the transitions fall where the categories change; the marker sits at the value under the playhead.
-        if (t === "aqi") {
+        // AQI: the scale bar at the right, fading in with the tab. One smooth gradient through the category colours on the fixed 0–500 ruler; the marker sits at the value under the playhead, and eases with it.
+        if (cur.isAqi > 0.005) {
           ctx.restore(); // draw outside the plot clip
+          ctx.save(); ctx.globalAlpha = cur.isAqi;
           const barX = cssW - barW;
-          // The track runs the full height of the y axis — from the grid's top to the baseline — not only 0 to 500: the axis continues above 500, and so does the hazardous colour (the gradient is laid out 0 → 500 and clamps beyond). Square-ended and flush against the plot's right edge, so it reads as the axis's colour rather than a separate control.
-          const barTop = GRAPH.labelGutter, barBottom = yFor(0);
-          const grad = ctx.createLinearGradient(0, barBottom, 0, yFor(max));
-          for (const s of aqiScaleStops(max, lift)) grad.addColorStop(s.offset, s.color);
+          const barTop = GRAPH.labelGutter, barBottom = yOf(0);
+          const grad = ctx.createLinearGradient(0, barBottom, 0, yOf(1));
+          for (const s of aqiScaleStops(GRAPH.aqiScaleMax, lift)) grad.addColorStop(s.offset, s.color);
           const trackW = GRAPH.scaleTrackWidth, trackX = barX;
           ctx.fillStyle = grad;
           ctx.fillRect(trackX, barTop, trackW, barBottom - barTop);
-          const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (vals[i] != null) return i; return -1; })();
-          const cur = hi >= 0 ? vals[hi] : null;
-          if (cur != null) {
-            // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. The primary text colour, on the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base lands on the column's outer edge.
-            // Drawn as a small glass element: the chip's light fill and a soft shadow.
-            const my = yFor(cur);
+          const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (alpha[i] > 0.5) return i; return -1; })();
+          const cv = hi >= 0 ? norm[hi] : null;
+          if (cv != null && alpha[hi] > 0.005) {
+            // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. On the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base on the column's outer edge.
+            // Drawn in the glass vocabulary: a translucent light fill, a soft shadow cast down and right, a fine edge, and a brighter top edge where the light catches it — the chips' inset highlight, in miniature.
+            ctx.globalAlpha = cur.isAqi * alpha[hi];
+            const my = yOf(cv);
             const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX + trackW + GRAPH.scaleCaretGap;
             const caret = () => { ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.lineTo(tipX + d, my + h / 2); ctx.closePath(); };
-            // A shadow, not a border: the caret is lit from above like the glass chips, so it casts down and right and has no dark outline.
             ctx.save();
-            ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
-            ctx.fillStyle = "rgba(255,255,255,0.92)";
+            ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1.5;
+            ctx.fillStyle = "rgba(255,255,255,0.55)";
             caret(); ctx.fill();
             ctx.restore();
+            ctx.lineWidth = 1; ctx.lineJoin = "round";
+            ctx.strokeStyle = "rgba(255,255,255,0.7)"; caret(); ctx.stroke(); // the edge
+            ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.stroke(); // the lit top edge
           }
+          ctx.restore();
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
         }
 
-        // The area under the line: colour blends horizontally along the line (a stop at every hour's scale colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per tab, day and size, so the playhead's per-frame redraw does not rebuild it.
+        // The area under the line: colour blends horizontally along the line (a stop at every hour's colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per shown frame and size, so the playhead's per-frame redraw does not rebuild it; a transition rebuilds it every frame, which is the cost of the fill following the morphing line.
         const baseY = y0 + lh + inner;
         // Keyed on the plot's geometry too (plotX, plotW, the track's y range): plotX is measured from the data font, and when that font arrives after the first draw the edge moves a couple of pixels; the line redraws at the new positions, and a fill cached under the old edge sat visibly off the line.
-        const areaKey = `${t}|${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${lift.toFixed(2)}|${day[0]?.ts ?? ""}|${vals.map((v) => (v == null ? "" : Math.round(v * 10))).join(",")}`;
+        const areaKey = `${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${cur.isAqi.toFixed(2)}|${norm.map((v, i) => (v == null ? "" : `${Math.round(v * 1000)}:${Math.round(alpha[i] * 100)}:${colours[i]?.map(Math.round).join(".")}`)).join(",")}`;
         let area = areaCache.current;
         if (!area || area.key !== areaKey) {
           const off = document.createElement("canvas");
           off.width = Math.round(plotW * dpr); off.height = bufH; // the plot's own device pixels, blitted 1:1 below
           const o = off.getContext("2d")!;
           o.setTransform(dpr, 0, 0, dpr, 0, 0);
-          const alpha = t === "aqi" ? GRAPH.areaAlpha.aqi : GRAPH.areaAlpha.channel;
-          // Pass 1: the mask — the fade computed per pixel into an image buffer: alpha falls linearly from `alpha` at the line's height in that column to 0 at the base, the line's height following the segment between the two readings continuously. Per-hour segments each had their own fade and read as bands; per-column canvas gradients were smooth in principle but the rasterizer quantizes each column's gradient with a different phase, a 3–4% ripple between neighbouring columns at high zoom. Written directly, the fade is exact. The top row gets the line's fractional coverage so the fill's edge sits on the line. Cached with the rest of the offscreen.
+          const fillAlpha = GRAPH.areaAlpha.channel + (GRAPH.areaAlpha.aqi - GRAPH.areaAlpha.channel) * cur.isAqi;
+          // Pass 1: the mask — the fade computed per pixel into an image buffer: alpha falls linearly from the fill alpha at the line's height in that column to 0 at the base, the line's height following the segment between the two readings continuously. Per-hour segments each had their own fade and read as bands; per-column canvas gradients were smooth in principle but the rasterizer quantizes each column's gradient with a different phase, a 3–4% ripple between neighbouring columns at high zoom. Written directly, the fade is exact. The top row gets the line's fractional coverage so the fill's edge sits on the line.
           const mask = o.createImageData(off.width, off.height);
           const md = mask.data;
           const baseDev = baseY * dpr;
@@ -228,24 +298,21 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
             const xc = (px + 0.5) / dpr; // the column's centre in CSS px, relative to the plot
             const v = curve(Math.min(n - 1, Math.max(0, xc / colW)));
             if (v == null) continue;
-            const yLine = yFor(v) * dpr;
+            const yLine = yOf(v) * dpr;
             if (yLine >= baseDev) continue;
             const span = baseDev - yLine;
             const first = Math.floor(yLine);
             for (let y = first; y < off.height && y < baseDev; y++) {
               const coverage = y === first ? first + 1 - yLine : 1; // the top pixel's fractional coverage by the fill
               const depth = Math.max(0, y + 0.5 - yLine) / span; // 0 at the line, 1 at the base
-              md[(y * off.width + px) * 4 + 3] = Math.round(255 * alpha * coverage * Math.max(0, 1 - depth));
+              md[(y * off.width + px) * 4 + 3] = Math.round(255 * fillAlpha * coverage * Math.max(0, 1 - depth));
             }
           }
           o.putImageData(mask, 0, 0);
-          // Pass 2: the colour, through the mask — the scale colour at every hour along the line, or white for the other tracks.
+          // Pass 2: the colour, through the mask — each hour's colour at its presence.
           o.globalCompositeOperation = "source-in";
           const colour = o.createLinearGradient(0, 0, plotW, 0);
-          for (let i = 0; i < n; i++) {
-            const v = vals[i];
-            colour.addColorStop(Math.min(1, Math.max(0, (i * colW) / plotW)), v == null ? "rgba(255,255,255,0)" : t === "aqi" ? aqiScaleColor(v, lift) : "rgb(255,255,255)");
-          }
+          for (let i = 0; i < n; i++) colour.addColorStop(Math.min(1, Math.max(0, (i * colW) / plotW)), rgbaOf(colours[i], alpha[i]));
           o.fillStyle = colour;
           o.fillRect(0, 0, plotW, cssH);
           area = { key: areaKey, canvas: off };
@@ -259,92 +326,94 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         ctx.drawImage(area.canvas, Math.round(plotX * dpr), 0);
         ctx.restore();
 
-        // The line. AQI segments are gradients between the scale colour at each end — the same rule the bar is drawn with, so a point on the line and the bar at that height always match; the others are the secondary text colour.
-        ctx.lineWidth = t === "aqi" ? GRAPH.lineWidth.aqi : GRAPH.lineWidth.channel;
+        // The line. Each segment is a gradient between its two ends' colours — the same rule the bar is drawn with, so a point on the line and the bar at that height always match — at the lesser of its two ends' presence.
+        ctx.lineWidth = GRAPH.lineWidth.channel + (GRAPH.lineWidth.aqi - GRAPH.lineWidth.channel) * cur.isAqi;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
         // Each hour's piece is the monotone curve sampled every few pixels (graphSeries.monotoneCurve), so the line is smooth between readings and never overshoots one; the fill's height follows the same curve.
         const CURVE_STEP = 3; // css px between samples along the curve
         for (let i = 1; i < n; i++) {
-          const a = vals[i - 1], b = vals[i];
-          if (a == null || b == null) continue;
+          const a = norm[i - 1], b = norm[i];
+          const sa = Math.min(alpha[i - 1], alpha[i]);
+          if (a == null || b == null || sa <= 0.005) continue;
           const x0 = plotX + (i - 1) * colW, x1 = plotX + i * colW;
-          if (t === "aqi") {
-            const seg = ctx.createLinearGradient(x0, yFor(a), x1, yFor(b));
-            seg.addColorStop(0, aqiScaleColor(a, lift));
-            seg.addColorStop(1, aqiScaleColor(b, lift));
-            ctx.strokeStyle = seg;
-          } else ctx.strokeStyle = c.textSecondary;
+          const seg = ctx.createLinearGradient(x0, yOf(a), x1, yOf(b));
+          seg.addColorStop(0, rgbaOf(colours[i - 1], sa));
+          seg.addColorStop(1, rgbaOf(colours[i], sa));
+          ctx.strokeStyle = seg;
           ctx.beginPath();
-          ctx.moveTo(x0, yFor(a));
+          ctx.moveTo(x0, yOf(a));
           const steps = Math.max(2, Math.ceil(colW / CURVE_STEP));
           for (let s = 1; s <= steps; s++) {
             const f = s / steps;
             const v = curve(i - 1 + f);
-            ctx.lineTo(x0 + (x1 - x0) * f, yFor(v ?? (a + (b - a) * f)));
+            ctx.lineTo(x0 + (x1 - x0) * f, yOf(v ?? (a + (b - a) * f)));
           }
           ctx.stroke();
         }
         // Trailing hours not yet reported (a live channel AirNow has not published for the newest hours) hold the last value as a dotted flat line to the right edge: the line does not simply stop, and the dots say "not yet" rather than "zero".
         let lastIdx = -1;
-        for (let i = n - 1; i >= 0; i--) if (vals[i] != null) { lastIdx = i; break; }
+        for (let i = n - 1; i >= 0; i--) if (alpha[i] > 0.5 && norm[i] != null) { lastIdx = i; break; }
         if (lastIdx >= 0 && lastIdx < n - 1) {
-          const v = vals[lastIdx]!;
-          const y = yFor(v);
+          const y = yOf(norm[lastIdx]!);
           ctx.save();
           ctx.setLineDash([2, 4]);
           ctx.lineWidth = 1;
-          ctx.strokeStyle = t === "aqi" ? aqiScaleColor(v, lift) : c.textMuted;
+          ctx.strokeStyle = cur.isAqi > 0.5 ? rgbaOf(colours[lastIdx], alpha[lastIdx]) : c.textMuted;
           ctx.beginPath(); ctx.moveTo(plotX + lastIdx * colW, y); ctx.lineTo(plotRight, y); ctx.stroke();
           ctx.restore();
         }
         // Isolated points (a reporting hour between two nulls) still show.
         for (let i = 0; i < n; i++) {
-          const v = vals[i];
-          if (v == null) continue;
-          if ((i === 0 || vals[i - 1] == null) && (i === n - 1 || vals[i + 1] == null)) {
-            ctx.fillStyle = t === "aqi" ? aqiScaleColor(v, lift) : c.textSecondary;
-            ctx.fillRect(plotX + i * colW - 1, yFor(v) - 1, 2, 2);
+          const v = norm[i];
+          if (v == null || alpha[i] <= 0.005) continue;
+          if ((i === 0 || alpha[i - 1] <= 0.5) && (i === n - 1 || alpha[i + 1] <= 0.5)) {
+            ctx.fillStyle = rgbaOf(colours[i], alpha[i]);
+            ctx.fillRect(plotX + i * colW - 1, yOf(v) - 1, 2, 2);
           }
         }
         ctx.restore(); // back to the wider clip, so the y values in the gutter stay drawable
         y0 += tabH;
       }
 
-      // Pulse row: 16 steps per bar, 4 per hour; hit = a mark, rest = nothing, null bar = a faint dash across it. Each bar is labelled with its hit count. The mark under the playhead is lit for as long as the playhead is over its step — the row and the line share one clock. Hour i's steps run from reading i towards reading i+1, so the last reading's steps fall past the right edge (the hour after the last reading) and are not drawn.
+      // Pulse row: 16 steps per bar, 4 per hour; hit = a mark, rest = nothing, null bar = a faint dash across it. Each bar is labelled with its hit count. The mark under the playhead is lit for as long as the playhead is over its step — the row and the line share one clock. Hour i's steps run from reading i towards reading i+1, so the last reading's steps fall past the right edge (the hour after the last reading) and are not drawn. On a change of day the previous day's marks and counts fade out as the new day's fade in.
       {
         const stepW = colW / STEPS_PER_HOUR;
         const ph = playheadRef.current;
         const currentStep = ph == null ? -1 : Math.floor((ph % 24) * STEPS_PER_HOUR);
         ctx.fillStyle = c.textMuted;
         ctx.fillText(TRACK_LABELS.pulse, plotX + 4, y0 + labelPx);
-        for (let b = 0; b < series.barHits.length; b++) {
-          const k = series.barHits[b];
-          const label = k == null ? "—" : `${k}`;
-          const bx = Math.min(plotRight, plotX + b * 4 * colW + 4 * colW) - ctx.measureText(label).width - 4;
-          ctx.fillStyle = c.textMuted;
-          ctx.fillText(label, bx, y0 + labelPx);
-        }
-        ctx.fillStyle = c.textSecondary;
-        for (let s = 0; s < series.pulse.length; s++) {
-          const v = series.pulse[s];
-          const x = plotX + s * stepW;
-          if (x >= plotRight) continue;
-          if (v == null) {
-            if (s % 16 === 0) { hair.fillStyle = firmLine; hair.fillRect(x, y0 + pulseH - 5, Math.min(colW * 4, plotRight - x), 1); }
-            continue;
+        const pulseSets: Array<[Frame, number]> = fromFrame && fromFrame.dayKey !== toFrame.dayKey ? [[fromFrame, 1 - e], [toFrame, e]] : [[toFrame, 1]];
+        for (const [fr, a] of pulseSets) {
+          ctx.save(); ctx.globalAlpha = a;
+          for (let b = 0; b < fr.barHits.length; b++) {
+            const k = fr.barHits[b];
+            const label = k == null ? "—" : `${k}`;
+            const bx = Math.min(plotRight, plotX + b * 4 * colW + 4 * colW) - ctx.measureText(label).width - 4;
+            ctx.fillStyle = c.textMuted;
+            ctx.fillText(label, bx, y0 + labelPx);
           }
-          if (!v) continue;
-          const lit = s === currentStep;
-          ctx.fillStyle = lit ? c.textPrimary : c.textSecondary;
-          const h = lit ? pulseH - lh - 2 : pulseH - lh - 6;
-          // Marks sit at the START of their step, where the playhead is at the moment of the hit.
-          ctx.fillRect(Math.round(x) , y0 + pulseH - 3 - h, lit ? 3 : 2, h);
+          for (let s = 0; s < fr.pulse.length; s++) {
+            const v = fr.pulse[s];
+            const x = plotX + s * stepW;
+            if (x >= plotRight) continue;
+            if (v == null) {
+              if (s % 16 === 0 && fr === toFrame) { hair.fillStyle = firmLine; hair.fillRect(x, y0 + pulseH - 5, Math.min(colW * 4, plotRight - x), 1); }
+              continue;
+            }
+            if (!v) continue;
+            const lit = s === currentStep;
+            ctx.fillStyle = lit ? c.textPrimary : c.textSecondary;
+            const h = lit ? pulseH - lh - 2 : pulseH - lh - 6;
+            // Marks sit at the START of their step, where the playhead is at the moment of the hit.
+            ctx.fillRect(Math.round(x), y0 + pulseH - 3 - h, lit ? 3 : 2, h);
+          }
+          ctx.restore();
         }
         y0 += pulseH;
       }
 
-      // X axis: a tick at every reading, firmer at bar starts; two labels only — at the left the first reading's time, with its date on the live window whose readings straddle two days ("Sep 14, 2:00 pm"; the year only when it is not this year); at the right "now" when live, else the last reading's time. Hour numbers read as a 24-hour clock and confused the rolling live window.
+      // X axis: a line under the pulse row, ticks from the hour grid above; two labels only, drawn after the hairlines are composited below.
       const axisY = cssH - axisH;
       hair.strokeStyle = firmLine;
       hair.beginPath(); hair.moveTo(plotX, axisY + 0.5); hair.lineTo(plotRight, axisY + 0.5); hair.stroke();
@@ -376,7 +445,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         const hi = Math.max(0, Math.min(n - 1, Math.floor(playheadHour))); // clamped both ways: this indexes the day
         // Clock time from the reading's own timestamp, not the index. The date joins it only on the live window, whose readings straddle two days ("Sep 14, 6pm"); a chosen day already names its date in the axis label, so its chip is just "4am".
         const parts: string[] = [readingLabel(day[hi].ts, live)];
-        for (const t of lineTracks) { const v = series[t][hi]; parts.push(`${TRACK_LABELS[t]} ${v == null ? "—" : Math.round(v)}`); }
+        { const v = series[tab][hi]; parts.push(`${TRACK_LABELS[tab]} ${v == null ? "—" : Math.round(v)}`); }
         const label = parts.join(" · ");
         // The readout is a chip, in the site's vocabulary: 24 tall, 8 px side padding, 8 px corners, the panel's dark fill with the chips' hairline border, caption type.
         const chipH = 24, chipPad = 8, chipR = 8;
@@ -392,7 +461,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       }
 
       ctx.restore();
-      if (playing) raf = requestAnimationFrame(draw);
+      if (playing || transitioning) raf = requestAnimationFrame(draw);
     };
 
     draw();
@@ -414,7 +483,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
     window.addEventListener("resize", onResize);
     window.visualViewport?.addEventListener("resize", onResize);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); window.visualViewport?.removeEventListener("resize", onResize); };
-  }, [series, day, playing, live, tab, c, lift, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
+  }, [target, day, playing, live, c, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
 
   return (
     <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>

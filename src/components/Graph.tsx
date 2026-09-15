@@ -204,22 +204,27 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const o = off.getContext("2d")!;
           o.setTransform(dpr, 0, 0, dpr, 0, 0);
           const alpha = t === "aqi" ? GRAPH.areaAlpha.aqi : GRAPH.areaAlpha.channel;
-          // Pass 1: the mask — each hour segment fades from opaque at the line to transparent at the base.
-          for (let i = 1; i < n; i++) {
-            const va = vals[i - 1], vb = vals[i];
+          // Pass 1: the mask — the fade computed per pixel into an image buffer: alpha falls linearly from `alpha` at the line's height in that column to 0 at the base, the line's height following the segment between the two readings continuously. Per-hour segments each had their own fade and read as bands; per-column canvas gradients were smooth in principle but the rasterizer quantizes each column's gradient with a different phase, a 3–4% ripple between neighbouring columns at high zoom. Written directly, the fade is exact. The top row gets the line's fractional coverage so the fill's edge sits on the line. Cached with the rest of the offscreen.
+          const mask = o.createImageData(off.width, off.height);
+          const md = mask.data;
+          const baseDev = baseY * dpr;
+          for (let px = 0; px < off.width; px++) {
+            const xc = (px + 0.5) / dpr; // the column's centre in CSS px, relative to the plot
+            const seg = Math.min(n - 2, Math.max(0, Math.floor(xc / colW)));
+            const va = vals[seg], vb = vals[seg + 1];
             if (va == null || vb == null) continue;
-            // Segment edges on whole device pixels: adjacent segments then abut with neither an anti-aliased seam nor an overlap (the old ±0.5 px overlap made a double-alpha stripe at every hour, and it drifted from the hairlines). The line's own points stay fractional; only the fill's columns snap.
-            const x0 = Math.round((i - 1) * colW * dpr) / dpr, x1 = Math.round(i * colW * dpr) / dpr;
-            // The segment's top corners sit ON the line: the true points are at fractional x, so the y at each snapped edge is interpolated along the segment's own slope. Otherwise the fill's edge and the line diverge by up to half a pixel on steep parts.
-            const xa = (i - 1) * colW, xb = i * colW;
-            const yAt = (x: number) => yFor(va) + (yFor(vb) - yFor(va)) * ((x - xa) / (xb - xa));
-            const ya = yAt(x0), yb = yAt(x1);
-            const fade = o.createLinearGradient(0, Math.min(ya, yb), 0, baseY);
-            fade.addColorStop(0, `rgba(0,0,0,${alpha})`);
-            fade.addColorStop(1, "rgba(0,0,0,0)");
-            o.fillStyle = fade;
-            o.beginPath(); o.moveTo(x0, ya); o.lineTo(x1, yb); o.lineTo(x1, baseY); o.lineTo(x0, baseY); o.closePath(); o.fill();
+            const t = Math.min(1, Math.max(0, (xc - seg * colW) / colW));
+            const yLine = (yFor(va) + (yFor(vb) - yFor(va)) * t) * dpr;
+            if (yLine >= baseDev) continue;
+            const span = baseDev - yLine;
+            const first = Math.floor(yLine);
+            for (let y = first; y < off.height && y < baseDev; y++) {
+              const coverage = y === first ? first + 1 - yLine : 1; // the top pixel's fractional coverage by the fill
+              const depth = Math.max(0, y + 0.5 - yLine) / span; // 0 at the line, 1 at the base
+              md[(y * off.width + px) * 4 + 3] = Math.round(255 * alpha * coverage * Math.max(0, 1 - depth));
+            }
           }
+          o.putImageData(mask, 0, 0);
           // Pass 2: the colour, through the mask — the scale colour at every hour along the line, or white for the other tracks.
           o.globalCompositeOperation = "source-in";
           const colour = o.createLinearGradient(0, 0, plotW, 0);

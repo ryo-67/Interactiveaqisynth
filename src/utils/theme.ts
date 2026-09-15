@@ -41,7 +41,7 @@ export function themeColors(theme: Theme) {
     textFaint: isDark
       ? "rgba(255,255,255,0.18)"
       : "rgba(0,0,0,0.22)",
-    gridHair: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+    gridHair: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)", // the faint hour lines: 0.10 so they still read on the darkest frost (2026-09-15)
 
     border: isDark
       ? "rgba(255,255,255,0.07)"
@@ -129,8 +129,9 @@ export const AQI_CATEGORIES = [
   { max: 100, color: "#ffff00", text: "#ffff00" },
   { max: 150, color: "#ff8c1a", text: "#ff8c1a" },
   { max: 200, color: "#ff5c5c", text: "#ff7878" }, // unhealthy: the word one step lighter, 3.06:1 on the noon panel
-  { max: 300, color: "#8f3f97", text: "#b98cff" }, // very unhealthy: EPA purple; the word a lavender of that hue, 3.08:1
-  { max: 500, color: "#7e0023", text: "#ff7a94" }, // hazardous: EPA maroon; the word its hue at 0.37 luminance, 3.16:1
+  // The display ramp's top: the EPA purple and maroon (0.12 and 0.05 luminance) read as black next to the bright four below; these keep the hues fully saturated at 0.17 and 0.10, each step still darker by about half (2026-09-15).
+  { max: 300, color: "#8f47ff", text: "#b98cff" }, // very unhealthy: saturated violet; the word a lavender of that hue, 3.08:1
+  { max: 500, color: "#b0103c", text: "#ff7a94" }, // hazardous: saturated crimson; the word its hue at 0.37 luminance, 3.16:1
 ] as const;
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
@@ -358,7 +359,9 @@ export const PARTICLES = {
 export const GRAIN = {
   visibleFromUgm3: 12, // the Good/Moderate line
   fullAtUgm3: 120,
-  opacityMax: 0.45,
+  // Blend: vivid light, not premultiplied overlay. Overlay grain scales with the pixel's own brightness, so on a night sky it measured a standard deviation of 0 at any opacity; vivid light measured the same amplitude on a night sky (43/255) and a noon mid-tone (122/255), with no shift of the mean, and nothing on clipped white (2026-09-15). Opacity 0.04 ≈ 4.5 levels of texture, 0.1 ≈ 9, 0.3 ≈ 21.
+  opacityBase: 0.05, // always there, at every hour, night included: the material's own texture
+  opacityMax: 0.2, // at full fine particulate: the wildfire end
   curve: 0.8,
 } as const;
 
@@ -388,7 +391,7 @@ export const GLASS = {
   blur: "18px",
   saturate: "1.6",
   // A tinted frost keyed to the sky (D-35, amending D-25's one neutral surface). The fill's ALPHA follows the light: fillAlphaDay where white text needs the darkening — the worst case is a clear noon sky behind the hero, measured at 0.92 luminance, where 255·(1−0.62)+navy·0.62 ≈ 100 → 4.9:1 against the 0.9-alpha primary — thinning to fillAlphaNight when the sky is dark (dusk, night, smoke, haze: most of the piece), so more of the sky shows through. The fill's HUE follows the sky: navy in clear air, umber under smoke and at golden hour, so the panel never sits as a cold block on an orange sky. At night a faint white lift so the panel reads lighter than the sky, as a frost does.
-  fillAlphaDay: 0.62,
+  fillAlphaDay: 0.50, // the lightest that holds 4.5:1 for the primary text on the clear-noon hero, measured from the composited page: 0.48 read 4.49:1 there, 0.50 leaves a margin (2026-09-15). The look asks for the night's 0.35 by day too; that reads 3.5:1 there, so this is the floor, not the taste
   fillAlphaNight: 0.35,
   fill: "8, 14, 40", // navy: the tint of clear air
   fillWarm: "44, 22, 8", // umber: the tint under smoke and golden light

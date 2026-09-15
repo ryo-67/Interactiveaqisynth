@@ -40,7 +40,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
   const wrapRef = useRef<HTMLDivElement>(null);
   // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
   const areaCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
-  const hairRef = useRef<HTMLCanvasElement | null>(null); // the opaque hairline layer, reused across draws
+  const hairRef = useRef<HTMLCanvasElement | null>(null); // the firm hairlines, opaque white, reused across draws
+  const faintRef = useRef<HTMLCanvasElement | null>(null); // the faint hairlines, opaque white, composited at their own alpha
   const playheadRef = useRef<number | null>(playheadHour);
   playheadRef.current = playheadHour;
   const playing = running && playheadHour != null;
@@ -113,13 +114,16 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const hair = hairCanvas.getContext("2d")!;
       hair.setTransform(dpr, 0, 0, dpr, 0, 0);
       hair.clearRect(0, 0, cssW, cssH);
+      // Two weights, two layers, one colour: every hairline is the token's white, drawn opaque, and each layer is composited once at its token's alpha (textFaint for the firm lines, gridHair for the faint ones), so a hairline reads as the same lift over the panel whatever the panel's tint. The earlier single layer encoded the faint weight as a dimmer opaque grey, which is only equivalent over black: over the tinted frost that grey was darker than the panel on warm tints and invisible on cool ones (2026-09-15). Crossings within a layer are opaque, so nothing doubles; where a firm line crosses a faint one the faint layer is cut out beneath it.
+      const faintCanvas = faintRef.current ?? (faintRef.current = document.createElement("canvas"));
+      if (faintCanvas.width !== bufW || faintCanvas.height !== bufH) { faintCanvas.width = bufW; faintCanvas.height = bufH; }
+      const faint = faintCanvas.getContext("2d")!;
+      faint.setTransform(dpr, 0, 0, dpr, 0, 0);
+      faint.clearRect(0, 0, cssW, cssH);
       const [fr, fg, fb, fa] = rgba(c.textFaint);
       const [, , , ha] = rgba(c.gridHair);
       const firmLine = `rgb(${fr},${fg},${fb})`;
-      const k = Math.min(1, ha / fa); // the faint lines' share of the layer alpha, expressed as a dimmer opaque grey
-      const dim = fr > 127 ? Math.round(255 * k) : Math.round(255 * (1 - k));
-      const hairLine = `rgb(${dim},${dim},${dim})`;
-      hair.lineWidth = 1;
+      hair.lineWidth = 1; faint.lineWidth = 1; faint.strokeStyle = firmLine;
 
       const n = day.length;
       // The AQI tab keeps a scale bar at the RIGHT, on the line's own fixed y-scale: the standard category colours as one smooth vertical gradient, with a marker at the value under the playhead (the latest hour at rest). Its column is reserved on EVERY tab, so the plot is the same width whichever tab is up and the lines land on the same x positions (2026-09-15); the bar is an addition beside the plot, not a change to it.
@@ -139,11 +143,12 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       // Hour grid: a faint line at every reading through everything, a firmer one per four-hour bar (the pulse's bar lines), each running on past the axis as its own tick (5 px at bar starts, 3 otherwise) — one stroke, so the tick never sits on top of the line. Faint ones first, firm ones after, so a firm line covers rather than doubles.
       const axisYForGrid = cssH - axisH;
       for (const pass of [false, true]) {
-        hair.strokeStyle = pass ? firmLine : hairLine;
+        const layer = pass ? hair : faint;
+        layer.strokeStyle = firmLine;
         for (let i = 0; i < n; i++) {
           if ((i % 4 === 0) !== pass) continue;
           const x = Math.round(plotX + i * colW) + 0.5;
-          hair.beginPath(); hair.moveTo(x, GRAPH.labelGutter); hair.lineTo(x, axisYForGrid + (pass ? 5 : 3)); hair.stroke();
+          layer.beginPath(); layer.moveTo(x, GRAPH.labelGutter); layer.lineTo(x, axisYForGrid + (pass ? 5 : 3)); layer.stroke();
         }
       }
       // The plot's right edge, so the grid never runs under the scale bar.
@@ -343,12 +348,13 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       hair.strokeStyle = firmLine;
       hair.beginPath(); hair.moveTo(plotX, axisY + 0.5); hair.lineTo(plotRight, axisY + 0.5); hair.stroke();
       // Every hairline is in the layer now; composite it once, BENEATH everything drawn so far (the line, the area, the pulse marks, the labels): the hairlines are the bottom of the stack and the line is the top. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
+      faint.save(); faint.setTransform(1, 0, 0, 1, 0, 0); faint.globalCompositeOperation = "destination-out"; faint.drawImage(hairCanvas, 0, 0); faint.restore();
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
-      ctx.globalAlpha = fa;
       ctx.globalCompositeOperation = "destination-over";
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(hairCanvas, 0, 0);
+      ctx.globalAlpha = fa; ctx.drawImage(hairCanvas, 0, 0);
+      ctx.globalAlpha = ha; ctx.drawImage(faintCanvas, 0, 0);
       ctx.restore();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (n > 0) {

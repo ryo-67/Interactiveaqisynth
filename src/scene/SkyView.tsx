@@ -123,7 +123,7 @@ function makeFx(): Fx {
     hueSat: new HueSaturationEffect({ saturation: 0 }),
     lens: new LensFieldEffect(),
     aberration: new ChromaticAberrationEffect({ offset: new Vector2(0, 0), radialModulation: true, modulationOffset: 0.3 }),
-    noise: new NoiseEffect({ blendFunction: BlendFunction.OVERLAY, premultiply: true }),
+    noise: new NoiseEffect({ blendFunction: BlendFunction.VIVID_LIGHT, premultiply: false }), // see GRAIN in theme.ts for the blend
     tone: new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC }),
   };
 }
@@ -137,8 +137,8 @@ function Grade({ fx, bloom, saturation, particles, grain }: { fx: Fx; bloom: num
     // MAPPING (particulate → chromatic aberration): the offset rises with the lens level, zero when there is none, so at wildfire density the whole frame fringes toward its edges.
     const ab = PARTICLES.aberrationMax * particles;
     fx.aberration.offset.set(ab, ab);
-    // MAPPING (fine particulate → grain): film grain over the frame, its opacity the grain level on GRAIN's curve.
-    fx.noise.blendMode.opacity.value = GRAIN.opacityMax * grain;
+    // MAPPING (fine particulate → grain): film grain over the frame at every hour, GRAIN.opacityBase as the material's own texture, rising to opacityMax with the grain level on GRAIN's curve.
+    fx.noise.blendMode.opacity.value = GRAIN.opacityBase + (GRAIN.opacityMax - GRAIN.opacityBase) * grain;
     invalidate();
   }, [fx, bloom, saturation, particles, grain]);
   useFrame((state, dt) => fx.lens.setState(particles, size.width / size.height, state.clock.elapsedTime, dt, !REDUCED_MOTION));

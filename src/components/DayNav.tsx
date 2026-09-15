@@ -1,6 +1,7 @@
 // DayNav — scrubbing older days (§2.2, UX-03 as page-level navigation): pagination one day at a time, the measured pins as chips, and a hand-built month calendar. Range is January 2020 to yesterday (the archive plus the live-year route); "Live" returns to the last 24 hours. No component libraries; tokens only; copy from content.ts.
 import React, { useMemo, useState } from "react";
-import { useTheme, themeColors, families, typeScale, space } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
+import { chipStyle } from "./chip";
 import { PINS, NAV_LIVE, NAV_PREV, NAV_NEXT, NAV_CALENDAR } from "../content";
 
 interface Props {
@@ -30,13 +31,7 @@ export function DayNav({ date, onChange, loading }: Props) {
   const yesterday = useMemo(() => addDays(nyToday(), -1), []);
   const [view, setView] = useState(() => (date ?? yesterday).slice(0, 7)); // YYYY-MM shown in the calendar
 
-  const chip = (active: boolean): React.CSSProperties => ({
-    fontFamily: families.data, fontSize: typeScale.micro.size, cursor: "pointer",
-    color: active ? c.textPrimary : c.textMuted,
-    background: active ? "rgba(255,255,255,0.14)" : "none",
-    border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.14)"}`,
-    borderRadius: 999, padding: "4px 10px", lineHeight: 1.2, flex: "0 0 auto",
-  });
+  const chip = (active: boolean) => chipStyle(c, active);
 
   const prev = () => onChange(addDays(date ?? nyToday(), -1) < MIN_DATE ? MIN_DATE : addDays(date ?? nyToday(), -1));
   const next = () => {
@@ -63,24 +58,24 @@ export function DayNav({ date, onChange, loading }: Props) {
   };
 
   return (
-    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: space.sm, whiteSpace: "nowrap" }}>
+    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: CONTROL.gap, height: CONTROL.inner, whiteSpace: "nowrap" }}>
       {/* Order per the scaffold: Calendar ‹ date › Live. */}
       <button style={chip(open)} onClick={() => setOpen((o) => !o)} aria-expanded={open}>{NAV_CALENDAR}</button>
       <button style={chip(false)} onClick={prev} aria-label="previous day">{NAV_PREV}</button>
-      <span style={{ fontFamily: families.data, fontSize: typeScale.micro.size, color: c.textPrimary, minWidth: "7.5em", textAlign: "center", opacity: loading ? 0.5 : 1 }}>
+      <span style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: `${CONTROL.inner}px`, color: c.textPrimary, minWidth: "8em", textAlign: "center", opacity: loading ? 0.5 : 1 }}>
         {date ? labelOf(date) : NAV_LIVE}
       </span>
       <button style={chip(false)} onClick={next} aria-label="next day" disabled={!date}>{NAV_NEXT}</button>
       <button style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
 
       {open && (
-        <div className="glass frosted" style={{ position: "absolute", top: "100%", left: 0, marginTop: space.xs, padding: space.sm, zIndex: 3, fontFamily: families.data, fontSize: typeScale.micro.size, color: c.textSecondary, width: 280, whiteSpace: "normal" }}>
+        <div className="glass frosted" style={{ position: "absolute", top: "100%", left: 0, marginTop: space.xs, padding: space.sm, zIndex: 3, fontFamily: families.data, fontSize: typeScale.caption.size, color: c.textSecondary, width: 288, whiteSpace: "normal" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: space.xs }}>
             <button style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label="previous month">{NAV_PREV}</button>
             <span style={{ color: c.textPrimary }}>{monthLabel}</span>
             <button style={chip(false)} onClick={() => shiftMonth(1)} disabled={view >= yesterday.slice(0, 7)} aria-label="next month">{NAV_NEXT}</button>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs }}>
             {["S", "M", "T", "W", "T", "F", "S"].map((dd, i) => (
               <span key={i} style={{ textAlign: "center", color: c.textFaint }}>{dd}</span>
             ))}
@@ -94,7 +89,7 @@ export function DayNav({ date, onChange, loading }: Props) {
                   disabled={out}
                   onClick={() => { onChange(iso); setOpen(false); }}
                   style={{
-                    fontFamily: families.data, fontSize: typeScale.micro.size, textAlign: "center", padding: "3px 0",
+                    fontFamily: families.data, fontSize: typeScale.caption.size, textAlign: "center", height: CONTROL.inner, padding: 0,
                     color: out ? c.textFaint : sel ? "#05050a" : c.textPrimary,
                     background: sel ? "rgba(255,255,255,0.9)" : "none",
                     border: "none", borderRadius: 4, cursor: out ? "default" : "pointer",
@@ -115,7 +110,7 @@ export function DayNav({ date, onChange, loading }: Props) {
 export function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
   const c = themeColors(useTheme());
   return (
-    <div style={{ display: "flex", gap: space.sm, overflowX: "auto", whiteSpace: "nowrap", maxWidth: "100%" }}>
+    <div style={{ display: "flex", gap: CONTROL.gap, height: CONTROL.inner, overflowX: "auto", whiteSpace: "nowrap", maxWidth: "100%" }}>
       {PINS.map((p) => {
         const active = date === p.date;
         return (
@@ -123,13 +118,7 @@ export function PinStrip({ date, onChange }: { date: string | null; onChange: (d
             key={p.date}
             onClick={() => onChange(p.date)}
             title={labelOf(p.date)}
-            style={{
-              fontFamily: families.data, fontSize: typeScale.micro.size, cursor: "pointer", flex: "0 0 auto",
-              color: active ? c.textPrimary : c.textMuted,
-              background: active ? "rgba(255,255,255,0.14)" : "none",
-              border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.14)"}`,
-              borderRadius: 999, padding: "4px 10px", lineHeight: 1.2,
-            }}
+            style={chipStyle(c, active)}
           >
             {p.name}
           </button>

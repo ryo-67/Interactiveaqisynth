@@ -3,7 +3,7 @@
 // One clock: the playhead is the session's eased hour — the same number that moves the sun — and the pulse row lights whichever hit mark the playhead is currently over. Lighting marks from the engine's callback instead put two clocks on one row (timer, render and frame latency on one side, the eased hour on the other) and the flashes drifted ahead of the line. The active tab is the caller's state.
 // The graph is a transport surface, as in a DAW: press or drag anywhere on the plot to move the playhead, and the engine seeks with it, playing or paused. Play and pause live in the transport pill.
 import React, { useEffect, useMemo, useRef } from "react";
-import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
 import { pmToAQISeries } from "./graphSeries";
 import { pulseSteps, STEPS_PER_HOUR } from "./graphPulse";
@@ -257,7 +257,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
 
   return (
     <div ref={wrapRef} style={{ width: "100%" }}>
-      <div role="tablist" style={{ display: "flex", gap: space.xs, marginBottom: space.xs, overflowX: "auto", whiteSpace: "nowrap" }}>
+      <div role="tablist" style={{ display: "flex", gap: CONTROL.gap, height: CONTROL.inner, marginBottom: space.xs, overflowX: "auto", whiteSpace: "nowrap" }}>
         {TRACK_ORDER.map((t) => {
           const active = t === tab;
           return (
@@ -270,7 +270,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
                 fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: 1, cursor: "pointer",
                 color: active ? c.textPrimary : c.textMuted,
                 background: "none", border: "none", borderBottom: `2px solid ${active ? c.textPrimary : "transparent"}`,
-                padding: "6px 10px 8px", flex: "0 0 auto",
+                height: CONTROL.inner, boxSizing: "border-box", padding: CONTROL.chipPad, flex: "0 0 auto",
               }}
             >
               {TRACK_LABELS[t]}{TRACK_UNITS[t] ? ` ${TRACK_UNITS[t]}` : ""}

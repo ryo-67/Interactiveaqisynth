@@ -8,7 +8,7 @@ import { skyParamsFor, starOpacity, nightBlend } from "./skyParams";
 import { sunAnglesAt, sunPositionVector, tzOffsetFromTs } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
-import { Transport } from "../components/Transport";
+import { PlayButton, VolumeSlider } from "../components/Transport";
 import { BoroughToggle } from "../components/BoroughToggle";
 import { AQINumber } from "../components/AQINumber";
 import { MoodLine } from "../components/MoodLine";
@@ -137,9 +137,14 @@ export default function ScenePage() {
           </div>
 
           <div className="scene-bottom">
-            <Glass material="glass" className="scene-pill scene-transport">
-              <Transport playing={playing} onToggle={s.togglePlay} onVolume={s.setVolume} />
-            </Glass>
+            <div className="scene-transport">
+              <Glass material="glass" className="scene-pill scene-icon-pill">
+                <PlayButton playing={playing} onToggle={s.togglePlay} />
+              </Glass>
+              <Glass material="glass" className="scene-pill">
+                <VolumeSlider onVolume={s.setVolume} />
+              </Glass>
+            </div>
             {day && day.length > 0 && (
               <Glass material="frosted" className="scene-source">
                 <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} />

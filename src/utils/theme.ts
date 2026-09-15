@@ -157,15 +157,15 @@ export function aqiScaleStops(max: number): Array<{ offset: number; color: strin
 // The graph (§5.3 score panel, rebuilt): four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of them.
 export const GRAPH = {
   // One tab at a time, so the tab gets real height: the line is the thing being read.
-  tabHeight: { laptop: 240, phone: 170 },
-  pulseRowHeight: { laptop: 30, phone: 24 },
-  axisHeight: 22,
-  labelGutter: 6,
+  tabHeight: { laptop: 240, phone: 168 },
+  pulseRowHeight: { laptop: 32, phone: 24 },
+  axisHeight: 24,
+  labelGutter: 8,
   lineWidth: { aqi: 2.5, channel: 1.75 },
   // AQI's y-scale is fixed at the full standard range, 0–500, so the line never rescales between days, nothing is ever clipped (Jun 7 crossed 350 and flatlined at a 300 top), and the bar beside it is the complete ruler including Hazardous.
   aqiScaleMax: 500,
   // The AQI scale bar at the right of the AQI tab: the standard category colours as one smooth vertical gradient on that scale, marker at the current value.
-  scaleBarWidth: 14,
+  scaleBarWidth: 16,
   scaleBarGap: 8,
   scaleBarMarker: 4,
 } as const;
@@ -201,12 +201,28 @@ export const typeScale = {
 } as const;
 
 // Spacing tokens.
+// Spacing tokens on a 4 px grid (every value a multiple of 4; the earlier 6/36 were not).
 export const space = {
-  xs: "6px",
+  xxs: "4px",
+  xs: "8px",
   sm: "12px",
-  md: "20px",
-  lg: "36px",
-  xl: "64px",
+  md: "16px",
+  lg: "24px",
+  xl: "32px",
+  xxl: "48px",
+} as const;
+
+// Control sizing on the same grid: every pill is 40 tall, holding 28-tall content in 6 px of vertical padding; chips, tabs, icon buttons and the slider are all 28. One height, one rhythm, so a row of controls aligns by construction.
+export const CONTROL = {
+  pillHeight: 40,
+  pillPad: "6px 16px",
+  inner: 28,          // chips, tabs, icon buttons, slider track box
+  chipPad: "0 12px",
+  gap: 8,             // between chips inside a pill
+  groupGap: 8,        // between pills in a group (play · volume)
+  barGap: 20,         // between pills across a bar, and between the bars (from the scaffold)
+  panelRadius: 20,
+  sliderWidth: 96,
 } as const;
 
 // The four motion profiles (§5.4). Everything moves on the 90 BPM grid or not at all; drift is the one continuous exception (particulate, not rhythmic).

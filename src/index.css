@@ -1428,25 +1428,27 @@ html {
   }
 }
 
-/* ——— Scene layout (D-26): Shoro's scaffold. Desktop: a top bar of three pills (borough · day nav · pins), the hero and graph side by side centred in the remaining height, a bottom bar (transport · source). Phone: one column, the transport pinned above the safe area. ——— */
+/* ——— Scene layout (D-26): Shoro's scaffold, on a 4 px grid. Desktop: a top bar of three pills (borough · day nav · pins), the hero and graph side by side centred in the remaining height, a bottom bar (play · volume at left, source at right). Phone: one column, the transport pinned above the safe area. Every pill is 40 tall (28 of content in 6 px of padding); gaps 8 within a group, 20 across a bar; 32 outer. ——— */
 .scene-ui { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 20px; padding: 32px; pointer-events: none; overflow: hidden; }
 .scene-ui .glass, .scene-ui select { pointer-events: auto; }
 .scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex: 0 0 auto; min-width: 0; }
 .scene-mid { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: 20px; min-height: 0; }
-.scene-pill { padding: 6px 20px; max-width: 100%; min-width: 0; }
-.scene-pill.scene-borough { padding: 12px 36px; }
+.scene-pill { height: 40px; padding: 6px 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; }
+.scene-pill.scene-borough { padding: 6px 24px; }
+.scene-pill.scene-icon-pill { padding: 6px; width: 40px; justify-content: center; }
+.scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .scene-panel { flex: 0 1 680px; min-width: 0; }
 .scene-panel.scene-hero { padding: 36px 36px 20px; }
 .scene-panel.scene-graph { padding: 20px; }
-.scene-source { padding: 12px 20px; border-radius: 20px; min-width: 0; }
+.scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: 40px; display: flex; align-items: center; }
 .scene-source p, .scene-source div { white-space: normal; }
-.scene-dev { align-self: flex-start; }
+.scene-dev { align-self: flex-start; height: 28px; }
 @media (max-width: 1023px) {
-  .scene-ui { padding: 16px 16px calc(84px + env(safe-area-inset-bottom)); gap: 12px; overflow-y: auto; overflow-x: hidden; }
+  .scene-ui { padding: 16px 16px calc(72px + env(safe-area-inset-bottom)); gap: 12px; overflow-y: auto; overflow-x: hidden; }
   .scene-top, .scene-mid, .scene-bottom { flex-direction: column; align-items: stretch; gap: 12px; }
   .scene-mid { justify-content: flex-start; flex: 0 0 auto; }
   .scene-top > .glass, .scene-panel, .scene-source { width: 100%; max-width: 100%; flex: 0 0 auto; }
-  .scene-pill.scene-borough { padding: 10px 20px; }
+  .scene-pill.scene-borough { padding: 6px 16px; }
   .scene-panel.scene-hero { padding: 24px 20px 16px; }
   .scene-panel.scene-graph { padding: 12px; }
   .scene-transport { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 2; }

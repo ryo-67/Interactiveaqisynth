@@ -1,6 +1,6 @@
 // BoroughToggle — one row of words (§5.2 item 1), always one line, centred. No chrome: the selected borough is italic serif, the rest are UI caps. When the row is wider than its pill it scrolls horizontally rather than wrapping. The date and status live in DateStatus, their own pill.
 import React from "react";
-import { useTheme, themeColors, families, typeScale, space } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
 import type { Borough } from "../utils/nycOpenData";
 
 const ORDER: Borough[] = ["Citywide", "Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"];
@@ -27,12 +27,12 @@ export function BoroughToggle({ selected, onSelect }: Props) {
       style={{
         display: "flex",
         justifyContent: "center",
-        alignItems: "baseline",
+        alignItems: "center",
         gap: space.md,
+        height: CONTROL.inner,
         whiteSpace: "nowrap",
         overflowX: "auto",
         maxWidth: "100%",
-        lineHeight: typeScale.caption.line,
       }}
     >
       {ORDER.map((b) => {
@@ -54,7 +54,8 @@ export function BoroughToggle({ selected, onSelect }: Props) {
               textTransform: isSel ? "none" : "uppercase",
               letterSpacing: isSel ? "0" : "0.08em",
               fontSize: typeScale.caption.size,
-              lineHeight: typeScale.caption.line,
+              lineHeight: `${CONTROL.inner}px`,
+              height: CONTROL.inner,
               color: isSel ? c.textPrimary : c.textMuted,
             }}
           >

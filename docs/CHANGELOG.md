@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — Graph time axis: two labels, readings pinned to the bounds
+
+Hour numbers along the x-axis read as a 24-hour clock, which on the rolling live window (2 pm yesterday to now) was more confusing than helpful. The axis now carries two labels: the first reading's date and time at the left ("Sep 14, 2:00 pm", with the year only when it is not this year) and "now" at the right when live, else the last reading's time. The playhead chip carries the date the same way ("Jun 7, 2023, 4:00 am · AQI 216"). With the y values in the gutter there is nothing left for the line to collide with, so the readings are pinned to the plot: the first on the y-axis line, the last on the right edge, no half-column of padding at either end. One consequence: the pulse steps of the last hour run from the last reading towards the hour after it, past the right edge, so they are not drawn.
+
 ## 2026-09-15 — Time of day from the timestamp, not the index
 
 The live series is AirNow's last 24 published hours, so it starts wherever the window starts; an archive day starts at midnight. The page had been using the array index as the clock hour everywhere, which is only true for archive days: playing live at 1 pm, the sun showed 4 am four beats in and the mood sentence agreed with the sun, not the air. Now the transport position stays an index (that is what the engine steps through and what the graph's playhead draws) and the time of day comes from each reading's own timestamp through one helper; the sun, the stars, the mood sentence, the tooltip and the x-axis all read that. Found alongside it: the eased clock's first frame after a beat could run a few milliseconds backwards, because a frame's timestamp can precede the performance.now() that started the ease, which put the playhead at −0.004 for one frame. It was silent until the graph indexed the day with it. The progress is now clamped at the source and the index at the read.

@@ -1,5 +1,5 @@
 // useListenSession — the Listen page's state, shared by the typographic page (App) and the scene (ScenePage) so the two never drift: one data load, one engine, one beat report, one play toggle. Extracted from App.tsx unchanged in behavior.
-import { hourOfTs } from "./solar";
+import { hourOfTs } from "../utils/time";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { motion } from "../utils/theme";

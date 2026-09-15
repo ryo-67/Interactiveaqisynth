@@ -2,7 +2,7 @@
 // Tabs: AQI (from PM2.5, coloured per EPA category, D-23), PM2.5 µg/m³, O3 ppb, NO2 ppb — one at a time, each with its unit and its own right-edge scale, a line through hourly points with gaps where the hour is null (§4.4 rest). The pulse row is always beneath: the engine's exact 16-step pattern per four-hour bar (graphPulse.ts), four steps under every hour column, each bar labelled with its hit count; a hit brightens when the engine fires it.
 // One clock: the playhead is the session's eased hour — the same number that moves the sun — and the pulse row lights whichever hit mark the playhead is currently over. Lighting marks from the engine's callback instead put two clocks on one row (timer, render and frame latency on one side, the eased hour on the other) and the flashes drifted ahead of the line. The active tab is the caller's state.
 // The graph is a transport surface, as in a DAW: press or drag anywhere on the plot to move the playhead, and the engine seeks with it, playing or paused. Play and pause live in the transport pill.
-import { hourOfTs } from "../scene/solar";
+import { readingLabel } from "../utils/time";
 import React, { useEffect, useMemo, useRef } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
@@ -43,7 +43,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
     if (!canvas) return null;
     const { x, w, n } = plotRef.current;
     const px = clientX - canvas.getBoundingClientRect().left;
-    return Math.max(0, Math.min(n - 0.001, ((px - x) / w) * n));
+    return Math.max(0, Math.min(n - 0.001, ((px - x) / w) * (n - 1))); // the plot spans the readings, first to last
   };
 
   const series = useMemo(() => ({
@@ -102,14 +102,15 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       const plotX = gutterW;
       const plotW = cssW - plotX - (barW ? barW + GRAPH.scaleBarGap : 0);
       const plotRight = plotX + plotW;
-      const colW = plotW / n;
+      // The readings are pinned to the plot: the first on the y-axis line, the last on the right edge, so the line has no padding at either end (the y values live in the gutter and cannot collide). colW is the interval between readings; everything on the time axis — grid, area, line, pulse steps, playhead — is plotX + hours * colW.
+      const colW = n > 1 ? plotW / (n - 1) : plotW;
       plotRef.current = { x: plotX, w: plotW, n };
       const labelPx = parseInt(typeScale.caption.size);
       ctx.font = `${labelPx}px ${families.data}`;
       const lh = labelPx + 4; // label line height inside the canvas
 
-      // Hour grid: a faint tick per hour through everything, a firmer one per four-hour bar (the pulse's bar lines).
-      for (let i = 0; i <= n; i++) {
+      // Hour grid: a faint line at every reading through everything, a firmer one per four-hour bar (the pulse's bar lines).
+      for (let i = 0; i < n; i++) {
         const x = Math.round(plotX + i * colW) + 0.5;
         ctx.strokeStyle = i % 4 === 0 ? c.textFaint : c.gridHair;
         ctx.lineWidth = 1;
@@ -179,7 +180,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           for (let i = 1; i < n; i++) {
             const va = vals[i - 1], vb = vals[i];
             if (va == null || vb == null) continue;
-            const x0 = (i - 1) * colW + colW / 2, x1 = i * colW + colW / 2;
+            const x0 = (i - 1) * colW, x1 = i * colW;
             const ya = yFor(va), yb = yFor(vb);
             const fade = o.createLinearGradient(0, Math.min(ya, yb), 0, baseY);
             fade.addColorStop(0, `rgba(0,0,0,${alpha})`);
@@ -192,7 +193,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const colour = o.createLinearGradient(0, 0, plotW, 0);
           for (let i = 0; i < n; i++) {
             const v = vals[i];
-            colour.addColorStop(Math.min(1, Math.max(0, (i * colW + colW / 2) / plotW)), v == null ? "rgba(255,255,255,0)" : t === "aqi" ? aqiScaleColor(v) : "rgb(255,255,255)");
+            colour.addColorStop(Math.min(1, Math.max(0, (i * colW) / plotW)), v == null ? "rgba(255,255,255,0)" : t === "aqi" ? aqiScaleColor(v) : "rgb(255,255,255)");
           }
           o.fillStyle = colour;
           o.fillRect(0, 0, plotW, cssH);
@@ -208,7 +209,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         for (let i = 1; i < n; i++) {
           const a = vals[i - 1], b = vals[i];
           if (a == null || b == null) continue;
-          const x0 = plotX + (i - 1) * colW + colW / 2, x1 = plotX + i * colW + colW / 2;
+          const x0 = plotX + (i - 1) * colW, x1 = plotX + i * colW;
           if (t === "aqi") {
             const seg = ctx.createLinearGradient(x0, yFor(a), x1, yFor(b));
             seg.addColorStop(0, aqiScaleColor(a));
@@ -226,13 +227,13 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           if (v == null) continue;
           if ((i === 0 || vals[i - 1] == null) && (i === n - 1 || vals[i + 1] == null)) {
             ctx.fillStyle = t === "aqi" ? aqiScaleColor(v) : c.textSecondary;
-            ctx.fillRect(plotX + i * colW + colW / 2 - 1, yFor(v) - 1, 2, 2);
+            ctx.fillRect(plotX + i * colW - 1, yFor(v) - 1, 2, 2);
           }
         }
         y0 += tabH;
       }
 
-      // Pulse row: 16 steps per bar, 4 per hour; hit = a mark, rest = nothing, null bar = a faint dash across it. Each bar is labelled with its hit count. The mark under the playhead is lit for as long as the playhead is over its step — the row and the line share one clock.
+      // Pulse row: 16 steps per bar, 4 per hour; hit = a mark, rest = nothing, null bar = a faint dash across it. Each bar is labelled with its hit count. The mark under the playhead is lit for as long as the playhead is over its step — the row and the line share one clock. Hour i's steps run from reading i towards reading i+1, so the last reading's steps fall past the right edge (the hour after the last reading) and are not drawn.
       {
         const stepW = colW / STEPS_PER_HOUR;
         const ph = playheadRef.current;
@@ -242,7 +243,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         for (let b = 0; b < series.barHits.length; b++) {
           const k = series.barHits[b];
           const label = k == null ? "—" : `${k}`;
-          const bx = plotX + b * 4 * colW + 4 * colW - ctx.measureText(label).width - 4;
+          const bx = Math.min(plotRight, plotX + b * 4 * colW + 4 * colW) - ctx.measureText(label).width - 4;
           ctx.fillStyle = c.textMuted;
           ctx.fillText(label, bx, y0 + labelPx);
         }
@@ -250,8 +251,9 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         for (let s = 0; s < series.pulse.length; s++) {
           const v = series.pulse[s];
           const x = plotX + s * stepW;
+          if (x >= plotRight) continue;
           if (v == null) {
-            if (s % 16 === 0) { ctx.fillStyle = c.textFaint; ctx.fillRect(x, y0 + pulseH - 5, colW * 4, 1); }
+            if (s % 16 === 0) { ctx.fillStyle = c.textFaint; ctx.fillRect(x, y0 + pulseH - 5, Math.min(colW * 4, plotRight - x), 1); }
             continue;
           }
           if (!v) continue;
@@ -264,17 +266,21 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         y0 += pulseH;
       }
 
-      // X axis: a tick every hour, a label every three, "now" at the right edge when live.
+      // X axis: a tick at every reading, firmer at bar starts; two labels only — the first reading's date and time at the left ("Sep 14, 2:00 pm"; the year only when it is not this year) and "now" at the right when live, else the last reading's time. Hour numbers read as a 24-hour clock and confused the rolling live window.
       const axisY = cssH - axisH;
       ctx.strokeStyle = c.textFaint;
       ctx.beginPath(); ctx.moveTo(plotX, axisY + 0.5); ctx.lineTo(plotRight, axisY + 0.5); ctx.stroke();
       for (let i = 0; i < n; i++) {
         const x = Math.round(plotX + i * colW) + 0.5;
         ctx.strokeStyle = c.textFaint;
-        ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + (i % 3 === 0 ? 5 : 3)); ctx.stroke();
-        if (i % 3 === 0 && !(live && i === n - 1)) { ctx.fillStyle = c.textMuted; ctx.fillText(String(hourOfTs(day[i].ts)), x + 3, cssH - 5); } // the clock hour of the reading: 0..21 on an archive day, the window's own hours live
+        ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + (i % 4 === 0 ? 5 : 3)); ctx.stroke();
       }
-      if (live) { const label = "now"; ctx.fillStyle = c.textMuted; ctx.fillText(label, plotRight - ctx.measureText(label).width - 2, cssH - 5); }
+      if (n > 0) {
+        ctx.fillStyle = c.textMuted;
+        ctx.fillText(readingLabel(day[0].ts, true), plotX + 2, cssH - 5);
+        const right = live ? "now" : readingLabel(day[n - 1].ts, false);
+        ctx.fillText(right, plotRight - ctx.measureText(right).width - 2, cssH - 5);
+      }
 
       // Playhead: the eased hour, one line through every track, with the hour's values printed at its head.
       const playheadHour = playheadRef.current;
@@ -284,10 +290,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, axisY); ctx.stroke();
         const hi = Math.max(0, Math.min(n - 1, Math.floor(playheadHour))); // clamped both ways: this indexes the day
-        // Clock time from the reading's own timestamp, not the index: "9:00 am", "1:00 pm", "12:00 am".
-        const hc = hourOfTs(day[hi].ts);
-        const h12 = hc % 12 === 0 ? 12 : hc % 12;
-        const parts: string[] = [`${h12}:00 ${hc < 12 ? "am" : "pm"}`];
+        // Date and clock time from the reading's own timestamp, not the index: "Sep 14, 6:00 pm", "Jun 7, 2023, 4:00 am".
+        const parts: string[] = [readingLabel(day[hi].ts, true)];
         for (const t of lineTracks) { const v = series[t][hi]; parts.push(`${TRACK_LABELS[t]} ${v == null ? "—" : Math.round(v)}`); }
         const label = parts.join(" · ");
         // The readout is a chip, in the site's vocabulary: 24 tall, 8 px side padding, 8 px corners, the panel's dark fill with the chips' hairline border, caption type.

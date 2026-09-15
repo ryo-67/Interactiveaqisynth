@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — Four header states, from the pills' own widths (D-30)
+
+The Calendar chip is gone and phones show borough codes, so the pills are narrower than when the three header states were set. The states are now four, each threshold the measured need on the widest date label rounded up to a multiple of 8, so nothing flips between a live and an archive day: one row from 1408; borough over day nav and presets from 840; borough and day nav sharing a row over the presets from 576; three rows below that. Phones keep three rows because no two pills fit side by side there, which is geometry rather than a choice.
+
 ## 2026-09-15 — The archive ends where EPA's data ends
 
 The day navigation had assumed yesterday was the last playable day. EPA publishes with a lag — six weeks at the time of writing — so yesterday was an empty day. The last available day is now looked up in two stages, the static archive's last day at once and the current-year route's last published day when it answers, and that day bounds everything: the previous arrow from live lands on it, the next arrow past it returns to live, the calendar opens on its month from live and disables everything after it, and a line under the calendar says how far the data goes.

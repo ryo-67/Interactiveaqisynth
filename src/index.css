@@ -1445,18 +1445,31 @@ html {
 .scene-strip { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
 .scene-strip::-webkit-scrollbar { display: none; height: 0; }
 .scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-gap); flex: 0 0 auto; min-width: 0; }
-/* The header has exactly three states, chosen by width (D-28). Nothing wraps on its own; each state is a rule.
-   A (≥1536): one row — borough at the left, the day group (picker · presets) at the right.
-   B (911–1535): two rows — borough centred; picker and presets side by side, centred as a pair.
-   C (≤910): three rows — borough, picker, presets, each centred. */
+/* The header has exactly four states, chosen by width (D-30, amending D-28). Each is a rule; nothing wraps on its own. Thresholds come from the measured pills on the widest date label (Ozone Spike, "Jul 12, 2023"): borough 535 with full names at laptop chip spacing (487 at tablet spacing, 237 with the codes), day nav 272, presets 494, 20 between pills, page padding 32 (laptop) or 24 (below); each threshold is the need rounded up to a multiple of 8.
+   A (≥1408): one row — borough at the left, day nav and presets at the right (needs 1405).
+   B (840–1407): two rows — borough centred; day nav and presets side by side, centred as a pair (row two needs 834 at tablet padding).
+   C2 (576–839): two rows — borough (codes) and day nav side by side, centred; presets centred beneath, hugging its chips (row one needs 573).
+   C (≤575): three centred rows — borough (codes), day nav, presets. No two pills fit side by side at phone widths. */
 .scene-top { flex-wrap: nowrap; }
 .scene-day { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: var(--ui-gap); margin-left: auto; min-width: 0; }
-@media (max-width: 1535px) {
+@media (max-width: 1407px) {
   .scene-top { flex-direction: column; align-items: center; justify-content: flex-start; }
   .scene-day { justify-content: center; margin-left: 0; max-width: 100%; }
 }
-@media (max-width: 910px) {
-  .scene-day { flex-direction: column; align-items: center; }
+@media (max-width: 839px) {
+  .scene-top { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .scene-day { display: contents; }
+  .scene-pill.scene-pins { flex: 0 1 auto; width: fit-content; } /* its own row because it is wider than the room left beside the other two; never fill it */
+  .scene-borough .borough-long { display: none; }
+  .scene-borough .borough-short { display: block; }
+  .scene-source .source-sep { display: inline; }
+  .scene-source .source-detail { display: inline; }
+}
+@media (max-width: 575px) {
+  .scene-top { flex-direction: column; flex-wrap: nowrap; }
+  .scene-day { display: flex; flex-direction: column; align-items: center; margin-left: 0; }
+  .scene-source .source-sep { display: none; }
+  .scene-source .source-detail { display: block; }
 }
 /* Side by side, the hero keeps its content height and the graph is the taller panel: the graph stretches to the row and has a floor above the hero's natural height, so the hero is always the shorter of the two and the plot grows into the graph's extra height. The row is centred in the remaining height by its own margins. */
 .scene-mid { flex: 0 1 auto; margin: auto 0; display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; }
@@ -1499,8 +1512,6 @@ html {
   .scene-transport > .scene-pill:last-child { flex: 1 1 auto; max-width: 320px; }
   .scene-source { width: fit-content; max-width: 100%; align-self: center; padding: 8px 16px; justify-content: center; }
   .scene-source p, .scene-source div { text-align: center; }
-  .scene-source .source-sep { display: none; }
-  .scene-source .source-detail { display: block; }
   .scene-panel.scene-hero { padding: 24px 24px 16px; }
   .scene-panel.scene-graph { padding: 16px; }
 }
@@ -1518,18 +1529,6 @@ html {
   .scene-pill.scene-borough { padding: 0 12px; }
   .scene-pill.scene-chips { padding: 0 var(--chip-inset); }
   .scene-pill.scene-pins { padding: var(--chip-inset); }
-  /* Phones: short borough names, so all six stay on one line without a scroll. */
-  .scene-borough .borough-long { display: none; }
-  .scene-borough .borough-short { display: block; }
-}
-
-/* Phones from 600 wide (state C2, 2026-09-15): with the short borough names the borough pill (237) and the day nav pill (up to 272 with a full date, 243 when live) plus the 16 gap fit one row inside 600 − 48 of padding on every day, so they share it and the presets take the second row. The threshold is set for the widest date label, so the state never flips between live and an archive day. The source line fits one line here too, so its forced break lifts. Below 600 the three-row state C stands. */
-@media (max-width: 767px) and (min-width: 600px) {
-  .scene-top { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; }
-  .scene-day { display: contents; }
-  .scene-pill.scene-pins { flex: 0 1 auto; width: fit-content; } /* its own row because it is wider than the room left beside the other two; never fill it */
-  .scene-source .source-sep { display: inline; }
-  .scene-source .source-detail { display: inline; }
 }
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */

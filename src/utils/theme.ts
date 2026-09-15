@@ -127,8 +127,9 @@ export const AQI_CATEGORIES = [
   { max: 100, color: "#ffff00" },
   { max: 150, color: "#ff8c1a" },
   { max: 200, color: "#ff5c5c" },
-  { max: 300, color: "#bf6bff" }, // very unhealthy: was #c48ae0 (58% saturated, a tint); now full saturation at the red's luminance (0.29), 5.7:1 on the dark panel (2026-09-15)
-  { max: 500, color: "#ff4d8d" }, // hazardous: was #e0708e (64%); now full saturation at the red's luminance, 5.65:1 — the maroon hue kept, the wash removed
+  // The top of the scale darkens, as Apple's AQI ramp does: red at luminance 0.30, violet 0.20, maroon 0.14. The maroon is as deep as the dark panel allows — 3.13:1, the floor the line and the mood word need (2026-09-15).
+  { max: 300, color: "#9b4dff" }, // very unhealthy: full saturation, 4.1:1
+  { max: 500, color: "#c9184a" }, // hazardous: the EPA maroon's hue, 3.13:1
 ] as const;
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.

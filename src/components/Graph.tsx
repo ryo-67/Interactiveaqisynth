@@ -6,7 +6,7 @@ import { readingLabel } from "../utils/time";
 import React, { useEffect, useMemo, useRef } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
-import { pmToAQISeries } from "./graphSeries";
+import { pmToAQISeries, monotoneCurve } from "./graphSeries";
 import { pulseSteps, STEPS_PER_HOUR } from "./graphPulse";
 import type { PollutantAnchors } from "../engine/contour";
 import type { Day } from "../engine/SynthEngine";
@@ -151,6 +151,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       let y0 = GRAPH.labelGutter;
       for (const t of lineTracks) {
         const vals = series[t];
+        const curve = monotoneCurve(vals);
         const present = vals.filter((v): v is number => v != null);
         // Scale. AQI is FIXED at the full 0–500 (GRAPH.aqiScaleMax), so the line never rescales between days, nothing clips, and the bar beside it is always the same complete ruler. The other channels have no standard ruler and take the day's own max, floored so a quiet day is not stretched to look dramatic; that changes only when the day changes.
         const floor = t === "pm25" ? 20 : t === "o3" ? 40 : 30;
@@ -218,11 +219,9 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const baseDev = baseY * dpr;
           for (let px = 0; px < off.width; px++) {
             const xc = (px + 0.5) / dpr; // the column's centre in CSS px, relative to the plot
-            const seg = Math.min(n - 2, Math.max(0, Math.floor(xc / colW)));
-            const va = vals[seg], vb = vals[seg + 1];
-            if (va == null || vb == null) continue;
-            const t = Math.min(1, Math.max(0, (xc - seg * colW) / colW));
-            const yLine = (yFor(va) + (yFor(vb) - yFor(va)) * t) * dpr;
+            const v = curve(Math.min(n - 1, Math.max(0, xc / colW)));
+            if (v == null) continue;
+            const yLine = yFor(v) * dpr;
             if (yLine >= baseDev) continue;
             const span = baseDev - yLine;
             const first = Math.floor(yLine);
@@ -257,6 +256,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         ctx.lineWidth = t === "aqi" ? GRAPH.lineWidth.aqi : GRAPH.lineWidth.channel;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
+        // Each hour's piece is the monotone curve sampled every few pixels (graphSeries.monotoneCurve), so the line is smooth between readings and never overshoots one; the fill's height follows the same curve.
+        const CURVE_STEP = 3; // css px between samples along the curve
         for (let i = 1; i < n; i++) {
           const a = vals[i - 1], b = vals[i];
           if (a == null || b == null) continue;
@@ -269,7 +270,12 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           } else ctx.strokeStyle = c.textSecondary;
           ctx.beginPath();
           ctx.moveTo(x0, yFor(a));
-          ctx.lineTo(x1, yFor(b));
+          const steps = Math.max(2, Math.ceil(colW / CURVE_STEP));
+          for (let s = 1; s <= steps; s++) {
+            const f = s / steps;
+            const v = curve(i - 1 + f);
+            ctx.lineTo(x0 + (x1 - x0) * f, yFor(v ?? (a + (b - a) * f)));
+          }
           ctx.stroke();
         }
         // Trailing hours not yet reported (a live channel AirNow has not published for the newest hours) hold the last value as a dotted flat line to the right edge: the line does not simply stop, and the dots say "not yet" rather than "zero".

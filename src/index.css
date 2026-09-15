@@ -1506,20 +1506,13 @@ html {
   .scene-ui {
     --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px;
     --display-size: 56px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
-    --ui-pad: 12px; --ui-gap: 8px;
+    /* Spacing stays at the tablet values (24 / 16): the phone step changes control and type sizes, not the room around them. */
   }
-  .scene-top { gap: 8px; }
-  .scene-day { gap: 8px; }
   .scene-top .glass { width: fit-content; max-width: 100%; margin: 0; }
   .scene-pill { padding: 0 12px; }
   .scene-pill.scene-borough { padding: 0 12px; }
   .scene-pill.scene-chips { padding: 0 var(--chip-inset); }
   .scene-pill.scene-pins { padding: var(--chip-inset); }
-  .scene-mid { gap: 8px; }
-  .scene-panel.scene-hero { padding: 16px 16px 12px; }
-  .scene-panel.scene-graph { padding: 12px; }
-  .scene-bottom { gap: 8px; }
-  .scene-source { padding: 8px 12px; }
 }
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */

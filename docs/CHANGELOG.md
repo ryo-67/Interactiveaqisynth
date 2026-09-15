@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The line merges into the legend; a softer green
+
+The line ended flat against the legend's left edge, and any cap, join or fill edge there read as a hook. Now the line's last segment runs straight on under the legend's track and the legend is drawn after it, covering the end with the ramp's own colour at that height, so the two cannot disagree at the seam; measured identical to the pixel in three states. The bottom of the ramp is a softer green (#3ed35a to #66df7c): the EPA green at full chroma shouted next to the rest of the ramp.
+
 ## 2026-09-15 — The hero fits its content: number and word on one row, a rule, one sentence
 
 The hero stretched to the graph's height and width with the number stacked over the word and a two-clause sentence. Now it fits its content with one padding on every side: the number and the tier word share a row and a baseline, the number left and the word right; a hairline; the sentence beneath, at most two lines. The sentence's second clause ("At 8 pm, ozone carried the line") is cut, and with it the hour and dominant-pollutant plumbing that fed it. The display size drops from 96 to 64 so the number sits with the word rather than over it.

@@ -246,39 +246,6 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           ctx.restore();
         }
 
-        // AQI: the scale bar at the right, fading in with the tab. One smooth gradient through the category colours on the fixed 0–500 ruler; the marker sits at the value under the playhead, and eases with it.
-        if (cur.isAqi > 0.005) {
-          ctx.restore(); // draw outside the plot clip
-          ctx.save(); ctx.globalAlpha = cur.isAqi;
-          const barX = cssW - barW;
-          const barTop = GRAPH.labelGutter, barBottom = yOf(0);
-          const grad = ctx.createLinearGradient(0, barBottom, 0, yOf(1));
-          for (const s of aqiScaleStops(GRAPH.aqiScaleMax, lift)) grad.addColorStop(s.offset, s.color);
-          const trackW = GRAPH.scaleTrackWidth, trackX = barX;
-          ctx.fillStyle = grad;
-          ctx.fillRect(trackX, barTop, trackW, barBottom - barTop);
-          const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (alpha[i] > 0.5) return i; return -1; })();
-          const cv = hi >= 0 ? norm[hi] : null;
-          if (cv != null && alpha[hi] > 0.005) {
-            // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. On the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base on the column's outer edge.
-            // Drawn to the volume slider's knob recipe (index.css .scene-volume): an opaque white fill, lit from above, with a soft shadow beneath and a hairline edge. One fill, one shadow: strokes over an anti-aliased fill this small doubled its outline.
-            ctx.globalAlpha = cur.isAqi * alpha[hi];
-            const my = yOf(cv);
-            const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX + trackW + GRAPH.scaleCaretGap;
-            const caret = () => { ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.lineTo(tipX + d, my + h / 2); ctx.closePath(); };
-            const knob = ctx.createLinearGradient(0, my - h / 2, 0, my + h / 2);
-            knob.addColorStop(0, "#ffffff"); knob.addColorStop(1, "#ececf2");
-            ctx.save();
-            ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 1;
-            ctx.fillStyle = knob;
-            caret(); ctx.fill();
-            ctx.restore();
-            ctx.lineWidth = 0.5; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(0,0,0,0.14)"; caret(); ctx.stroke(); // the hairline edge
-          }
-          ctx.restore();
-          ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
-        }
-
         // The area under the line: colour blends horizontally along the line (a stop at every hour's colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per shown frame and size, so the playhead's per-frame redraw does not rebuild it; a transition rebuilds it every frame, which is the cost of the fill following the morphing line.
         const baseY = y0 + lh + inner;
         // Keyed on the plot's geometry too (plotX, plotW, the track's y range): plotX is measured from the data font, and when that font arrives after the first draw the edge moves a couple of pixels; the line redraws at the new positions, and a fill cached under the old edge sat visibly off the line.
@@ -320,7 +287,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         }
         // The fill and the line are clipped to the plot itself: with the first and last readings on the bounds, the stroke's width and round caps would otherwise spill over the y-axis line and the right edge.
         // From the column after the axis line to the column of the right edge line (both lines sit at Math.round(x) + 0.5, so they own exactly those columns): the fill meets both lines with no gap and never paints over them.
-        ctx.save(); ctx.beginPath(); ctx.rect(plotX + 1, 0, Math.round(plotRight) - plotX - 1, cssH); ctx.clip();
+        // The clip reaches under the bar's track: the line's last segment runs on to the track's far edge and the bar, drawn after, covers it (the fill is blitted at the plot's own width and stops at the edge).
+        ctx.save(); ctx.beginPath(); ctx.rect(plotX + 1, 0, Math.round(plotRight) - plotX - 1 + (cur.isAqi > 0.005 ? GRAPH.scaleTrackWidth : 0), cssH); ctx.clip();
         // Blitted at its native size onto the plot's own device pixels, so nothing is resampled.
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.drawImage(area.canvas, Math.round(plotX * dpr), 0);
@@ -349,6 +317,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
             const v = curve(i - 1 + f);
             ctx.lineTo(x0 + (x1 - x0) * f, yOf(v ?? (a + (b - a) * f)));
           }
+          if (i === n - 1 && cur.isAqi > 0.005) ctx.lineTo(plotRight + GRAPH.scaleTrackWidth, yOf(b)); // the last segment runs straight on under the bar, which is drawn after it
           ctx.stroke();
         }
         // Trailing hours not yet reported (a live channel AirNow has not published for the newest hours) hold the last value as a dotted flat line to the right edge: the line does not simply stop, and the dots say "not yet" rather than "zero".
@@ -373,6 +342,40 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           }
         }
         ctx.restore(); // back to the wider clip, so the y values in the gutter stay drawable
+        // AQI: the scale bar at the right, fading in with the tab. One smooth gradient through the category colours on the fixed 0–500 ruler; the marker sits at the value under the playhead, and eases with it.
+        // Drawn AFTER the line (2026-09-15): the line runs on under the bar (see the clip and the last segment below) and the bar covers its end with the ramp's own colour at that height, so the line merges into the bar and no cap, join or fill edge can show at the seam.
+        if (cur.isAqi > 0.005) {
+          ctx.restore(); // out of the plot clip
+          ctx.save(); ctx.globalAlpha = cur.isAqi;
+          const barX = cssW - barW;
+          const barTop = GRAPH.labelGutter, barBottom = yOf(0);
+          const grad = ctx.createLinearGradient(0, barBottom, 0, yOf(1));
+          for (const s of aqiScaleStops(GRAPH.aqiScaleMax, lift)) grad.addColorStop(s.offset, s.color);
+          const trackW = GRAPH.scaleTrackWidth, trackX = barX;
+          ctx.fillStyle = grad;
+          ctx.fillRect(trackX, barTop, trackW, barBottom - barTop);
+          const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (alpha[i] > 0.5) return i; return -1; })();
+          const cv = hi >= 0 ? norm[hi] : null;
+          if (cv != null && alpha[hi] > 0.005) {
+            // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. On the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base on the column's outer edge.
+            // Drawn to the volume slider's knob recipe (index.css .scene-volume): an opaque white fill, lit from above, with a soft shadow beneath and a hairline edge. One fill, one shadow: strokes over an anti-aliased fill this small doubled its outline.
+            ctx.globalAlpha = cur.isAqi * alpha[hi];
+            const my = yOf(cv);
+            const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX + trackW + GRAPH.scaleCaretGap;
+            const caret = () => { ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.lineTo(tipX + d, my + h / 2); ctx.closePath(); };
+            const knob = ctx.createLinearGradient(0, my - h / 2, 0, my + h / 2);
+            knob.addColorStop(0, "#ffffff"); knob.addColorStop(1, "#ececf2");
+            ctx.save();
+            ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 1;
+            ctx.fillStyle = knob;
+            caret(); ctx.fill();
+            ctx.restore();
+            ctx.lineWidth = 0.5; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(0,0,0,0.14)"; caret(); ctx.stroke(); // the hairline edge
+          }
+          ctx.restore();
+          ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip(); // the wider clip again, matching the one the restore below leaves
+        }
+
         y0 += tabH;
       }
 

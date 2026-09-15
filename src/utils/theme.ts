@@ -124,7 +124,7 @@ export function themeColors(theme: Theme) {
 // The colours are the standard hues lifted to pass WCAG 1.4.11 (≥ 3:1 for graphics) against the dark panel (#0e0e1c, the hard case). The standard values fail for the top two: Very Unhealthy #8f3f97 is 3.0:1 and Hazardous #7e0023 is 1.7:1. Measured: Good 11.0, Moderate 17.8, USG 8.2, Unhealthy 6.3, Very Unhealthy 7.3, Hazardous 6.3.
 // One ramp with two ends (D-36, 2026-09-15): the same six hues, `dark` set for 3:1 on the darkest panel the scene makes and `light` for 3:1 on the brightest, blended by the ramp lift the scene derives from the predicted panel (panelLuminance.ts). The legend, the line, the fill and the mood word all read the one ramp at the one lift, so they never disagree within a state; between states the scale lightens as the panel does, the way the material does. Contrast is luminance only: a saturated violet at 0.25 measured 2.0:1 on the smoke panel, so the top of the scale has to be lighter than the red on bright panels, and there the step from red is a change of hue rather than a fall into dark.
 export const AQI_CATEGORIES = [
-  { max: 50, dark: "#00e400", light: "#00e400" },
+  { max: 50, dark: "#3ed35a", light: "#66df7c" }, // green softened from the EPA #00e400 (2026-09-15): at full chroma it shouted next to the rest of the ramp; 0.48 → 0.57 luminance
   { max: 100, dark: "#ffff00", light: "#ffff00" },
   // Each end is the most saturated colour of its hue at the luminance 3:1 needs there (R pinned at 255 for the warm hues, B for the violet): chroma is spent on luminance, so a denser frost is what buys saturation.
   { max: 150, dark: "#ff8c1a", light: "#ffa64d" }, // orange, 0.40 → 0.49

@@ -1493,7 +1493,7 @@ html {
   .scene-bottom { flex-direction: column; align-items: stretch; gap: 12px; }
   .scene-transport { flex: 0 0 auto; align-self: center; width: 100%; justify-content: center; }
   .scene-transport > .scene-pill:last-child { flex: 1 1 auto; max-width: 320px; }
-  .scene-source { width: 100%; padding: 8px 16px; justify-content: center; }
+  .scene-source { width: fit-content; max-width: 100%; align-self: center; padding: 8px 16px; justify-content: center; }
   .scene-source p, .scene-source div { text-align: center; }
   .scene-source .source-sep { display: none; }
   .scene-source .source-detail { display: block; }

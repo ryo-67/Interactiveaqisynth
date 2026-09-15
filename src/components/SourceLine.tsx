@@ -1,5 +1,5 @@
 // SourceLine — footer line three (§5.2): sources and coverage, muted, as fact. The coverage clause is built from the hour records' source flags, never from a hardcoded list; borrowed channels are disclosed here and drawn identically in the score. When any channel is typical, the D-18 sentence follows.
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
 import {
   SOURCE_LINE_BASE,
@@ -53,8 +53,33 @@ export function SourceLine({ borough, hours, fallback }: Props) {
       .replace("{isAre}", borrowed.length === 1 ? "is" : "are");
   }
 
+  // Hug the text even when it wraps: fit-content on a wrapping block is the container's width, so after layout the panel (the parent glass, when it is sized to content) is set to its widest rendered line plus its padding. That line still fits exactly, so nothing re-wraps. Re-measured on resize.
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const panel = el?.parentElement;
+    if (!el || !panel || !panel.classList.contains("glass")) return;
+    const belowLaptop = window.matchMedia("(max-width: 1023px)");
+    const fit = () => {
+      panel.style.width = "";
+      // Only where the scene sizes the panel to content (tablet and phone). On laptop the panel already hugs one line, and a sub-pixel round-trip there re-wrapped it and cascaded the width down.
+      if (!belowLaptop.matches) return;
+      const lines: number[] = [];
+      for (const span of el.querySelectorAll("span")) for (const r of span.getClientRects()) lines.push(r.width);
+      if (!lines.length) return;
+      const cs = getComputedStyle(panel);
+      const w = Math.ceil(Math.max(...lines) + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)) + 2;
+      if (w < panel.getBoundingClientRect().width - 2) panel.style.width = `${w}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(panel.parentElement ?? panel);
+    return () => { ro.disconnect(); panel.style.width = ""; };
+  }, [borough, hours, fallback]);
+
   return (
     <div
+      ref={ref}
       style={{
         fontFamily: families.uiCaps,
         fontSize: typeScale.caption.size,

@@ -244,15 +244,22 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, axisY); ctx.stroke();
         const hi = Math.min(n - 1, Math.floor(playheadHour));
-        const parts: string[] = [`${hi}h`];
+        // Clock time, not an hour count: "9:00 am", "1:00 pm", "12:00 am".
+        const h12 = hi % 12 === 0 ? 12 : hi % 12;
+        const parts: string[] = [`${h12}:00 ${hi < 12 ? "am" : "pm"}`];
         for (const t of lineTracks) { const v = series[t][hi]; parts.push(`${TRACK_LABELS[t]} ${v == null ? "—" : Math.round(v)}`); }
         const label = parts.join(" · ");
-        const w = ctx.measureText(label).width + 10;
-        const lx = x + 6 + w > plotRight ? x - 6 - w : x + 6;
+        // The readout is a chip, in the site's vocabulary: 24 tall, 8 px side padding, 8 px corners, the panel's dark fill with the chips' hairline border, caption type.
+        const chipH = 24, chipPad = 8, chipR = 8;
+        const w = Math.ceil(ctx.measureText(label).width) + chipPad * 2;
+        const lx = x + 8 + w > plotRight ? x - 8 - w : x + 8;
+        const ly = GRAPH.labelGutter;
         ctx.fillStyle = c.bgPanel;
-        ctx.fillRect(lx, GRAPH.labelGutter, w, lh + 2);
+        ctx.strokeStyle = "rgba(255,255,255,0.14)";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(lx + 0.5, ly + 0.5, w, chipH, chipR); ctx.fill(); ctx.stroke();
         ctx.fillStyle = c.textPrimary;
-        ctx.fillText(label, lx + 5, GRAPH.labelGutter + labelPx);
+        ctx.fillText(label, lx + chipPad, ly + chipH / 2 + labelPx * 0.36);
       }
 
       ctx.restore();

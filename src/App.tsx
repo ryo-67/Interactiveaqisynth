@@ -1,6 +1,6 @@
 // App — the typographic Listen page (sprint 3a). Its state lives in useListenSession, shared with the scene at /scene (D-19), so the two pages play the same data through the same engine. The scene replaces this page once it passes review.
 import React, { useState } from "react";
-import { BoroughToggle } from "./components/BoroughToggle";
+import { BoroughToggle, DateStatus } from "./components/BoroughToggle";
 import { AQINumber } from "./components/AQINumber";
 import { MoodLine } from "./components/MoodLine";
 import { Graph, TRACK_ORDER, type TrackKey } from "./components/Graph";
@@ -12,7 +12,7 @@ import { useListenSession, DEV } from "./scene/useListenSession";
 
 export default function App() {
   const [theme] = useState<Theme>("dark"); // dark is the default; light stays reachable through tokens (DSN-06 is Phase 2)
-  const { borough, setBorough, snapshot, anchors: a, day, live, beat, playing, playheadHour, subscribePulse, togglePlay, displayAqi, moodTier, moodHour, dominant, devDayKey, setDevDayKey } = useListenSession();
+  const { borough, setBorough, snapshot, anchors: a, day, live, beat, playing, playheadHour, togglePlay, displayAqi, moodTier, moodHour, dominant, devDayKey, setDevDayKey } = useListenSession();
   const [tab, setTab] = useState<TrackKey>(TRACK_ORDER[0]);
 
   const c = themeColors(theme);
@@ -27,13 +27,10 @@ export default function App() {
     <ThemeContext.Provider value={theme}>
       <div style={{ minHeight: "100vh", background: c.bg, color: c.textPrimary }}>
         <div style={{ maxWidth: "720px", margin: "0 auto", padding: `${space.lg} ${space.md}` }}>
-          <BoroughToggle
-            selected={borough}
-            onSelect={setBorough}
-            dateLabel={dateLabel}
-            hourLabel={hourLabel}
-            status={live ? STATUS_LIVE : STATUS_ARCHIVE}
-          />
+          <BoroughToggle selected={borough} onSelect={setBorough} />
+          <div style={{ marginTop: space.xs }}>
+            <DateStatus dateLabel={dateLabel} hourLabel={hourLabel} status={live ? STATUS_LIVE : STATUS_ARCHIVE} />
+          </div>
 
           <div style={{ marginTop: space.xl }}>
             <AQINumber value={displayAqi} />
@@ -52,7 +49,6 @@ export default function App() {
                 live={live}
                 tab={tab}
                 onTab={setTab}
-                subscribePulse={subscribePulse}
                 onToggle={togglePlay}
               />
             )}

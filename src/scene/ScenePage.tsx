@@ -8,7 +8,7 @@ import { sunAnglesAt, sunPositionVector, tzOffsetFromTs } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
 import { Transport } from "../components/Transport";
-import { BoroughToggle } from "../components/BoroughToggle";
+import { BoroughToggle, DateStatus } from "../components/BoroughToggle";
 import { AQINumber } from "../components/AQINumber";
 import { MoodLine } from "../components/MoodLine";
 import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
@@ -76,8 +76,12 @@ export default function ScenePage() {
         {/* Panels: one centered column over the scene (§5.7). The column itself passes pointer events through to nothing; only the panels catch them. */}
         <div style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", pointerEvents: "none" }}>
           <div style={{ maxWidth: "720px", margin: "0 auto", padding: `${space.md} ${space.md} calc(${space.xl} + env(safe-area-inset-bottom))`, display: "flex", flexDirection: "column", gap: space.md, minWidth: 0 }}>
-            <Glass material="glass" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}`, borderRadius: 20 }}>
-              <BoroughToggle selected={s.borough} onSelect={s.setBorough} dateLabel={dateLabel} hourLabel={hourLabel} status={s.live ? STATUS_LIVE : STATUS_ARCHIVE} />
+            {/* Two pills, each one line: the borough words, centred; the date and status beneath, centred. Never on one row, so neither can wrap or misalign. */}
+            <Glass material="glass" style={{ pointerEvents: "auto", alignSelf: "center", maxWidth: "100%", padding: `${space.sm} ${space.lg}` }}>
+              <BoroughToggle selected={s.borough} onSelect={s.setBorough} />
+            </Glass>
+            <Glass material="glass" style={{ pointerEvents: "auto", alignSelf: "center", padding: `${space.xs} ${space.md}`, marginTop: `calc(-1 * ${space.sm})` }}>
+              <DateStatus dateLabel={dateLabel} hourLabel={hourLabel} status={s.live ? STATUS_LIVE : STATUS_ARCHIVE} />
             </Glass>
 
             <Glass material="glass" style={{ pointerEvents: "auto", width: "100%", padding: `${space.sm} ${space.md}`, borderRadius: 20 }}>
@@ -100,7 +104,6 @@ export default function ScenePage() {
                   live={s.live}
                   tab={tab}
                   onTab={setTab}
-                  subscribePulse={s.subscribePulse}
                   onToggle={s.togglePlay}
                 />
               </Glass>

@@ -1,4 +1,4 @@
-// BoroughToggle — one row of words (§5.2 item 1). No chrome: the selected borough is italic serif, the rest are UI caps; date, hour, and status sit right-aligned on the same row. On phone the row scrolls horizontally.
+// BoroughToggle — one row of words (§5.2 item 1), always one line, centred. No chrome: the selected borough is italic serif, the rest are UI caps. When the row is wider than its pill it scrolls horizontally rather than wrapping. The date and status live in DateStatus, their own pill.
 import React from "react";
 import { useTheme, themeColors, families, typeScale, space } from "../utils/theme";
 import type { Borough } from "../utils/nycOpenData";
@@ -16,65 +16,72 @@ const LABELS: Record<Borough, string> = {
 interface Props {
   selected: Borough;
   onSelect: (b: Borough) => void;
-  dateLabel: string;
-  hourLabel: string;
-  status: string; // "live" | "archive"
 }
 
-export function BoroughToggle({ selected, onSelect, dateLabel, hourLabel, status }: Props) {
+export function BoroughToggle({ selected, onSelect }: Props) {
   const c = themeColors(useTheme());
   return (
-    // flex-wrap keeps the status group visible at every width: on laptop it sits right-aligned on the row; on phone the borough words scroll in their own strip and the status wraps below, right-aligned.
     <div
-      style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", columnGap: space.md, rowGap: space.xs }}
+      role="tablist"
+      aria-label="Borough"
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "baseline",
+        gap: space.md,
+        whiteSpace: "nowrap",
+        overflowX: "auto",
+        maxWidth: "100%",
+        lineHeight: typeScale.caption.line,
+      }}
     >
-      <div
-        style={{
-          display: "flex",
-          gap: space.md,
-          alignItems: "baseline",
-          flex: "1 0 auto",
-          maxWidth: "100%",
-          overflowX: "auto",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {ORDER.map((b) => {
-          const isSel = b === selected;
-          return (
-            <button
-              key={b}
-              onClick={() => onSelect(b)}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                fontFamily: isSel ? families.serifItalic : families.uiCaps,
-                fontStyle: isSel ? "italic" : "normal",
-                textTransform: isSel ? "none" : "uppercase",
-                letterSpacing: isSel ? "0" : "0.08em",
-                fontSize: typeScale.caption.size,
-                lineHeight: typeScale.caption.line,
-                color: isSel ? c.textPrimary : c.textMuted,
-              }}
-            >
-              {LABELS[b]}
-            </button>
-          );
-        })}
-      </div>
-      <div
-        style={{
-          fontFamily: families.data,
-          fontSize: typeScale.micro.size,
-          color: c.textMuted,
-          fontVariantNumeric: "tabular-nums",
-          marginLeft: "auto",
-        }}
-      >
-        {dateLabel} · {hourLabel} · {status}
-      </div>
+      {ORDER.map((b) => {
+        const isSel = b === selected;
+        return (
+          <button
+            key={b}
+            role="tab"
+            aria-selected={isSel}
+            onClick={() => onSelect(b)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              flex: "0 0 auto",
+              fontFamily: isSel ? families.serifItalic : families.uiCaps,
+              fontStyle: isSel ? "italic" : "normal",
+              textTransform: isSel ? "none" : "uppercase",
+              letterSpacing: isSel ? "0" : "0.08em",
+              fontSize: typeScale.caption.size,
+              lineHeight: typeScale.caption.line,
+              color: isSel ? c.textPrimary : c.textMuted,
+            }}
+          >
+            {LABELS[b]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// DateStatus — "Jul 12 · 23:00 · archive": the loaded day's date, its latest hour, and whether it is live or archive. One line, tabular figures.
+export function DateStatus({ dateLabel, hourLabel, status }: { dateLabel: string; hourLabel: string; status: string }) {
+  const c = themeColors(useTheme());
+  return (
+    <div
+      style={{
+        fontFamily: families.data,
+        fontSize: typeScale.micro.size,
+        lineHeight: typeScale.micro.line,
+        color: c.textMuted,
+        fontVariantNumeric: "tabular-nums",
+        whiteSpace: "nowrap",
+        textAlign: "center",
+      }}
+    >
+      {dateLabel} · {hourLabel} · {status}
     </div>
   );
 }

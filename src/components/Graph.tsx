@@ -1,13 +1,13 @@
 // Graph — the day as four labelled tracks on one hour-aligned x-scale, the pulse row beneath, one playhead through all of it (§5.3 score panel, rebuilt). Replaces Score.
 // Tabs: AQI (from PM2.5, coloured per EPA category, D-23), PM2.5 µg/m³, O3 ppb, NO2 ppb — one at a time, each with its unit and its own right-edge scale, a line through hourly points with gaps where the hour is null (§4.4 rest). The pulse row is always beneath: the engine's exact 16-step pattern per four-hour bar (graphPulse.ts), four steps under every hour column, each bar labelled with its hit count; a hit brightens when the engine fires it.
-// One clock: the playhead is the session's eased hour — the same number that moves the sun — so nothing here steps on its own. The active tab is the caller's state.
+// One clock: the playhead is the session's eased hour — the same number that moves the sun — and the pulse row lights whichever hit mark the playhead is currently over. Lighting marks from the engine's callback instead put two clocks on one row (timer, render and frame latency on one side, the eased hour on the other) and the flashes drifted ahead of the line. The active tab is the caller's state.
 import React, { useEffect, useMemo, useRef } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
 import { pmToAQISeries } from "./graphSeries";
 import { pulseSteps, STEPS_PER_HOUR } from "./graphPulse";
 import type { PollutantAnchors } from "../engine/contour";
-import type { Day, PulseInfo } from "../engine/SynthEngine";
+import type { Day } from "../engine/SynthEngine";
 
 export type TrackKey = "aqi" | "pm25" | "o3" | "no2";
 export const TRACK_ORDER: TrackKey[] = ["aqi", "pm25", "o3", "no2"];
@@ -19,16 +19,14 @@ interface Props {
   live: boolean;
   tab: TrackKey;
   onTab: (t: TrackKey) => void;
-  subscribePulse: (cb: (p: PulseInfo) => void) => () => void;
   onToggle: () => void; // tap the graph to play or pause
 }
 
-export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribePulse, onToggle }: Props) {
+export function Graph({ day, anchors, playheadHour, live, tab, onTab, onToggle }: Props) {
   const theme = useTheme();
   const c = themeColors(theme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const lastPulse = useRef<{ index: number; at: number } | null>(null);
   // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
   const playheadRef = useRef<number | null>(playheadHour);
   playheadRef.current = playheadHour;
@@ -47,10 +45,6 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
     }),
   }), [day, anchors]);
 
-  // PulseInfo.step is the sixteenth within the current bar (0..15); the row's index is bar·16 + step, the bar being hour ÷ 4.
-  useEffect(() => subscribePulse((p) => {
-    lastPulse.current = { index: Math.floor(p.hour / 4) * 16 + p.step, at: performance.now() };
-  }), [subscribePulse]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -175,10 +169,11 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
         y0 += tabH;
       }
 
-      // Pulse row: 16 steps per bar, 4 per hour; hit = a mark, rest = nothing, null bar = a faint dash across it. Each bar is labelled with its hit count.
+      // Pulse row: 16 steps per bar, 4 per hour; hit = a mark, rest = nothing, null bar = a faint dash across it. Each bar is labelled with its hit count. The mark under the playhead is lit for as long as the playhead is over its step — the row and the line share one clock.
       {
         const stepW = colW / STEPS_PER_HOUR;
-        const now = performance.now();
+        const ph = playheadRef.current;
+        const currentStep = ph == null ? -1 : Math.floor((ph % 24) * STEPS_PER_HOUR);
         ctx.fillStyle = c.textMuted;
         ctx.fillText(TRACK_LABELS.pulse, plotX + 4, y0 + labelPx);
         for (let b = 0; b < series.barHits.length; b++) {
@@ -197,10 +192,11 @@ export function Graph({ day, anchors, playheadHour, live, tab, onTab, subscribeP
             continue;
           }
           if (!v) continue;
-          const fresh = lastPulse.current && lastPulse.current.index === s && now - lastPulse.current.at < GRAPH.pulseFlashMs;
-          ctx.fillStyle = fresh ? c.textPrimary : c.textSecondary;
-          const h = fresh ? pulseH - lh - 2 : pulseH - lh - 6;
-          ctx.fillRect(Math.round(x + stepW / 2) - 1, y0 + pulseH - 3 - h, fresh ? 3 : 2, h);
+          const lit = s === currentStep;
+          ctx.fillStyle = lit ? c.textPrimary : c.textSecondary;
+          const h = lit ? pulseH - lh - 2 : pulseH - lh - 6;
+          // Marks sit at the START of their step, where the playhead is at the moment of the hit.
+          ctx.fillRect(Math.round(x) , y0 + pulseH - 3 - h, lit ? 3 : 2, h);
         }
         y0 += pulseH;
       }

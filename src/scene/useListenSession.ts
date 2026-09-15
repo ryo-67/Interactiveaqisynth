@@ -1,6 +1,6 @@
 // useListenSession — the Listen page's state, shared by the typographic page (App) and the scene (ScenePage) so the two never drift: one data load, one engine, one beat report, one play toggle. Extracted from App.tsx unchanged in behavior.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SynthEngine, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
+import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { motion } from "../utils/theme";
 import { normalize, pm25ToAQI, type PollutantAnchors } from "../engine/contour";
 import { tierIndexOf } from "../engine/scales";
@@ -21,8 +21,6 @@ export interface ListenSession {
   dayLoading: boolean;
   // ONE clock for everything that moves with the phrase: the beat's integer hour eased over one beat (§5.4), wrapping forward at the loop seam. The sun, the playhead and every graph track read this and nothing else.
   playheadHour: number;
-  // The engine's pulse steps, for anything that flashes on a hit (the pulse row). A subscription rather than state: 4 steps per beat would re-render the page 6 times a second for nothing.
-  subscribePulse: (cb: (p: PulseInfo) => void) => () => void;
   snapshot: CurrentSnapshot | null;
   anchors: PollutantAnchors; // the engine's anchors (falls back to Queens 2023 until the borough's land)
   day: Day | null;
@@ -135,17 +133,7 @@ export function useListenSession(): ListenSession {
     return () => engineRef.current?.onBeat(null);
   }, []);
 
-  // Pulse fan-out: the engine takes one callback; the page may have several listeners.
-  const pulseSubs = useRef(new Set<(p: PulseInfo) => void>());
-  useEffect(() => {
-    const subs = pulseSubs.current;
-    engineRef.current?.onPulse((p) => subs.forEach((cb) => cb(p)));
-    return () => engineRef.current?.onPulse(null);
-  }, []);
-  const subscribePulse = useCallback((cb: (p: PulseInfo) => void) => {
-    pulseSubs.current.add(cb);
-    return () => { pulseSubs.current.delete(cb); };
-  }, []);
+
 
   // Play/pause: the score click, the transport, and Space. Tone.start() must begin inside the gesture's call stack.
   const togglePlay = useCallback(() => {
@@ -212,7 +200,7 @@ export function useListenSession(): ListenSession {
   })();
 
   return {
-    borough, setBorough, date, setDate, dayLoading, playheadHour, subscribePulse,
+    borough, setBorough, date, setDate, dayLoading, playheadHour,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, latest, moodTier, moodHour, dominant, channels, devDayKey, setDevDayKey,
   };

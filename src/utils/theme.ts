@@ -167,7 +167,6 @@ export const GRAPH = {
   scaleBarWidth: 14,
   scaleBarGap: 8,
   scaleBarMarker: 4,
-  pulseFlashMs: 140, // a hit mark brightens for this long after the engine fires it
 } as const;
 
 // Opacity scale (§5.5). Tier color is applied through these, not at arbitrary alphas.

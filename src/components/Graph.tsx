@@ -127,7 +127,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       // A left gutter holds the y-axis values, right-aligned against the plot's first line, so they never sit on the area fill. Sized to the widest value the tab can show.
       const gutterW = Math.ceil(ctx.measureText("500").width) + GRAPH.axisGutterPad * 2;
       const plotX = gutterW;
-      const plotW = cssW - plotX - (barW ? barW + GRAPH.scaleBarGap : 0);
+      const plotW = cssW - plotX - barW; // the legend's column abuts the plot: its track begins on the plot's right edge
       const plotRight = plotX + plotW;
       // The readings are pinned to the plot: the first on the y-axis line, the last on the right edge, so the line has no padding at either end (the y values live in the gutter and cannot collide). colW is the interval between readings; everything on the time axis — grid, area, line, pulse steps, playhead — is plotX + hours * colW.
       const colW = n > 1 ? plotW / (n - 1) : plotW;
@@ -178,15 +178,13 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         if (t === "aqi") {
           ctx.restore(); // draw outside the plot clip
           const barX = cssW - barW;
-          const barTop = yFor(max), barBottom = yFor(0);
-          const grad = ctx.createLinearGradient(0, barBottom, 0, barTop);
+          // The track runs the full height of the y axis — from the grid's top to the baseline — not only 0 to 500: the axis continues above 500, and so does the hazardous colour (the gradient is laid out 0 → 500 and clamps beyond). Square-ended and flush against the plot's right edge, so it reads as the axis's colour rather than a separate control.
+          const barTop = GRAPH.labelGutter, barBottom = yFor(0);
+          const grad = ctx.createLinearGradient(0, barBottom, 0, yFor(max));
           for (const s of aqiScaleStops(max)) grad.addColorStop(s.offset, s.color);
-          // The legend is styled like the volume slider turned upright: a thin rounded track (GRAPH.scaleTrackWidth) inside the bar's column, and a thumb wider than the track.
-          const trackW = GRAPH.scaleTrackWidth, trackX = barX + 2; // the track sits at the column's left so the caret, its border and its shadow fit inside the column on the right
+          const trackW = GRAPH.scaleTrackWidth, trackX = barX;
           ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.roundRect(trackX, barTop, trackW, barBottom - barTop, trackW / 2);
-          ctx.fill();
+          ctx.fillRect(trackX, barTop, trackW, barBottom - barTop);
           const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (vals[i] != null) return i; return -1; })();
           const cur = hi >= 0 ? vals[hi] : null;
           if (cur != null) {

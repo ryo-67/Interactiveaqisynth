@@ -174,8 +174,7 @@ export const GRAPH = {
   tabsGap: 16, // between the band's hairline and the plot
   tabsInset: 8, // the band's inside padding around its chips: twice the preset bar's 4, so the band reads as a header rather than a pill (2026-09-15)
   scaleBarWidth: 16, // the legend's column
-  scaleTrackWidth: 4, // the gradient track inside it, like the volume slider's track turned upright (2026-09-15)
-  scaleBarGap: 8,
+  scaleTrackWidth: 4, // the gradient track at the column's left, flush against the plot's right edge, square-ended, the full height of the y axis (2026-09-15)
   scaleCaret: 8, // the value marker: a caret at the track's right, 8 tall and 4 deep, pointing left at the value (2026-09-15: a round thumb read as a control)
   scaleCaretGap: 2, // between the caret's tip and the track
 } as const;

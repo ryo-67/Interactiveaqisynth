@@ -200,6 +200,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           area = { key: areaKey, canvas: off };
           areaCache.current = area;
         }
+        // The fill and the line are clipped to the plot itself: with the first and last readings on the bounds, the stroke's width and round caps would otherwise spill over the y-axis line and the right edge.
+        ctx.save(); ctx.beginPath(); ctx.rect(plotX + 1, 0, plotW - 2, cssH); ctx.clip(); // inset one pixel: the axis line and the right edge line own their columns
         ctx.drawImage(area.canvas, 0, 0, area.canvas.width, area.canvas.height, plotX, 0, plotW, cssH);
 
         // The line. AQI segments are gradients between the scale colour at each end — the same rule the bar is drawn with, so a point on the line and the bar at that height always match; the others are the secondary text colour.
@@ -230,6 +232,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
             ctx.fillRect(plotX + i * colW - 1, yFor(v) - 1, 2, 2);
           }
         }
+        ctx.restore(); // back to the wider clip, so the y values in the gutter stay drawable
         y0 += tabH;
       }
 

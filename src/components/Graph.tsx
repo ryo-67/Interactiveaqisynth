@@ -71,10 +71,16 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       // Breakpoint from the panel's own width: the panel is ~640 on laptop, ~700 on a portrait tablet, ~320 on a phone.
       const bp: "laptop" | "tablet" | "phone" = cssW < 480 ? "phone" : cssW < 760 ? "tablet" : "laptop";
       // The scene may override the tab height by CSS (--graph-tab-h) where the VIEWPORT is short — a phone's width says nothing about its height.
-      const cssTab = parseInt(getComputedStyle(wrap).getPropertyValue("--graph-tab-h"));
-      const tabH = Number.isFinite(cssTab) && cssTab > 0 ? cssTab : GRAPH.tabHeight[bp];
       const pulseH = GRAPH.pulseRowHeight[bp];
       const axisH = GRAPH.axisHeight[bp];
+      const cssTab = parseInt(getComputedStyle(wrap).getPropertyValue("--graph-tab-h"));
+      const minTab = Number.isFinite(cssTab) && cssTab > 0 ? cssTab : GRAPH.tabHeight[bp];
+      // Side by side (the scene sets --graph-fill: 1 there), the plot grows into the height the stretched panel gives it, never below the breakpoint's minimum — so the graph is taller than the hero. In the column layouts the panel's height is its content, and growing into it would be a feedback loop, so the plot stays at the minimum.
+      const fill = getComputedStyle(wrap).getPropertyValue("--graph-fill").trim() === "1";
+      const tabs = wrap.firstElementChild as HTMLElement | null;
+      const tabsH = tabs ? tabs.getBoundingClientRect().height + parseFloat(getComputedStyle(tabs).marginBottom || "0") : 0;
+      const available = wrap.clientHeight - tabsH - GRAPH.labelGutter - pulseH - axisH;
+      const tabH = fill ? Math.max(minTab, Math.floor(available / 4) * 4) : minTab;
       const lineTracks: TrackKey[] = [tab];
       const cssH = GRAPH.labelGutter + tabH + pulseH + axisH;
       const dpr = window.devicePixelRatio || 1;
@@ -260,8 +266,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
   }, [series, day, playing, live, tab, c, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
 
   return (
-    <div ref={wrapRef} style={{ width: "100%" }}>
-      <div role="tablist" style={{ display: "flex", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, marginBottom: space.xs, overflowX: "auto", whiteSpace: "nowrap" }}>
+    <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div role="tablist" style={{ display: "flex", flex: "0 0 auto", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, marginBottom: space.xs, overflowX: "auto", whiteSpace: "nowrap" }}>
         {TRACK_ORDER.map((t) => {
           const active = t === tab;
           return (
@@ -284,6 +290,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       </div>
       <canvas
         ref={canvasRef}
+        // The canvas is the flexible child: its CSS height is set by draw() from the space the panel gives.
         onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); const h = hourAt(e.clientX); if (h != null) onSeek(h); }}
         onPointerMove={(e) => { if (!dragging.current) return; const h = hourAt(e.clientX); if (h != null) onSeek(h); }}
         onPointerUp={(e) => { dragging.current = false; e.currentTarget.releasePointerCapture(e.pointerId); }}

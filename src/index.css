@@ -1454,7 +1454,13 @@ html {
 @media (max-width: 910px) {
   .scene-day { flex-direction: column; align-items: center; }
 }
-.scene-mid { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--ui-gap); min-height: 0; }
+/* Side by side, the hero keeps its content height and the graph is the taller panel: the graph stretches to the row and has a floor above the hero's natural height, so the hero is always the shorter of the two and the plot grows into the graph's extra height. The row is centred in the remaining height by its own margins. */
+.scene-mid { flex: 0 1 auto; margin: auto 0; display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; }
+/* Side-by-side only (laptop): the shorter hero sits on the graph's horizontal centre line, and the graph has a floor above the hero's natural height. In the column layouts each panel takes its content height and the plot stays at its breakpoint minimum. */
+@media (min-width: 1024px) {
+  .scene-panel.scene-hero { align-self: center; }
+  .scene-panel.scene-graph { min-height: 384px; --graph-fill: 1; } /* 20 + tabs 32 + 8 + gutter 8 + plot 240 + pulse 32 + axis 24 + 20: the laptop plot at its token height; --graph-fill lets the plot grow into a stretched panel */
+}
 .scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; border-radius: calc(var(--ctl-pill) / 2); }
 
 .scene-pill.scene-borough { padding: 0 24px; }
@@ -1466,7 +1472,8 @@ html {
 .scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
 .scene-panel.scene-hero { padding: 36px 36px 20px; }
-.scene-panel.scene-graph { padding: 20px; }
+.scene-panel.scene-graph { padding: 20px; display: flex; flex-direction: column; }
+.scene-panel.scene-graph > div { flex: 1 1 auto; min-height: 0; }
 .scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
 .scene-source p, .scene-source div { white-space: normal; }
 .scene-dev { align-self: flex-start; height: var(--ctl-inner); }
@@ -1480,7 +1487,7 @@ html {
   }
   .scene-top .glass { flex: 0 1 auto; width: fit-content; max-width: 100%; margin: 0; }
   .scene-mid { flex-direction: column; align-items: stretch; justify-content: center; }
-  .scene-panel { flex: 0 1 auto; width: 100%; max-width: 100%; }
+  .scene-panel { flex: 0 0 auto; width: 100%; max-width: 100%; } /* content height; never squeezed */
   .scene-panel.scene-hero { padding: 24px 24px 16px; }
   .scene-panel.scene-graph { padding: 16px; }
 }
@@ -1502,9 +1509,10 @@ html {
   .scene-mid { gap: 8px; }
   .scene-panel.scene-hero { padding: 16px 16px 12px; }
   .scene-panel.scene-graph { padding: 12px; }
-  .scene-bottom { gap: 8px; align-items: stretch; }
-  .scene-source { padding: 4px 12px; font-size: 11px; }
-  .scene-transport { flex: 0 0 auto; }
+  /* Phone: the play and volume pills on their own row, the source line full width beneath them. */
+  .scene-bottom { flex-direction: column; align-items: stretch; gap: 8px; }
+  .scene-transport { flex: 0 0 auto; align-self: flex-start; }
+  .scene-source { width: 100%; padding: 8px 12px; }
 }
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */
@@ -1515,7 +1523,7 @@ html {
 }
 /* The shortest phones (640 tall): the graph tightens to 72, which is the floor at which the tabs and the axis still read; the pills stay 32 so every size stays on the grid. */
 @media (max-width: 767px) and (max-height: 660px) {
-  .scene-ui { --graph-tab-h: 72px; --ui-gap: 8px; }
+  .scene-ui { --graph-tab-h: 88px; --ui-gap: 8px; } /* 72 made the graph panel 4 px shorter than the hero; 88 keeps it the taller one and still fits 640 */
   .scene-panel.scene-hero { padding: 8px 12px 8px; }
   .scene-panel.scene-graph { padding: 8px 12px 4px; }
 }

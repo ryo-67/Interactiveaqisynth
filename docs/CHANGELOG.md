@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The phone graph: taller, tabs across the band, faint lines off, tighter padding
+
+On phones the plot goes from 160 to 240 tall (44 px still spare above the transport on an 844-tall phone; the short-phone steps keep their own heights), the four tabs grow to fill the band from their own text so the longest is never cropped, the faint hour lines are off (the firm four-hour lines stay: dense information on a small display), and the panel's padding tightens to 12 and 8. The faint alpha is a custom property the graph reads per breakpoint, so the token stays one value.
+
 ## 2026-09-15 — The line merges into the legend; a softer green
 
 The line ended flat against the legend's left edge, and any cap, join or fill edge there read as a hook. Now the line's last segment runs straight on under the legend's track and the legend is drawn after it, covering the end with the ramp's own colour at that height, so the two cannot disagree at the seam; measured identical to the pixel in three states. The bottom of the ramp is a softer green (#3ed35a to #66df7c): the EPA green at full chroma shouted next to the rest of the ramp.

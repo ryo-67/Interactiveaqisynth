@@ -181,7 +181,9 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       faint.setTransform(dpr, 0, 0, dpr, 0, 0);
       faint.clearRect(0, 0, cssW, cssH);
       const [fr, fg, fb, fa] = rgba(c.textFaint);
-      const [, , , ha] = rgba(c.gridHair);
+      // The faint lines' alpha can be set by the scene per breakpoint (--graph-faint-alpha; phones set 0), else the token's.
+      const cssFaint = parseFloat(getComputedStyle(wrap).getPropertyValue("--graph-faint-alpha"));
+      const ha = Number.isFinite(cssFaint) ? cssFaint : rgba(c.gridHair)[3];
       const firmLine = `rgb(${fr},${fg},${fb})`;
       hair.lineWidth = 1; faint.lineWidth = 1; faint.strokeStyle = firmLine;
 
@@ -427,7 +429,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       ctx.globalCompositeOperation = "destination-over";
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = fa; ctx.drawImage(hairCanvas, 0, 0);
-      ctx.globalAlpha = ha; ctx.drawImage(faintCanvas, 0, 0);
+      if (ha > 0) { ctx.globalAlpha = ha; ctx.drawImage(faintCanvas, 0, 0); }
       ctx.restore();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (n > 0) {

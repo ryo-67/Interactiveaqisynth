@@ -1572,9 +1572,12 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-ui {
     --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px; /* 12 between the short borough names: they leave the room (2026-09-15) */
     --display-size: 48px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
-    --graph-tab-h: 160px; /* taller plot on phones (2026-09-15): 120 read as cramped; the short-height steps below still override */
+    --graph-tab-h: 240px; /* taller plot on phones (2026-09-15): 120 read as cramped, then 160 still did; 240 leaves 27 px above the transport on an 844-tall phone; the short-height steps below still override */
+    --graph-faint-alpha: 0; /* the faint hour lines are off on phones: dense information on a small display (2026-09-15); the firm lines stay */
     /* Spacing stays at the tablet values (24 / 16): the phone step changes control and type sizes, not the room around them. */
   }
+  .scene-panel.scene-graph { --graph-pad: 12px; --graph-pad-x: 8px; } /* tighter around the graph on phones (2026-09-15): the plot takes the room */
+  .scene-panel.scene-graph [role="tablist"] > button { flex: 1 1 auto !important; } /* the tabs fill the band, each growing from its own text so PM2.5 µg/m³, the longest, is never cropped; important over the chip's inline flex: 0 0 auto */
   .scene-top .glass { width: fit-content; max-width: 100%; margin: 0; }
   .scene-pill { padding: 0 12px; }
   .scene-pill.scene-borough { padding: 0 12px; }
@@ -1586,11 +1589,11 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (max-width: 767px) and (max-height: 720px) {
   .scene-ui { --display-size: 40px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; }
   .scene-panel.scene-hero { --hero-pad: 16px; }
-  .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 12px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */
+  .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */
 }
 /* The shortest phones (640 tall): the graph tightens to 72, which is the floor at which the tabs and the axis still read; the pills stay 32 so every size stays on the grid. */
 @media (max-width: 767px) and (max-height: 660px) {
   .scene-ui { --graph-tab-h: 88px; --ui-gap: 8px; } /* 72 made the graph panel 4 px shorter than the hero; 88 keeps it the taller one and still fits 640 */
   .scene-panel.scene-hero { --hero-pad: 12px; }
-  .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 12px; padding-bottom: 4px; }
+  .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; padding-bottom: 4px; }
 }

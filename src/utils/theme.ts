@@ -41,7 +41,7 @@ export function themeColors(theme: Theme) {
     textFaint: isDark
       ? "rgba(255,255,255,0.18)"
       : "rgba(0,0,0,0.22)",
-    gridHair: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)", // the faint hour lines: 0.10 so they still read on the darkest frost (2026-09-15)
+    gridHair: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", // the faint hour lines: barely there by design, not a reading element, so no contrast target (2026-09-15)
 
     border: isDark
       ? "rgba(255,255,255,0.07)"
@@ -129,9 +129,9 @@ export const AQI_CATEGORIES = [
   { max: 100, color: "#ffff00", text: "#ffff00" },
   { max: 150, color: "#ff8c1a", text: "#ff8c1a" },
   { max: 200, color: "#ff5c5c", text: "#ff7878" }, // unhealthy: the word one step lighter, 3.06:1 on the noon panel
-  // The display ramp's top: the EPA purple and maroon (0.12 and 0.05 luminance) read as black next to the bright four below; these keep the hues fully saturated at 0.17 and 0.10, each step still darker by about half (2026-09-15).
-  { max: 300, color: "#8f47ff", text: "#b98cff" }, // very unhealthy: saturated violet; the word a lavender of that hue, 3.08:1
-  { max: 500, color: "#b0103c", text: "#ff7a94" }, // hazardous: saturated crimson; the word its hue at 0.37 luminance, 3.16:1
+  // The display ramp's top: the EPA purple and maroon (0.12 and 0.05 luminance) read as black next to the bright four below; these are the same hues fully saturated at 0.25 and 0.24, so the top of the scale carries its contrast against the frost as the lower colours do, and the change from red is a change of hue rather than a fall into dark (2026-09-15).
+  { max: 300, color: "#b45cff", text: "#b98cff" }, // very unhealthy: saturated violet; the word a lavender of that hue, 3.08:1
+  { max: 500, color: "#ff2e63", text: "#ff7a94" }, // hazardous: saturated crimson; the word its hue at 0.37 luminance, 3.16:1
 ] as const;
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
@@ -360,8 +360,8 @@ export const GRAIN = {
   visibleFromUgm3: 12, // the Good/Moderate line
   fullAtUgm3: 120,
   // Blend: vivid light, not premultiplied overlay. Overlay grain scales with the pixel's own brightness, so on a night sky it measured a standard deviation of 0 at any opacity; vivid light measured the same amplitude on a night sky (43/255) and a noon mid-tone (122/255), with no shift of the mean, and nothing on clipped white (2026-09-15). Opacity 0.04 ≈ 4.5 levels of texture, 0.1 ≈ 9, 0.3 ≈ 21.
-  opacityBase: 0.05, // always there, at every hour, night included: the material's own texture
-  opacityMax: 0.2, // at full fine particulate: the wildfire end
+  opacityBase: 0.05, // always there, at every hour, night included: the material's own texture, about 5 levels
+  opacityMax: 0.08, // at full fine particulate: the wildfire end, about 8 levels (2026-09-15: 0.2 read as bright specks; the base was right)
   curve: 0.8,
 } as const;
 

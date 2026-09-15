@@ -283,21 +283,26 @@ export const SKY_GRADE = {
 
 // Floating particulate (§5.2 item 2): bokeh, not stars. Out-of-focus discs in the near field — soft core, brighter rim, sized by distance so the near ones are large and diffuse — faintly additive so the bloom pass flares the bright ones. Count and opacity from normalized PM2.5. Size will also take PM10 once it is a channel (DAT-13). Drift stops under prefers-reduced-motion (§5.4).
 export const PARTICLES = {
+  // Visibility keys to ABSOLUTE PM2.5 (like SMOKE.orange), not the normalized value that saturates at NYC's ordinary ceiling: nothing below 35 µg/m³ (the Unhealthy-for-Sensitive-Groups line), full by 150.
+  visibleFromUgm3: 35,
+  fullAtUgm3: 150,
   max: 900,
   opacityMax: 0.75,
-  curve: 0.5,          // opacity ∝ density^curve: visible from moderate density
-  sizePx: 44,          // base disc diameter in px at one world unit from the camera, before per-particle variation
+  curve: 0.8,          // opacity ∝ level^curve
+  sizePx: 56,          // base disc diameter in px at one world unit from the camera, before per-particle variation
   sizeVariance: 1.6,   // per-particle multiplier spans 1/(1+v)..(1+v)
-  ring: 0.8,           // where the rim sits on the disc radius (0..1)
-  ringWidth: 0.06,
-  ringGain: 1.6,       // rim brightness; above 1 lets the bloom pass flare it
-  coreAlpha: 0.22,     // the diffuse centre, relative to the rim
-  chroma: 0.035,       // chromatic fringing: the rim's radius differs per channel, so the edge refracts into colour
+  ring: 0.7,           // where the rim sits on the disc radius (0..1)
+  ringWidth: 0.16,     // wide: a blurred rim, not a hard ring
+  ringGain: 1.5,       // rim brightness; above 1 lets the bloom pass flare it
+  coreAlpha: 0.14,     // the diffuse centre, relative to the rim
+  chroma: 0.1,         // chromatic fringing: the rim's radius differs per channel, so the edge splits into colour
   box: 8,              // half-size of the cube of particles around the camera, world units
   near: 0.9,           // no particle closer than this: keeps a disc from filling the frame
   fallPerSec: 0.16,    // world units per second, downward
   swayPerSec: 0.12,
   warmth: 0.08,        // slight warm tint, so the discs read as dust in light rather than as pure white
+  // Frame-level chromatic aberration in the post chain, rising with the same level: at wildfire density the whole view fringes toward the edges, as a lens does through scattering air.
+  aberrationMax: 0.0035,
 } as const;
 
 // Night (D-20 addendum): the analytic models go dark and neutral with the sun down, but a clear night sky reads deep blue — skyglow, airglow and the eye's own shift. A blue gradient is screened over the sky from sunset to −6° (civil twilight's end) and held through the night; particulate damps it, because a hazy night is grey-orange, not blue. FIRST PASS — the harness has a strength slider.

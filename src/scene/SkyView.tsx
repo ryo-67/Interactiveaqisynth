@@ -2,9 +2,9 @@
 import React, { useLayoutEffect, useMemo } from "react";
 import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
-import { EffectComposer, Bloom, HueSaturation, ToneMapping } from "@react-three/postprocessing";
+import { EffectComposer, Bloom, HueSaturation, ChromaticAberration, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
-import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector3 } from "three";
+import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3 } from "three";
 import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, NYC_LAT } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
@@ -35,7 +35,7 @@ interface Props {
   discDeg?: number;
   // Saturation grade on the sky (SKY_GRADE.saturation); the harness overrides it.
   saturation?: number;
-  // Floating particulate density, 0..1 (normalized PM2.5).
+  // Floating particulate level, 0..1, from ABSOLUTE PM2.5 via particleLevel(): the floaters and the frame's chromatic aberration.
   particles?: number;
   // Local hour (fractional) for the star field's rotation. Stars turn about the celestial pole 15° an hour, so facing south they rise on the left and set on the right; continuous across midnight.
   hour?: number;
@@ -100,6 +100,12 @@ function StarField({ opacity, count, hour }: { opacity: number; count: number; h
   );
 }
 
+// 0 below PARTICLES.visibleFromUgm3, 1 at fullAtUgm3.
+export function particleLevel(pm25: number | null | undefined): number {
+  if (pm25 == null) return 0;
+  return Math.max(0, Math.min(1, (pm25 - PARTICLES.visibleFromUgm3) / (PARTICLES.fullAtUgm3 - PARTICLES.visibleFromUgm3)));
+}
+
 // MAPPING (PM2.5 → floating particulate): bokeh discs in the near field, seeded once, drifting slowly; opacity ∝ density^curve, so a clear day shows nothing and a heavy one fills the near field with soft floaters. A point shader draws each as an out-of-focus disc — diffuse centre, brighter rim — sized by distance. Additive at low alpha, so they add light the way dust in a beam does and the bloom pass flares the bright ones. They live in the scene, so the grade, bloom and tone mapping treat them as part of the sky, and the plume above veils them like everything else.
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const particleVertex = /* glsl */ `
@@ -131,7 +137,7 @@ void main() {
   // Out-of-focus disc: a soft, dim centre and a bright rim where the blur circle's edge piles up light. The rim's radius differs per channel — red outermost, blue innermost — so the edge fringes into colour the way a real particle refracts.
   float core = (1.0 - d * d) * uCoreAlpha;
   vec3 rim = vec3(rimAt(d, uRing + uChroma), rimAt(d, uRing), rimAt(d, uRing - uChroma)) * uRingGain;
-  float edge = 1.0 - smoothstep(0.9, 1.0, d);
+  float edge = 1.0 - smoothstep(0.55, 1.0, d); // long, soft falloff: the disc dissolves rather than stops
   vec3 c = (vec3(core) + rim) * edge * uOpacity * uTint;
   float a = min(1.0, max(c.r, max(c.g, c.b)));
   gl_FragColor = vec4(c, a);
@@ -250,6 +256,7 @@ function Exposure({ value }: { value: number }) {
 }
 
 export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0 }: Props) {
+  const aberration = useMemo(() => new Vector2(PARTICLES.aberrationMax * particles, PARTICLES.aberrationMax * particles), [particles]);
   // Sun elevation and azimuth from the vector itself, so every caller that already passes a sun position gets the fade and the facing for free.
   const len = Math.hypot(...sunPosition) || 1;
   const sunElevationDeg = (Math.asin(Math.max(-1, Math.min(1, sunPosition[1] / len))) * 180) / Math.PI;
@@ -294,17 +301,11 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
         )}
         {starOpacity > 0.001 && <StarField opacity={starOpacity} count={SKY_RANGES.starsCount} hour={hour} />}
         {particles > 0.02 && <ParticleField density={particles} />}
-        {/* The composer always mounts: the grade and the tone-mapping pass are part of the sky at every hour, not only when bloom is on. */}
+        {/* The composer always mounts: the grade and the tone-mapping pass are part of the sky at every hour, not only when bloom is on. Order: bloom; the saturation grade before tone mapping, so it lifts the sky's own colour rather than the mapped result; chromatic aberration rising with particulate (zero offset when there is none), so at wildfire density the whole frame fringes toward its edges; ACES tone mapping last. EffectComposer's children must all be elements, so nothing here is conditional. */}
         <EffectComposer>
-          <Bloom
-            intensity={params.bloomIntensity}
-            luminanceThreshold={0.55}
-            luminanceSmoothing={0.35}
-            mipmapBlur
-          />
-          {/* Saturation grade before tone mapping, so it lifts the sky's own colour rather than the mapped result. */}
+          <Bloom intensity={params.bloomIntensity} luminanceThreshold={0.55} luminanceSmoothing={0.35} mipmapBlur />
           <HueSaturation saturation={saturation} />
-            {/* three applies material tone mapping only when rendering to the canvas (WebGLProgram: toneMapping stays NoToneMapping unless currentRenderTarget is null), and the composer renders the scene into a target — so with bloom on the sky reached the screen untonemapped and washed out. The composed output is tone mapped here instead; the effect reads the renderer's toneMappingExposure, so the exposure control still governs it. */}
+          <ChromaticAberration offset={aberration} radialModulation modulationOffset={0.3} />
           <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
         </EffectComposer>
       </Canvas>

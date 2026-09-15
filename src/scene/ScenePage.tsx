@@ -1,7 +1,7 @@
 // ScenePage — /scene, the Listen page as the scene (D-19, §5). The sky is a pure function of two things the engine already emits every beat: the hour under the playhead and the smoothed normalized PM2.5. Sun elevation comes from the hour; the model cross-fade, exposure, stars and the plume all follow from those two numbers. Nothing here re-derives a mapping the harness did not judge.
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
 import React, { useEffect, useMemo, useState } from "react";
-import { SkyView, type CameraFacing } from "./SkyView";
+import { SkyView, particleLevel, type CameraFacing } from "./SkyView";
 import { SmokeLayer, smokeRegime } from "./SmokeLayer";
 import { NightLayer } from "./NightLayer";
 import { skyParamsFor, starOpacity, nightBlend } from "./skyParams";
@@ -75,7 +75,7 @@ export default function ScenePage() {
       <div style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars }}>
         {/* The scene: renders continuously while playing, on demand at rest. */}
         <div style={{ position: "absolute", inset: 0 }}>
-          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} saturation={view.saturation} particles={view.smoke} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={hour} saturation={view.saturation} particles={particleLevel(view.pm25)} live={playing} style={{ width: "100%", height: "100%" }} />
           <NightLayer blend={view.night} density={view.smoke} />
           <SmokeLayer density={view.smoke} pm25={view.pm25} />
         </div>

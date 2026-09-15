@@ -122,7 +122,27 @@ interface HistoricalResponse {
   days: Array<{ date: string; hours: Day; aqi: SeriesAQI }>;
 }
 
-// One local day of hourly readings. Past years come from the static archive; the current year from the live-year route. DST days genuinely have 23 or 25 hours.
+// Current-year days are loaded a MONTH at a time and kept for the session: one request to the EPA route serves every day of that month, the CDN caches the month URL for everyone (s-maxage a day, stale a week), and paging day by day within a month costs nothing. Per-day requests made every step a fresh EPA round trip of many seconds. The current month's URL ends at yesterday and so changes daily; past months are stable.
+const monthCache = new Map<string, Promise<Map<string, { hours: Day; aqi: SeriesAQI }>>>();
+function monthDays(borough: Borough, ym: string): Promise<Map<string, { hours: Day; aqi: SeriesAQI }>> {
+  const key = `${borough}|${ym}`;
+  if (!monthCache.has(key)) {
+    const [y, m] = ym.split("-").map(Number);
+    const lastOfMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const from = `${ym}-01`;
+    const to = `${ym}-${String(lastOfMonth).padStart(2, "0")}` > yesterday ? yesterday : `${ym}-${String(lastOfMonth).padStart(2, "0")}`;
+    const p = from > to
+      ? Promise.resolve(new Map())
+      : fetchJson<HistoricalResponse>(`/api/aqi/historical?borough=${encodeURIComponent(borough)}&from=${from}&to=${to}`, 120000)
+          .then((json) => new Map(json.days.map((d) => [d.date, { hours: d.hours, aqi: d.aqi }])));
+    p.catch(() => monthCache.delete(key)); // a failed month is not remembered as empty
+    monthCache.set(key, p);
+  }
+  return monthCache.get(key)!;
+}
+
+// One local day of hourly readings. Past years come from the static archive; the current year from its month. DST days genuinely have 23 or 25 hours.
 export async function getDay(borough: Borough, date: string): Promise<DaySeries> {
   const year = Number(date.slice(0, 4));
   const currentYear = new Date().getFullYear();
@@ -130,15 +150,11 @@ export async function getDay(borough: Borough, date: string): Promise<DaySeries>
     const hours = (await archiveYear(borough, year)).filter((h) => h.ts.startsWith(date));
     return { hours, aqi: clientSeriesAQI(hours), fallback: null, fetchedAt: null };
   }
-  const json = await fetchJson<HistoricalResponse>(
-    `/api/aqi/historical?borough=${encodeURIComponent(borough)}&from=${date}&to=${date}`,
-    120000,
-  );
-  const day = json.days.find((d) => d.date === date);
+  const day = (await monthDays(borough, date.slice(0, 7))).get(date);
   return { hours: day?.hours ?? [], aqi: day?.aqi ?? { daily: null, hourlyMax: null, latestHour: null }, fallback: null, fetchedAt: null };
 }
 
-// The last day the archive can play, in two stages. The static archive's last day answers at once (its last hour's date); the current-year route then refines it to the last day EPA has published, which lags real time by days to weeks. Yesterday is never assumed: a day is available only if it has hours.
+// The last day the archive can play, in two stages. The static archive's last day answers at once (its last hour's date); the current year then refines it to the last day EPA has published, which lags real time by days to weeks, by loading months backwards from the current one until one has data (the same loads getDay uses, so the month a visitor lands in is already in memory). Yesterday is never assumed: a day is available only if it has hours.
 export async function getArchiveLastDate(borough: Borough): Promise<string> {
   const year = new Date().getFullYear() - 1;
   const hours = await archiveYear(borough, year);
@@ -147,14 +163,19 @@ export async function getArchiveLastDate(borough: Borough): Promise<string> {
 export async function getLatestAvailableDate(borough: Borough): Promise<string | null> {
   const now = new Date();
   const year = now.getFullYear();
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const to = iso(new Date(now.getTime() - 86400000));
-  const fromDate = new Date(now.getTime() - 45 * 86400000);
-  const from = fromDate.getFullYear() < year ? `${year}-01-01` : iso(fromDate);
-  if (from > to) return null;
-  const json = await fetchJson<HistoricalResponse>(`/api/aqi/historical?borough=${encodeURIComponent(borough)}&from=${from}&to=${to}`, 120000);
-  const withData = json.days.filter((d) => d.hours.length > 0).map((d) => d.date).sort();
-  return withData.length ? withData[withData.length - 1] : null;
+  for (let k = 0; k < 4; k++) {
+    const d = new Date(Date.UTC(year, now.getMonth() - k, 1));
+    if (d.getUTCFullYear() < year) break;
+    const ym = d.toISOString().slice(0, 7);
+    const days = [...(await monthDays(borough, ym)).entries()].filter(([, v]) => v.hours.length > 0).map(([date]) => date).sort();
+    if (days.length) {
+      // Warm the month before it, so the first step back across the month edge is as instant as the steps within it.
+      const prev = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
+      if (prev.getUTCFullYear() === year) void monthDays(borough, prev.toISOString().slice(0, 7)).catch(() => undefined);
+      return days[days.length - 1];
+    }
+  }
+  return null;
 }
 
 // Normalization anchors from the archive build (p05/p95 per borough per pollutant over 2020–2025, §3.10).

@@ -88,7 +88,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
       // Side by side (the scene sets --graph-fill: 1 there), the plot grows into the height the stretched panel gives it, never below the breakpoint's minimum — so the graph is taller than the hero. In the column layouts the panel's height is its content, and growing into it would be a feedback loop, so the plot stays at the minimum.
       const fill = getComputedStyle(wrap).getPropertyValue("--graph-fill").trim() === "1";
       const tabs = wrap.firstElementChild as HTMLElement | null;
-      const tabsH = tabs ? tabs.getBoundingClientRect().height + parseFloat(getComputedStyle(tabs).marginBottom || "0") : 0;
+      // The band is pulled up into the panel's padding, so the space it takes inside the wrap is from the wrap's top to the band's bottom, plus the gap below it.
+      const tabsH = tabs ? tabs.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top + parseFloat(getComputedStyle(tabs).marginBottom || "0") : 0;
       const available = wrap.clientHeight - tabsH - GRAPH.labelGutter - pulseH - axisH;
       const tabH = fill ? Math.max(minTab, Math.floor(available / 4) * 4) : minTab;
       const lineTracks: TrackKey[] = [tab];
@@ -413,7 +414,8 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
 
   return (
     <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <div role="tablist" style={{ display: "flex", flex: "0 0 auto", gap: CONTROL.gap, height: `var(--ctl-inner, ${CONTROL.inner}px)`, marginBottom: space.xs, overflowX: "auto", whiteSpace: "nowrap" }}>
+      {/* The tabs are a header band across the panel, not chips floating over the plot: pulled out to the panel's edges (the panel's padding is --graph-pad), a hairline along its bottom, the active tab's underline sitting on that hairline, tabs abutting with their own padding so the first label lines up with the panel's padding. */}
+      <div role="tablist" style={{ display: "flex", flex: "0 0 auto", gap: 0, height: `var(--ctl-inner, ${CONTROL.inner}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad, 20px)) ${GRAPH.tabsGap}px`, padding: `0 calc(var(--graph-pad, 20px) - ${GRAPH.tabPad}px)`, borderBottom: `1px solid ${c.textFaint}`, overflowX: "auto", whiteSpace: "nowrap", boxSizing: "content-box" }}>
         {TRACK_ORDER.map((t) => {
           const active = t === tab;
           return (
@@ -426,7 +428,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
                 fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: 1, cursor: "pointer",
                 color: active ? c.textPrimary : c.textMuted,
                 background: "none", border: "none", borderBottom: `2px solid ${active ? c.textPrimary : "transparent"}`,
-                height: `var(--ctl-inner, ${CONTROL.inner}px)`, boxSizing: "border-box", padding: CONTROL.chipPad, flex: "0 0 auto",
+                height: `calc(var(--ctl-inner, ${CONTROL.inner}px) + 1px)`, marginBottom: -1, boxSizing: "border-box", padding: `0 ${GRAPH.tabPad}px`, flex: "0 0 auto",
               }}
             >
               {TRACK_LABELS[t]}{TRACK_UNITS[t] ? ` ${TRACK_UNITS[t]}` : ""}

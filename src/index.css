@@ -1495,7 +1495,7 @@ html {
 .scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
 .scene-panel.scene-hero { padding: 36px 36px 20px; }
-.scene-panel.scene-graph { padding: 20px; display: flex; flex-direction: column; }
+.scene-panel.scene-graph { --graph-pad: 20px; padding: var(--graph-pad); display: flex; flex-direction: column; overflow: hidden; } /* --graph-pad: read by the tab band, which spans the panel edge to edge */
 .scene-panel.scene-graph > div { flex: 1 1 auto; min-height: 0; }
 .scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
 .scene-source p, .scene-source div { white-space: normal; }
@@ -1519,7 +1519,7 @@ html {
   .scene-source { width: fit-content; max-width: 100%; align-self: center; padding: 8px 16px; justify-content: center; }
   .scene-source p, .scene-source div { text-align: center; }
   .scene-panel.scene-hero { padding: 24px 24px 16px; }
-  .scene-panel.scene-graph { padding: 16px; }
+  .scene-panel.scene-graph { --graph-pad: 16px; }
 }
 
 /* Phone: every band stacks; the transport and the source share the bottom row; sizes at their smallest. */

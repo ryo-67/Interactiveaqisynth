@@ -281,27 +281,26 @@ export const SKY_GRADE = {
   saturationUnderSmoke: -0.5,
 } as const;
 
-// Floating particulate (§5.2 item 2): bokeh, not stars. Out-of-focus discs in the near field — soft core, brighter rim, sized by distance so the near ones are large and diffuse — faintly additive so the bloom pass flares the bright ones. Count and opacity from normalized PM2.5. Size will also take PM10 once it is a channel (DAT-13). Drift stops under prefers-reduced-motion (§5.4).
+// Floating particulate (§5.2 item 2): glass orbs in the near field, not drawn discs. Each is a real refracting sphere (three's physical material with transmission), so the rendered sky behind it bends through it; dispersion splits that refraction into spectrum, iridescence gives the oily thin-film sheen, and the sun lights them. Visibility keys to ABSOLUTE PM2.5 (like SMOKE.orange), not the normalized value that saturates at NYC's ordinary ceiling. Drift stops under prefers-reduced-motion (§5.4).
 export const PARTICLES = {
-  // Visibility keys to ABSOLUTE PM2.5 (like SMOKE.orange), not the normalized value that saturates at NYC's ordinary ceiling: nothing below 35 µg/m³ (the Unhealthy-for-Sensitive-Groups line), full by 150.
-  visibleFromUgm3: 35,
+  visibleFromUgm3: 35, // nothing below the Unhealthy-for-Sensitive-Groups line
   fullAtUgm3: 150,
-  max: 900,
-  opacityMax: 0.75,
-  curve: 0.8,          // opacity ∝ level^curve
-  sizePx: 56,          // base disc diameter in px at one world unit from the camera, before per-particle variation
-  sizeVariance: 1.6,   // per-particle multiplier spans 1/(1+v)..(1+v)
-  ring: 0.7,           // where the rim sits on the disc radius (0..1)
-  ringWidth: 0.16,     // wide: a blurred rim, not a hard ring
-  ringGain: 1.5,       // rim brightness; above 1 lets the bloom pass flare it
-  coreAlpha: 0.14,     // the diffuse centre, relative to the rim
-  chroma: 0.1,         // chromatic fringing: the rim's radius differs per channel, so the edge splits into colour
-  box: 8,              // half-size of the cube of particles around the camera, world units
-  near: 0.9,           // no particle closer than this: keeps a disc from filling the frame
-  fallPerSec: 0.16,    // world units per second, downward
-  swayPerSec: 0.12,
-  warmth: 0.08,        // slight warm tint, so the discs read as dust in light rather than as pure white
-  // Frame-level chromatic aberration in the post chain, rising with the same level: at wildfire density the whole view fringes toward the edges, as a lens does through scattering air.
+  max: 360,
+  radius: { min: 0.02, max: 0.14 }, // world units; log-uniform
+  box: 7,              // half-size of the cube of orbs around the camera, world units
+  near: 0.7,           // no orb closer than this
+  ior: 1.45,
+  roughness: 0.12,     // a little frost: the refraction blurs slightly
+  thickness: 0.6,      // refraction path length; larger bends more
+  dispersion: 0.9,     // spectral split of the refraction — the chromatic aberration is in the glass itself
+  iridescence: 0.5,    // thin-film sheen
+  iridescenceIOR: 1.25,
+  specularIntensity: 1,
+  sunLight: 2.2,       // directional light from the sun vector
+  skyLight: 0.9,       // hemisphere fill
+  fallPerSec: 0.14,
+  swayPerSec: 0.1,
+  // Frame-level chromatic aberration in the post chain, rising with the same level: at wildfire density the whole view fringes toward its edges, as a lens does through scattering air.
   aberrationMax: 0.0035,
 } as const;
 

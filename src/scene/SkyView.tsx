@@ -1,10 +1,10 @@
 // SkyView — one physically based sky, rendered with the real drei <Sky>, <Stars>, and postprocessing <Bloom>. Used by the /scene-test harness and (next sprint) by the scene itself. Static: no engine, no clock; the caller passes the hour.
-import React, { useLayoutEffect, useMemo } from "react";
+import React, { useLayoutEffect, useMemo, useRef } from "react";
 import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { EffectComposer, Bloom, HueSaturation, ChromaticAberration, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
-import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3 } from "three";
+import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3, SphereGeometry, MeshPhysicalMaterial, Matrix4, Color, type InstancedMesh } from "three";
 import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, NYC_LAT } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
@@ -106,91 +106,69 @@ export function particleLevel(pm25: number | null | undefined): number {
   return Math.max(0, Math.min(1, (pm25 - PARTICLES.visibleFromUgm3) / (PARTICLES.fullAtUgm3 - PARTICLES.visibleFromUgm3)));
 }
 
-// MAPPING (PM2.5 → floating particulate): bokeh discs in the near field, seeded once, drifting slowly; opacity ∝ density^curve, so a clear day shows nothing and a heavy one fills the near field with soft floaters. A point shader draws each as an out-of-focus disc — diffuse centre, brighter rim — sized by distance. Additive at low alpha, so they add light the way dust in a beam does and the bloom pass flares the bright ones. They live in the scene, so the grade, bloom and tone mapping treat them as part of the sky, and the plume above veils them like everything else.
+// MAPPING (PM2.5 → floating particulate): glass orbs in the near field, seeded once, drifting slowly. Instanced spheres with a physical material whose transmission renders the scene behind them and refracts it — so each orb carries a bent, dispersed image of the sky — lit from the sun's direction with a hemisphere fill. The visible count rises with the level (the rest are scaled to nothing), so a clear day has none and a wildfire day fills the near field.
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-const particleVertex = /* glsl */ `
-attribute float aSize;
-varying float vSize;
-uniform float uBasePx;
-void main() {
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  float dist = max(0.2, -mv.z);
-  gl_PointSize = uBasePx * aSize / dist;
-  vSize = aSize;
-  gl_Position = projectionMatrix * mv;
-}
-`;
-const particleFragment = /* glsl */ `
-uniform float uOpacity;
-uniform float uRing;
-uniform float uRingWidth;
-uniform float uRingGain;
-uniform float uCoreAlpha;
-uniform float uChroma;
-uniform vec3 uTint;
-varying float vSize;
-float rimAt(float d, float r) { return exp(-pow((d - r) / uRingWidth, 2.0)); }
-void main() {
-  vec2 p = gl_PointCoord * 2.0 - 1.0;
-  float d = length(p);
-  if (d > 1.0) discard;
-  // Out-of-focus disc: a soft, dim centre and a bright rim where the blur circle's edge piles up light. The rim's radius differs per channel — red outermost, blue innermost — so the edge fringes into colour the way a real particle refracts.
-  float core = (1.0 - d * d) * uCoreAlpha;
-  vec3 rim = vec3(rimAt(d, uRing + uChroma), rimAt(d, uRing), rimAt(d, uRing - uChroma)) * uRingGain;
-  float edge = 1.0 - smoothstep(0.55, 1.0, d); // long, soft falloff: the disc dissolves rather than stops
-  vec3 c = (vec3(core) + rim) * edge * uOpacity * uTint;
-  float a = min(1.0, max(c.r, max(c.g, c.b)));
-  gl_FragColor = vec4(c, a);
-}
-`;
-function ParticleField({ density }: { density: number }) {
-  const { geometry, phase } = useMemo(() => {
+const _m = new Matrix4();
+function ParticleField({ level, sunPosition }: { level: number; sunPosition: [number, number, number] }) {
+  const ref = useRef<InstancedMesh>(null);
+  const seed = useMemo(() => {
     const rnd = mulberry32(19730607);
-    const n = PARTICLES.max, b = PARTICLES.box, v = PARTICLES.sizeVariance;
-    const pos = new Float32Array(n * 3);
-    const size = new Float32Array(n);
-    const ph = new Float32Array(n);
+    const n = PARTICLES.max, b = PARTICLES.box;
+    const pos = new Float32Array(n * 3), rad = new Float32Array(n), phase = new Float32Array(n);
+    const lr = Math.log(PARTICLES.radius.max / PARTICLES.radius.min);
     for (let i = 0; i < n; i++) {
       let x = 0, y = 0, z = 0;
       do { x = (rnd() * 2 - 1) * b; y = (rnd() * 2 - 1) * b; z = (rnd() * 2 - 1) * b; } while (Math.hypot(x, y, z) < PARTICLES.near);
       pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
-      size[i] = Math.pow(1 + v, rnd() * 2 - 1); // log-uniform spread of disc sizes
-      ph[i] = rnd() * Math.PI * 2;
+      rad[i] = PARTICLES.radius.min * Math.exp(rnd() * lr);
+      phase[i] = rnd() * Math.PI * 2;
     }
-    const g = new BufferGeometry();
-    g.setAttribute("position", new Float32BufferAttribute(pos, 3));
-    g.setAttribute("aSize", new Float32BufferAttribute(size, 1));
-    return { geometry: g, phase: ph };
+    return { pos, rad, phase };
   }, []);
-  const dpr = useThree((s) => s.gl.getPixelRatio());
-  const uniforms = useMemo(() => ({
-    uOpacity: { value: 0 },
-    uBasePx: { value: PARTICLES.sizePx * dpr },
-    uRing: { value: PARTICLES.ring },
-    uRingWidth: { value: PARTICLES.ringWidth },
-    uRingGain: { value: PARTICLES.ringGain },
-    uChroma: { value: PARTICLES.chroma },
-    uCoreAlpha: { value: PARTICLES.coreAlpha },
-    uTint: { value: new Vector3(1, 1 - PARTICLES.warmth * 0.5, 1 - PARTICLES.warmth) },
-  }), [dpr]);
-  uniforms.uOpacity.value = PARTICLES.opacityMax * Math.pow(Math.max(0, Math.min(1, density)), PARTICLES.curve);
+  const geometry = useMemo(() => new SphereGeometry(1, 24, 16), []);
+  const material = useMemo(() => {
+    const m = new MeshPhysicalMaterial({
+      color: new Color("#ffffff"),
+      transmission: 1,
+      thickness: PARTICLES.thickness,
+      ior: PARTICLES.ior,
+      roughness: PARTICLES.roughness,
+      metalness: 0,
+      specularIntensity: PARTICLES.specularIntensity,
+      iridescence: PARTICLES.iridescence,
+      iridescenceIOR: PARTICLES.iridescenceIOR,
+      transparent: true,
+      depthWrite: false,
+    });
+    m.dispersion = PARTICLES.dispersion;
+    return m;
+  }, []);
+  const visible = Math.round(PARTICLES.max * Math.max(0, Math.min(1, level)));
   useFrame((state, dt) => {
-    if (REDUCED_MOTION) return;
-    const attr = geometry.getAttribute("position") as Float32BufferAttribute;
-    const a = attr.array as Float32Array;
+    const mesh = ref.current;
+    if (!mesh) return;
+    const { pos, rad, phase } = seed;
     const b = PARTICLES.box, t = state.clock.elapsedTime;
     for (let i = 0; i < PARTICLES.max; i++) {
-      a[i * 3 + 1] -= PARTICLES.fallPerSec * dt;
-      a[i * 3] += Math.sin(t * 0.5 + phase[i]) * PARTICLES.swayPerSec * dt;
-      if (a[i * 3 + 1] < -b) a[i * 3 + 1] += 2 * b;
-      if (a[i * 3] > b) a[i * 3] -= 2 * b; else if (a[i * 3] < -b) a[i * 3] += 2 * b;
+      if (!REDUCED_MOTION) {
+        pos[i * 3 + 1] -= PARTICLES.fallPerSec * dt;
+        pos[i * 3] += Math.sin(t * 0.5 + phase[i]) * PARTICLES.swayPerSec * dt;
+        if (pos[i * 3 + 1] < -b) pos[i * 3 + 1] += 2 * b;
+        if (pos[i * 3] > b) pos[i * 3] -= 2 * b; else if (pos[i * 3] < -b) pos[i * 3] += 2 * b;
+      }
+      const r = i < visible ? rad[i] : 0;
+      _m.makeScale(r, r, r).setPosition(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
+      mesh.setMatrixAt(i, _m);
     }
-    attr.needsUpdate = true;
+    mesh.instanceMatrix.needsUpdate = true;
   });
+  const sun = new Vector3(...sunPosition).normalize().multiplyScalar(50);
   return (
-    <points geometry={geometry} renderOrder={1} frustumCulled={false}>
-      <shaderMaterial vertexShader={particleVertex} fragmentShader={particleFragment} uniforms={uniforms} transparent depthWrite={false} depthTest={false} blending={AdditiveBlending} />
-    </points>
+    <>
+      <directionalLight position={sun} intensity={PARTICLES.sunLight} color="#fff3e0" />
+      <hemisphereLight args={["#9fc3ff", "#3a2a1a", PARTICLES.skyLight]} />
+      <instancedMesh ref={ref} args={[geometry, material, PARTICLES.max]} frustumCulled={false} renderOrder={2} />
+    </>
   );
 }
 
@@ -300,7 +278,7 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
           <SunDisc sunPosition={sunPosition} brightness={params.discBrightness} deg={discDeg} />
         )}
         {starOpacity > 0.001 && <StarField opacity={starOpacity} count={SKY_RANGES.starsCount} hour={hour} />}
-        {particles > 0.02 && <ParticleField density={particles} />}
+        {particles > 0.02 && <ParticleField level={particles} sunPosition={sunPosition} />}
         {/* The composer always mounts: the grade and the tone-mapping pass are part of the sky at every hour, not only when bloom is on. Order: bloom; the saturation grade before tone mapping, so it lifts the sky's own colour rather than the mapped result; chromatic aberration rising with particulate (zero offset when there is none), so at wildfire density the whole frame fringes toward its edges; ACES tone mapping last. EffectComposer's children must all be elements, so nothing here is conditional. */}
         <EffectComposer>
           <Bloom intensity={params.bloomIntensity} luminanceThreshold={0.55} luminanceSmoothing={0.35} mipmapBlur />

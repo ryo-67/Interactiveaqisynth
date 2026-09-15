@@ -315,7 +315,7 @@ export const SKY_RANGES = {
   rayleigh: { lowO3: 0.6, highO3: 3.0 },
   bloomIntensity: { lowO3: 0.15, highO3: 1.4 },
   discBrightness: { lowO3: 0.6, highO3: 1.6 },
-  starsCount: 1400,
+  starsCount: 2800, // over the whole sphere (the field rotates), so half are above the horizon at any hour: the same density as the 1,400-star hemisphere the sky was judged with
 } as const;
 
 // Glass material (§5.3) with the §5.4 accessibility fallbacks. These feed CSS custom properties; index.css holds the .glass rules and the three @media fallbacks.

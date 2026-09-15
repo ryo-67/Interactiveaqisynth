@@ -83,8 +83,7 @@ export function hazeToAerosol(haze: number): { turbidity: number; mieCoefficient
 // Rayleigh is held at the three.js Sky model default and is no longer part of what the haze row varies.
 export const RAYLEIGH_DEFAULT = 1;
 
-// Stars fade in below the horizon and are hidden by haze (§5.2 item 4).
-export function starOpacity(sunElevationDeg: number, pm25n: number | null): number {
-  const night = Math.max(0, Math.min(1, -sunElevationDeg / 8)); // full by ~8° below the horizon
-  return night * (1 - Math.min(1, pm25n ?? 0));
+// Stars fade in below the horizon (§5.2 item 4). They are NOT thinned by particulate here: the haze and plume layers sit above them and veil them as they veil everything else, which is what haze does to stars. Tying their opacity to PM2.5 removed them outright on any day at NYC's ceiling.
+export function starOpacity(sunElevationDeg: number, _pm25n?: number | null): number {
+  return Math.max(0, Math.min(1, -sunElevationDeg / 8)); // full by ~8° below the horizon
 }

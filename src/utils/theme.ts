@@ -174,7 +174,8 @@ export const GRAPH = {
   scaleBarWidth: 16, // the legend's column
   scaleTrackWidth: 4, // the gradient track inside it, like the volume slider's track turned upright (2026-09-15)
   scaleBarGap: 8,
-  scaleBarMarker: 6, // the thumb's radius: 12 wide, three times the track, like the slider's thumb
+  scaleCaret: 8, // the value marker: a caret at the track's left, 8 tall and 4 deep, pointing at the value (2026-09-15: a round thumb read as a control)
+  scaleCaretGap: 2, // between the caret's tip and the track
 } as const;
 
 // Opacity scale (§5.5). Tier color is applied through these, not at arbitrary alphas.

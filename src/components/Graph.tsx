@@ -188,16 +188,16 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (vals[i] != null) return i; return -1; })();
           const cur = hi >= 0 ? vals[hi] : null;
           if (cur != null) {
-            // The thumb: white like the slider's, with a soft shadow beneath and a hairline border, so it reads as a control sitting on the track rather than a dot in the gradient.
+            // The marker is a caret at the track's left, pointing at the value: a reading, not a control. The primary text colour, on the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track.
             const my = yFor(cur);
-            ctx.save();
-            ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
-            ctx.fillStyle = "rgba(255,255,255,0.92)";
-            ctx.beginPath(); ctx.arc(barX + barW / 2, my, GRAPH.scaleBarMarker, 0, Math.PI * 2); ctx.fill();
-            ctx.restore();
-            ctx.strokeStyle = "rgba(0,0,0,0.25)";
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.arc(barX + barW / 2, my, GRAPH.scaleBarMarker, 0, Math.PI * 2); ctx.stroke();
+            const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX - GRAPH.scaleCaretGap;
+            ctx.fillStyle = c.textPrimary;
+            ctx.beginPath();
+            ctx.moveTo(tipX, my);
+            ctx.lineTo(tipX - d, my - h / 2);
+            ctx.lineTo(tipX - d, my + h / 2);
+            ctx.closePath();
+            ctx.fill();
           }
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
         }

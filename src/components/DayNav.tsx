@@ -106,7 +106,7 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
       {/* Order: ‹ [calendar icon + date] › Live. The date itself opens the calendar; live reads "Last 24h" with the next arrow disabled. ‹ from live is yesterday's full day; › from yesterday is live again. */}
       <button style={chip(false)} onClick={prev} aria-label="previous day" disabled={!date && !last}>{NAV_PREV}</button>
       <button
-        style={{ ...chip(open), display: "inline-flex", alignItems: "center", gap: 6, minWidth: "8.5em", justifyContent: "center", opacity: loading ? 0.5 : 1 }}
+        style={{ ...chip(open), display: "inline-flex", alignItems: "center", gap: 6, minWidth: "8em", justifyContent: "center", opacity: loading ? 0.5 : 1 }}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={`${NAV_CALENDAR}: ${date ? labelOf(date) : NAV_LAST_24H}`}

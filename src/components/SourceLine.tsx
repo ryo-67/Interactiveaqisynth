@@ -62,8 +62,14 @@ export function SourceLine({ borough, hours, fallback }: Props) {
       panel.style.width = "";
       // Only where the scene sizes the panel to content (tablet and phone). On laptop the panel already hugs one line, and a sub-pixel round-trip there re-wrapped it and cascaded the width down.
       if (!belowLaptop.matches) return;
-      const lines: number[] = [];
-      for (const span of el.querySelectorAll("span")) for (const r of span.getClientRects()) lines.push(r.width);
+      // Line widths, not span widths: fragments that share a top are one line, and a line's width is its rightmost edge minus its leftmost. Taking the widest span shrank the panel to one fragment and forced the text into three lines once the separator was inline.
+      const byTop = new Map<number, { left: number; right: number }>();
+      for (const span of el.querySelectorAll("span")) for (const r of span.getClientRects()) {
+        const key = Math.round(r.top);
+        const cur = byTop.get(key);
+        byTop.set(key, cur ? { left: Math.min(cur.left, r.left), right: Math.max(cur.right, r.right) } : { left: r.left, right: r.right });
+      }
+      const lines = [...byTop.values()].map((l) => l.right - l.left);
       if (!lines.length) return;
       const cs = getComputedStyle(panel);
       const w = Math.ceil(Math.max(...lines) + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)) + 2;

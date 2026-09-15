@@ -1508,8 +1508,9 @@ html {
 /* Phone: every band stacks; the transport and the source share the bottom row; sizes at their smallest. */
 @media (max-width: 767px) {
   .scene-ui {
-    --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 8px;
+    --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px; /* 12 between the short borough names: they leave the room (2026-09-15) */
     --display-size: 56px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
+    --graph-tab-h: 160px; /* taller plot on phones (2026-09-15): 120 read as cramped; the short-height steps below still override */
     /* Spacing stays at the tablet values (24 / 16): the phone step changes control and type sizes, not the room around them. */
   }
   .scene-top .glass { width: fit-content; max-width: 100%; margin: 0; }
@@ -1520,6 +1521,15 @@ html {
   /* Phones: short borough names, so all six stay on one line without a scroll. */
   .scene-borough .borough-long { display: none; }
   .scene-borough .borough-short { display: block; }
+}
+
+/* Phones from 600 wide (state C2, 2026-09-15): with the short borough names the borough pill (237) and the day nav pill (up to 272 with a full date, 243 when live) plus the 16 gap fit one row inside 600 − 48 of padding on every day, so they share it and the presets take the second row. The threshold is set for the widest date label, so the state never flips between live and an archive day. The source line fits one line here too, so its forced break lifts. Below 600 the three-row state C stands. */
+@media (max-width: 767px) and (min-width: 600px) {
+  .scene-top { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .scene-day { display: contents; }
+  .scene-pill.scene-pins { flex-basis: 100%; margin: 0 auto; }
+  .scene-source .source-sep { display: inline; }
+  .scene-source .source-detail { display: inline; }
 }
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */

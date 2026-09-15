@@ -1515,6 +1515,8 @@ html {
   .scene-transport > .scene-pill:last-child { flex: 1 1 auto; max-width: 280px; }
   .scene-source { width: 100%; padding: 8px 12px; justify-content: center; }
   .scene-source p, .scene-source div { text-align: center; }
+  .scene-source .source-sep { display: none; }
+  .scene-source .source-detail { display: block; }
 }
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */

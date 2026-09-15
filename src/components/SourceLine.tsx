@@ -59,8 +59,13 @@ export function SourceLine({ borough, hours, fallback }: Props) {
         color: c.textSecondary,
       }}
     >
-      {SOURCE_LINE_BASE} · {coverage}
-      {anyTypical ? ` ${SOURCE_LINE_TYPICAL_NO2}` : ""}
+      {/* Two parts: the sources, then the coverage. One line joined by a separator where there is room; on phone the separator hides and the coverage takes its own line, so the break falls at the sentence rather than wherever the width lands. */}
+      <span className="source-base">{SOURCE_LINE_BASE}</span>
+      <span className="source-sep"> · </span>
+      <span className="source-detail">
+        {coverage}
+        {anyTypical ? ` ${SOURCE_LINE_TYPICAL_NO2}` : ""}
+      </span>
     </div>
   );
 }

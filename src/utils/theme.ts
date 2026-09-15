@@ -360,7 +360,7 @@ export const GRAIN = {
   visibleFromUgm3: 12, // the Good/Moderate line
   fullAtUgm3: 120,
   // Blend: vivid light, not premultiplied overlay. Overlay grain scales with the pixel's own brightness, so on a night sky it measured a standard deviation of 0 at any opacity; vivid light measured the same amplitude on a night sky (43/255) and a noon mid-tone (122/255), with no shift of the mean, and nothing on clipped white (2026-09-15). Opacity 0.04 ≈ 4.5 levels of texture, 0.1 ≈ 9, 0.3 ≈ 21.
-  opacityBase: 0.05, // always there, at every hour, night included: the material's own texture, about 5 levels
+  opacityBase: 0.035, // always there, at every hour, night included: the material's own texture, about 3.5 levels (0.02 read too faint, 0.05 a touch much)
   opacityMax: 0.08, // at full fine particulate: the wildfire end, about 8 levels (2026-09-15: 0.2 read as bright specks; the base was right)
   curve: 0.8,
 } as const;

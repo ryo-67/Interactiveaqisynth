@@ -200,7 +200,7 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         let area = areaCache.current;
         if (!area || area.key !== areaKey) {
           const off = document.createElement("canvas");
-          off.width = Math.ceil(plotW * dpr); off.height = Math.ceil(cssH * dpr);
+          off.width = Math.round(plotW * dpr); off.height = bufH; // the plot's own device pixels, blitted 1:1 below
           const o = off.getContext("2d")!;
           o.setTransform(dpr, 0, 0, dpr, 0, 0);
           const alpha = t === "aqi" ? GRAPH.areaAlpha.aqi : GRAPH.areaAlpha.channel;
@@ -208,13 +208,14 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
           for (let i = 1; i < n; i++) {
             const va = vals[i - 1], vb = vals[i];
             if (va == null || vb == null) continue;
-            const x0 = (i - 1) * colW, x1 = i * colW;
+            // Segment edges on whole device pixels: adjacent segments then abut with neither an anti-aliased seam nor an overlap (the old ±0.5 px overlap made a double-alpha stripe at every hour, and it drifted from the hairlines). The line's own points stay fractional; only the fill's columns snap.
+            const x0 = Math.round((i - 1) * colW * dpr) / dpr, x1 = Math.round(i * colW * dpr) / dpr;
             const ya = yFor(va), yb = yFor(vb);
             const fade = o.createLinearGradient(0, Math.min(ya, yb), 0, baseY);
             fade.addColorStop(0, `rgba(0,0,0,${alpha})`);
             fade.addColorStop(1, "rgba(0,0,0,0)");
             o.fillStyle = fade;
-            o.beginPath(); o.moveTo(x0 - 0.5, ya); o.lineTo(x1 + 0.5, yb); o.lineTo(x1 + 0.5, baseY); o.lineTo(x0 - 0.5, baseY); o.closePath(); o.fill();
+            o.beginPath(); o.moveTo(x0, ya); o.lineTo(x1, yb); o.lineTo(x1, baseY); o.lineTo(x0, baseY); o.closePath(); o.fill();
           }
           // Pass 2: the colour, through the mask — the scale colour at every hour along the line, or white for the other tracks.
           o.globalCompositeOperation = "source-in";
@@ -231,7 +232,10 @@ export function Graph({ day, anchors, playheadHour, running, live, tab, onTab, o
         // The fill and the line are clipped to the plot itself: with the first and last readings on the bounds, the stroke's width and round caps would otherwise spill over the y-axis line and the right edge.
         // From the column after the axis line to the column of the right edge line (both lines sit at Math.round(x) + 0.5, so they own exactly those columns): the fill meets both lines with no gap and never paints over them.
         ctx.save(); ctx.beginPath(); ctx.rect(plotX + 1, 0, Math.round(plotRight) - plotX - 1, cssH); ctx.clip();
-        ctx.drawImage(area.canvas, 0, 0, area.canvas.width, area.canvas.height, plotX, 0, plotW, cssH);
+        // Blitted at its native size onto the plot's own device pixels, so nothing is resampled.
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(area.canvas, Math.round(plotX * dpr), 0);
+        ctx.restore();
 
         // The line. AQI segments are gradients between the scale colour at each end — the same rule the bar is drawn with, so a point on the line and the bar at that height always match; the others are the secondary text colour.
         ctx.lineWidth = t === "aqi" ? GRAPH.lineWidth.aqi : GRAPH.lineWidth.channel;

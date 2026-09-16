@@ -2,6 +2,18 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The scene stacked at every width
+
+The tablet's column read better than the laptop's row: the hero centred above the graph, the graph across the section's whole 1040 rather than the 614 the hero left it. It is the layout everywhere now.
+
+## 2026-09-16 — The glass dissolves instead of the page fading; the hero as tall as the first row
+
+The panels flashed grey during the page slide: the fade animated the page's opacity, an ancestor with opacity below 1 is flattened into its own layer, and the backdrop-filter inside it had no sky to sample. Now nothing above a panel ever carries an opacity. One registered, inherited custom property (--glass-on) scales the material itself — blur, fill, lift, edge, shadow, dither and the contents — and a page leaving animates it to nothing, a page arriving from nothing, on the same timing as before. Below laptop the hero is exactly as tall as the monitor's first row: a shared row token on tablets, a quarter of the band on phones. Short laptops (720 tall) step the monitor's grid down so it sits inside the frame.
+
+## 2026-09-16 — The vertical fades a touch slower
+
+A fifth of the travel read as a cut; the fades now take three tenths of it, the leaving page still gone before its panels can reach the frame's edge on any laptop size measured.
+
 ## 2026-09-16 — Phone cards as widgets; the neighbouring page rests beyond the clip; smaller source pills
 
 Shoro's fourth pass. The phone cards had 12 px of padding around full-size elements and read as a squeeze; they keep the panel's 16 px (12 on a 667-tall phone) and the elements inside step down instead — the value at 20/24, the lane 6 — so the six cards still fill the band in four rows with nothing scrolling. With no fade on the horizontal axis the neighbouring page had shown a sliver through the clip's 24 px reach; the pages now sit that much further apart and rest beyond it, and a drag starts from the track's measured rest position rather than a constant. The source pills take the micro size, 20 tall, at every breakpoint.

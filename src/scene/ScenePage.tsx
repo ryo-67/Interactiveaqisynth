@@ -42,7 +42,7 @@ function viewFromUrl(): View {
   return v && VIEWS.includes(v) ? v : "scene";
 }
 const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-43)
-const FADE_MS = PAGE_MS * 0.2; // the outgoing page is gone within the first fifth of the travel, before its panels can reach the frame's edge; the incoming one appears only in the last fifth, once it is wholly inside
+const FADE_MS = PAGE_MS * 0.3; // the outgoing page is gone within the first three tenths of the travel (a fifth read as a cut, Shoro 2026-09-16), still before its panels can reach the frame's edge; the incoming one appears only in the last three tenths, once it is wholly inside
 const SWIPE_LOCK_PX = 8; // movement before a touch commits to an axis
 const SWIPE_PX = 48; // a horizontal touch travel that counts as a swipe
 const WHEEL_PX = 120; // a wheel travel that counts as a page turn above the phone width

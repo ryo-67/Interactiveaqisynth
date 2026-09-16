@@ -1383,28 +1383,30 @@ html {
 }
 
 /* ——— Glass material (STRATEGY §5.3, D-25, D-35): a tinted frost keyed to the sky, parameters from theme.ts GLASS via custom properties set at the scene root. Two materials: glass (controls) and frosted (content). Fallbacks per §5.4 below are part of the material. ——— */
+/* --glass-on (2026-09-16): how much of the material there is, 1 the material and 0 nothing — blur, fill, lift, edge, shadow, dither and the contents all scale by it. Registered so it animates; inherited so a page can dissolve every panel in it by animating one value on itself. No ancestor ever carries an opacity for a fade: an ancestor with opacity below 1 is flattened into a layer and the backdrop-filter inside it has no sky to sample, which showed as the panels flashing grey during the page slide. */
+@property --glass-on { syntax: "<number>"; inherits: true; initial-value: 1; }
 .glass {
-  backdrop-filter: blur(var(--glass-blur, 18px)) saturate(var(--glass-saturate, 1.6));
-  -webkit-backdrop-filter: blur(var(--glass-blur, 18px)) saturate(var(--glass-saturate, 1.6));
-  background-color: rgba(var(--glass-fill, 8, 14, 40), var(--glass-fill-alpha, 0.62));
-  background-image: linear-gradient(rgba(255, 255, 255, var(--glass-lift, 0)), rgba(255, 255, 255, var(--glass-lift, 0))); /* the night's white lift over the tinted fill (D-35) */
+  backdrop-filter: blur(calc(var(--glass-blur, 18px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 18px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
+  background-color: rgba(var(--glass-fill, 8, 14, 40), calc(var(--glass-fill-alpha, 0.62) * var(--glass-on, 1)));
+  background-image: linear-gradient(rgba(255, 255, 255, calc(var(--glass-lift, 0) * var(--glass-on, 1))), rgba(255, 255, 255, calc(var(--glass-lift, 0) * var(--glass-on, 1)))); /* the night's white lift over the tinted fill (D-35) */
   position: relative; /* for the dither layer below */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, var(--glass-edge-alpha, 0.35)),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
-    0 8px 32px rgba(0, 0, 0, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-edge-alpha, 0.35) * var(--glass-on, 1))),
+    inset 0 -1px 0 rgba(0, 0, 0, calc(0.12 * var(--glass-on, 1))),
+    0 8px 32px rgba(0, 0, 0, calc(0.18 * var(--glass-on, 1)));
   border-radius: 999px;
   box-sizing: border-box;
   max-width: 100%;
 }
 /* Dither (2026-09-15, theme.ts GLASS.ditherAlpha / skyDither): the blur quantizes the sky behind a panel into 8-bit steps that read as bands, and the sky's own gradient layers band too. A fine white noise — a 160 px feTurbulence tile, white with the noise as its alpha, so it never tints — at a few percent breaks the steps: over every glass fill as a pseudo-element beneath the content, and over the sky's layers as one element. */
-.glass::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: var(--glass-dither, 0.04); }
-.glass > * { position: relative; }
+.glass::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: calc(var(--glass-dither, 0.04) * var(--glass-on, 1)); }
+.glass > * { position: relative; opacity: var(--glass-on, 1); } /* the contents go with the material */
 .scene-sky-dither { position: absolute; inset: 0; pointer-events: none; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: var(--sky-dither, 0.05); mix-blend-mode: overlay; }
 .glass.frosted {
-  backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
-  -webkit-backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
-  background-color: rgba(var(--glass-fill, 8, 14, 40), var(--frosted-fill-alpha, 0.7));
+  backdrop-filter: blur(calc(var(--frosted-blur, 28px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
+  -webkit-backdrop-filter: blur(calc(var(--frosted-blur, 28px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
+  background-color: rgba(var(--glass-fill, 8, 14, 40), calc(var(--frosted-fill-alpha, 0.7) * var(--glass-on, 1)));
   border-radius: 20px;
 }
 
@@ -1525,28 +1527,28 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-day { display: contents; }
 }
 
-/* Side by side, the hero keeps its content height and the graph is the taller panel: the graph stretches to the row and has a floor above the hero's natural height, so the hero is always the shorter of the two and the plot grows into the graph's extra height. The row is centred in the remaining height by its own margins. */
+/* The hero keeps its content height above the graph; the graph has a floor at its token plot height and takes the section's width. */
 /* ——— The two pages (D-43, reworked 2026-09-15): the band is a frame that never changes size — it takes the height the bars leave — and both pages live in it, absolutely placed. Above the phone width they stack vertically, the monitor a gap below the scene; on phones they sit side by side. A switch translates both pages along that axis over --page-ms, ease-in-out (the graph's easing), the outgoing page fading as it leaves and the incoming one as it arrives. The frame is clipped, so it is padded outward by --clip-pad (the panels' 32 px shadow) with the same negative margin, and the pages are inset by it: layout unchanged, shadows never cut. Under reduced motion the pages do not move; they cross-fade in place. ——— */
 .scene-mid { --clip-pad: 32px; --page-gap: var(--ui-gap); flex: 1 1 auto; position: relative; overflow: hidden; min-height: 0; min-width: 0; margin: calc(-1 * var(--clip-pad)); padding: var(--clip-pad); }
 .scene-track { position: absolute; inset: var(--clip-pad); }
-/* Fade against travel (2026-09-16): a page leaving fades out over --fade-ms from the start of the travel, so it is gone before its panels can reach the frame's edge; a page arriving stays at nothing until the last --fade-ms, once it is wholly inside, then fades in. The transition is declared on the state the page is going TO: the base rule is the leaving state, the active rules the arriving one. */
-.scene-page { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; min-height: 0; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), opacity var(--fade-ms, 200ms) ease-out; opacity: 0; }
+/* Fade against travel (2026-09-16): a page leaving dissolves its glass (--glass-on to 0) over --fade-ms (three tenths of the travel) from its start, so it is gone before its panels can reach the frame's edge; a page arriving stays at nothing until the last --fade-ms, once it is wholly inside, then materializes. The transition is declared on the state the page is going TO: the base rule is the leaving state, the active rules the arriving one. */
+.scene-page { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; min-height: 0; --glass-on: 0; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), --glass-on var(--fade-ms, 200ms) ease-out; }
 .scene-page-inner { display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; flex: 0 1 auto; width: var(--section-w); max-width: 100%; }
-.scene-mid[data-page="scene"] .scene-page-scene, .scene-mid[data-page="monitor"] .scene-page-monitor { transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), opacity var(--fade-ms, 200ms) ease-in calc(var(--page-ms, 1000ms) - var(--fade-ms, 200ms)); }
+.scene-mid[data-page="scene"] .scene-page-scene, .scene-mid[data-page="monitor"] .scene-page-monitor { --glass-on: 1; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), --glass-on var(--fade-ms, 200ms) ease-in calc(var(--page-ms, 1000ms) - var(--fade-ms, 200ms)); }
 /* Vertical (above the phone width): the monitor waits a gap below; the scene leaves upward. */
-.scene-mid[data-axis="y"] .scene-page-scene { transform: translateY(0); opacity: 1; }
+.scene-mid[data-axis="y"] .scene-page-scene { transform: translateY(0); }
 .scene-mid[data-axis="y"] .scene-page-monitor { transform: translateY(calc(100% + var(--page-gap))); }
-.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-scene { transform: translateY(calc(-100% - var(--page-gap))); opacity: 0; }
-.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-monitor { transform: translateY(0); opacity: 1; }
+.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-scene { transform: translateY(calc(-100% - var(--page-gap))); }
+.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-monitor { transform: translateY(0); }
 /* Horizontal (below laptop): the pages sit side by side with the gap between them, and the track itself is what a finger drags (ScenePage.tsx), so the track carries the switch. No fade here (Shoro, 2026-09-16): both pages stay fully opaque and simply slide. */
 .scene-mid[data-axis="x"] { --page-gap: calc(var(--clip-pad) + var(--ui-gap)); } /* the frame is clipped --clip-pad outside the section (for shadows), so the pages sit that much further apart: the neighbour rests beyond the clip and never shows a sliver */
 .scene-mid[data-axis="x"] .scene-track { transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1); }
 .scene-mid[data-axis="x"][data-page="monitor"] .scene-track { transform: translateX(calc(-100% - var(--page-gap))); }
-.scene-mid[data-axis="x"]:not([data-fade="true"]) .scene-page { opacity: 1; transition: none; }
+.scene-mid[data-axis="x"]:not([data-fade="true"]) .scene-page { --glass-on: 1; transition: none; }
 .scene-mid[data-axis="x"] .scene-page-monitor { left: calc(100% + var(--page-gap)); right: auto; width: 100%; }
 .scene-mid[data-axis="x"] .scene-track[data-dragging="true"] { transition: none; }
 /* Reduced motion: no travel, a cross-fade in place. */
-.scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; transition: opacity var(--page-ms, 1000ms) ease !important; }
+.scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; transition: --glass-on var(--page-ms, 1000ms) ease !important; }
 .scene-mid[data-fade="true"][data-axis="x"] .scene-page-monitor { left: 0; }
 /* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
 .scene-monitor { --card-pad: 20px; --routing-h: 96px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; align-self: center; }
@@ -1584,8 +1586,18 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 
 /* Side-by-side only (laptop): the shorter hero sits on the graph's horizontal centre line, and the graph has a floor above the hero's natural height. In the column layouts each panel takes its content height and the plot stays at its breakpoint minimum. */
 @media (min-width: 1024px) {
+  /* The scene page is a column at every breakpoint (Shoro, 2026-09-16): the hero centred above, the graph across the section's full width. Side by side, the graph was squeezed beside the hero; stacked, the plot gets the whole 1040. */
+  .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; }
   .scene-panel.scene-hero { align-self: center; }
-  .scene-panel.scene-graph { min-height: 352px; --graph-fill: 1; flex: 1 1 auto; } /* the row fills the section: the graph takes what the hero leaves (2026-09-16) */ /* 20 + tabs 32 + 8 + gutter 8 + plot 240 + axis 24 + 20: the laptop plot at its token height; --graph-fill lets the plot grow into a stretched panel */
+  .scene-panel.scene-graph { flex: 0 0 auto; width: 100%; } /* the plot at its token height (GRAPH.tabHeight.laptop, 240): 20 + tabs 32 + 8 + gutter 8 + 240 + axis 24 + 20 = 352; with the hero's 152 and the 20 gap the section is 524 in a 780 band at 900 tall */
+}
+/* Short laptops (720 tall): the band is 498, so the plot takes the tablet's height (176) and the section is 460. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .scene-ui { --graph-tab-h: 176px; }
+}
+/* Short laptops (1280×720, 2026-09-16): the monitor's grid at its laptop sizes is 512 tall and the band there is 498; the cards, the routing diagram and the gaps step down so the grid sits inside the frame. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .scene-monitor { --card-pad: 16px; --routing-h: 72px; gap: 12px; }
 }
 .scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; border-radius: calc(var(--ctl-pill) / 2); }
 
@@ -1617,7 +1629,11 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; justify-content: center; }
   .scene-mid { --clip-pad: 24px; pointer-events: auto; touch-action: pan-y; } /* the bars are 16 apart here; the clip's reach stays under the gap plus the bar's own inset. The pages sit side by side below laptop and the swipe is read on the band itself, between the panels too */
   .scene-ui { --pill-room: 0px; } /* the page pill is in the transport row below laptop; the section takes the band */
-  .scene-monitor { --card-pad: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Below laptop the hero is exactly as tall as the monitor's first row (Shoro, 2026-09-16): on tablets both take --row-h; on phones both take a quarter of the band (the grid's 1fr rows, below). */
+  .scene-ui { --row-h: 136px; }
+  .scene-monitor { --card-pad: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--row-h); }
+  .scene-card { gap: 8px; --sub-gap: 0px; min-height: 0; justify-content: space-between; } /* 16·2 + 24 + 32 + 4 + 17 + 8·3 = 133 in the 136 row */
+  .scene-panel.scene-hero { height: var(--row-h); display: flex; align-items: center; justify-content: center; }
   .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
   .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */
   /* Below laptop the bottom bar is two rows: the transport (with the page pill at its right end on phones), then the source line across. */
@@ -1648,13 +1664,12 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-panel.scene-hero .scene-hero-row { gap: 16px; }
   /* On phones the graph fills the height the other bands leave (2026-09-15): the middle band takes the remaining height instead of centring in it, the hero keeps its content height, and the graph panel is the flexible child, its plot growing into it (--graph-fill) with --graph-tab-h as the floor. No feedback loop: the panel's height comes from the column, not from its content. */
   .scene-page-scene .scene-page-inner { justify-content: flex-start; height: 100%; flex: 1 1 auto; }
+  .scene-panel.scene-hero { flex: 0 0 calc((100% - 3 * 12px) / 4); height: auto; } /* the first monitor row's height: a quarter of the band less the three 12 px gaps */
   /* The monitor fits the band on phones (2026-09-15): the grid takes the band's height in four equal rows, the cards shrink into them, and nothing scrolls. */
   .scene-page-monitor .scene-page-inner { height: 100%; flex: 1 1 auto; align-items: stretch; }
   /* Phone cards read like weather widgets (Shoro, 2026-09-16): the panel's 16 px padding kept, and the elements inside a step smaller — the value at 20/24, the lane 6 — so the padding is room and not a squeeze. 16·2 + 20 + 8 + 24 + 8 + 4 + 8 + 17 = 121 in a 143 px row on an 844-tall phone. */
   .scene-monitor { --card-pad: 16px; --card-value-size: 20px; --card-value-line: 24px; --lane-h: 6px; height: 100%; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 12px; align-self: stretch; }
-  .scene-card { gap: 8px; min-height: 0; justify-content: space-between; }
   .scene-card-head { flex: 0 0 auto; }
-  .scene-panel.scene-hero { flex: 0 0 auto; }
   .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; --graph-fill: 1; }
   .scene-graph-unit { display: none; } /* phone tabs are the pollutant alone: AQI, PM2.5, O₃, NO₂ (2026-09-15) */
   .scene-panel.scene-graph [role="tablist"] > button { flex: 1 1 0 !important; min-width: 0; } /* four equal tabs across the band: with the units gone the labels are all short, so none needs more room than another (2026-09-15); important over the chip's inline flex: 0 0 auto */
@@ -1669,6 +1684,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (max-width: 767px) and (max-height: 720px) {
   .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; }
   .scene-monitor { gap: 8px; }
+  .scene-panel.scene-hero { flex-basis: calc((100% - 3 * 8px) / 4); } /* the grid's gaps are 8 here */
   .scene-card { --card-pad: 12px; --sub-gap: 0px; gap: 4px; } /* 12·2 + 20 + 24 + 4 + 17 + 4·3 = 101 in a 102 px row on a 667-tall phone; the value keeps its 20/24 */
   .scene-panel.scene-hero { --hero-pad: 16px; }
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */
@@ -1676,6 +1692,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* The shortest phones (640 tall): the graph tightens to 72, which is the floor at which the tabs and the axis still read; the pills stay 32 so every size stays on the grid. */
 @media (max-width: 767px) and (max-height: 660px) {
   .scene-ui { --graph-tab-h: 88px; --ui-gap: 8px; } /* 72 made the graph panel 4 px shorter than the hero; 88 keeps it the taller one and still fits 640 */
+  .scene-panel.scene-hero { flex-basis: calc((100% - 3 * 8px) / 4); } /* the grid's gaps are 8 here */
   .scene-panel.scene-hero { --hero-pad: 12px; }
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; padding-bottom: 4px; }
 }

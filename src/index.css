@@ -1536,10 +1536,9 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-pill.scene-icon-pill { padding: 0; width: var(--ctl-pill); justify-content: center; flex: 0 0 auto; }
 .scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
-/* The hero (2026-09-15): fits its content with one padding on every side, the number and the word on one row and one baseline, a hairline, the sentence beneath. Its width follows the sentence (30ch); it never stretches to the graph. */
+/* The hero (2026-09-15): fits its content with one padding on every side; the number at the left, the tier word over the two-line sentence at the right; both columns measured to fixed widths (MoodLine.tsx), so the panel never changes size. It never stretches to the graph. */
 .scene-panel.scene-hero { padding: var(--hero-pad, 28px); flex: 0 0 auto; width: fit-content; max-width: 100%; }
-.scene-hero-row { display: flex; align-items: baseline; justify-content: space-between; gap: 32px; }
-.scene-hero-rule { margin: 12px 0; }
+.scene-hero-row { display: flex; align-items: center; gap: 24px; } /* the number, centred on the text block to its right (2026-09-15) */
 .scene-panel.scene-graph { --graph-pad: 20px; --graph-pad-x: 16px; padding: var(--graph-pad) var(--graph-pad-x); display: flex; flex-direction: column; overflow: hidden; } /* --graph-pad (vertical) and --graph-pad-x (sides, one step tighter, 2026-09-15): read by the tab band, which spans the panel edge to edge */
 .scene-panel.scene-graph > div { flex: 1 1 auto; min-height: 0; }
 .scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }

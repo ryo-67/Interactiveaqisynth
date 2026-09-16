@@ -38,7 +38,7 @@ export default function App() {
           </div>
 
           <div style={{ marginTop: space.lg }}>
-            <MoodLine tierIndex={moodTier} aqi={moodAqi} number={null} />
+            <MoodLine tierIndex={moodTier} aqi={moodAqi} number={null} numberSizer={null} />
           </div>
 
           <div style={{ marginTop: space.xl }}>

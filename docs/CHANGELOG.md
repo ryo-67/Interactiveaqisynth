@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The hero re-laid to Shoro's mock; the stuck blur
+
+The number sits at the left, and to its right the tier word over the two-line sentence, both left-aligned, the number centred on that block; the hairline is gone. Both columns have fixed widths so the panel never changes size: the number's from a hidden three-digit number laid out in its cell (a canvas cannot see its tabular digits), the text's measured at the widest sentence line or tier word in its own font. Measured across the five tiers and four number widths at two viewports: one size each, no overflow. The tier blur could strand itself: when the tier crossed a boundary and came back before the swap fired, the cleanup cleared the timer and the effect returned early with the blur still on. It lifts the blur now.
+
 ## 2026-09-15 — The hero is one size for every tier; the sentence is always two lines
 
 Left to the browser, the five mood sentences (36 to 75 characters) could not all wrap to two lines at one width, so the panel changed size with the tier. Now each sentence is split at the word boundary nearest its middle, at least two words a side so nothing is orphaned, and the break is rendered; the content's width is the widest thing any tier can put in it, measured in the elements' own fonts: the widest line of the five sentences, or the number at three digits plus the row's gap plus the widest tier word; the word and the sentence sit at the right. So the panel's width and height are the same whatever the tier. Measured at four viewports: every sentence two lines, none overflowing, one panel size per viewport.

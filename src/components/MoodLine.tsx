@@ -1,4 +1,4 @@
-// MoodLine — the hero's content (§5.2 items 2 and 3): the AQI number and the tier word on one row, on one baseline, the number left and the word right; a hairline; the mood sentence beneath. The word is the one full-strength appearance of the tier colour. Word and sentence change only at tier boundaries, with a 0.5 s blur (§5.4); the number never animates and is passed in so it stays outside the blur. The sentence's second clause ("At 8 pm, ozone carried the line") was cut on 2026-09-15 with the panel's re-layout: the panel is one thought now.
+// MoodLine — the hero's content (§5.2 items 2 and 3): the AQI number at the left, and to its right the tier word over the two-line mood sentence, both left-aligned, the number centred on that block (layout of 2026-09-15, from Shoro's mock). The word is the one full-strength appearance of the tier colour. Word and sentence change only at tier boundaries, with a 0.5 s blur (§5.4); the number never animates and is passed in so it stays outside the blur. The sentence's second clause ("At 8 pm, ozone carried the line") was cut on 2026-09-15 with the panel's re-layout: the panel is one thought now.
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme, themeColors, families, typeScale, motion, aqiScaleColor } from "../utils/theme";
 import { TIER_NAMES, MOOD_SENTENCES } from "../content";
@@ -6,7 +6,8 @@ import { TIER_NAMES, MOOD_SENTENCES } from "../content";
 interface Props {
   aqi: number | null; // the AQI the word describes: colours the word on the same scale as the graph (D-27)
   tierIndex: number;
-  number: React.ReactNode; // the AQINumber, laid out on the word's row
+  number: React.ReactNode; // the AQINumber
+  numberSizer: React.ReactNode; // the AQINumber at its widest (three digits), laid out hidden in the same cell so the number's column has one width whatever the value — the DOM measures it, since a canvas cannot see the tabular digits
   lift?: number; // the ramp lift for the hero panel (D-36)
 }
 
@@ -22,13 +23,13 @@ export function splitTwoLines(sentence: string): [string, string] {
   return [words.slice(0, best).join(" "), words.slice(best).join(" ")];
 }
 
-export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
+export function MoodLine({ tierIndex, aqi, number, numberSizer, lift = 0 }: Props) {
   const c = themeColors(useTheme());
-  // The content's width is fixed at the widest thing any tier can put in it, measured in the elements' own fonts: the widest line of the five sentences, or the widest row — the number at three digits plus the row's gap plus the widest tier word. So the panel's width and height are the same whatever the tier (2026-09-15: the row still widened it for "Suffocating"). Re-measured when the type size changes with the breakpoint and once the fonts have loaded.
+  // Both columns have fixed widths: the number's from a hidden three-digit number in its cell, the text's measured in the elements' own fonts at the widest line of the five sentences or the widest tier word. So the panel's width and height are the same whatever the tier. Re-measured when the type size changes with the breakpoint and once the fonts have loaded.
   const pRef = useRef<HTMLParagraphElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const wordRef = useRef<HTMLDivElement>(null);
-  const [contentWidth, setContentWidth] = useState<number | null>(null);
+  const [textWidth, setTextWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
     const measure = () => {
       const p = pRef.current, row = rowRef.current, word = wordRef.current;
@@ -40,14 +41,9 @@ export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
       ctx.font = fontOf(p);
       let w = 0;
       for (const s of MOOD_SENTENCES) for (const line of splitTwoLines(s)) w = Math.max(w, ctx.measureText(line).width);
-      const numberEl = row.firstElementChild as HTMLElement | null;
-      let rowW = 0;
-      if (numberEl) { ctx.font = fontOf(numberEl); rowW += ctx.measureText("888").width; }
-      rowW += parseFloat(getComputedStyle(row).columnGap || "0");
       ctx.font = fontOf(word);
-      let wordW = 0;
-      for (const name of TIER_NAMES) wordW = Math.max(wordW, ctx.measureText(name).width);
-      setContentWidth(Math.ceil(Math.max(w, rowW + wordW)));
+      for (const name of TIER_NAMES) w = Math.max(w, ctx.measureText(name).width);
+      setTextWidth(Math.ceil(w)); // the text column: the widest sentence line or tier word
     };
     measure();
     window.addEventListener("resize", measure);
@@ -60,19 +56,23 @@ export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
   const pending = useRef(tierIndex);
   pending.current = tierIndex;
   useEffect(() => {
-    if (tierIndex === shown) return;
+    // The tier is back to the one shown before the swap fired (it crossed a boundary and returned, which a day transition does): the timer was cleared by the cleanup, so the blur must be lifted here or it stays for good (2026-09-15).
+    if (tierIndex === shown) { setBlurred(false); return; }
     setBlurred(true);
     const t = setTimeout(() => { setShown(pending.current); setBlurred(false); }, motion.blurMs / 2);
     return () => clearTimeout(t);
-  }, [tierIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tierIndex, shown]);
 
   const [line1, line2] = splitTwoLines(MOOD_SENTENCES[shown]);
   const transition = `filter ${motion.blurMs / 2}ms ease, opacity ${motion.blurMs / 2}ms ease`;
   const blur: React.CSSProperties = { filter: blurred ? "blur(6px)" : "none", opacity: blurred ? 0.4 : 1, transition };
   return (
-    <div style={{ width: contentWidth != null ? `${contentWidth}px` : undefined, maxWidth: "100%" }}>
-      <div className="scene-hero-row" ref={rowRef}>
-        {number}
+    <div className="scene-hero-row" ref={rowRef} style={{ maxWidth: "100%" }}>
+      <div style={{ display: "grid", flex: "0 0 auto" }}>
+        <div style={{ gridArea: "1 / 1" }}>{number}</div>
+        <div style={{ gridArea: "1 / 1", visibility: "hidden" }} aria-hidden>{numberSizer}</div>
+      </div>
+      <div style={{ width: textWidth != null ? `${textWidth}px` : undefined, flex: "0 0 auto", minWidth: 0 }}>
         <div
           ref={wordRef}
           style={{
@@ -87,8 +87,6 @@ export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
         >
           {TIER_NAMES[shown]}
         </div>
-      </div>
-      <div className="scene-hero-rule" style={{ borderTop: `1px solid ${c.textFaint}` }} />
       <p
         ref={pRef}
         style={{
@@ -100,11 +98,11 @@ export function MoodLine({ tierIndex, aqi, number, lift = 0 }: Props) {
           color: c.textSecondary,
           margin: 0,
           whiteSpace: "nowrap",
-          textAlign: "right", // under the word, which sits at the panel's right (2026-09-15)
         }}
       >
         {line1}<br />{line2}
       </p>
+      </div>
     </div>
   );
 }

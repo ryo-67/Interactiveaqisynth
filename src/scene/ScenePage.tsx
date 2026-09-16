@@ -253,7 +253,7 @@ export default function ScenePage() {
 
           <div className="scene-mid">
             <Glass ref={heroRef} material="frosted" className="scene-panel scene-hero">
-              <MoodLine tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} number={<AQINumber value={s.displayAqi} />} />
+              <MoodLine tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} number={<AQINumber value={s.displayAqi} />} numberSizer={<AQINumber value={888} />} />
             </Glass>
             {day && day.length > 0 && (
               <Glass ref={graphRef} material="frosted" className="scene-panel scene-graph">

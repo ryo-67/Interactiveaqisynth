@@ -44,6 +44,10 @@ export const MoveRightIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) 
 export const NotebookTextIcon = ({ size = 16, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="M2 6h4" /><path d="M2 10h4" /><path d="M2 14h4" /><path d="M2 18h4" /><rect width="16" height="20" x="4" y="2" rx="2" /><path d="M9.5 8h5" /><path d="M9.5 12H16" /><path d="M9.5 16H14" /></svg>
 );
+// Lucide's pencil-sparkles: the pencil with three sparks, stroked, for the credit button (Shoro, 2026-09-16).
+export const PencilSparklesIcon = ({ size = 16, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="M10 3H8" /><path d="m15.007 5.008 3.987 3.986" /><path d="M20 15v4" /><path d="M21.174 6.813a2.82 2.82 0 0 0-3.986-3.987L3.842 16.175a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /><path d="M22 17h-4" /><path d="M4 5v4" /><path d="M6 7H2" /><path d="M9 2v2" /></svg>
+);
 export const CloudSunIcon = ({ size = 20, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="M12 2v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="M20 12h2" /><path d="m19.07 4.93-1.41 1.41" /><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" /><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" /></svg>
 );

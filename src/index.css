@@ -1661,7 +1661,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-panel.scene-graph { --graph-pad: 20px; --graph-pad-x: 16px; padding: var(--graph-pad) var(--graph-pad-x); display: flex; flex-direction: column; overflow: hidden; } /* --graph-pad (vertical) and --graph-pad-x (sides, one step tighter, 2026-09-15): read by the tab band, which spans the panel edge to edge */
 .scene-panel.scene-graph > div { flex: 1 1 auto; min-height: 0; }
 .scene-source { padding: 8px 16px; border-radius: 999px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
-.scene-credit { padding: 8px 16px; border-radius: 999px; min-height: var(--ctl-pill); display: flex; align-items: center; flex: 0 0 auto; } /* the credit's pill (Shoro, 2026-09-16): the source pill's shape, never squeezed (its line is short and fixed) */
+.scene-credit { padding: 0; min-height: var(--ctl-pill); display: flex; align-items: center; flex: 0 0 auto; } /* the credit's pill (Shoro, 2026-09-16): the Patch notes button's shape, the link filling it as that button does */
 /* Laptop: the bottom bar is three columns, the transport at the left, the source line centred on the bar itself (not on the room the transport leaves), the credit at the right; the side columns share the rest equally so the middle sits on the page's centre line. */
 @media (min-width: 1024px) {
   .scene-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }

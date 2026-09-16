@@ -356,7 +356,7 @@ export default function ScenePage() {
             </div>
           </div>
 
-          {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame is padded outward by the panels' shadow so the clip never cuts a shadow. */}
+          {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame reaches the panels' shadow room sideways, and only the band's gap above and below (index.css --clip-pad-y), so a page mid-switch is clipped at the bars' edge and never paints over a pill (Shoro, 2026-09-16). */}
           <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} style={{ "--page-ms": `${PAGE_MS}ms`, "--fade-ms": `${FADE_MS}ms` } as React.CSSProperties} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
             // Below laptop the band takes pointer events for the swipe, so it stands between the sky and a tap on the empty space around the panels; that tap is still the sky's play/pause (tablets), and the cursor there is the sky's.
             data-cursor={phone || laptop ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"}

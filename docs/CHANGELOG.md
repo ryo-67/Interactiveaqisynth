@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The frame stops at the bars
+
+Scrolling up from the synth page to the AQI page, the leaving monitor's bottom row painted over the source line for the first tenths of its travel: the frame that clips the pages reached 32 px past the band on every side for the panels' shadows, and the bars sit only 20 px away, so a page mid-switch could cover 12 px of a pill (Shoro). The frame's reach above and below is now the band's gap (--clip-pad-y), so a page is cut at the bars' edge in every intermediate state; sideways it keeps the shadow room. The pages themselves still extend the full clip pad on every side, so Chromium's compositing room against the banding stays as it was. Below laptop the same rule holds at 16 px, where it had reached 8 px into the bars. The fade timing is unchanged.
+
 ## 2026-09-16 — A credit in the bottom bar
 
 Shoro's line, "Designed for fun by Shoro Roy", the name linking to the portfolio, in a frosted pill of the source line's shape, face and colour, the link in the source links' style (underline on hover and focus only). On laptop the bottom bar is now three columns: the transport at the left, the source line centred on the bar itself rather than on the room the transport leaves, and the credit at the right where the source line sat (Shoro's placement). Below laptop the credit is a third row under the source line, centred like it; the graph gives up the row's height on phones and a 660-tall phone still holds everything without scrolling.

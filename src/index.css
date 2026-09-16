@@ -1562,7 +1562,6 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-monitor .scene-card-routing { grid-column: 1 / -1; }
 .scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; } /* One spacing system for every card (Shoro, 2026-09-16): 12 from title to value and between a gauge and its unit line; the gauge block is anchored at the bottom padding, so a ladder card's bar and a value card's unit line both sit --card-pad above the edge, and a row's spare height goes between the value and the gauge. */
 .scene-card .scene-meter, .scene-card .scene-ladder, .scene-card .scene-lane { flex: 0 0 auto; margin-top: auto; } /* a gauge never gives up its 4 px (the meter has no intrinsic height and was the child the column shrank to nothing when the row ran short), and it sits at the bottom of whatever room the row gives */
-@media (min-width: 1024px) { .scene-hero-pair .scene-card .scene-ladder, .scene-hero-pair .scene-card .scene-meter { margin-top: 4px; } } /* on laptop the hero cards are content-sized, so their gauge takes 16 under the value; below laptop they fill the first row's height and the gauge drops to the bottom like the row's */
 .scene-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 .scene-card-unit { font-size: var(--body-size, 15px); line-height: 1; color: rgba(255, 255, 255, 0.78); font-style: normal; } /* line-height 1: at the value's line-height the smaller inline box sat on the baseline and grew the line by 7 px, dropping the lane below the ladders beside it */
 /* Ladders, meters, the lane: 4 px tracks (the slider's hairline), from theme.ts MONITOR; the lit step and a hit fade over one beat. */
@@ -1601,7 +1600,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-monitor { height: 100%; grid-template-rows: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); } /* the patch bay takes two of the four units (Shoro, 2026-09-16), the card rows one each */
   .scene-monitor .scene-card { min-height: 0; }
   .scene-card-routing .scene-routing { flex: 1 1 auto; min-height: 0; }
-  .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; width: 100%; --graph-fill: 1; } /* the plot fills the panel; at 720 tall the section is the band's 476 and the plot sits near its token 240 */
+  .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; width: 100%; --graph-fill: 1; } /* the plot fills the panel */
 }
 /* Short laptops (720 tall, 2026-09-16): the section is the band's 476, so a monitor row is 145 and a value card at the 12 px gaps (157) does not fit; the cards step to the tablet's 16 px padding and 8 px gaps (137). */
 @media (min-width: 1024px) and (max-height: 760px) {
@@ -1622,7 +1621,16 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* The hero pair (2026-09-16): two cards across the section, the number card at its content width and the breath card taking the rest. The card variables (padding, inner sizes) live on the page inner so both pages' cards share them per breakpoint. */
 .scene-page-inner { --card-pad: 20px; }
 .scene-hero-pair { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--ui-gap); width: 100%; flex: 0 0 auto; }
-@media (min-width: 1024px) { .scene-hero-pair { width: fit-content; max-width: 100%; grid-template-columns: auto auto; align-self: center; } } /* on laptop the pair need not fill the section (Shoro, 2026-09-16): each card at its measured width, the pair centred */
+/* From tablet up the pair need not fill the section (Shoro, 2026-09-16): each card at its measured width, the pair centred on the graph. Only where the section fills the band's height (phones) does the hero spread into the full bento, the breath card taking the rest of the row. */
+@media (min-width: 768px) { .scene-hero-pair { width: fit-content; max-width: 100%; grid-template-columns: auto auto; align-self: center; } }
+/* Laptop: the scene section splits the same four units as the monitor 1-3 (Shoro, 2026-09-16), the hero pair one unit and the graph the rest; the hero cards stretch to the unit like the monitor's row two, gauge at the bottom padding. Placed after the base rule above, which it overrides; short laptops (below) give the unit back to the graph. */
+@media (min-width: 1024px) {
+  .scene-hero-pair { flex: 0 0 calc((100% - 2 * var(--ui-gap)) / 4); } /* the monitor's unit: its three rows put two gaps in the section, so a unit is a quarter of the rest (158 at 672) */
+  .scene-hero-pair > .scene-card { height: 100%; }
+}
+@media (min-width: 1024px) and (max-height: 760px) {
+  .scene-hero-pair { flex: 0 0 auto; } /* the band's 476 has no 158 px hero unit: the pair keeps its content height and the graph takes the rest */
+}
 .scene-measure { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; white-space: nowrap; height: 0; overflow: visible; } /* the hero cards' width probes (HeroCards.tsx): hidden lines in the live styles, measured, never laid out into the card's height */
 .scene-hero-pair > .scene-card { min-height: 0; }
 .scene-card-body { position: relative; flex: 0 0 auto; } /* the hero cards' value line, the probe's anchor; the same place in the card as the monitor's Value */

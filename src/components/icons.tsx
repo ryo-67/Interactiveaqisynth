@@ -40,6 +40,10 @@ export const MoveRightIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) 
   <svg {...base(size, strokeWidth, style)}><path d="M18 8L22 12L18 16" /><path d="M2 12H22" /></svg>
 );
 // The two page icons (D-43): Lucide's cloud-sun for the scene and audio-lines for the monitor.
+// Lucide's notebook-text: the bound notebook with ruled lines, stroked, for the Patch notes button (Shoro, 2026-09-16).
+export const NotebookTextIcon = ({ size = 16, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="M2 6h4" /><path d="M2 10h4" /><path d="M2 14h4" /><path d="M2 18h4" /><rect width="16" height="20" x="4" y="2" rx="2" /><path d="M9.5 8h5" /><path d="M9.5 12H16" /><path d="M9.5 16H14" /></svg>
+);
 export const CloudSunIcon = ({ size = 20, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="M12 2v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="M20 12h2" /><path d="m19.07 4.93-1.41 1.41" /><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" /><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" /></svg>
 );

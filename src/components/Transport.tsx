@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useTheme, themeColors, CONTROL, families, typeScale } from "../utils/theme";
 import { TRANSPORT_PLAY, TRANSPORT_PAUSE, TRANSPORT_VOLUME, ABOUT_LABEL } from "../content";
-import { PlayIcon, PauseIcon } from "./icons";
+import { PlayIcon, PauseIcon, NotebookTextIcon } from "./icons";
 
 // MAPPING (slider 0..1 → engine dB): the fader is perceptual — 1 is unity, 0.5 is −6 dB, 0.1 is −20 dB, 0 is silence — because a linear-gain fader spends most of its travel in the top few dB.
 function sliderToDb(v: number): number {
@@ -43,12 +43,13 @@ export function VolumeSlider({ onVolume }: { onVolume: (db: number) => void }) {
   );
 }
 
-// The About button (Shoro, 2026-09-16): a frosted pill in the credit's exact shape, padding and type (the two sit side by side on phones and read as a pair), the label alone (was an info glyph and "About this"), behaving as the play button does: the hover fill covers the whole pill, and the cursor's press. A placeholder for now: the page it opens is the next round's.
+// The About button (Shoro, 2026-09-16): a frosted pill in the credit's exact shape, padding and type (the two sit side by side on phones and read as a pair), Lucide's notebook-text at 14 px before the label "Patch notes" (was an info glyph and "About this", then "About" alone), behaving as the play button does: the hover fill covers the whole pill, and the cursor's press. A placeholder for now: the page it opens is the next round's.
 export function AboutButton({ onOpen }: { onOpen?: () => void }) {
   const c = themeColors(useTheme());
   return (
-    <button className="scene-play scene-about-btn" onClick={onOpen} style={{ padding: "8px 16px", minHeight: `var(--ctl-pill, ${CONTROL.pillHeight}px)`, display: "inline-flex", alignItems: "center", background: "none", border: "none", borderRadius: 999, color: c.textSecondary, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, whiteSpace: "nowrap" }}>
-      {ABOUT_LABEL}
+    <button className="scene-play scene-about-btn" onClick={onOpen} style={{ padding: "8px 16px 8px 14px", minHeight: `var(--ctl-pill, ${CONTROL.pillHeight}px)`, display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", borderRadius: 999, color: c.textSecondary, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, whiteSpace: "nowrap" }}>
+      <NotebookTextIcon size={14} />
+      <span>{ABOUT_LABEL}</span>
     </button>
   );
 }

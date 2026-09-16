@@ -1585,7 +1585,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-views[data-vertical="true"] { flex-direction: column; }
 .scene-pill.scene-views-pill { padding: 0 12px; } /* the horizontal pill's side padding: the phone pill's 12, so the icons sit in a bar that reads as one control (2026-09-16) */
 /* Above the phone width the pill stands at the left edge of the page, centred on the band, absolutely placed in the scaffold so the band keeps its full width. */
-.scene-pill.scene-views-side { position: absolute; left: calc(50% - var(--section-w) / 2 - var(--pill-room)); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: 8px 0; flex-direction: column; justify-content: center; z-index: 1; } /* 8 + 32 + 12 + 32 + 8 = 92 tall */ /* 16 px off the section's left edge; inside the band, so its centre is the section's (2026-09-16) */
+.scene-pill.scene-views-side { position: absolute; left: max(var(--ui-pad), calc(50% - var(--section-w) / 2 - var(--ctl-pill) - 96px)); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: 8px 0; flex-direction: column; justify-content: center; z-index: 1; } /* 96 px clear of the section where the width allows (Shoro, 2026-09-16), else as far out as the page padding permits, and never nearer than the 16 the section's --pill-room reserves; 8 + 32 + 12 + 32 + 8 = 92 tall */ /* 16 px off the section's left edge; inside the band, so its centre is the section's (2026-09-16) */
 .scene-view-btn { transition: color var(--state-ms, 120ms) ease; }
 .scene-view-btn:not([aria-selected="true"]):hover { color: rgba(255, 255, 255, 0.9) !important; }
 

@@ -1640,6 +1640,14 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-panel.scene-graph { --graph-pad: 20px; --graph-pad-x: 16px; padding: var(--graph-pad) var(--graph-pad-x); display: flex; flex-direction: column; overflow: hidden; } /* --graph-pad (vertical) and --graph-pad-x (sides, one step tighter, 2026-09-15): read by the tab band, which spans the panel edge to edge */
 .scene-panel.scene-graph > div { flex: 1 1 auto; min-height: 0; }
 .scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
+.scene-credit { padding: 8px 16px; border-radius: 20px; min-height: var(--ctl-pill); display: flex; align-items: center; flex: 0 0 auto; } /* the credit's pill (Shoro, 2026-09-16): the source pill's shape, never squeezed (its line is short and fixed) */
+/* Laptop: the bottom bar is three columns, the transport at the left, the source line centred on the bar itself (not on the room the transport leaves), the credit at the right; the side columns share the rest equally so the middle sits on the page's centre line. */
+@media (min-width: 1024px) {
+  .scene-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
+  .scene-bottom > .scene-transport { grid-column: 1; justify-self: start; }
+  .scene-bottom > .scene-source { grid-column: 2; justify-self: center; }
+  .scene-bottom > .scene-credit { grid-column: 3; justify-self: end; }
+}
 .scene-source p, .scene-source div { white-space: normal; }
 .scene-dev { align-self: flex-start; height: var(--ctl-inner); }
 
@@ -1665,7 +1673,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-hero-pair { height: var(--row-h); }
   .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
   .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */
-  /* Below laptop the bottom bar is two rows: the transport (with the page pill at its right end on phones), then the source line across. */
+  /* Below laptop the bottom bar is three rows: the transport (with the page pill at its right end on phones), the source line across, then the credit. */
   .scene-bottom { flex-direction: column; align-items: stretch; gap: 12px; }
   .scene-transport > .scene-pill:nth-child(2) { flex: 1 1 auto; max-width: 320px; } /* the volume grows; the page pill after it keeps its size */
   .scene-monitor .scene-card-reverb { grid-column: 1 / -1; } /* six cards in two columns with beats across: reverb takes the last row rather than half of it */
@@ -1673,6 +1681,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   /* Below laptop width (tablet and phone alike): the play and volume pills centred on their own row — the volume pill taking most of it — and the source line full width beneath them, its text centred, breaking between the sources and the coverage sentence. */
   .scene-ui { --slider-width: 100%; }
   .scene-transport { flex: 0 0 auto; align-self: center; width: 100%; justify-content: center; }
+  .scene-credit { align-self: center; } /* its own row under the source line, centred like it */
   .scene-source { width: fit-content; max-width: 100%; align-self: center; padding: 8px 16px; justify-content: center; }
   .scene-source p, .scene-source div { text-align: center; }
   .scene-panel.scene-graph { --graph-pad: 16px; --graph-pad-x: 12px; }

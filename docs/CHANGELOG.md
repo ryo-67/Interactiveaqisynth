@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — A credit in the bottom bar
+
+Shoro's line, "Designed for fun by Shoro Roy", the name linking to the portfolio, in a frosted pill of the source line's shape, face and colour, the link in the source links' style (underline on hover and focus only). On laptop the bottom bar is now three columns: the transport at the left, the source line centred on the bar itself rather than on the room the transport leaves, and the credit at the right where the source line sat (Shoro's placement). Below laptop the credit is a third row under the source line, centred like it; the graph gives up the row's height on phones and a 660-tall phone still holds everything without scrolling.
+
 ## 2026-09-16 — Good plays Major, Moderate its pentatonic (D-46)
 
 Shoro swapped the first two tiers' scales: Good is now the full major scale and Moderate the major pentatonic. Only the scales moved; harmonicity, index, note length, release and detune σ stay with their grades, so a Good day is still the purest tone and a Moderate day still the 2:1 ratio with the dotted half. The order in the code comment, the §3.4 table, CLAUDE.md and the tier test follow. The essay in STRATEGY §10 still says "a major pentatonic on the cleanest day"; that is Shoro's prose and is left for Shoro.

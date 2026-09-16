@@ -9,6 +9,10 @@ export const TIER_NAMES = ["Easy", "Shallow", "Short", "Tight", "Ragged", "Suffo
 
 // Source line (§5.3 panel 6). The coverage clause is built from the source flags, never hardcoded. Shortened 2026-09-15 at Shoro's request; Shoro's to revise. Two parts: the sources, then coverage.
 export const SOURCE_LINE_BASE = "Live from AirNow · Archive from EPA"; // LOCKED (Shoro, 2026-09-15). Rendered with AirNow and EPA as links.
+// The credit (Shoro, 2026-09-16): a small pill beside the source line, the name a link to the portfolio.
+export const CREDIT_LINE = "Designed for fun by {name}";
+export const CREDIT_NAME = "Shoro Roy";
+export const CREDIT_URL = "https://shoro.framer.website/";
 export const SOURCE_URL_AIRNOW = "https://www.airnow.gov/";
 export const SOURCE_URL_EPA = "https://www.epa.gov/outdoor-air-quality-data";
 // The source line carries the sources and, only when they apply, two disclosures: a channel the borough borrows from the citywide reading (SOURCE_BORROWED, D-16) and live NO2 being a typical archive day (SOURCE_LINE_TYPICAL_NO2, D-18). Which pollutants a borough measures is no longer spelled out — it read as a wall.

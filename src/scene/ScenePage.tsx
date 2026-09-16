@@ -23,6 +23,7 @@ import { AQICard, BreathCard } from "../components/HeroCards";
 import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
 import { DayNav, PinStrip, DayPicker } from "../components/DayNav";
 import { SourceLine } from "../components/SourceLine";
+import { Credit } from "../components/Credit";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
 import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL } from "../utils/theme";
 
@@ -414,11 +415,15 @@ export default function ScenePage() {
                 </Glass>
               )}
             </div>
+            {/* The bottom bar (Shoro, 2026-09-16): the transport at the left, the source line centred on the bar, the credit at the right; below laptop the three stack, the credit its own row under the source line (index.css). */}
             {day && day.length > 0 && (
               <Glass material="frosted" className="scene-source">
                 <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} />
               </Glass>
             )}
+            <Glass material="frosted" className="scene-credit">
+              <Credit />
+            </Glass>
           </div>
 
           {DEV && (

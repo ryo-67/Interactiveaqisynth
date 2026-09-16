@@ -311,11 +311,11 @@ The sky carries the palette; there is no fixed background color. One data colour
 
 ### §5.7 Responsive
 
-Laptop (≥1024): scene full-bleed; a top bar of three pills (borough words, day navigation, pins), the hero centred above the graph in one 1040 px section, the band's height up to 672, centred in the remaining height (stacked at every breakpoint since 2026-09-16: side by side the graph was squeezed; the graph grows into what the hero leaves), the page pill 16 px left of the section, a bottom bar with the transport at left and the source line at right (D-26). Phone (<1024): the same pieces in one column — borough, nav, pins as a scrolling strip, hero, graph, source — with the transport pinned above the safe area; the borough words scroll horizontally inside their glass. The scene's particle budget halves on phone.
+Laptop (≥1024): scene full-bleed; a top bar of three pills (borough words, day navigation, pins), the hero centred above the graph in one 1040 px section, the band's height up to 672, centred in the remaining height (stacked at every breakpoint since 2026-09-16: side by side the graph was squeezed; the graph grows into what the hero leaves), the page pill 16 px left of the section, a bottom bar of three columns, the transport at left, the source line centred on the bar, and the credit ("Designed for fun by Shoro Roy", the name a link to the portfolio; Shoro, 2026-09-16) at right, where the source line sat (D-26). Phone (<1024): the same pieces in one column — borough, nav, pins as a scrolling strip, hero, graph, source, credit as its own row — with the transport pinned above the safe area; the borough words scroll horizontally inside their glass. The scene's particle budget halves on phone.
 
 ### §5.8 Components (hand-styled)
 
-Scene (SkyView: the two sky models, stars, bloom, the sun disc; SmokeLayer, NightLayer, GoldenLayer), Glass (the two materials), MoodLine and AQINumber (the hero), BoroughToggle, Graph, DayNav (the picker, the pins, the calendar), Transport, SourceLine, Cursor, Monitor and Routing (the monitor page's cards), PageIndicator. ImaginePanel and the timeline ribbon are target state.
+Scene (SkyView: the two sky models, stars, bloom, the sun disc; SmokeLayer, NightLayer, GoldenLayer), Glass (the two materials), MoodLine and AQINumber (the hero), BoroughToggle, Graph, DayNav (the picker, the pins, the calendar), Transport, SourceLine, Credit, Cursor, Monitor and Routing (the monitor page's cards), PageIndicator. ImaginePanel and the timeline ribbon are target state.
 
 ## §6. Infrastructure
 

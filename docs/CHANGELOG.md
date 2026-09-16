@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — Locrian at Very Unhealthy; the bed in fourths (D-47)
+
+Shoro's listening pass on the six-tier ladder: whole tone at Very Unhealthy read as ambiguous, not severe, and the major bed read as pop. Two changes. The fifth tier is Locrian, [0,1,3,5,6,8,10], the darkest diatonic step before chromatic, with every other column of the tier table (words, FM values, note length, σ anchors, release) staying with its grade. The bed's chords are stacked fourths, the degree and the notes three and six scale degrees above it, instead of every-other-degree triads, so the placeholder progression [1, 5, 4, 1, 5, 1] keeps its shape and its transposition by degree but loses the major-triad cadence. The real bed (SON-10) is unchanged and still Shoro's. Tests cover the tier order and the voicing in C major and C Locrian.
+
 ## 2026-09-16 — The frame stops at the bars
 
 Scrolling up from the synth page to the AQI page, the leaving monitor's bottom row painted over the source line for the first tenths of its travel: the frame that clips the pages reached 32 px past the band on every side for the panels' shadows, and the bars sit only 20 px away, so a page mid-switch could cover 12 px of a pill (Shoro). The frame's reach above and below is now the band's gap (--clip-pad-y), so a page is cut at the bars' edge in every intermediate state; sideways it keeps the shadow room. The pages themselves still extend the full clip pad on every side, so Chromium's compositing room against the banding stays as it was. Below laptop the same rule holds at 16 px, where it had reached 8 px into the bars. The fade timing is unchanged.

@@ -51,7 +51,7 @@ export interface PulseInfo {
 const BEAT_S = 60 / 90; // one beat = one hour = 0.667 s; every parameter ramp uses this (never jump)
 const PAUSE_FADE_S = 0.03; // pause and resume fade at the master: long enough to avoid a click, short enough to read as immediate. Scheduled from the immediate clock, not Tone.now(), which sits a lookahead (~100 ms) in the future.
 const MELODY_ROOT_MIDI = 48; // C3; melody spans two octaves to C5 (§3.2)
-const CHORD_ROOT_MIDI = 60; // C4; bed triads stack upward from here
+const CHORD_ROOT_MIDI = 60; // C4; the bed's quartal chords stack upward from here (scales.ts chordMidi, D-47)
 
 interface BarState {
   k: number | null;
@@ -129,7 +129,7 @@ export class SynthEngine {
     const bassFloor = new Tone.Filter(400, "lowpass");
     this.bass.connect(bassFloor);
     bassFloor.connect(this.filter);
-    // Bed pad is three mono FMSynths (one per triad note) instead of PolySynth so harmonicity/modulationIndex can ramp, not jump.
+    // Bed pad is three mono FMSynths (one per chord note) instead of PolySynth so harmonicity/modulationIndex can ramp, not jump.
     this.bedVoices = [0, 1, 2].map(() => new Tone.FMSynth({ volume: -16, envelope: { attack: 0.4, decay: 0.3, sustain: 0.8, release: 1.2 } }).connect(this.filter));
 
     const transport = Tone.getTransport();
@@ -312,7 +312,7 @@ export class SynthEngine {
       this.revLongGain.gain.rampTo(wet * x, BEAT_S, time);
     }
 
-    // Bed (§3.8): one chord per bar, the bed cycling with the day. From Phrygian up (tier index 3), the progression advances on beats 1 and 3 — harmonic rhythm doubles, acceleration without a tempo change (§3.9).
+    // Bed (§3.8): one chord per bar, the bed cycling with the day; each chord voiced in stacked fourths within the current scale (chordMidi, D-47, 2026-09-16: triads read as pop and cadenced on the major triad; the placeholder progression [1, 5, 4, 1, 5, 1] and the transposition by degree are unchanged, and the real bed, SON-10, is still Shoro's). From Phrygian up (tier index 3), the progression advances on beats 1 and 3 — harmonic rhythm doubles, acceleration without a tempo change (§3.9).
     const bedLen = this.bedDegrees.length;
     const fastBed = this.curTier >= 3;
     let chordIdx: number | null = null;

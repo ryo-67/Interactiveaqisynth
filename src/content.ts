@@ -56,7 +56,7 @@ export const SOURCE_JOIN = " · "; // between two sources on one pill: "PM2.5 ·
 // Harmonicity and modulation index folded into one listener-facing word per tier (§3.5 tier table); indexed like TIER_NAMES.
 export const TONE_WORDS = ["Pure", "Clean", "Warm", "Edged", "Metallic", "Harsh"] as const; // six (D-44)
 // The scale names as the card shows them, keyed by the engine's own names (scales.ts).
-export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pentatonic", Major: "Major", Dorian: "Dorian", Phrygian: "Phrygian", "Whole Tone": "Whole tone", Chromatic: "Chromatic" };
+export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pentatonic", Major: "Major", Dorian: "Dorian", Phrygian: "Phrygian", Locrian: "Locrian", Chromatic: "Chromatic" };
 export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", o3: "ppb", pm25: "µg/m³" } as const;
 export const MONITOR_REST = "—"; // a value the held hour lacks
 

@@ -54,7 +54,7 @@ export const MONITOR_LABELS = { routing: "Routing", scale: "Scale", tone: "Tone"
 export const SOURCE_LABELS = { pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // the same subscripts as the graph tabs
 export const SOURCE_JOIN = " · "; // between two sources on one pill: "PM2.5 · NO₂"
 // Harmonicity and modulation index folded into one listener-facing word per tier (§3.5 tier table); indexed like TIER_NAMES.
-export const TONE_WORDS = ["Pure", "Clean", "Warm", "Edged", "Metallic", "Harsh"] as const; // six (D-44)
+export const TONE_WORDS = ["Clean", "Smooth", "Warm", "Edged", "Metallic", "Harsh"] as const; // six (D-44); the first two are Shoro's of 2026-09-16 (were Pure, Clean)
 // The scale names as the card shows them, keyed by the engine's own names (scales.ts).
 export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pentatonic", Major: "Major", Dorian: "Dorian", Phrygian: "Phrygian", Locrian: "Locrian", Chromatic: "Chromatic" };
 export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", o3: "ppb", pm25: "µg/m³" } as const;

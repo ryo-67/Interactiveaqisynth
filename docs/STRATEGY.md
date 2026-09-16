@@ -119,8 +119,8 @@ One axis: loss of tonal centre. Good is the full major scale and Moderate its pe
 
 | AQI | EPA category | Breath | Tone | Scale | harmonicity | index | note | detune σ |
 |---|---|---|---|---|---|---|---|---|
-| 0–50 | Good | Easy | Pure | Major | 1 | 1 | 1n | 0 |
-| 51–100 | Moderate | Shallow | Clean | Major Pentatonic | 2 | 2 | 2n. | 10 |
+| 0–50 | Good | Easy | Clean | Major | 1 | 1 | 1n | 0 |
+| 51–100 | Moderate | Shallow | Smooth | Major Pentatonic | 2 | 2 | 2n. | 10 |
 | 101–150 | Unhealthy for Sensitive Groups | Short | Warm | Dorian | 2 | 3 | 2n | 20 |
 | 151–200 | Unhealthy | Tight | Edged | Phrygian | 3 | 6 | 4n | 40 |
 | 201–300 | Very Unhealthy | Ragged | Metallic | Locrian | 2.76 | 12 | 8n | 60 |

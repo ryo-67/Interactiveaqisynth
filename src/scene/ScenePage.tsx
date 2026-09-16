@@ -239,6 +239,7 @@ export default function ScenePage() {
     const sampleBehind = (gl: HTMLCanvasElement, el: HTMLElement | null, cr: DOMRect): Sample | null => {
       if (!el || !tctx) return null;
       const hr = el.getBoundingClientRect();
+      if (hr.bottom <= cr.top || hr.top >= cr.bottom || hr.right <= cr.left || hr.left >= cr.right) return null; // the panel is on the page that is off screen (D-43): it keeps its last sample; sampling the sky's edge for it eased its ramp toward nothing and, on the graph, redrew the plot every frame while nobody could see it (2026-09-16)
       const sx = gl.width / cr.width, sy = gl.height / cr.height, pad = parseFloat(GLASS.frostedBlur);
       const x = Math.max(0, (hr.left - cr.left - pad) * sx), y = Math.max(0, (hr.top - cr.top - pad) * sy);
       const w = Math.min(gl.width - x, (hr.width + 2 * pad) * sx), h = Math.min(gl.height - y, (hr.height + 2 * pad) * sy);
@@ -252,6 +253,7 @@ export default function ScenePage() {
     };
     const changed = (a: Sample, b: Sample) => Math.abs(a.rgb[0] - b.rgb[0]) + Math.abs(a.rgb[1] - b.rgb[1]) + Math.abs(a.rgb[2] - b.rgb[2]) > 3 || Math.abs(a.t - b.t) > 0.01;
     const tick = () => {
+      if (performance.now() < lockRef.current) return; // a page switch in flight (D-43): the panels are passing over sky they will not rest on, and a sample there would ease the ramps toward a colour that is gone by the time they arrive; the first tick after the slide samples where they settled (2026-09-16)
       const gl = skyBoxRef.current?.querySelector("canvas:not([aria-hidden])") as HTMLCanvasElement | null;
       if (!gl || gl.width === 0) return;
       const cr = gl.getBoundingClientRect();
@@ -374,7 +376,7 @@ export default function ScenePage() {
                       <Graph
                         day={day}
                         aqi={s.aqiHours}
-                        playheadHour={playing || paused ? hour : null}
+                        playheadHour={playing && page !== "scene" ? null : playing || paused ? hour : null} /* on the monitor page while playing the graph gets no playhead: the eased hour moves every frame, and a held playhead redraws once per change, so an unseen plot was redrawn sixty times a second (2026-09-16); the scene page brings it back the moment it is current */
                         running={playing && page === "scene"}
                         lift={graphLift}
                         live={s.live}

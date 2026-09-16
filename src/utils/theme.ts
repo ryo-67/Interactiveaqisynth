@@ -8,7 +8,14 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-export function themeColors(theme: Theme) {
+// One object per theme, built once (2026-09-16): callers put the result in hook dependencies, and a fresh object per call made the graph's draw effect tear down and redraw on every render of its parent, about a thousand full redraws a second at rest.
+const THEME_COLOURS = new Map<Theme, ReturnType<typeof buildThemeColors>>();
+export function themeColors(theme: Theme): ReturnType<typeof buildThemeColors> {
+  let c = THEME_COLOURS.get(theme);
+  if (!c) { c = buildThemeColors(theme); THEME_COLOURS.set(theme, c); }
+  return c;
+}
+function buildThemeColors(theme: Theme) {
   const isDark = theme === "dark";
   return {
     bg: isDark ? "#0a0a16" : "#f6f4f0",

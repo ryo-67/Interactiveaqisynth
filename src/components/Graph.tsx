@@ -119,6 +119,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     transitionRef.current = { from: shownRef.current ?? transitionRef.current.to, to: target, start: performance.now(), ms: motion.beatMs * GRAPH.transitionBeats };
   } else transitionRef.current.to = target; // the same state re-described (a lift or theme change): no morph
 
+  // The draw effect owns the canvas size, the observers and the animation loop, so it must not restart when only what is drawn changes (2026-09-16): the target frame and the colours go through refs, and a separate effect below asks for one redraw when they change. Before this the effect listed them and was torn down and rebuilt on every render of the page, which redrew the whole plot about a thousand times a second at rest and made the arriving scene page stutter while its ramp lift eased.
+  const drawRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
@@ -417,6 +419,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       if (playing || transitioning) raf = requestAnimationFrame(draw);
     };
 
+    drawRef.current = () => { cancelAnimationFrame(raf); draw(); };
     draw();
     const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); draw(); });
     ro.observe(wrap);
@@ -435,8 +438,10 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     const onResize = () => { const e = effective(); if (e !== seen) { seen = e; cancelAnimationFrame(raf); draw(); watchRatio(); } };
     window.addEventListener("resize", onResize);
     window.visualViewport?.addEventListener("resize", onResize);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); window.visualViewport?.removeEventListener("resize", onResize); };
-  }, [target, day, playing, live, c, running ? 0 : playheadHour]); // when held, redraw once per change of the held value
+    return () => { drawRef.current = null; cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); window.visualViewport?.removeEventListener("resize", onResize); };
+  }, [day, playing, live]); // eslint-disable-line react-hooks/exhaustive-deps
+  // What is drawn changed (a new target frame: a tab, a lift, a theme; or, when held, the held playhead): one redraw. While playing the loop already redraws every frame and needs no nudge.
+  useEffect(() => { if (!playing) drawRef.current?.(); }, [target, c, playing, running ? 0 : playheadHour]);
 
   return (
     <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>

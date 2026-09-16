@@ -252,7 +252,7 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
       <button
         className="scene-chip"
         data-active={open}
-        style={{ ...chip(open), display: "inline-flex", alignItems: "center", gap: 6, minWidth: "8em", justifyContent: "center", opacity: loading ? 0.5 : 1 }}
+        style={{ ...chip(open), border: "none", display: "inline-flex", alignItems: "center", gap: 6, minWidth: "8em", justifyContent: "center", opacity: loading ? 0.5 : 1 }} // no hairline on the date chip (Shoro, 2026-09-16): its fills, hover and open, stay; the arrows and Live keep theirs
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={`${NAV_CALENDAR}: ${date ? labelOf(date) : NAV_LAST_24H}`}

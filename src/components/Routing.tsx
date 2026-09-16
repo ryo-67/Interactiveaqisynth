@@ -94,7 +94,7 @@ export function Routing({ m }: { m: MonitorState }) {
 
   const pill = chipStyle(c, false, { height: 20, padding: "0 8px", borderRadius: 10, fontSize: "10px" });
   return (
-    <div ref={box} className="scene-routing" style={{ height: `var(--routing-h, ${MONITOR.routingHeight.laptop}px)` }}>
+    <div ref={box} className="scene-routing">
       <div className="scene-routing-row scene-routing-sources">
         {SOURCES.map((s) => <span key={s} ref={(el) => { pillRefs.current[`s:${s}`] = el; }} style={pill}>{SOURCE_LABELS[s]}</span>)}
       </div>

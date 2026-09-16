@@ -43,7 +43,7 @@ describe("six tiers on EPA's lines (D-44)", () => {
     expect([0, 50, 51, 100, 101, 150, 151, 200, 201, 300, 301, 500].map(tierIndexOf)).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
   });
   it("orders the scales by loss of centre and rings only the top tier", () => {
-    expect(TIERS.map((t) => t.scaleName)).toEqual(["Major Pentatonic", "Major", "Dorian", "Phrygian", "Whole Tone", "Chromatic"]);
+    expect(TIERS.map((t) => t.scaleName)).toEqual(["Major", "Major Pentatonic", "Dorian", "Phrygian", "Whole Tone", "Chromatic"]); // D-46: Good is Major, Moderate its pentatonic
     expect(TIERS.map((t) => t.melodyRelease)).toEqual([0.3, 0.3, 0.3, 0.3, 0.3, 1.2]);
   });
 });

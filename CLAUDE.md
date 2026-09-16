@@ -76,7 +76,7 @@ interface HourReading {
 ## Rules
 
 Sonification
-- Read STRATEGY §3 before touching `engine/`. Implement the roles as specified: O3 → melody, NO2 → pulse and bass, PM2.5 → tier/harmonicity/detune/reverb, composed bed inherits tier. Six tiers, one per EPA grade, ordered by loss of tonal centre (D-44): Pentatonic, Major, Dorian, Phrygian, Whole tone, Chromatic; the timbre axis is distance from an integer harmonicity ratio; Hazardous is denser (a 1.2 s melody release), never sparser; detune σ slopes with the hour's PM2.5 AQI.
+- Read STRATEGY §3 before touching `engine/`. Implement the roles as specified: O3 → melody, NO2 → pulse and bass, PM2.5 → tier/harmonicity/detune/reverb, composed bed inherits tier. Six tiers, one per EPA grade, ordered by loss of tonal centre (D-44, D-46): Major, Pentatonic, Dorian, Phrygian, Whole tone, Chromatic; the timbre axis is distance from an integer harmonicity ratio; Hazardous is denser (a 1.2 s melody release), never sparser; detune σ slopes with the hour's PM2.5 AQI.
 - Fixed 90 BPM. One hour = one beat, one day = 24 beats. Do not encode data in transport tempo (D-12). Perceived speed comes from Euclidean density, articulation, and harmonic rhythm (§3.9).
 - Null hour (no borough reporting) = rest. A borough without its own monitor for a pollutant plays the citywide value for it, flagged as borrowed. Never derive one pollutant from another.
 - Normalize contours against the loaded NYC distribution, not the AQI theoretical range (§3.10).

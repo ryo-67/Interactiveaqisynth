@@ -13,11 +13,11 @@ export interface Tier {
   melodyRelease: number; // seconds; the melody's envelope release at this tier (§3.5): 0.3 everywhere but Hazardous, where 1.2 rings each note under the next two so the chromatic notes pile into a cluster (D-44)
 }
 
-// Six tiers, one per EPA grade, on EPA's lines (D-44, 2026-09-16, amending D-02, D-17, D-38). The scales are ordered on one axis, loss of tonal centre: Pentatonic, Major, Dorian, Phrygian, Whole tone (the smoothest scale by interval, and the one with no centre), Chromatic.
+// Six tiers, one per EPA grade, on EPA's lines (D-44, 2026-09-16, amending D-02, D-17, D-38). The scales are ordered on one axis, loss of tonal centre: Major, Pentatonic, Dorian, Phrygian, Whole tone (the smoothest scale by interval, and the one with no centre), Chromatic. Good is the full major scale and Moderate its pentatonic (D-46, Shoro, 2026-09-16, swapping D-44's first two); only the scales swap, the timbre, note length and σ columns stay with their grades.
 // The timbre axis is DISTANCE FROM AN INTEGER RATIO, not the harmonicity number: 1, 2, 2, 3 are integers, so the partials line up and the tone is clean; 2.76 is 0.24 from 3; 1.414 is 0.414 from 1 and 0.586 from 2, further from any integer than 2.76 is. So inharmonicity runs one way up the ladder although the raw number drops at the last step, and the index doubling makes the inharmonic partials louder at each step. The 2.76/12 and 1.414/24 pairs are the ones Phase 0 approved by ear, moved up two grades.
 export const TIERS: readonly Tier[] = [
-  { maxAQI: 50, scaleName: "Major Pentatonic", semis: [0, 2, 4, 7, 9], harmonicity: 1, modulationIndex: 1, melodyNoteLength: "1n", melodyRelease: 0.3 },
-  { maxAQI: 100, scaleName: "Major", semis: [0, 2, 4, 5, 7, 9, 11], harmonicity: 2, modulationIndex: 2, melodyNoteLength: "2n.", melodyRelease: 0.3 },
+  { maxAQI: 50, scaleName: "Major", semis: [0, 2, 4, 5, 7, 9, 11], harmonicity: 1, modulationIndex: 1, melodyNoteLength: "1n", melodyRelease: 0.3 },
+  { maxAQI: 100, scaleName: "Major Pentatonic", semis: [0, 2, 4, 7, 9], harmonicity: 2, modulationIndex: 2, melodyNoteLength: "2n.", melodyRelease: 0.3 },
   { maxAQI: 150, scaleName: "Dorian", semis: [0, 2, 3, 5, 7, 9, 10], harmonicity: 2, modulationIndex: 3, melodyNoteLength: "2n", melodyRelease: 0.3 },
   { maxAQI: 200, scaleName: "Phrygian", semis: [0, 1, 3, 5, 7, 8, 10], harmonicity: 3, modulationIndex: 6, melodyNoteLength: "4n", melodyRelease: 0.3 },
   { maxAQI: 300, scaleName: "Whole Tone", semis: [0, 2, 4, 6, 8, 10], harmonicity: 2.76, modulationIndex: 12, melodyNoteLength: "8n", melodyRelease: 0.3 },

@@ -144,7 +144,7 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
                 fontFamily: families.data, fontSize: typeScale.caption.size, display: "inline-flex", alignItems: "center", justifyContent: "center", justifySelf: "center", width: `var(--ctl-inner, ${CONTROL.inner}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, padding: 0,
                 color: out ? c.textFaint : sel ? "#05050a" : c.textPrimary,
                 background: sel ? "rgba(255,255,255,0.9)" : "none",
-                border: "none", borderRadius: 8,
+                border: "none", borderRadius: "var(--chip-radius, 8px)", // the small readouts' corner, stepped with the breakpoint (index.css)
               }}
             >
               {Number(iso.slice(8, 10))}

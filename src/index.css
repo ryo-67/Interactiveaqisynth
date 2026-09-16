@@ -1408,7 +1408,7 @@ html {
 .scene-sky-dither { position: absolute; inset: 0; pointer-events: none; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: var(--sky-dither, 0.05); mix-blend-mode: overlay; }
 .glass.frosted {
   background-color: rgba(var(--glass-fill, 8, 14, 40), calc(var(--frosted-fill-alpha, 0.7) * var(--glass-on, 1)));
-  border-radius: 20px;
+  border-radius: var(--panel-radius, 20px);
 }
 /* The calendar popover hangs over the top bar and the cards, and the playhead's readout over the plot: glass over things the sky's frost cannot blur (it sees only the sky), so these two keep the browser's filter (Shoro, 2026-09-16). */
 .scene-popover, .scene-playhead-chip {
@@ -1416,7 +1416,7 @@ html {
   -webkit-backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
 }
 /* The playhead's readout (2026-09-16): a small frosted pill in the DOM over the graph's canvas, placed by the graph each frame, in the popover's material rather than the flat dark chip the canvas drew, which was the one element on the page in no material (Shoro). It is kept inside the plot: to the right of the playhead where there is room, to the left otherwise, and never past either edge, where the canvas chip was cut on a phone. */
-.glass.scene-playhead-chip { position: absolute; left: 0; top: 0; height: 24px; padding: 0 8px; border-radius: 8px; display: flex; align-items: center; white-space: nowrap; pointer-events: none; visibility: hidden; will-change: transform; z-index: 1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-edge-alpha, 0.35) * var(--glass-on, 1))), 0 4px 16px rgba(0, 0, 0, calc(0.18 * var(--glass-on, 1))); }
+.glass.scene-playhead-chip { position: absolute; left: 0; top: 0; height: 24px; padding: 0 8px; border-radius: var(--chip-radius, 8px); display: flex; align-items: center; white-space: nowrap; pointer-events: none; visibility: hidden; will-change: transform; z-index: 1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-edge-alpha, 0.35) * var(--glass-on, 1))), 0 4px 16px rgba(0, 0, 0, calc(0.18 * var(--glass-on, 1))); }
 
 /* prefers-reduced-transparency: the material goes frosted-opaque enough to read without the scene */
 @media (prefers-reduced-transparency: reduce) {
@@ -1448,6 +1448,7 @@ html {
   --section-w: min(1040px, 100vw - 2 * var(--ui-pad) - 2 * var(--pill-room));
   --display-size: 80px; --heading-size: 34px; --heading-line: 40px; --body-size: 15px; --body-line: 24px; /* display 96 → 64 (2026-09-15): the number shares a row with the word now */
   --ui-pad: 32px; --ui-gap: 20px;
+  --panel-radius: 20px; --chip-radius: 8px; /* the frosted surfaces' corner and the small readouts' corner (Shoro, 2026-09-16): they step with the breakpoint like the padding, so a phone's 12 px-padded card does not carry a desktop corner; the pills are round at every size on their own */
   --grid-gap: var(--ui-gap); /* the monitor grid's gap, which the hero pair shares so it is exactly one row tall; phones step it to 12 and 8 */
   --chip-inset: 4px; /* the inset around chips inside a pill AND the gap between them — one value, on the grid, so chips and pill edges align */
   position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--ui-gap); padding: var(--ui-pad); pointer-events: none; overflow: hidden;
@@ -1646,8 +1647,8 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-card-body { position: relative; flex: 0 0 auto; } /* the hero cards' value line, the probe's anchor; the same place in the card as the monitor's Value */
 .scene-panel.scene-graph { --graph-pad: 20px; --graph-pad-x: 16px; padding: var(--graph-pad) var(--graph-pad-x); display: flex; flex-direction: column; overflow: hidden; } /* --graph-pad (vertical) and --graph-pad-x (sides, one step tighter, 2026-09-15): read by the tab band, which spans the panel edge to edge */
 .scene-panel.scene-graph > div { flex: 1 1 auto; min-height: 0; }
-.scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
-.scene-credit { padding: 8px 16px; border-radius: 20px; min-height: var(--ctl-pill); display: flex; align-items: center; flex: 0 0 auto; } /* the credit's pill (Shoro, 2026-09-16): the source pill's shape, never squeezed (its line is short and fixed) */
+.scene-source { padding: 8px 16px; border-radius: 999px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
+.scene-credit { padding: 8px 16px; border-radius: 999px; min-height: var(--ctl-pill); display: flex; align-items: center; flex: 0 0 auto; } /* the credit's pill (Shoro, 2026-09-16): the source pill's shape, never squeezed (its line is short and fixed) */
 /* Laptop: the bottom bar is three columns, the transport at the left, the source line centred on the bar itself (not on the room the transport leaves), the credit at the right; the side columns share the rest equally so the middle sits on the page's centre line. */
 @media (min-width: 1024px) {
   .scene-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
@@ -1664,6 +1665,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
     --ctl-gap-wide: 12px;
     --display-size: 64px; --heading-size: 28px; --heading-line: 32px; --body-size: 14px; --body-line: 20px; /* display 72 → 56 → 64 (2026-09-15) */
     --ui-pad: 24px; --ui-gap: 16px;
+    --panel-radius: 16px; --chip-radius: 6px;
   }
   .scene-top .glass { flex: 0 1 auto; width: fit-content; max-width: 100%; margin: 0; }
   .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; justify-content: center; }
@@ -1709,6 +1711,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
     --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px; /* 12 between the short borough names: they leave the room (2026-09-15) */
     --display-size: 56px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
     --graph-tab-h: 240px; /* taller plot on phones (2026-09-15): 120 read as cramped, then 160 still did; 240 leaves 27 px above the transport on an 844-tall phone; the short-height steps below still override */
+    --panel-radius: 12px; --chip-radius: 6px;
     --graph-faint-alpha: 0; /* the faint hour lines are off on phones: dense information on a small display (2026-09-15); the firm lines stay */
     /* Spacing stays at the tablet values (24 / 16): the phone step changes control and type sizes, not the room around them. */
   }

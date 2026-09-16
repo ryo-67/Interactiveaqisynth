@@ -129,8 +129,8 @@ export const AQI_CATEGORIES = [
   // Each end is the most saturated colour of its hue at the luminance 3:1 needs there (R pinned at 255 for the warm hues, B for the violet): chroma is spent on luminance, so a denser frost is what buys saturation.
   { max: 150, dark: "#ff8c1a", light: "#ffa64d" }, // orange, 0.40 → 0.49
   { max: 200, dark: "#ff5050", light: "#ffa0a0" }, // red, 0.28 → 0.49
-  { max: 300, dark: "#8f80ff", light: "#bcb0ff" }, // blue-violet, hue 248°, 0.28 → 0.49 (2026-09-16: at 270° the violet read as faded pink against orange and haze; a bluer hue stays a purple at 3:1 on every panel, its light end a periwinkle)
-  { max: 500, dark: "#ff3ddb", light: "#ff85e8" }, // magenta, 0.30 → 0.44 (2026-09-16). At the 0.49 luminance the brightest panel demands for 3:1, every hue from red to violet needs a green channel near 160 and loses its chroma, so crimson and then a 3:1 magenta converged with Unhealthy's red and Very Unhealthy's violet on hazy and warm panels. Shoro's call: the sixth category alone keeps its chroma at the light end and clears 2.7:1 there instead of 3:1, so it stays a distinct hue on every panel. EPA's maroon is too dark for any panel.
+  { max: 300, dark: "#ff3ddb", light: "#ff85e8" }, // magenta, hue 310°, 0.30 → 0.44: the hue cycle continues past red (Shoro, 2026-09-16). Its light end keeps its chroma at 2.7:1 on the brightest panel by Shoro's call, since at 3:1 it collapsed toward the red beside it.
+  { max: 500, dark: "#8f80ff", light: "#bcb0ff" }, // purple, hue 248°, 0.28 → 0.49, at 3:1 on every panel: the hue cycle's last step. At 270° the light end was a lavender that read as faded pink against orange and haze; the bluer hue holds. EPA's maroon is too dark for any panel.
 ] as const;
 // The panels the ramp's ends are set for, as WCAG luminance of composited frosted panels measured 2026-09-15 with the denser frost: the night graph (0.057) at the dark end, the hazy-noon hero (0.130) at the light end, the brightest any panel reached. At 0.058 a colour needs 0.27 for 3:1; at 0.13 it needs 0.49. Each panel predicts its own luminance and lifts the ramp it draws linearly between the two; the light end is placed at 0.12 and the dark colours a step above their floor so the measured minimum along the legend carries about 5% of margin (it read 2.92 to 3.02 with none).
 
@@ -213,7 +213,11 @@ export const MONITOR = {
   meter: 4, // meters, ladders and the detune band are 4 px tracks, the slider's hairline
   lane: 4, // the 16-step lane's step height: the ladder's, so the two read as one control (2026-09-16)
   gap: 4, // between ladder steps and lane steps
-  routingHeight: { laptop: 80, phone: 144 }, // the routing card's diagram: three sources against six destinations (80 on laptop since 2026-09-16, so the value cards' row holds their 12 px gaps)
+  routingHeight: { laptop: 80, phone: 144 }, // the routing card's patch bay: the source pills along the top, the destination pills along the bottom, the cables between (80 on laptop, so the value cards' row holds their 12 px gaps)
+  cableSag: 8, // a patch cable hangs: the S-curve's control points sit this far below the straight line between the pills
+  packetBeats: 1, // a data packet crosses its cable in one beat, ease-in-out
+  packetHalo: 5, // the packet: a soft halo of this radius under a bright core
+  packetCore: 2,
   icon: 20, // the two page icons at the foot
   iconInactive: 0.55, // the inactive page icon's alpha (textMuted's), the active one at textPrimary
   hitBeats: 1, // a lane hit lights and decays over one beat

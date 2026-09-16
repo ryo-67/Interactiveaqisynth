@@ -1574,14 +1574,11 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-lane-step[data-hit="true"] { background: rgba(255, 255, 255, 0.4); }
 .scene-lane-step[data-lit="true"] { animation: scene-lane-hit 667ms ease-out forwards; }
 @keyframes scene-lane-hit { from { background: rgba(255, 255, 255, 0.95); } to { background: rgba(255, 255, 255, 0.4); } }
-/* The routing card: labels in two columns, one SVG of lines between them, a line brightening on the beat its source moved. */
-.scene-routing { display: flex; align-items: stretch; gap: 12px; }
-.scene-routing-col { display: flex; flex-direction: column; justify-content: space-around; flex: 0 0 auto; min-width: 0; }
-.scene-routing-col > span { flex: 1 1 0; }
-.scene-routing-lines { flex: 1 1 auto; height: 100%; min-width: 0; }
-.scene-routing-lines line { stroke: rgba(255, 255, 255, 0.18); stroke-width: 1; }
-.scene-routing-lines line[data-moved="true"] { animation: scene-routing-move 667ms ease-out forwards; }
-@keyframes scene-routing-move { from { stroke: rgba(255, 255, 255, 0.9); } to { stroke: rgba(255, 255, 255, 0.18); } }
+/* The routing card as a patch bay (2026-09-16): the source pills along the top, the destination pills along the bottom, an SVG of cables between them drawn in pixels from the pills' rects (Routing.tsx). A cable is a hairline; the data packets that travel it are drawn into the SVG each frame. */
+.scene-routing { position: relative; display: flex; flex-direction: column; justify-content: space-between; }
+.scene-routing-row { display: flex; justify-content: space-around; align-items: center; position: relative; z-index: 1; }
+.scene-routing-cables { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.scene-routing-cables path { stroke: rgba(255, 255, 255, 0.18); stroke-width: 1; }
 /* The page icons: bottom centre on laptop, where the bottom bar is a three-column grid; below that the bar is two rows and the icons take the right end of the transport row. */
 .scene-views { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; } /* the two icons 12 apart (Shoro, 2026-09-16: more spaced out) */
 .scene-views[data-vertical="true"] { flex-direction: column; }

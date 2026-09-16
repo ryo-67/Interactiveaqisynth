@@ -17,6 +17,8 @@ uniform float uWobble;
 uniform float uTime;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  // No lenses, no work (2026-09-16): at level zero every lens has zero weight and the loop below produced no displacement and no rim, the same pixel this returns; a clear day paid the loop's ${MAX} iterations per pixel for nothing.
+  if (uLevel <= 0.0) { outputColor = inputColor; return; }
   vec2 disp = vec2(0.0);
   float rim = 0.0;
   for (int i = 0; i < ${MAX}; i++) {

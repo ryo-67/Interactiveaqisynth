@@ -73,6 +73,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
   const chipRef = useRef<HTMLDivElement>(null); // the playhead's readout, a frosted pill the draw loop places over the canvas
   // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
   const areaCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
+  const maskCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null); // the fill's alpha mask, keyed on the geometry alone (see the draw)
   const hairRef = useRef<HTMLCanvasElement | null>(null); // the firm hairlines, opaque white, reused across draws
   const faintRef = useRef<HTMLCanvasElement | null>(null); // the faint hairlines, opaque white, composited at their own alpha
   const playheadRef = useRef<number | null>(playheadHour);
@@ -252,9 +253,13 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         // The area under the line: colour blends horizontally along the line (a stop at every hour's colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per shown frame and size, so the playhead's per-frame redraw does not rebuild it; a transition rebuilds it every frame, which is the cost of the fill following the morphing line.
         const baseY = y0 + lh + inner;
         // Keyed on the plot's geometry too (plotX, plotW, the track's y range): plotX is measured from the data font, and when that font arrives after the first draw the edge moves a couple of pixels; the line redraws at the new positions, and a fill cached under the old edge sat visibly off the line.
-        const areaKey = `${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${cur.isAqi.toFixed(2)}|${liftNow.toFixed(3)}|${c.textSecondary}|${norm.map((v, i) => (v == null ? "" : `${Math.round(v * 1000)}:${Math.round(alpha[i] * 100)}`)).join(",")}`;
+        // Two caches (2026-09-16): the MASK depends on the geometry alone and the COLOUR on the ramp's lift and the theme as well. The lift eases for about a second after every beat, and with one cache the per-pixel mask loop over the whole plot rebuilt on each of those frames; now a lift change repaints only the columns, through the mask it already has.
+        const maskKey = `${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${cur.isAqi.toFixed(2)}|${norm.map((v, i) => (v == null ? "" : `${Math.round(v * 1000)}:${Math.round(alpha[i] * 100)}`)).join(",")}`;
+        const areaKey = `${maskKey}|${liftNow.toFixed(3)}|${c.textSecondary}`;
         let area = areaCache.current;
         if (!area || area.key !== areaKey) {
+          let mask = maskCache.current;
+          if (!mask || mask.key !== maskKey) {
           const off = document.createElement("canvas");
           off.width = Math.round(plotW * dpr); off.height = bufH; // the plot's own device pixels, blitted 1:1 below
           const o = off.getContext("2d")!;
@@ -279,8 +284,15 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
             }
           }
           o.putImageData(mask, 0, 0);
+          maskCache.current = { key: maskKey, canvas: off };
+          }
+          mask = maskCache.current!;
           // Pass 2: the colour, through the mask — every column in the line's own colour at that column's height (the same rule as the line and the legend), at the presence blended between its two hours. Per column, so the fill's top edge is the line's colour even on a rise that crosses several categories within one hour; a gradient with one stop per hour blended two hues in sRGB across the hour and missed the ones between.
-          // The columns are painted on their own canvas and composited through the mask in ONE draw: source-in keeps only where the new paint and the canvas overlap and clears everything else, so column fills applied one by one through the mask left only the last column standing (2026-09-16).
+          // The columns are painted on their own canvas and composited through a copy of the mask in ONE draw: source-in keeps only where the new paint and the canvas overlap and clears everything else, so column fills applied one by one through the mask left only the last column standing (2026-09-16).
+          const off = document.createElement("canvas");
+          off.width = mask.canvas.width; off.height = mask.canvas.height;
+          const o = off.getContext("2d")!;
+          o.drawImage(mask.canvas, 0, 0);
           const col = document.createElement("canvas");
           col.width = off.width; col.height = off.height;
           const cc = col.getContext("2d")!;
@@ -296,7 +308,6 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
             cc.fillRect(px / dpr, 0, colW1, cssH);
           }
           o.globalCompositeOperation = "source-in";
-          o.setTransform(1, 0, 0, 1, 0, 0);
           o.drawImage(col, 0, 0);
           area = { key: areaKey, canvas: off };
           areaCache.current = area;

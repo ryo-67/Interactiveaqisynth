@@ -2,6 +2,7 @@
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
 import { SKY_TOGGLE_LABEL } from "../content";
 import { useEased } from "./useEased";
+import { frostBusy } from "./frost";
 import { Monitor } from "../components/Monitor";
 import { PageIndicator, VIEWS, type View } from "../components/PageIndicator";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -94,6 +95,7 @@ export default function ScenePage() {
   const switchView = (next: View) => {
     if (next === page || performance.now() < lockRef.current) return;
     lockRef.current = performance.now() + PAGE_MS;
+    frostBusy(PAGE_MS + 400); // the panels move and dissolve for the whole switch: the sky reads their rectangles every frame until it has settled (frost.ts)
     setPage(next);
   };
   useEffect(() => {
@@ -107,8 +109,10 @@ export default function ScenePage() {
   const [resizing, setResizing] = useState(false);
   useEffect(() => {
     let t = 0;
-    const onResize = () => { setResizing(true); if (trackRef.current) trackRef.current.style.transform = ""; window.clearTimeout(t); t = window.setTimeout(() => setResizing(false), 200); };
+    const onResize = () => { setResizing(true); frostBusy(600); if (trackRef.current) trackRef.current.style.transform = ""; window.clearTimeout(t); t = window.setTimeout(() => setResizing(false), 200); };
     window.addEventListener("resize", onResize);
+    document.fonts?.ready.then(() => frostBusy(600)); // the fonts arriving re-flow the bars, which moves the band and every panel in it
+    frostBusy(1500); // the first layout settles over the first frames: the hero cards measure their widths, the graph its gutter
     return () => { window.removeEventListener("resize", onResize); window.clearTimeout(t); };
   }, []);
   // The arrows along the pages' axis switch pages (only Space and Escape were bound); not while a control that uses them (the volume slider) has focus. Above the phone width the wheel does too: a scroll of more than WHEEL_PX in one direction, then nothing more until the slide is over, so a trackpad's inertia does not carry the page back.
@@ -166,6 +170,7 @@ export default function ScenePage() {
     if (vertical) return;
     const bounded = page === "scene" ? Math.min(0, dx) : Math.max(0, dx); // no pull past the first or last page
     track.dataset.dragging = "true";
+    frostBusy(300); // the pages follow the finger: their blur must too
     track.style.transform = `translateX(${s.base + bounded}px)`;
   };
   const onDragUp = (e: React.PointerEvent) => {
@@ -181,7 +186,7 @@ export default function ScenePage() {
       if (next !== page) switchView(next);
     }
     // Hand the track back to the stylesheet: from the dragged position the transition runs to the page's own.
-    if (!vertical) requestAnimationFrame(() => { delete track.dataset.dragging; track.style.transform = ""; });
+    if (!vertical) { frostBusy(PAGE_MS + 400); requestAnimationFrame(() => { delete track.dataset.dragging; track.style.transform = ""; }); }
   };
   // Every input that steps with the data is eased in the space where it is USED, so in and out take the same curve: the particulate LEVELS (0..1), not the raw µg/m³ — eased in µg/m³ the field appeared at once on the way up (the value rushed through the 35–150 band) and receded slowly on the way down (it lingered there on the exponential tail). The sky's own channels ease too, so the dome, the plume and the type move together instead of the dome cutting while the plume fades. Time constant: half a beat (~330 ms), settled within about a second.
   const tau = motion.beatMs * 0.5;

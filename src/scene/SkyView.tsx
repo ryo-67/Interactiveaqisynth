@@ -7,6 +7,7 @@ import { ToneMappingMode, BlendFunction, BloomEffect, HueSaturationEffect, Chrom
 import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3 } from "three";
 import { LensFieldEffect } from "./LensFieldEffect";
 import { FrostEffect } from "./FrostEffect";
+import { frostIsBusy } from "./frost";
 import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT, SKY_CAMERA } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
@@ -136,8 +137,9 @@ function FrostFeed({ effect, enabled }: { effect: FrostEffect; enabled: boolean 
   const gl = useThree((s) => s.gl);
   useEffect(() => {
     if (!enabled) { effect.clear(); invalidate(); return; }
-    let raf = 0;
-    const tick = () => { if (effect.feed(gl.domElement)) invalidate(); raf = requestAnimationFrame(tick); };
+    let raf = 0, lastPoll = 0;
+    // Every frame while the scene has declared a movement (frost.ts frostBusy: a switch, a drag, a resize, a glass changing size), else four times a second as the safety net (2026-09-16).
+    const tick = (now: number) => { if (frostIsBusy(now) || now - lastPoll >= 250) { lastPoll = now; if (effect.feed(gl.domElement)) invalidate(); } raf = requestAnimationFrame(tick); };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [gl, effect, enabled]);
@@ -252,7 +254,8 @@ function Exposure({ value }: { value: number }) {
 }
 
 // The renderer's configuration, one object for the life of the module: r3f compares the gl prop with the renderer on every render and re-applies it when they differ, and the composer sets the renderer's toneMapping to none, so a fresh object literal here had r3f writing toneMapping back every render (harmless in the composer's pass, three only tone-maps when drawing to the canvas, but churn all the same). Tone mapping is set explicitly because r3f v8's ACES default goes through a pre-three-r155 path that no longer lands on three 0.172. preserveDrawingBuffer so the scene can snapshot the last frame for a dissolve (D-32).
-const GL_CONFIG = { antialias: true, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true } as const;
+// No multisampling (2026-09-16): the composer renders every pass into its own targets, which are never multisampled, and the sky has no geometry edges to smooth (a dome, point stars, a textured sun sprite); the multisampled default buffer only cost memory bandwidth on every frame.
+const GL_CONFIG = { antialias: false, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true } as const;
 
 export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0, frost = false }: Props) {
   // The grade's effects, once per canvas; the composer's children are one memoized element so its pass chain is never rebuilt (see Fx).

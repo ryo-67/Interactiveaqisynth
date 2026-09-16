@@ -27,8 +27,8 @@ function Card({ label, sources, className, children, cardRef }: { label: string;
     <Glass ref={cardRef} material="frosted" className={`scene-card ${className}`}>
       <div className="scene-card-head">
         <span style={{ fontFamily: families.ui, letterSpacing: "0.04em", fontSize: typeScale.caption.size, lineHeight: 1, color: c.textMuted }}>{label}</span>
-        {/* The source pill: the chip style in its inactive state at the small (phone) chip height, whatever the breakpoint. The routing card has none: it is the routing. */}
-        {sources && <span style={chipStyle(c, false, { height: 24, padding: "0 8px", borderRadius: 12 })}>{sources.map((s) => SOURCE_LABELS[s]).join(SOURCE_JOIN)}</span>}
+        {/* The source pill: the chip style in its inactive state, 20 tall with the micro size (Shoro, 2026-09-16: smaller than the card's label, whatever the breakpoint). The routing card has none: it is the routing. */}
+        {sources && <span style={chipStyle(c, false, { height: 20, padding: "0 8px", borderRadius: 10, fontSize: typeScale.micro.size })}>{sources.map((s) => SOURCE_LABELS[s]).join(SOURCE_JOIN)}</span>}
       </div>
       {children}
     </Glass>
@@ -38,7 +38,8 @@ function Card({ label, sources, className, children, cardRef }: { label: string;
 // The value line: the editorial serif at the heading size, like the mood word.
 function Value({ children }: { children: React.ReactNode }) {
   const c = themeColors(useTheme());
-  return <div style={{ fontFamily: families.serifItalic, fontStyle: "italic", fontSize: `var(--heading-size, ${typeScale.heading.size})`, lineHeight: `var(--heading-line, 40px)`, color: c.textPrimary, whiteSpace: "nowrap" }}>{children}</div>;
+  // The size is the mood word's, unless the breakpoint sets the card's own (phones: index.css --card-value-size, a step smaller so the card keeps its padding).
+  return <div style={{ fontFamily: families.serifItalic, fontStyle: "italic", fontSize: `var(--card-value-size, var(--heading-size, ${typeScale.heading.size}))`, lineHeight: `var(--card-value-line, var(--heading-line, 40px))`, color: c.textPrimary, whiteSpace: "nowrap" }}>{children}</div>;
 }
 // The small line beneath a graphic: the data face, caption size.
 function Sub({ children }: { children: React.ReactNode }) {

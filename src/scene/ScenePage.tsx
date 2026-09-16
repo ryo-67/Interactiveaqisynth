@@ -45,7 +45,6 @@ const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-
 const FADE_MS = PAGE_MS * 0.2; // the outgoing page is gone within the first fifth of the travel, before its panels can reach the frame's edge; the incoming one appears only in the last fifth, once it is wholly inside
 const SWIPE_LOCK_PX = 8; // movement before a touch commits to an axis
 const SWIPE_PX = 48; // a horizontal touch travel that counts as a swipe
-const SWIPE_GAP_PX = 16; // the gap between the pages on phones while they slide (index.css --page-gap)
 const WHEEL_PX = 120; // a wheel travel that counts as a page turn above the phone width
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -126,12 +125,14 @@ export default function ScenePage() {
   });
   // The phone swipe: the pages follow the finger (the track is translated directly, no React state per move), and on release the nearer page wins, or the one the finger was heading for past SWIPE_PX. A touch that starts on the graph's plot is the plot's seek and is left alone, as is one that commits to the vertical. Both pages are visible while dragging; the CSS transition then carries the track from where the finger left it.
   const trackRef = useRef<HTMLDivElement>(null);
-  const swipe = useRef<{ id: number; x: number; y: number; axis: "x" | "y" | null; skip: boolean; w: number } | null>(null);
+  const swipe = useRef<{ id: number; x: number; y: number; axis: "x" | "y" | null; skip: boolean; base: number } | null>(null);
   const swipedAt = useRef(0); // a swipe that began on a chip must not also be the chip's tap: the click it leaves behind is swallowed
   const onBandDown = (e: React.PointerEvent) => {
     if (e.pointerType !== "touch" || vertical) return; // a mouse never drags the pages; the wheel and the keys are its routes
     const skip = !!(e.target as HTMLElement).closest("canvas, input, select, a"); // the plot (its seek), the slider and links keep their own gesture; a swipe may start on a chip
-    swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, skip, w: e.currentTarget.getBoundingClientRect().width };
+    const track = trackRef.current;
+    const base = track ? new DOMMatrix(getComputedStyle(track).transform).m41 : 0; // where the track rests now (0, or one page and a gap to the left), read rather than recomputed
+    swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, skip, base };
   };
   const onBandMove = (e: React.PointerEvent) => {
     const s = swipe.current, track = trackRef.current;
@@ -139,10 +140,9 @@ export default function ScenePage() {
     const dx = e.clientX - s.x, dy = e.clientY - s.y;
     if (!s.axis && (Math.abs(dx) >= SWIPE_LOCK_PX || Math.abs(dy) >= SWIPE_LOCK_PX)) s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
     if (s.axis !== "x") return;
-    const base = page === "scene" ? 0 : -(s.w + SWIPE_GAP_PX);
     const bounded = page === "scene" ? Math.min(0, dx) : Math.max(0, dx); // no pull past the first or last page
     track.dataset.dragging = "true";
-    track.style.transform = `translateX(${base + bounded}px)`;
+    track.style.transform = `translateX(${s.base + bounded}px)`;
   };
   const onBandUp = (e: React.PointerEvent) => {
     const s = swipe.current, track = trackRef.current;

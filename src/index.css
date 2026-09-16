@@ -1539,6 +1539,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-mid[data-axis="y"][data-page="monitor"] .scene-page-scene { transform: translateY(calc(-100% - var(--page-gap))); opacity: 0; }
 .scene-mid[data-axis="y"][data-page="monitor"] .scene-page-monitor { transform: translateY(0); opacity: 1; }
 /* Horizontal (below laptop): the pages sit side by side with the gap between them, and the track itself is what a finger drags (ScenePage.tsx), so the track carries the switch. No fade here (Shoro, 2026-09-16): both pages stay fully opaque and simply slide. */
+.scene-mid[data-axis="x"] { --page-gap: calc(var(--clip-pad) + var(--ui-gap)); } /* the frame is clipped --clip-pad outside the section (for shadows), so the pages sit that much further apart: the neighbour rests beyond the clip and never shows a sliver */
 .scene-mid[data-axis="x"] .scene-track { transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1); }
 .scene-mid[data-axis="x"][data-page="monitor"] .scene-track { transform: translateX(calc(-100% - var(--page-gap))); }
 .scene-mid[data-axis="x"]:not([data-fade="true"]) .scene-page { opacity: 1; transition: none; }
@@ -1560,7 +1561,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-meter-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: rgba(255, 255, 255, 0.9); transition: opacity 667ms ease; }
 .scene-detune-centre { position: absolute; left: calc(50% - 1px); top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.4); }
 .scene-lane { display: flex; gap: 4px; }
-.scene-lane-step { flex: 1 1 0; height: 8px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
+.scene-lane-step { flex: 1 1 0; height: var(--lane-h, 8px); border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
 .scene-lane-step[data-hit="true"] { background: rgba(255, 255, 255, 0.32); }
 .scene-lane-step[data-lit="true"] { animation: scene-lane-hit 667ms ease-out forwards; }
 @keyframes scene-lane-hit { from { background: rgba(255, 255, 255, 0.95); } to { background: rgba(255, 255, 255, 0.32); } }
@@ -1649,7 +1650,8 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-page-scene .scene-page-inner { justify-content: flex-start; height: 100%; flex: 1 1 auto; }
   /* The monitor fits the band on phones (2026-09-15): the grid takes the band's height in four equal rows, the cards shrink into them, and nothing scrolls. */
   .scene-page-monitor .scene-page-inner { height: 100%; flex: 1 1 auto; align-items: stretch; }
-  .scene-monitor { --card-pad: 12px; height: 100%; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 12px; align-self: stretch; }
+  /* Phone cards read like weather widgets (Shoro, 2026-09-16): the panel's 16 px padding kept, and the elements inside a step smaller — the value at 20/24, the lane 6 — so the padding is room and not a squeeze. 16·2 + 20 + 8 + 24 + 8 + 4 + 8 + 17 = 121 in a 143 px row on an 844-tall phone. */
+  .scene-monitor { --card-pad: 16px; --card-value-size: 20px; --card-value-line: 24px; --lane-h: 6px; height: 100%; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 12px; align-self: stretch; }
   .scene-card { gap: 8px; min-height: 0; justify-content: space-between; }
   .scene-card-head { flex: 0 0 auto; }
   .scene-panel.scene-hero { flex: 0 0 auto; }
@@ -1667,7 +1669,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (max-width: 767px) and (max-height: 720px) {
   .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; }
   .scene-monitor { gap: 8px; }
-  .scene-card { --card-pad: 8px; --sub-gap: 0px; gap: 4px; } /* the sub line sits on the card's own gap: 24 + 24 + 4 + 17 + 12 + 16 = 97 in a 99 px row on a 667-tall phone */
+  .scene-card { --card-pad: 12px; --sub-gap: 0px; gap: 4px; } /* 12·2 + 20 + 24 + 4 + 17 + 4·3 = 101 in a 102 px row on a 667-tall phone; the value keeps its 20/24 */
   .scene-panel.scene-hero { --hero-pad: 16px; }
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */
 }

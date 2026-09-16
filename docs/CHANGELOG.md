@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — Phone cards as widgets; the neighbouring page rests beyond the clip; smaller source pills
+
+Shoro's fourth pass. The phone cards had 12 px of padding around full-size elements and read as a squeeze; they keep the panel's 16 px (12 on a 667-tall phone) and the elements inside step down instead — the value at 20/24, the lane 6 — so the six cards still fill the band in four rows with nothing scrolling. With no fade on the horizontal axis the neighbouring page had shown a sliver through the clip's 24 px reach; the pages now sit that much further apart and rest beyond it, and a drag starts from the track's measured rest position rather than a constant. The source pills take the micro size, 20 tall, at every breakpoint.
+
 ## 2026-09-16 — Horizontal pages without a fade; the pill an even third of the transport; centred on the section
 
 Shoro's third pass. Below laptop the pages slide with no fade at all, both fully opaque throughout. The page pill in the transport group has the phone pill's 12 px sides so it reads as one control, and stands 8 px from the volume like the volume from the play button. On laptop the vertical pill lives inside the band, so its centre is the section's rather than the page's.

@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The borough pill fills a phone's shared row
+
+Shoro: on phones from 408 wide, where the borough pill and the day button share the top row, the borough pill should fill the width the day button leaves, with its codes spread evenly, the two end spaces equal to the gaps between them, and the full borough names in place of the codes if the pill is ever wide enough for all six at once. Done for that band only, 408 to 575, as Shoro specified after a first pass that reached up to the tablets: the pill grows, its padding and the strip's own gap go to zero so an even distribution is the whole spacing (measured: seven spaces of 13 px at 414 wide), and the names switch by a container query on the pill's own width at 476 px, the full row's width, all six together or none. On a phone the pill never reaches that, so the codes stay; the rule is there so the layout is correct by construction rather than by breakpoint.
+
 ## 2026-09-16 — The phone's day control is one button
 
 Shoro: on phones the day control was a chip nested in a glass pill; it is now the Patch notes button's twin, the frosted pill itself the button with the same padding, colour and hover fill, the caret kept as it was. The label keeps the data face, since it is a reading and the widest-label cell relies on its fixed pitch.

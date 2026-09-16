@@ -1744,6 +1744,16 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-pill.scene-pins { padding: var(--chip-inset); }
 }
 
+/* Phones from 408 wide, where the borough pill and the day button share the top row (Shoro, 2026-09-16; this band only): the borough pill fills the width the day button leaves, its codes and the two end spaces spread evenly (space-evenly on a pill with no padding and a strip with no gap of its own, so the seven spaces are one width), and, should the pill ever be wide enough for the full names, 391 px of labels with five gaps and two end spaces of 12, they replace the codes, all six together or none: a container query on the pill's own width, since the room depends on the day button beside it. After the phone block, whose fit-content and padding rules it overrides. */
+@media (max-width: 575px) and (min-width: 408px) {
+  .scene-top .scene-borough { flex: 1 1 auto; width: auto; min-width: 0; padding: 0; container-type: inline-size; --strip-justify: space-evenly; --strip-gap: 0px; }
+  .scene-borough .scene-strip { width: 100%; }
+}
+@container (min-width: 476px) {
+  .scene-borough .borough-long { display: block; }
+  .scene-borough .borough-short { display: none; }
+}
+
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */
 @media (max-width: 767px) and (max-height: 720px) {
   .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; --grid-gap: 8px; } /* the grid's gaps are 8 here, and the hero pair's with them */

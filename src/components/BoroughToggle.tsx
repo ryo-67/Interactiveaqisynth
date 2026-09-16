@@ -28,9 +28,9 @@ export function BoroughToggle({ selected, onSelect }: Props) {
       className="scene-strip"
       style={{
         display: "flex",
-        justifyContent: "safe center", // centred, but never with the first word pushed out of reach when the row is wider than its pill
+        justifyContent: "var(--strip-justify, safe center)", // centred, but never with the first word pushed out of reach when the row is wider than its pill; a phone row that shares the top with the day button sets it to spread the codes across the pill (index.css)
         alignItems: "center",
-        gap: "var(--ctl-gap-wide, 16px)",
+        gap: "var(--strip-gap, var(--ctl-gap-wide, 16px))", // a phone row that spreads the codes evenly sets the gap to zero, so the even distribution is the whole spacing (index.css)
         height: `var(--ctl-inner, ${CONTROL.inner}px)`,
         whiteSpace: "nowrap",
         maxWidth: "100%",

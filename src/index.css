@@ -1432,6 +1432,9 @@ html {
   .glass, .scene-popover, .scene-chip, .scene-play, .scene-cal-day, .scene-borough-btn span, .scene-volume::-webkit-slider-thumb, .scene-cursor-ring, .scene-cursor-glyph {
     transition: none;
   }
+  .scene-ladder-step, .scene-meter-fill, .scene-view-btn { transition: none; }
+  .scene-lane-step[data-lit="true"], .scene-routing-lines line[data-moved="true"] { animation: none; }
+  .scene-lane-step[data-lit="true"] { background: rgba(255, 255, 255, 0.95); }
 }
 
 /* ——— Scene layout (D-26): Shoro's scaffold, on a 4 px grid, at three breakpoints — laptop (≥1024), tablet (768–1023), phone (<768). The whole scaffold fits the viewport at every one: NOTHING SCROLLS. Sizes step down per breakpoint through the custom properties below (all multiples of 4), which every control reads; the middle band takes the remaining height and its panels are allowed to shrink. ——— */
@@ -1520,7 +1523,50 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 }
 
 /* Side by side, the hero keeps its content height and the graph is the taller panel: the graph stretches to the row and has a floor above the hero's natural height, so the hero is always the shorter of the two and the plot grows into the graph's extra height. The row is centred in the remaining height by its own margins. */
-.scene-mid { flex: 0 1 auto; margin: auto 0; display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; }
+.scene-mid { flex: 0 1 auto; margin: auto 0; position: relative; overflow: hidden; min-height: 0; min-width: 0; touch-action: pan-y; }
+/* ——— The two pages (D-43): the band holds a track twice its width, the scene page then the monitor page; the track is translated to the page in view and slides over --page-ms, ease-in-out (the graph's easing), the outgoing page leaving the way a swipe went. During a slide the band's height is set inline and eased over the same span, so the centred band grows or shrinks with the pages instead of jumping. Under reduced motion the pages share one cell and cross-fade instead. ——— */
+.scene-track { display: flex; width: 200%; height: 100%; }
+.scene-mid[data-sliding="true"] .scene-track { transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1); }
+.scene-mid[data-sliding="true"] { transition: height var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1); }
+.scene-page { flex: 0 0 50%; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.scene-page-inner { display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; }
+.scene-page-monitor .scene-page-inner { justify-content: center; }
+.scene-mid[data-fade="true"] .scene-track { display: grid; width: 100%; transform: none !important; transition: none; }
+.scene-mid[data-fade="true"] .scene-page { grid-area: 1 / 1; opacity: 0; transition: opacity var(--page-ms, 1000ms) ease; }
+.scene-mid[data-fade="true"][data-pos="scene"] .scene-page-scene, .scene-mid[data-fade="true"][data-pos="monitor"] .scene-page-monitor { opacity: 1; }
+/* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
+.scene-monitor { --card-pad: 20px; --routing-h: 96px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; max-width: 1040px; align-self: center; }
+.scene-monitor .scene-card-routing { grid-column: 1 / -1; }
+.scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; }
+.scene-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.scene-card-unit { font-size: var(--body-size, 15px); color: rgba(255, 255, 255, 0.78); font-style: normal; }
+/* Ladders, meters, the lane: 4 px tracks (the slider's hairline) and 8 px lane steps, from theme.ts MONITOR; the lit step and a hit fade over one beat. */
+.scene-ladder { display: flex; gap: 4px; }
+.scene-ladder-step { flex: 1 1 0; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); transition: background-color 667ms ease; }
+.scene-meter { position: relative; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.scene-meter-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: rgba(255, 255, 255, 0.9); transition: opacity 667ms ease; }
+.scene-detune-centre { position: absolute; left: calc(50% - 1px); top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.4); }
+.scene-lane { display: flex; gap: 4px; }
+.scene-lane-step { flex: 1 1 0; height: 8px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
+.scene-lane-step[data-hit="true"] { background: rgba(255, 255, 255, 0.32); }
+.scene-lane-step[data-lit="true"] { animation: scene-lane-hit 667ms ease-out forwards; }
+@keyframes scene-lane-hit { from { background: rgba(255, 255, 255, 0.95); } to { background: rgba(255, 255, 255, 0.32); } }
+/* The routing card: labels in two columns, one SVG of lines between them, a line brightening on the beat its source moved. */
+.scene-routing { display: flex; align-items: stretch; gap: 12px; }
+.scene-routing-col { display: flex; flex-direction: column; justify-content: space-around; flex: 0 0 auto; min-width: 0; }
+.scene-routing-col > span { flex: 1 1 0; }
+.scene-routing-lines { flex: 1 1 auto; height: 100%; min-width: 0; }
+.scene-routing-lines line { stroke: rgba(255, 255, 255, 0.18); stroke-width: 1; }
+.scene-routing-lines line[data-moved="true"] { animation: scene-routing-move 667ms ease-out forwards; }
+@keyframes scene-routing-move { from { stroke: rgba(255, 255, 255, 0.9); } to { stroke: rgba(255, 255, 255, 0.18); } }
+/* The page icons: bottom centre on laptop, where the bottom bar is a three-column grid; below that the bar is two rows and the icons take the right end of the transport row. */
+.scene-views { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.scene-view-btn { transition: color var(--state-ms, 120ms) ease; }
+.scene-view-btn:not([aria-selected="true"]):hover { color: rgba(255, 255, 255, 0.9) !important; }
+.scene-bottom { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-areas: "transport views source"; align-items: center; }
+.scene-bottom > .scene-transport { grid-area: transport; justify-self: start; }
+.scene-bottom > .scene-views { grid-area: views; justify-self: center; }
+.scene-bottom > .scene-source { grid-area: source; justify-self: end; }
 /* Side-by-side only (laptop): the shorter hero sits on the graph's horizontal centre line, and the graph has a floor above the hero's natural height. In the column layouts each panel takes its content height and the plot stays at its breakpoint minimum. */
 @media (min-width: 1024px) {
   .scene-panel.scene-hero { align-self: center; }
@@ -1553,11 +1599,17 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
     --ui-pad: 24px; --ui-gap: 16px;
   }
   .scene-top .glass { flex: 0 1 auto; width: fit-content; max-width: 100%; margin: 0; }
-  .scene-mid { flex-direction: column; align-items: stretch; justify-content: center; }
+  .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; justify-content: center; }
+  .scene-monitor { --card-pad: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
+  .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */
+  /* Below laptop the bottom bar is two rows: the transport with the page icons at its right end, then the source line across. */
+  .scene-bottom { grid-template-columns: 1fr auto; grid-template-areas: "transport views" "source source"; row-gap: 12px; }
+  .scene-bottom > .scene-transport { justify-self: stretch; }
+  .scene-bottom > .scene-source { justify-self: center; }
   .scene-panel { flex: 0 0 auto; width: 100%; max-width: 100%; } /* content height; never squeezed */
   /* Below laptop width (tablet and phone alike): the play and volume pills centred on their own row — the volume pill taking most of it — and the source line full width beneath them, its text centred, breaking between the sources and the coverage sentence. */
   .scene-ui { --slider-width: 100%; }
-  .scene-bottom { flex-direction: column; align-items: stretch; gap: 12px; }
   .scene-transport { flex: 0 0 auto; align-self: center; width: 100%; justify-content: center; }
   .scene-transport > .scene-pill:last-child { flex: 1 1 auto; max-width: 320px; }
   .scene-source { width: fit-content; max-width: 100%; align-self: center; padding: 8px 16px; justify-content: center; }
@@ -1579,7 +1631,13 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-panel.scene-hero { --hero-pad: 16px; } /* phones: the same fit-content panel as everywhere, tighter padding; the text scales down only where the column is narrower than the number and the widest text (MoodLine.tsx) (2026-09-15) */
   .scene-panel.scene-hero .scene-hero-row { gap: 16px; }
   /* On phones the graph fills the height the other bands leave (2026-09-15): the middle band takes the remaining height instead of centring in it, the hero keeps its content height, and the graph panel is the flexible child, its plot growing into it (--graph-fill) with --graph-tab-h as the floor. No feedback loop: the panel's height comes from the column, not from its content. */
-  .scene-mid { flex: 1 1 auto; min-height: 0; margin: 0; justify-content: flex-start; }
+  .scene-mid { flex: 1 1 auto; min-height: 0; margin: 0; }
+  .scene-page-scene .scene-page-inner { justify-content: flex-start; height: 100%; }
+  /* The monitor page scrolls vertically inside the band on phones when the cards outrun it; the top bar and the transport stay where they are. */
+  .scene-page-monitor { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+  .scene-page-monitor .scene-page-inner { flex: 0 0 auto; align-items: flex-start; } /* the grid's full height, so the band scrolls it from its top; a shrunken inner centred the overflowing grid and hid its head above the scroll */
+  .scene-monitor { --card-pad: 12px; --routing-h: 144px; align-self: flex-start; padding-bottom: 4px; }
+  .scene-monitor .scene-card-reverb { grid-column: 1 / -1; } /* six cards in two columns with beats across: reverb takes the last row rather than half of it */
   .scene-panel.scene-hero { flex: 0 0 auto; }
   .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; --graph-fill: 1; }
   .scene-graph-unit { display: none; } /* phone tabs are the pollutant alone: AQI, PM2.5, O₃, NO₂ (2026-09-15) */

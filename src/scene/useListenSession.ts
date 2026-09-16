@@ -3,7 +3,10 @@ import { hourOfTs, warnOnce } from "../utils/time";
 import { sunAnglesAt, tzOffsetFromTs, type SunAngles } from "./solar";
 import { sunAlongPath } from "./sunPath";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
+import { SynthEngine, detuneSigma, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
+import { barK, barSteps } from "../engine/euclid";
+import { TIERS } from "../engine/scales";
+import { pm25ToAQI } from "../engine/aqi";
 import { motion, NYC_LAT, NYC_LON, CAMERA_FACING } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
 import { tierIndexOf } from "../engine/scales";
@@ -16,6 +19,23 @@ import { getCurrentAll, getAnchors, getDay, type Borough, type CurrentSnapshot, 
 export const DEV = new URLSearchParams(window.location.search).has("dev");
 
 export type Channel = "pm25" | "o3" | "no2";
+
+// What the monitor page reads (D-43): the engine's state for the hour being heard, from the beat report while playing, and for the held hour at rest through the same engine functions (the tier from PM2.5 alone, §3.4; the bar's k and pattern from euclid.ts; σ from detuneSigma). Nothing here is a second formula.
+export interface MonitorState {
+  hour: number | null; // the index the values describe
+  tierIndex: number; // the scale ladder's step, and the tone word's
+  tierAqi: number | null; // the PM2.5 AQI the tier was chosen from (smoothed while playing): the lit step's colour on the ramp
+  scaleName: string; // the engine's own name (scales.ts)
+  k: number | null; // the bar's Euclidean density; null = no pulse this bar
+  steps: boolean[] | null; // the bar's 16-step pattern
+  o3n: number | null; // normalized O3, the lowpass ceiling's input (§3.6)
+  o3: number | null; // the hour's O3, ppb
+  pm25n: number | null; // normalized PM2.5, the reverb wet's input (§3.6)
+  pm25: number | null; // the hour's PM2.5, µg/m³
+  no2n: number | null;
+  detuneCents: number; // σ of the melody's detune (§3.6)
+}
+export interface PulseHit extends PulseInfo { t: number } // a pulse the engine fired, with the frame time it landed (the lane lights the step and lets it decay)
 
 export interface ListenSession {
   borough: Borough;
@@ -50,6 +70,8 @@ export interface ListenSession {
   // The category the mood word names and the AQI its colour reads: the current AQI (the composite) at the hour being heard while playing, at the rest hour otherwise, so the word follows the graph line at the playhead. The sound's tier stays PM2.5 alone (§3.4); the word and the number read EPA's category (D-42).
   moodTier: number;
   moodAqi: number | null;
+  monitor: MonitorState; // the monitor page's readouts (D-43)
+  pulse: PulseHit | null; // the last pulse hit the engine fired, for the monitor's lane
   // Normalized channels for whatever the page is showing right now: the beat while playing, the rest hour otherwise. A null channel is null here (the mood sentence must not name it).
   channels: { pm25: number | null; o3: number | null; no2: number | null };
   skyChannels: { pm25: number | null; o3: number | null; no2: number | null }; // channels for the sky: a null hour holds the last reported value
@@ -167,6 +189,13 @@ export function useListenSession(): ListenSession {
     engineRef.current?.onBeat((info) => { beatAtRef.current = performance.now(); setBeat(info); });
     return () => engineRef.current?.onBeat(null);
   }, []);
+  // The pulse hits, for the monitor's lane (D-43): the engine's own 16th-step callback, deferred by the engine to the audible moment like the beat report.
+  const [pulse, setPulse] = useState<PulseHit | null>(null);
+  useEffect(() => {
+    engineRef.current?.onPulse((info) => setPulse({ ...info, t: performance.now() }));
+    return () => engineRef.current?.onPulse(null);
+  }, []);
+  useEffect(() => { if (!playing) setPulse(null); }, [playing]); // at rest nothing fires; the lane shows the pattern unlit
 
   // A seek moves the clock immediately; the next beat report (which arrives after it) takes over again.
   const [seekAt, setSeekAt] = useState<{ hour: number; t: number } | null>(null);
@@ -251,6 +280,20 @@ export function useListenSession(): ListenSession {
   const moodIndex = report ? report.hour : rest?.index;
   const moodAqi = moodIndex == null ? null : (aqiHours[moodIndex] ?? null);
   const moodTier = moodAqi == null ? 0 : tierIndexOf(moodAqi); // the ladder's lines are EPA's category lines (D-38), so the tier index is the category index
+  // The monitor's state (D-43): the beat report while playing; at rest the held hour through the engine's own functions. The rest tier is the hour's PM2.5 AQI unsmoothed (the smoother has no history at rest), which is what the engine reseeds from when play begins.
+  const monitor = useMemo<MonitorState>(() => {
+    if (report) {
+      return { hour: report.hour, tierIndex: report.tierIndex, tierAqi: report.smoothedAQI, scaleName: report.scaleName, k: report.k, steps: report.steps, o3n: report.o3n, o3: report.o3, pm25n: report.pm25n, pm25: report.pm25, no2n: report.no2n, detuneCents: report.detuneCents };
+    }
+    const r = rest?.reading ?? null;
+    const pm25 = r?.pm25 == null ? null : Math.max(0, r.pm25);
+    const pm25n = normalize(pm25, a.pm25);
+    const tierAqi = pm25ToAQI(pm25);
+    const tierIndex = tierAqi == null ? 0 : tierIndexOf(tierAqi);
+    const bar = rest ? Math.floor(rest.index / 4) : 0;
+    const k = day ? barK(day.slice(bar * 4, bar * 4 + 4).map((h) => normalize(h.no2, a.no2))) : null;
+    return { hour: rest?.index ?? null, tierIndex, tierAqi, scaleName: TIERS[tierIndex].scaleName, k, steps: barSteps(k, (bar * 4) % 16), o3n: normalize(r?.o3 ?? null, a.o3), o3: r?.o3 ?? null, pm25n, pm25, no2n: normalize(r?.no2 ?? null, a.no2), detuneCents: detuneSigma(pm25n) };
+  }, [report, rest, day, a]);
   const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.index ?? 12);
   const playheadHour = useEasedHour(clockTarget, playing);
   // The clock glides where the index cannot: a day switch keeps the transport position but the same index is a different time of day on the new day (live index 23 is 1 pm; an archive day's is 11 pm), and the sun must not jump between them.
@@ -283,7 +326,7 @@ export function useListenSession(): ListenSession {
   return {
     borough, setBorough, date, setDate, latestDate, dayLoading, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
-    displayAqi, aqiHours, latest, rest, moodTier, moodAqi, channels, skyChannels, devDayKey, setDevDayKey,
+    displayAqi, aqiHours, latest, rest, moodTier, moodAqi, monitor, pulse, channels, skyChannels, devDayKey, setDevDayKey,
   };
 }
 

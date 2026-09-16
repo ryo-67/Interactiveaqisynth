@@ -26,6 +26,13 @@ export const ChevronDownIcon = ({ size = 14, strokeWidth = 2, style }: IconProps
 export const MoveHorizontalIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="m18 8 4 4-4 4" /><path d="M2 12h20" /><path d="m6 8-4 4 4 4" /></svg>
 );
+// The two page icons (D-43): Lucide's cloud-sun for the scene and audio-lines for the monitor.
+export const CloudSunIcon = ({ size = 20, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="M12 2v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="M20 12h2" /><path d="m19.07 4.93-1.41 1.41" /><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" /><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" /></svg>
+);
+export const AudioLinesIcon = ({ size = 20, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="M2 10v3" /><path d="M6 6v11" /><path d="M10 3v18" /><path d="M14 8v7" /><path d="M18 5v13" /><path d="M22 10v3" /></svg>
+);
 export const ChevronUpIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="m18 15-6-6-6 6" /></svg>
 );

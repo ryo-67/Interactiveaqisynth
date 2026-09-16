@@ -209,6 +209,18 @@ export const GRAPH = {
   transitionBeats: 1.5, // a change of day or tab morphs the line, the fill, the scale and the caret over this many beats (D-37, 2026-09-15): the same span as the sun's glide and the dissolve
 } as const;
 
+// The monitor page (D-43, 2026-09-15): a bento of frosted cards reading the engine. Every size a multiple of 4, on the control grid.
+export const MONITOR = {
+  maxWidth: 1040, // the grid's width on laptop, centred in the band like the hero and graph row
+  meter: 4, // meters, ladders and the detune band are 4 px tracks, the slider's hairline
+  lane: 8, // the 16-step lane's step height
+  gap: 4, // between ladder steps and lane steps
+  routingHeight: { laptop: 96, phone: 144 }, // the routing card's diagram: three sources against six destinations
+  icon: 20, // the two page icons at the foot
+  iconInactive: 0.55, // the inactive page icon's alpha (textMuted's), the active one at textPrimary
+  hitBeats: 1, // a lane hit lights and decays over one beat
+} as const;
+
 // Opacity scale (§5.5). Tier color is applied through these, not at arbitrary alphas.
 export const opacity = {
   full: 1,
@@ -283,6 +295,7 @@ export const motion = {
   blurMs: 500, // mood word swap at tier boundaries
   crossfadeMs: 300, // borough/day switch on the score
   popoverMs: 180, // the calendar popover in and out: opacity with a 4 px settle (2026-09-15)
+  pageBeats: 1.5, // the middle band slides between the scene and the monitor over this many beats (D-43): the same span as the sun's glide, the dissolve and the graph morph
   driftPxPerSec: 4, // haze grain drift speed — continuous
 } as const;
 

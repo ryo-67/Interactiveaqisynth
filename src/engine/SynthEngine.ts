@@ -6,7 +6,7 @@
 import * as Tone from "tone";
 import { normalize, SmoothedAQI, melodyMidi, type PollutantAnchors } from "./contour";
 import { pm25ToAQI } from "./aqi";
-import { euclidHit, barK, barAndStep } from "./euclid";
+import { euclidHit, barK, barSteps, barAndStep } from "./euclid";
 import { TIERS, tierIndexOf, chordMidi, midiToFreq } from "./scales";
 
 export type SourceTag = "own" | "citywide" | "typical"; // typical = live NO2 filled from the archive profile (D-18)
@@ -37,6 +37,14 @@ export interface BeatInfo {
   no2n: number | null;
   // PM2.5 haze value for the scene: normalized PM2.5 smoothed with the same α = 0.3 carry rules the tier uses (§5.2 item 2 — the scene must not re-derive its own smoothing).
   pm25nSmoothed: number | null;
+  // For the monitor page (D-43), so it draws what the engine did and re-derives nothing: the σ the melody's detune was drawn from this beat, and the current bar's 16-step pattern (null = no pulse this bar).
+  detuneCents: number;
+  steps: boolean[] | null;
+}
+
+// MAPPING (PM2.5 → Brownian detune, §3.6): σ = 40·min(pm25n, 1.5) cents, the width of the normal distribution each melody note's detune is drawn from. Clean days are in tune; June 7 (σ = 60) is out of tune. Particulate jitter on the line. Exported so the monitor's rest state reads the same rule.
+export function detuneSigma(pm25n: number | null): number {
+  return 40 * Math.min(1.5, pm25n ?? 0);
 }
 
 export interface PulseInfo {
@@ -310,9 +318,9 @@ export class SynthEngine {
     }
 
     // Melody (§3.2): one note per beat from O3; null hour = rest, never interpolated (§4.4). Note length by tier (§3.9).
+    const sigma = detuneSigma(pm25n);
     if (o3n != null) {
-      // MAPPING (PM2.5 → Brownian detune, §3.6): per-note cents from N(0, σ), σ = 40·min(pm25n, 1.5). Clean days are in tune; June 7 (σ = 60) is out of tune. Particulate jitter on the line.
-      const sigma = 40 * Math.min(1.5, pm25n ?? 0);
+      // Per-note cents from N(0, σ) (detuneSigma above).
       this.melody.detune.setValueAtTime(sigma * randNormal(), time);
       this.melody.triggerAttackRelease(midiToFreq(melodyMidi(o3n, tier.semis, MELODY_ROOT_MIDI)), tier.melodyNoteLength, time);
     }
@@ -335,6 +343,8 @@ export class SynthEngine {
       o3n,
       no2n,
       pm25nSmoothed,
+      detuneCents: sigma,
+      steps: barSteps(this.curBarK, this.bars[bar]?.rotation ?? 0),
     }));
   }
 

@@ -53,3 +53,15 @@ export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}";
 export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the presets and the calendar (Shoro, 2026-09-15) // under the calendar (Shoro, 2026-09-15) // the date chip's label when live (Shoro, 2026-09-15)
 export const NAV_UNAVAILABLE = "Not yet reported."; // a day past the archive and the EPA feed
 export const SOURCE_LINE_TYPICAL_NO2 = "NO₂ is typical, not live."; // D-18 disclosure; Shoro's to revise
+
+// The monitor page (D-43, 2026-09-15): card labels, source-pill labels, the tone words and the scale names as shown. PLACEHOLDERS — Shoro's. The source pill is the routing: which measurement drives the card.
+export const VIEW_LABELS = { scene: "Scene", monitor: "Monitor" } as const; // the two page icons' accessible names
+export const MONITOR_LABELS = { routing: "Routing", scale: "Scale", tone: "Tone", beats: "Beats", brightness: "Brightness", detune: "Detune", reverb: "Reverb" } as const;
+export const SOURCE_LABELS = { pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // the same subscripts as the graph tabs
+export const SOURCE_JOIN = " · "; // between two sources on one pill: "PM2.5 · NO₂"
+// Harmonicity and modulation index folded into one listener-facing word per tier (§3.5 tier table); indexed like TIER_NAMES.
+export const TONE_WORDS = ["Clean", "Warm", "Edged", "Metallic", "Harsh"] as const;
+// The scale names as the card shows them, keyed by the engine's own names (scales.ts).
+export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pentatonic", "Whole Tone": "Whole tone", Dorian: "Dorian", Phrygian: "Phrygian", Chromatic: "Chromatic" };
+export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", o3: "ppb", pm25: "µg/m³" } as const;
+export const MONITOR_REST = "—"; // a value the held hour lacks

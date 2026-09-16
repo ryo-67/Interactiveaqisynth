@@ -1,6 +1,9 @@
 // ScenePage — /scene, the Listen page as the scene (D-19, §5). The sky is a pure function of two things the engine already emits every beat: the hour under the playhead and the smoothed normalized PM2.5. Sun elevation comes from the hour; the model cross-fade, exposure, stars and the plume all follow from those two numbers. Nothing here re-derives a mapping the harness did not judge.
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
 import { SKY_TOGGLE_LABEL } from "../content";
+import { useEased } from "./useEased";
+import { Monitor } from "../components/Monitor";
+import { PageIndicator, VIEWS, type View } from "../components/PageIndicator";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SkyView, particleLevel, grainLevel, type CameraFacing } from "./SkyView";
 import { SmokeLayer, smokeRegime } from "./SmokeLayer";
@@ -29,31 +32,19 @@ const qs = new URLSearchParams(window.location.search);
 const DISC = qs.get("disc") !== "0";
 const FACING = (qs.get("facing") ?? CAMERA_FACING) as CameraFacing;
 
-// Eases a number toward its target over `tauMs` (exponential; ~63% of the way per tau), so per-beat steps in the data become continuous motion in the sky. Runs only while the value is off target.
-function useEased(target: number, tauMs: number, name = "eased input"): number {
-  const [value, setValue] = useState(Number.isFinite(target) ? target : 0);
-  const valueRef = useRef(Number.isFinite(target) ? target : 0);
-  useEffect(() => {
-    if (!Number.isFinite(target)) { warnOnce(name); return; } // a NaN would ease to NaN for good; hold instead and say so once
-    let raf = 0, last = performance.now();
-    const tick = (now: number) => {
-      const dt = now - last; last = now;
-      const v = valueRef.current + (target - valueRef.current) * (1 - Math.exp(-dt / tauMs));
-      valueRef.current = Math.abs(target - v) < 1e-3 ? target : v;
-      setValue(valueRef.current);
-      if (valueRef.current !== target) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, tauMs]);
-  return value;
-}
-
-// The graph's active tab lives in the URL so a view can be sent: ?tab=o3
+// The graph's active tab and the page live in the URL so a view can be sent: ?tab=o3, ?view=monitor (absent = the scene).
 function tabFromUrl(): TrackKey {
   const t = qs.get("tab") as TrackKey | null;
   return t && TRACK_ORDER.includes(t) ? t : "aqi";
 }
+function viewFromUrl(): View {
+  const v = qs.get("view") as View | null;
+  return v && VIEWS.includes(v) ? v : "scene";
+}
+const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-43)
+const SWIPE_LOCK_PX = 8; // movement before a touch commits to an axis
+const SWIPE_PX = 48; // a horizontal touch travel that counts as a swipe
+const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const DISSOLVE_BEATS = 1.5; // the dissolve's length on a change of day while playing (D-32): the same span as the glide at rest
 
@@ -77,11 +68,70 @@ export default function ScenePage() {
   const clock = s.playheadClock; // the same position as time of day: the sun and the stars read it
 
   const [tab, setTab] = useState<TrackKey>(tabFromUrl);
+  // The page (D-43): the scene or the monitor. `pos` is where the band's track IS; `view` is where it is going. On a switch both pages mount, the track is still at the old page, and on the next frame pos follows view so the CSS transition carries it; when the slide ends the old page unmounts. The band's height is pinned during the slide and eased from the old page's to the new one's (index.css), so the centred band does not jump at either end.
+  const [page, setPage] = useState<View>(viewFromUrl);
+  const [pos, setPos] = useState<View>(page);
+  const [slide, setSlide] = useState<{ from: View; to: View } | null>(null);
+  const midRef = useRef<HTMLDivElement>(null);
+  const pageRefs = useRef<Record<View, HTMLDivElement | null>>({ scene: null, monitor: null });
+  const [bandH, setBandH] = useState<number | null>(null);
+  const switchView = (next: View) => {
+    if (next === page || slide) return;
+    setBandH(midRef.current?.getBoundingClientRect().height ?? null);
+    setSlide({ from: page, to: next });
+    setPage(next);
+  };
+  useLayoutEffect(() => {
+    if (!slide) return;
+    // Both pages are mounted now and the track sits at the old page. Measure the incoming page's own height, then next frame move the track and the band's height together.
+    const incoming = pageRefs.current[slide.to];
+    const content = incoming?.firstElementChild as HTMLElement | null;
+    const phoneBand = window.matchMedia("(max-width: 767px)").matches; // on phones the band fills the column; its height does not follow the page
+    const h1 = phoneBand ? null : content?.scrollHeight ?? null; // scrollHeight: the page's content height even while the band is pinned shorter than it
+    let inner = 0;
+    const outer = requestAnimationFrame(() => { inner = requestAnimationFrame(() => { setPos(slide.to); if (h1 != null) setBandH(h1); }); });
+    const done = window.setTimeout(() => { setSlide(null); setBandH(null); }, PAGE_MS + 40);
+    return () => { cancelAnimationFrame(outer); cancelAnimationFrame(inner); window.clearTimeout(done); };
+  }, [slide]);
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     p.set("tab", tab);
+    if (page === "scene") p.delete("view"); else p.set("view", page);
     window.history.replaceState(null, "", `?${p}`);
-  }, [tab]);
+  }, [tab, page]);
+  // Left and right arrows switch pages (only Space and Escape were bound); not while a control that uses them (the volume slider) has focus.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target;
+      if (t instanceof HTMLInputElement || t instanceof HTMLSelectElement || t instanceof HTMLTextAreaElement) return;
+      if (e.key === "ArrowRight") switchView("monitor");
+      if (e.key === "ArrowLeft") switchView("scene");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+  // Where the track sits: the page in view, measured from the first page mounted. With one page mounted it is at the track's start whichever page it is; during a slide both are, in order, and the track moves by one slot. The transition runs only while sliding, so the unmount at the end (which moves the remaining page to the first slot and the track back to 0 in the same render) is not animated.
+  const trackShift = -(VIEWS.indexOf(pos) - VIEWS.indexOf(slide ? "scene" : page)) * 50;
+  // A horizontal touch swipe on the band switches pages (phones); one that starts on the graph's plot is the plot's seek and is left alone. The band's touch-action keeps vertical scrolling native.
+  const swipe = useRef<{ id: number; x: number; y: number; axis: "x" | "y" | null; skip: boolean } | null>(null);
+  const onBandDown = (e: React.PointerEvent) => {
+    if (e.pointerType !== "touch") return;
+    const skip = !!(e.target as HTMLElement).closest("canvas, button, input, select, a");
+    swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, skip };
+  };
+  const onBandMove = (e: React.PointerEvent) => {
+    const s = swipe.current;
+    if (!s || s.id !== e.pointerId || s.axis) return;
+    const dx = e.clientX - s.x, dy = e.clientY - s.y;
+    if (Math.abs(dx) >= SWIPE_LOCK_PX || Math.abs(dy) >= SWIPE_LOCK_PX) s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+  };
+  const onBandUp = (e: React.PointerEvent) => {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s || s.id !== e.pointerId || s.skip || s.axis !== "x") return;
+    const dx = e.clientX - s.x;
+    if (Math.abs(dx) >= SWIPE_PX) switchView(dx < 0 ? "monitor" : "scene");
+  };
 
 
   // Every input that steps with the data is eased in the space where it is USED, so in and out take the same curve: the particulate LEVELS (0..1), not the raw µg/m³ — eased in µg/m³ the field appeared at once on the way up (the value rushed through the 35–150 band) and receded slowly on the way down (it lingered there on the exponential tail). The sky's own channels ease too, so the dome, the plume and the type move together instead of the dome cutting while the plume fades. Time constant: half a beat (~330 ms), settled within about a second.
@@ -131,10 +181,13 @@ export default function ScenePage() {
   const nightEased = useEased(view.night, tau, "night blend"); // eased so a cut between days never pops the blue above the dissolve
 
   // The ramp lift (D-36): the sky canvas is sampled behind each frosted panel four times a second (a 4×4 average of the region plus the frost's blur radius, since the blur reaches that far), the DOM layers and the glass are applied to the sample by panelLuminance.ts, and the predicted panel's luminance sets how far the AQI ramp on that panel is lifted toward its light end. Each panel gets its own: the graph sits lower in the frame than the hero and measured up to a third brighter. Eased like every other sky input so the colours glide.
-  const heroRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<HTMLDivElement>(null);
+  // The sampled panels: the hero and the graph on the scene page, the two monitor cards that colour a step (D-43). A panel that is not on screen keeps its last sample.
+  type PanelKey = "hero" | "graph" | "scale" | "tone";
+  const panelRefs = useRef<Record<PanelKey, HTMLDivElement | null>>({ hero: null, graph: null, scale: null, tone: null });
+  const setPanelRef = (key: PanelKey) => (el: HTMLDivElement | null) => { panelRefs.current[key] = el; };
   type Sample = { rgb: RGB; t: number };
-  const [skySamples, setSkySamples] = useState<{ hero: Sample; graph: Sample }>({ hero: { rgb: [40, 60, 90], t: 0.6 }, graph: { rgb: [40, 60, 90], t: 0.6 } });
+  const initialSample: Sample = { rgb: [40, 60, 90], t: 0.6 };
+  const [skySamples, setSkySamples] = useState<Record<PanelKey, Sample>>({ hero: initialSample, graph: initialSample, scale: initialSample, tone: initialSample });
   useEffect(() => {
     const tiny = document.createElement("canvas"); tiny.width = 4; tiny.height = 4;
     const tctx = tiny.getContext("2d", { willReadFrequently: true });
@@ -158,10 +211,14 @@ export default function ScenePage() {
       if (!gl || gl.width === 0) return;
       const cr = gl.getBoundingClientRect();
       if (cr.width === 0 || cr.height === 0) return;
-      const hero = sampleBehind(gl, heroRef.current, cr), graph = sampleBehind(gl, graphRef.current, cr);
       setSkySamples((prev) => {
-        const h = hero ?? prev.hero, g = graph ?? prev.graph;
-        return changed(h, prev.hero) || changed(g, prev.graph) ? { hero: h, graph: g } : prev;
+        let any = false;
+        const next = { ...prev };
+        for (const key of Object.keys(prev) as PanelKey[]) {
+          const s = sampleBehind(gl, panelRefs.current[key], cr);
+          if (s && changed(s, prev[key])) { next[key] = s; any = true; }
+        }
+        return any ? next : prev;
       });
     };
     const id = setInterval(tick, 250);
@@ -169,10 +226,12 @@ export default function ScenePage() {
     return () => clearInterval(id);
   }, []);
   const predict = (sm: Sample) => predictPanel({ sky: sm.rgb, t: sm.t, smoke: { density: view.smoke, regime: view.regime }, night: nightEased, golden: goldenEased, glass: { alpha: view.glass.alpha + GLASS.frostedExtraAlpha, fill: view.glass.fill, lift: view.glass.lift } });
-  const panels = useMemo(() => ({ hero: predict(skySamples.hero), graph: predict(skySamples.graph) }), [skySamples, view.smoke, view.regime, view.glass, nightEased, goldenEased]); // eslint-disable-line react-hooks/exhaustive-deps
+  const panels = useMemo(() => ({ hero: predict(skySamples.hero), graph: predict(skySamples.graph), scale: predict(skySamples.scale), tone: predict(skySamples.tone) }), [skySamples, view.smoke, view.regime, view.glass, nightEased, goldenEased]); // eslint-disable-line react-hooks/exhaustive-deps
   const heroLift = useEased(rampLiftFor(panels.hero.luminance), tau, "hero ramp lift");
   const graphLift = useEased(rampLiftFor(panels.graph.luminance), tau, "graph ramp lift");
-  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, graph: graphLift } }; // a handle for measurement, like the sky's __sky
+  const scaleLift = useEased(rampLiftFor(panels.scale.luminance), tau, "scale card ramp lift");
+  const toneLift = useEased(rampLiftFor(panels.tone.luminance), tau, "tone card ramp lift");
+  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, pos, slide, hour, playing }; // a handle for measurement, like the sky's __sky
 
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
   const skyBoxRef = useRef<HTMLDivElement>(null);
@@ -251,25 +310,41 @@ export default function ScenePage() {
             </div>
           </div>
 
-          <div className="scene-mid">
-            <Glass ref={heroRef} material="frosted" className="scene-panel scene-hero">
-              <MoodLine tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} number={<AQINumber value={s.displayAqi} />} value={s.displayAqi} />
-            </Glass>
-            {day && day.length > 0 && (
-              <Glass ref={graphRef} material="frosted" className="scene-panel scene-graph">
-                <Graph
-                  day={day}
-                  aqi={s.aqiHours}
-                  playheadHour={playing || paused ? hour : null}
-                  running={playing}
-                  lift={graphLift}
-                  live={s.live}
-                  tab={tab}
-                  onTab={setTab}
-                  onSeek={s.seek}
-                />
-              </Glass>
-            )}
+          {/* The middle band (D-43): a track of two pages, the scene and the monitor, slid horizontally over PAGE_MS (cross-faded under reduced motion). Only the page on screen is mounted, both during a slide. The band's height is pinned and eased during the slide. */}
+          <div ref={midRef} className="scene-mid" data-pos={pos} data-sliding={slide != null} data-fade={REDUCED_MOTION} style={{ height: bandH == null ? undefined : `${bandH}px`, "--page-ms": `${PAGE_MS}ms` } as React.CSSProperties} onPointerDown={onBandDown} onPointerMove={onBandMove} onPointerUp={onBandUp} onPointerCancel={() => { swipe.current = null; }}>
+            <div className="scene-track" style={{ transform: `translateX(${trackShift}%)` }}>
+              {(page === "scene" || slide) && (
+                <div ref={(el) => { pageRefs.current.scene = el; }} className="scene-page scene-page-scene" data-page="scene" aria-hidden={page !== "scene"}>
+                  <div className="scene-page-inner">
+                    <Glass ref={setPanelRef("hero")} material="frosted" className="scene-panel scene-hero">
+                      <MoodLine tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} number={<AQINumber value={s.displayAqi} />} value={s.displayAqi} />
+                    </Glass>
+                    {day && day.length > 0 && (
+                      <Glass ref={setPanelRef("graph")} material="frosted" className="scene-panel scene-graph">
+                        <Graph
+                          day={day}
+                          aqi={s.aqiHours}
+                          playheadHour={playing || paused ? hour : null}
+                          running={playing}
+                          lift={graphLift}
+                          live={s.live}
+                          tab={tab}
+                          onTab={setTab}
+                          onSeek={s.seek}
+                        />
+                      </Glass>
+                    )}
+                  </div>
+                </div>
+              )}
+              {(page === "monitor" || slide) && (
+                <div ref={(el) => { pageRefs.current.monitor = el; }} className="scene-page scene-page-monitor" data-page="monitor" aria-hidden={page !== "monitor"}>
+                  <div className="scene-page-inner">
+                    <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} routing />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="scene-bottom">
@@ -281,6 +356,8 @@ export default function ScenePage() {
                 <VolumeSlider onVolume={s.setVolume} />
               </Glass>
             </div>
+            {/* The page indicator (D-43): bottom centre on laptop, at the right end of the transport row below it; on the sky, no pill. */}
+            <PageIndicator view={page} onView={switchView} />
             {day && day.length > 0 && (
               <Glass material="frosted" className="scene-source">
                 <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} />

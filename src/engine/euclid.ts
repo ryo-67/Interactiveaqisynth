@@ -7,6 +7,12 @@ export function euclidHit(step: number, k: number, n: number, rotation: number):
   return Math.floor(((i + 1) * k) / n) - Math.floor((i * k) / n) > 0;
 }
 
+// The bar's whole pattern, 16 booleans, from the same rule: what the engine fires and what the monitor's lane draws (D-43) are one array.
+export function barSteps(k: number | null, rotation: number, n = 16): boolean[] | null {
+  if (k == null) return null;
+  return Array.from({ length: n }, (_, step) => euclidHit(step, k, n, rotation));
+}
+
 // MAPPING (NO2 → pulse density, §3.2/§3.9): mean normalized NO2 of a bar's hours → k = round(3 + 8·v) clamped 3..11 over 16 steps. Metaphor: combustion traffic as rhythmic pressure — rush hour hammers, empty streets tick. Null (no reporting hours) → no pulse that bar (§4.4).
 export function barK(no2nValues: ReadonlyArray<number | null>): number | null {
   const vals = no2nValues.filter((v): v is number => v != null);

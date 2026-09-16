@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The transport in the band, the page pill on the right, an About button (D-55)
+
+Shoro's layout brief. On laptop the page pill moves to the whitespace right of the section, placed exactly as it was on the left; the transport takes that left whitespace, stacked, the play button's top on the page pill's top, and the volume slider turned vertical, the same input rotated a quarter turn inside a pill the play pill's width so its track, thumb and fill are the row's own, the fill rising from the bottom. Where the transport stood, an About button in a glass pill, Lucide's info ring with the label "About this", behaving as the play button does; it opens nothing yet, the page is the next round's. Below laptop the transport row is as it was, the source line is gone entirely, and the About button and the credit share one centred row. The credit reads "Made by Shoro Roy". Verified in the pane at 1440×900 (the pill's centre on the right whitespace's centre, the stack's centre on the left's, the play pill's top on the pill's top to the pixel, the volume pill 40×128 with the input rotated) and at 375×812 on a fresh load (transport row with the page pill, no source line, About and credit centred to the pixel with a 12 px gap).
+
 ## 2026-09-16 — The source line names the source in use (D-54)
 
 Shoro: the source line should say "Live data from AirNow" while the Live chip is selected and "Archive data from EPA" on any other day, since every other day is archival; the disclosures for a borrowed channel and for typical NO₂ still follow as before. Two strings in content.ts in place of the one locked base line, the agency's name a link as before, and the line takes the session's live flag. Verified in the pane on a pinned day, which reads the EPA line with EPA linked; the Live line could not be seen here, since the dev server has no API keys and Live carries no day, so it is Shoro's to confirm on the deployed site.

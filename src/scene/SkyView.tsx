@@ -1,7 +1,7 @@
 // SkyView — one physically based sky, rendered with the real drei <Sky>, <Stars>, and postprocessing <Bloom>. Used by the /scene-test harness and (next sprint) by the scene itself. Static: no engine, no clock; the caller passes the hour.
 import React, { useLayoutEffect, useMemo, useCallback, useRef, useEffect } from "react";
 import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
-import { Sky } from "@react-three/drei";
+import { Sky } from "@react-three/drei/core/Sky"; // the one component, from its own module (2026-09-16): drei's index pulls in three-stdlib's WebGL capabilities probe, which makes a throwaway context at load that Firefox later reclaims and reports as "WebGL context was lost"
 import { EffectComposer } from "@react-three/postprocessing";
 import { ToneMappingMode, BlendFunction, BloomEffect, HueSaturationEffect, ChromaticAberrationEffect, NoiseEffect, ToneMappingEffect, EffectPass, type Effect, type EffectComposer as EffectComposerImpl } from "postprocessing";
 import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3 } from "three";

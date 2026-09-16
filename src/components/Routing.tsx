@@ -8,7 +8,7 @@ import type { MonitorState, Channel } from "../scene/useListenSession";
 
 type Dest = "scale" | "tone" | "beats" | "brightness" | "detune" | "reverb";
 const SOURCES: Channel[] = ["pm25", "o3", "no2"];
-const DESTS: Dest[] = ["scale", "tone", "beats", "brightness", "detune", "reverb"];
+const DESTS: Dest[] = ["scale", "tone", "detune", "reverb", "brightness", "beats"]; // ordered by source (Shoro, 2026-09-16): PM2.5's four destinations, then O₃'s, then NO₂'s, so the cables do not cross; the one crossing left, NO₂ to Tone, is a real one and stays
 // The mappings (§3.2 roles, §3.6 effects): PM2.5 → scale, tone, detune, reverb; NO2 → beats and tone (the pulse's and bass's index); O3 → brightness.
 const CABLES: Array<[Channel, Dest]> = [["pm25", "scale"], ["pm25", "tone"], ["pm25", "detune"], ["pm25", "reverb"], ["no2", "beats"], ["no2", "tone"], ["o3", "brightness"]];
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
@@ -35,7 +35,7 @@ export function Routing({ m }: { m: MonitorState }) {
       for (const [s, d] of CABLES) {
         const a = at(`s:${s}`), b = at(`d:${d}`);
         if (!a || !b) continue;
-        const y1 = a.bottom + 2, y2 = b.top - 2, sag = MONITOR.cableSag;
+        const y1 = a.bottom, y2 = b.top, sag = MONITOR.cableSag; // the cable meets the pill's edge (Shoro, 2026-09-16: a 2 px gap read as unplugged)
         next.push({ s, d, path: `M ${a.x} ${y1} C ${a.x} ${y1 + (y2 - y1) * 0.5 + sag}, ${b.x} ${y2 - (y2 - y1) * 0.5 + sag}, ${b.x} ${y2}` });
       }
       setCables(next);

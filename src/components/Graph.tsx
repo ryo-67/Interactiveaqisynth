@@ -106,10 +106,11 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     const vals = series[tab];
     const present = vals.filter((v): v is number => v != null);
     const floor = tab === "pm25" ? 20 : tab === "o3" ? 40 : 30;
-    // Scale. AQI is FIXED at the full 0–500 (GRAPH.aqiScaleMax), so the line never rescales between days, nothing clips, and the bar beside it is always the same complete ruler. The other channels have no standard ruler and take the day's own max, floored so a quiet day is not stretched to look dramatic; that changes only when the day changes.
-    const max = tab === "aqi" ? GRAPH.aqiScaleMax : Math.max(floor, ...present) * 1.08;
+    // Scale. AQI takes the smallest of GRAPH.aqiCeilings that holds the day's highest hour, 200 by default (D-53, 2026-09-16): a fixed 0 to 500 had left ordinary days in the bottom tenth of the plot. A change of ceiling is a change of state, so it morphs like a change of day (D-37), the line, the gridlines and the legend re-fitting together; comparability between days is carried by that motion rather than by one scale. The other channels have no standard ruler and take the day's own max, floored so a quiet day is not stretched to look dramatic; that changes only when the day changes.
+    const peak = present.length ? Math.max(...present) : 0;
+    const max = tab === "aqi" ? (GRAPH.aqiCeilings.find((c) => c >= peak) ?? GRAPH.aqiCeilings[GRAPH.aqiCeilings.length - 1]) : Math.max(floor, ...present) * 1.08;
     return {
-      key: `${tab}|${dayId}`,
+      key: `${tab}|${dayId}|${tab === "aqi" ? max : ""}`, // the ceiling is part of the state: the live window's newest hour can raise it without a change of day
       dayKey: `${dayId}`,
       norm: vals.map((v) => (v == null ? null : Math.min(v, max) / max)),
       alpha: vals.map((v) => (v == null ? 0 : 1)),
@@ -151,7 +152,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       // The band is pulled up into the panel's padding, so the space it takes inside the wrap is from the wrap's top to the band's bottom, plus the gap below it.
       const tabsH = tabs ? tabs.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top + parseFloat(getComputedStyle(tabs).marginBottom || "0") : 0;
       const available = wrap.clientHeight - tabsH - GRAPH.labelGutter - axisH;
-      const tabH = fill ? Math.max(minTab, Math.floor(available / 4) * 4) : minTab;
+      // Filling its panel, the plot takes the space the panel gives, down to GRAPH.plotFloor and no further: the breakpoint's tab height had been a floor here too, and on a short laptop it was taller than the space, so the plot ran past the panel's edge and the axis was cut off (Shoro, 2026-09-16). At its content's height the panel is as tall as the breakpoint's plot.
+      const tabH = fill ? Math.max(GRAPH.plotFloor, Math.floor(available / 4) * 4) : minTab;
       const cssH = GRAPH.labelGutter + tabH + axisH;
       // The buffer is whole device pixels at the current ratio, and the canvas box is set to exactly buffer ÷ ratio, so one buffer pixel is one device pixel and every line lands on one; any other pairing resamples the drawing. The ratio includes the visual viewport's pinch scale (trackpad pinch on a Mac, pinch on a phone): that magnifies the page without reflow or a ratio change, and a bitmap drawn at the unmagnified ratio is simply scaled up, which is the one element on the page that can look soft. Capped, because a 5× pinch on a 2× display would be a 100-megapixel buffer.
       const pinch = window.visualViewport?.scale ?? 1;
@@ -220,6 +222,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       if (tr.from) { e = easeInOut(Math.min(1, (now - tr.start) / tr.ms)); if (e >= 1) tr.from = null; }
       const cur = tr.from ? lerpFrame(tr.from, tr.to, e) : tr.to;
       shownRef.current = cur;
+      if (canvas.dataset.scaleMax !== String(Math.round(tr.to.max))) canvas.dataset.scaleMax = String(Math.round(tr.to.max)); // the axis's ceiling, readable from outside (D-53): what a test or a hand on the console asks first
       const transitioning = tr.from != null;
       const fromFrame = tr.from, toFrame = tr.to;
       let y0 = GRAPH.labelGutter;
@@ -379,7 +382,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           const barX = cssW - barW;
           const barTop = GRAPH.labelGutter, barBottom = yOf(0);
           const grad = ctx.createLinearGradient(0, barBottom, 0, yOf(1));
-          for (const s of aqiScaleStops(GRAPH.aqiScaleMax, liftNow)) grad.addColorStop(s.offset, s.color);
+          for (const s of aqiScaleStops(max, liftNow)) grad.addColorStop(s.offset, s.color); // over the SHOWN scale (D-53): the legend is the axis's own ruler and re-fits with it, mid-morph included
           const trackW = GRAPH.scaleTrackWidth, trackX = barX;
           ctx.fillStyle = grad;
           ctx.fillRect(trackX, barTop, trackW, barBottom - barTop);

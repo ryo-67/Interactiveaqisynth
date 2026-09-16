@@ -205,7 +205,8 @@ export const GRAPH = {
   // The area under the line: a soft fill that fades from the line to the baseline, so the shape reads at a glance. AQI takes the line's own colour at every point; the other tracks a white fade.
   areaAlpha: { aqi: 0.28, channel: 0.16 },
   // AQI's y-scale is fixed at the full standard range, 0–500, so the line never rescales between days, nothing is ever clipped (Jun 7 crossed 350 and flatlined at a 300 top), and the bar beside it is the complete ruler including Hazardous.
-  aqiScaleMax: 500,
+  aqiCeilings: [200, 300, 500], // the AQI axis's ceilings (D-53, Shoro, 2026-09-16): 0 to 200 by default, the next step up when a day's or the live window's highest hour exceeds the ceiling, back down when a day fits under a lower one, the change carried by the state morph (D-37) so it reads as the axis breathing rather than a jump. A fixed 0 to 500 left ordinary days in the bottom tenth of the plot
+  plotFloor: 72, // the plot's absolute floor in a panel that fills its space: below this the tabs and the axis stop reading (the shortest phones' value); the breakpoint's tab height is the plot's floor only where the panel is its content's height, since a floor taller than the space the panel gives ran the plot past the panel's edge and cut the axis off (Shoro, 2026-09-16)
   // The AQI scale bar at the right of the AQI tab: the standard category colours as one smooth vertical gradient on that scale, marker at the current value.
   axisGutterPad: 4, // around the y-axis values in the left gutter
   tabsGap: 16, // between the band's hairline and the plot

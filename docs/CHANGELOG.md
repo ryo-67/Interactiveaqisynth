@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — Hazardous reads magenta, not a second pink
+
+The sixth category's crimson sat between Unhealthy's red and Very Unhealthy's violet, and once both ends were lifted toward the light end for contrast the fourth and sixth categories were two pinks. Hazardous is now a magenta, a hue 50° past red, distinct from the red below it and the violet beside it at every lift, at 0.30 luminance dark and 0.51 light so the ramp still clears 3:1 on both benchmark panels. EPA's own maroon is too dark for the frost.
+
 ## 2026-09-16 — Values centred on the tall cards below laptop
 
 On phones and tablets the rows are tall, and the cards whose gauge follows the value directly (scale, tone, beats, the two hero cards) had the value pressed under the title with the room beneath. They now space their three elements evenly, the value centred between the title and the gauge; the value cards keep their title-value-gauge block with the unit line at the bottom padding.

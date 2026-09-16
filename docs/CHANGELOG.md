@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The source line names the source in use (D-54)
+
+Shoro: the source line should say "Live data from AirNow" while the Live chip is selected and "Archive data from EPA" on any other day, since every other day is archival; the disclosures for a borrowed channel and for typical NO₂ still follow as before. Two strings in content.ts in place of the one locked base line, the agency's name a link as before, and the line takes the session's live flag. Verified in the pane on a pinned day, which reads the EPA line with EPA linked; the Live line could not be seen here, since the dev server has no API keys and Live carries no day, so it is Shoro's to confirm on the deployed site.
+
 ## 2026-09-16 — The page pill centred in its whitespace
 
 Shoro: on laptop the page pill should sit centred in the whitespace between the browser's edge and the section's left edge, vertically centred on the band, until the minimum gaps take over. It had stood a fixed 96 px off the section, centred at one width only. The band spans the viewport, so the section's left edge is half the width less half the section, and the pill sits halfway to it, clamped to the page padding outside and 16 px from the section inside. Measured: its centre is the whitespace's centre at 1280 and 1900 wide; at 1024, the narrowest laptop, the clamp holds the 32 px padding and the 16 px gap.

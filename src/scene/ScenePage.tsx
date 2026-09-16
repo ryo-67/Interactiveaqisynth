@@ -429,7 +429,7 @@ export default function ScenePage() {
             {/* The bottom bar (Shoro, 2026-09-16): the transport at the left, the source line centred on the bar, the credit at the right; below laptop the three stack, the credit its own row under the source line (index.css). */}
             {day && day.length > 0 && (
               <Glass material="frosted" className="scene-source">
-                <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} />
+                <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} live={s.live} />
               </Glass>
             )}
             <Glass material="frosted" className="scene-credit">

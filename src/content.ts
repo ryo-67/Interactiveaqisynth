@@ -8,7 +8,9 @@ export const TIER_NAMES = ["Easy", "Shallow", "Short", "Tight", "Ragged", "Suffo
 // Status words in the borough row.
 
 // Source line (§5.3 panel 6). The coverage clause is built from the source flags, never hardcoded. Shortened 2026-09-15 at Shoro's request; Shoro's to revise. Two parts: the sources, then coverage.
-export const SOURCE_LINE_BASE = "Live from AirNow · Archive from EPA"; // LOCKED (Shoro, 2026-09-15). Rendered with AirNow and EPA as links.
+// The source line names the one source in use (Shoro, 2026-09-16): AirNow while the Live chip is selected, EPA for every other day, since every other day is archival. Rendered with the agency's name as a link.
+export const SOURCE_LINE_LIVE = "Live data from AirNow"; // Shoro, 2026-09-16
+export const SOURCE_LINE_ARCHIVE = "Archive data from EPA"; // Shoro, 2026-09-16
 // The credit (Shoro, 2026-09-16): a small pill beside the source line, the name a link to the portfolio.
 export const CREDIT_LINE = "Designed for fun by {name}";
 export const CREDIT_NAME = "Shoro Roy";

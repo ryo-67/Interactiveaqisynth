@@ -1,7 +1,7 @@
-// SourceLine — footer line three (§5.2): the sources, muted, as fact, and only when it applies the one disclosure that matters: live NO2 is a typical archive day (D-18). Whether a channel is typical is read from the hour records' source flags, never from a hardcoded list.
+// SourceLine — footer line three (§5.2): the source in use, muted, as fact (Shoro, 2026-09-16: AirNow while Live is selected, EPA on any other day), and only when it applies the one disclosure that matters: live NO2 is a typical archive day (D-18). Whether a channel is typical is read from the hour records' source flags, never from a hardcoded list.
 import React, { useLayoutEffect, useRef } from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
-import { SOURCE_LINE_BASE, SOURCE_URL_AIRNOW, SOURCE_URL_EPA, SOURCE_BORROWED, SOURCE_AREA_READING, SOURCE_LINE_TYPICAL_NO2 } from "../content";
+import { SOURCE_LINE_LIVE, SOURCE_LINE_ARCHIVE, SOURCE_URL_AIRNOW, SOURCE_URL_EPA, SOURCE_BORROWED, SOURCE_AREA_READING, SOURCE_LINE_TYPICAL_NO2 } from "../content";
 import type { Borough } from "../utils/nycOpenData";
 import type { Day } from "../engine/SynthEngine";
 
@@ -12,9 +12,10 @@ interface Props {
   borough: Borough;
   hours: Day;
   fallback: "zipcode" | null;
+  live: boolean; // the Live chip is selected: the last 24 hours from AirNow; any other day is the EPA archive
 }
 
-// The locked base line with its two source names as links to the agencies. The string stays whole in content.ts; the names are found in it here, so a rewording that keeps the names keeps the links.
+// The base line with its source name as a link to the agency. The strings stay whole in content.ts; the names are found in them here, so a rewording that keeps the name keeps the link.
 const SOURCES: Array<[name: string, url: string]> = [["AirNow", SOURCE_URL_AIRNOW], ["EPA", SOURCE_URL_EPA]];
 function linkSources(line: string, style: React.CSSProperties): React.ReactNode[] {
   const out: React.ReactNode[] = [];
@@ -29,7 +30,7 @@ function linkSources(line: string, style: React.CSSProperties): React.ReactNode[
   return out;
 }
 
-export function SourceLine({ borough, hours, fallback }: Props) {
+export function SourceLine({ borough, hours, fallback, live }: Props) {
   const c = themeColors(useTheme());
   // Links read as the line does; the underline appears on hover and keyboard focus only (index.css .source-link). AA is the text colour's.
   const linkStyle: React.CSSProperties = { color: "inherit", textUnderlineOffset: 2 };
@@ -79,7 +80,7 @@ export function SourceLine({ borough, hours, fallback }: Props) {
     const ro = new ResizeObserver(fit);
     ro.observe(panel.parentElement ?? panel);
     return () => { ro.disconnect(); panel.style.width = ""; };
-  }, [borough, hours, fallback]);
+  }, [borough, hours, fallback, live]);
 
   return (
     <div
@@ -93,7 +94,7 @@ export function SourceLine({ borough, hours, fallback }: Props) {
       }}
     >
       {/* Two parts: the sources, then the coverage. One line joined by a separator where there is room; on phone the separator hides and the coverage takes its own line, so the break falls at the sentence rather than wherever the width lands. */}
-      <span className="source-base">{linkSources(SOURCE_LINE_BASE, linkStyle)}</span>
+      <span className="source-base">{linkSources(live ? SOURCE_LINE_LIVE : SOURCE_LINE_ARCHIVE, linkStyle)}</span>
       {detail && (
         <>
           <span className="source-sep"> · </span>

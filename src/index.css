@@ -1538,15 +1538,12 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-mid[data-axis="y"] .scene-page-monitor { transform: translateY(calc(100% + var(--page-gap))); }
 .scene-mid[data-axis="y"][data-page="monitor"] .scene-page-scene { transform: translateY(calc(-100% - var(--page-gap))); opacity: 0; }
 .scene-mid[data-axis="y"][data-page="monitor"] .scene-page-monitor { transform: translateY(0); opacity: 1; }
-/* Horizontal (phones): the pages sit side by side with the gap between them, and the track itself is what a finger drags (ScenePage.tsx), so the track carries the switch and the pages only fade. */
+/* Horizontal (below laptop): the pages sit side by side with the gap between them, and the track itself is what a finger drags (ScenePage.tsx), so the track carries the switch. No fade here (Shoro, 2026-09-16): both pages stay fully opaque and simply slide. */
 .scene-mid[data-axis="x"] .scene-track { transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1); }
 .scene-mid[data-axis="x"][data-page="monitor"] .scene-track { transform: translateX(calc(-100% - var(--page-gap))); }
-.scene-mid[data-axis="x"] .scene-page-scene { opacity: 1; }
+.scene-mid[data-axis="x"]:not([data-fade="true"]) .scene-page { opacity: 1; transition: none; }
 .scene-mid[data-axis="x"] .scene-page-monitor { left: calc(100% + var(--page-gap)); right: auto; width: 100%; }
-.scene-mid[data-axis="x"][data-page="monitor"] .scene-page-scene { opacity: 0; }
-.scene-mid[data-axis="x"][data-page="monitor"] .scene-page-monitor { opacity: 1; }
 .scene-mid[data-axis="x"] .scene-track[data-dragging="true"] { transition: none; }
-.scene-mid[data-axis="x"] .scene-track[data-dragging="true"] .scene-page { opacity: 1; transition: none; } /* both pages in view under the finger */
 /* Reduced motion: no travel, a cross-fade in place. */
 .scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; transition: opacity var(--page-ms, 1000ms) ease !important; }
 .scene-mid[data-fade="true"][data-axis="x"] .scene-page-monitor { left: 0; }
@@ -1578,9 +1575,9 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* The page icons: bottom centre on laptop, where the bottom bar is a three-column grid; below that the bar is two rows and the icons take the right end of the transport row. */
 .scene-views { display: flex; align-items: center; gap: var(--chip-inset); flex: 0 0 auto; }
 .scene-views[data-vertical="true"] { flex-direction: column; }
-.scene-pill.scene-views-pill { padding: 0 var(--chip-inset); }
+.scene-pill.scene-views-pill { padding: 0 12px; } /* the horizontal pill's side padding: the phone pill's 12, so the icons sit in a bar that reads as one control (2026-09-16) */
 /* Above the phone width the pill stands at the left edge of the page, centred on the band, absolutely placed in the scaffold so the band keeps its full width. */
-.scene-pill.scene-views-side { position: absolute; left: calc(50% - var(--section-w) / 2 - var(--pill-room)); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: var(--chip-inset) 0; flex-direction: column; justify-content: center; } /* 16 px off the section's left edge, centred on the band (2026-09-16) */
+.scene-pill.scene-views-side { position: absolute; left: calc(50% - var(--section-w) / 2 - var(--pill-room)); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: var(--chip-inset) 0; flex-direction: column; justify-content: center; z-index: 1; } /* 16 px off the section's left edge; inside the band, so its centre is the section's (2026-09-16) */
 .scene-view-btn { transition: color var(--state-ms, 120ms) ease; }
 .scene-view-btn:not([aria-selected="true"]):hover { color: rgba(255, 255, 255, 0.9) !important; }
 

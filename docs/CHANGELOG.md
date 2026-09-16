@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — Horizontal pages without a fade; the pill an even third of the transport; centred on the section
+
+Shoro's third pass. Below laptop the pages slide with no fade at all, both fully opaque throughout. The page pill in the transport group has the phone pill's 12 px sides so it reads as one control, and stands 8 px from the volume like the volume from the play button. On laptop the vertical pill lives inside the band, so its centre is the section's rather than the page's.
+
 ## 2026-09-16 — One section width, the fade ahead of the clip, horizontal below laptop
 
 Shoro's second pass. A page leaving faded while it was still crossing the frame's edge, so it read as clipped grey; now it is at nothing within the first fifth of its travel and the arriving page appears only in the last fifth, once it is wholly inside. Both pages are one section of the same width at every breakpoint (1040 on laptop, the band below), the hero-and-graph row and the monitor's grid each filling it, and the page pill stands 16 px left of that section rather than at the page's edge. Where the panels go full width (below 1024) the pages sit side by side like the phone's and the pill joins the transport group beside the volume; a tap on the band's empty space there is still the sky's play/pause.

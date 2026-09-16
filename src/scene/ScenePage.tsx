@@ -368,13 +368,13 @@ export default function ScenePage() {
                 </div>
               </div>
             </div>
+            {/* The page control on laptop (D-43): a glass pill 16 px left of the section and centred on it, the two icons stacked along the pages' axis. It lives in the band so its centre is the band's, which is the section's (the pages centre their content in the band), not the page's. Below laptop it sits in the transport group beside the volume. */}
+            {laptop && (
+              <Glass material="glass" className="scene-pill scene-views-pill scene-views-side">
+                <PageIndicator view={page} onView={switchView} vertical />
+              </Glass>
+            )}
           </div>
-          {/* The page control on laptop (D-43): a glass pill 16 px left of the section, centred on the band, the two icons stacked along the pages' axis. Below laptop it sits at the right end of the transport row. */}
-          {laptop && (
-            <Glass material="glass" className="scene-pill scene-views-pill scene-views-side">
-              <PageIndicator view={page} onView={switchView} vertical />
-            </Glass>
-          )}
 
           <div className="scene-bottom">
             <div className="scene-transport">

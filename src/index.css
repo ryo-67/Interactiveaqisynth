@@ -1134,6 +1134,7 @@
 
 html {
   font-size: var(--font-size);
+  user-select: none; -webkit-user-select: none; /* nothing on the page is selectable text (Shoro, 2026-09-16): every word is a control, a readout or a label, and a drag on the sky or a card is a page turn, which a selection highlight fought */
   overscroll-behavior: none; /* the page owns its overscroll (Shoro, 2026-09-16): nothing here scrolls, so a trackpad's sideways swipe, which turns the page below laptop (ScenePage.tsx onWheel), would otherwise fall through to the browser's swipe-to-go-back on a Mac. Chromium and Firefox honour this on the root; Safari from 16 */
 }
 

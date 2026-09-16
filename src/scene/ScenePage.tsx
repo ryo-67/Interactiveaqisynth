@@ -216,12 +216,12 @@ export default function ScenePage() {
 
   // The ramp lift (D-36): the sky canvas is sampled behind each frosted panel four times a second (a 4×4 average of the region plus the frost's blur radius, since the blur reaches that far), the DOM layers and the glass are applied to the sample by panelLuminance.ts, and the predicted panel's luminance sets how far the AQI ramp on that panel is lifted toward its light end. Each panel gets its own: the graph sits lower in the frame than the hero and measured up to a third brighter. Eased like every other sky input so the colours glide.
   // The sampled panels: the hero and the graph on the scene page, the two monitor cards that colour a step (D-43). A panel that is not on screen keeps its last sample.
-  type PanelKey = "hero" | "graph" | "scale" | "tone";
-  const panelRefs = useRef<Record<PanelKey, HTMLDivElement | null>>({ hero: null, graph: null, scale: null, tone: null });
+  type PanelKey = "hero" | "aqi" | "graph" | "scale" | "tone";
+  const panelRefs = useRef<Record<PanelKey, HTMLDivElement | null>>({ hero: null, aqi: null, graph: null, scale: null, tone: null });
   const setPanelRef = (key: PanelKey) => (el: HTMLDivElement | null) => { panelRefs.current[key] = el; };
   type Sample = { rgb: RGB; t: number };
   const initialSample: Sample = { rgb: [40, 60, 90], t: 0.6 };
-  const [skySamples, setSkySamples] = useState<Record<PanelKey, Sample>>({ hero: initialSample, graph: initialSample, scale: initialSample, tone: initialSample });
+  const [skySamples, setSkySamples] = useState<Record<PanelKey, Sample>>({ hero: initialSample, aqi: initialSample, graph: initialSample, scale: initialSample, tone: initialSample });
   useEffect(() => {
     const tiny = document.createElement("canvas"); tiny.width = 4; tiny.height = 4;
     const tctx = tiny.getContext("2d", { willReadFrequently: true });
@@ -260,12 +260,13 @@ export default function ScenePage() {
     return () => clearInterval(id);
   }, []);
   const predict = (sm: Sample) => predictPanel({ sky: sm.rgb, t: sm.t, smoke: { density: view.smoke, regime: view.regime }, night: nightEased, golden: goldenEased, glass: { alpha: view.glass.alpha + GLASS.frostedExtraAlpha, fill: view.glass.fill, lift: view.glass.lift } });
-  const panels = useMemo(() => ({ hero: predict(skySamples.hero), graph: predict(skySamples.graph), scale: predict(skySamples.scale), tone: predict(skySamples.tone) }), [skySamples, view.smoke, view.regime, view.glass, nightEased, goldenEased]); // eslint-disable-line react-hooks/exhaustive-deps
+  const panels = useMemo(() => ({ hero: predict(skySamples.hero), aqi: predict(skySamples.aqi), graph: predict(skySamples.graph), scale: predict(skySamples.scale), tone: predict(skySamples.tone) }), [skySamples, view.smoke, view.regime, view.glass, nightEased, goldenEased]); // eslint-disable-line react-hooks/exhaustive-deps
   const heroLift = useEased(rampLiftFor(panels.hero.luminance), tau, "hero ramp lift");
+  const aqiLift = useEased(rampLiftFor(panels.aqi.luminance), tau, "aqi card ramp lift");
   const graphLift = useEased(rampLiftFor(panels.graph.luminance), tau, "graph ramp lift");
   const scaleLift = useEased(rampLiftFor(panels.scale.luminance), tau, "scale card ramp lift");
   const toneLift = useEased(rampLiftFor(panels.tone.luminance), tau, "tone card ramp lift");
-  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, hour, playing }; // a handle for measurement, like the sky's __sky
+  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, aqi: aqiLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, hour, playing }; // a handle for measurement, like the sky's __sky
 
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
   const skyBoxRef = useRef<HTMLDivElement>(null);
@@ -352,9 +353,9 @@ export default function ScenePage() {
             <div ref={trackRef} className="scene-track">
               <div className="scene-page scene-page-scene" data-page="scene" aria-hidden={page !== "scene"} inert={page !== "scene" ? "" : undefined}>
                 <div ref={sceneInnerRef} className="scene-page-inner">
-                  {/* The hero as two widgets (2026-09-16): the number under its day, the word and sentence under "Breath". The breath card is the sampled one: its word takes the ramp. */}
+                  {/* The hero as two widgets (2026-09-16): the number over its category bar under its day, the word over the ladder under "Breath"; both sampled for the ramp. */}
                   <div className="scene-hero-pair">
-                    <AQICard value={s.displayAqi} date={s.date} />
+                    <AQICard value={s.displayAqi} date={s.date} lift={aqiLift} cardRef={setPanelRef("aqi")} />
                     <BreathCard tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} cardRef={setPanelRef("hero")} />
                   </div>
                   {day && day.length > 0 && (

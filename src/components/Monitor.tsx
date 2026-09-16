@@ -1,10 +1,10 @@
 // Monitor — the second scene page (D-43): the synthesizer's state as a bento of frosted cards, each labelled with the measurement that drives it, so a visitor can see that synthesis is happening and which pollutant is doing what. Reads the session's MonitorState (the beat report while playing, the held hour at rest) and re-derives nothing: the tier, the pattern and σ are the engine's own; the meters show the normalized values the engine's mappings take as input (§3.6), not the Hz or the wet they become.
-// Every value moves on the beat: meters ease over half a beat like the sky's inputs (useEased), the ladders' lit step and the lane's hits fade over one beat (index.css).
+// Every value moves on the beat: meters ease over half a beat like the sky's inputs (Gauges.tsx, useEased), the ladders' lit step and the lane's hits fade over one beat (index.css).
 import React from "react";
 import { Card } from "./Card";
 import { Routing } from "./Routing";
-import { useEased } from "../scene/useEased";
-import { useTheme, themeColors, families, typeScale, motion, MONITOR, aqiScaleColor } from "../utils/theme";
+import { Ladder, Meter, DetuneBand, Lane } from "./Gauges";
+import { useTheme, themeColors, families, typeScale } from "../utils/theme";
 import { MONITOR_LABELS, TONE_WORDS, SCALE_DISPLAY, MONITOR_UNITS, MONITOR_REST } from "../content";
 import type { MonitorState, PulseHit } from "../scene/useListenSession";
 
@@ -16,7 +16,6 @@ interface Props {
   routing: boolean; // the ROUTING card is a trial; the page can drop it
 }
 
-const TAU = motion.beatMs * 0.5; // the sky's easing constant: settled within about a beat
 
 // The value line: the editorial serif at the heading size, like the mood word.
 function Value({ children }: { children: React.ReactNode }) {
@@ -28,52 +27,6 @@ function Value({ children }: { children: React.ReactNode }) {
 function Sub({ children }: { children: React.ReactNode }) {
   const c = themeColors(useTheme());
   return <div style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: typeScale.caption.line, color: c.textSecondary, whiteSpace: "nowrap" }}>{children}</div>; // spaced by the card's own gap (2026-09-16: an extra margin pushed the line past the row the section height gives it)
-}
-
-// A five-step ladder with one step lit, in the ramp's colour for the AQI the step was chosen from (the same rule as the mood word), white when there is none.
-function Ladder({ step, aqi, lift }: { step: number; aqi: number | null; lift: number }) {
-  const c = themeColors(useTheme());
-  const lit = aqi == null ? c.textPrimary : aqiScaleColor(aqi, lift);
-  return (
-    <div className="scene-ladder" role="img" aria-label={`step ${step + 1} of 5`}>
-      {[0, 1, 2, 3, 4].map((i) => <span key={i} className="scene-ladder-step" style={{ background: i === step ? lit : undefined }} />)}
-    </div>
-  );
-}
-
-// A horizontal meter: a 4 px track with the filled share, eased.
-function Meter({ value }: { value: number | null }) {
-  const v = useEased(Math.max(0, Math.min(1, value ?? 0)), TAU, "monitor meter");
-  return (
-    <div className="scene-meter" role="img" aria-label={value == null ? MONITOR_REST : `${Math.round(v * 100)}%`}>
-      <span className="scene-meter-fill" style={{ width: `${(v * 100).toFixed(2)}%`, opacity: value == null ? 0 : 1 }} />
-    </div>
-  );
-}
-
-// The detune band: symmetric about the centre, its half-width σ over the 60-cent maximum (σ = 40 · 1.5, §3.6), eased.
-function DetuneBand({ cents }: { cents: number }) {
-  const w = useEased(Math.min(1, cents / 60), TAU, "detune band");
-  return (
-    <div className="scene-meter scene-detune" role="img" aria-label={`±${(cents / 100).toFixed(2)} semitones`}>
-      <span className="scene-detune-centre" />
-      <span className="scene-meter-fill scene-detune-band" style={{ left: `${(50 - w * 50).toFixed(2)}%`, width: `${(w * 100).toFixed(2)}%` }} />
-    </div>
-  );
-}
-
-// The 16-step lane: the bar's pattern as steps, a hit lit when the engine fires it and fading over a beat. Keyed on the hit's time so a repeated step restarts its fade.
-function Lane({ steps, pulse, hour }: { steps: boolean[] | null; pulse: PulseHit | null; hour: number | null }) {
-  const sameBar = pulse != null && hour != null && Math.floor(pulse.hour / 4) === Math.floor(hour / 4);
-  return (
-    <div className="scene-lane" role="img" aria-label={steps ? `${steps.filter(Boolean).length} of 16` : MONITOR_REST}>
-      {Array.from({ length: 16 }, (_, i) => {
-        const hit = steps?.[i] ?? false;
-        const lit = sameBar && pulse!.step === i;
-        return <span key={lit ? `${i}-${pulse!.t}` : i} className="scene-lane-step" data-hit={hit} data-lit={lit} />;
-      })}
-    </div>
-  );
 }
 
 export function Monitor({ m, pulse, lifts, setRef, routing }: Props) {

@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The hero cards with the widgets' anatomy: label, value, gauge
+
+The subtitle went. In its place each hero card carries a gauge like the synth widgets: the AQI card one bar in the number's own colour on the six-category ramp, the Breath card the five-step ladder the scale and tone cards carry, its lit step in the tier's colour, the word itself now white since the ladder holds the colour. The gauges moved to one file the monitor and the hero share. With the sentence gone went its two-line split, its width probes, its token and its test. The two hero cards are now the same look and feel as the six below them.
+
 ## 2026-09-16 — The two sections share one height and one place in the vertical stack
 
 The scene section (hero pair, gap, graph) and the monitor section had their own heights, and since each page centres its content in the band they sat at different y. The scene section's rendered height is now watched and given to the monitor section, whose grid fills it with the routing row at its own height and the two card rows sharing the rest, so the sections are the same height and land at the same y at every laptop size. The cards' sub line lost its extra margin, which had pushed it 5 px past the row.

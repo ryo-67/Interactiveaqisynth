@@ -5,7 +5,7 @@
 import { readingLabel } from "../utils/time";
 import React, { useEffect, useMemo, useRef } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
-import { TRACK_LABELS, TRACK_UNITS } from "../content";
+import { TRACK_LABELS, TRACK_UNITS, TRACK_QUALIFIERS } from "../content";
 import { monotoneCurve } from "./graphSeries";
 import { chipStyle } from "./chip";
 import type { Day } from "../engine/SynthEngine";
@@ -446,7 +446,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           const active = t === tab;
           return (
             <button key={t} className="scene-chip" data-active={active} role="tab" aria-selected={active} onClick={() => onTab(t)} style={chipStyle(c, active)}>
-              {TRACK_LABELS[t]}{TRACK_UNITS[t] ? <span className="scene-graph-unit" style={{ marginLeft: "0.3em" }}>{TRACK_UNITS[t]}</span> : null} {/* the unit is its own span: phones hide it (index.css), the tab is just the pollutant there */}
+              {TRACK_QUALIFIERS[t] ? <span className="scene-graph-unit" style={{ marginRight: "0.3em" }}>{TRACK_QUALIFIERS[t]}</span> : null}{TRACK_LABELS[t]}{TRACK_UNITS[t] ? <span className="scene-graph-unit" style={{ marginLeft: "0.3em" }}>{TRACK_UNITS[t]}</span> : null} {/* the qualifier and the unit are their own spans: phones hide them (index.css), the tab is just the pollutant there */}
             </button>
           );
         })}

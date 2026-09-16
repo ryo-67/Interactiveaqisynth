@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The graph's tabs centred on laptop; the AQI tab reads "Hourly AQI"
+
+With the graph spanning the section on laptop, four tabs at the band's left read as unbalanced; they now sit centred where the graph fills the section, and stay at the left below laptop, where the band may scroll. The AQI tab is "Hourly AQI" (Shoro): the line is the hour's NowCast, not the day's number the hero shows on an archive day. "Hourly" is a qualifier span like the units, so phones, which show the pollutant alone in four equal tabs, keep "AQI"; the tooltip keeps "AQI" too.
+
 ## 2026-09-16 — The scene section splits 1-3, the hero pair at its own width from tablet up
 
 With the monitor's rows at 2-1-1 the scene page still gave the hero its content height and the graph the rest, so the two pages' first rows did not line up. The scene now splits the same four units 1-3: the hero pair is one unit (158 at 672, the monitor's row exactly, since the monitor's three rows put two gaps in the section) with its cards stretched to it and the gauges at the bottom padding, and the graph takes the other three. The rule had been written but a later base rule (`flex: 0 0 auto`) overrode it; the laptop rules now follow the base rule they override. Short laptops give the unit back to the graph, as before. On tablets the pair no longer spreads across the section: it sits at its cards' measured widths, centred on the graph like laptop, since only where the section fills the band's height (phones) does the hero need to be the bento's first row (Shoro).

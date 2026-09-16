@@ -23,6 +23,7 @@ export const SKY_TOGGLE_LABEL = "Play or pause"; // the sky itself as a play/pau
 
 // Graph track labels and units. Units are the measurements'; the labels are PLACEHOLDERS — Shoro's.
 export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // chemical subscripts (U+2083, U+2082): the data font carries them (Shoro, 2026-09-15) // the pulse row's numbers are hits per bar
+export const TRACK_QUALIFIERS: Partial<Record<keyof typeof TRACK_LABELS, string>> = { aqi: "Hourly" }; // a word before the label on the graph's tab, where there is room (Shoro, 2026-09-16: "Hourly AQI", since the number is the hour's NowCast, not the day's); phones show the label alone, like the units
 export const TRACK_UNITS = { aqi: "", pm25: "µg/m³", o3: "ppb", no2: "ppb" } as const;
 
 // Day navigation. Pin names are Shoro's (from the Figma scaffold, 2026-09-15); the rest are PLACEHOLDERS — Shoro's.

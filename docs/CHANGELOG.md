@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The gauges as one family; the missing meters; the detune band to a semitone
+
+Shoro's pass on the monitor. The beats lane was 8 px squares at its own shades beside 4 px ladders; it is now the ladder's shape and shades, a fired step a shade brighter, and every gauge in a row shares one top edge (the beats value's unit span had grown its line by 7 px). The three meters had vanished on laptop: the shared section height gives a value card 148 px against 157 of content, and the meter, the one child with no intrinsic height, was what the column shrank to nothing. Gauges no longer shrink and the card's inner gap is 8 at every breakpoint, so the content fits its row; cards whose gauge sits straight under the value get 16 between them. The detune band is drawn to the 100-cent ceiling the anchors reach, not the old 60.
+
 ## 2026-09-16 — Six tiers, one per EPA grade, on one axis (D-44)
 
 The ladder had five scales for six EPA grades, with the top two sharing Chromatic and Whole tone sitting second. Now each grade has its own scale and the scales are ordered on a single axis, loss of tonal centre: Pentatonic, Major, Dorian, Phrygian, Whole tone, Chromatic. Major is inserted at Moderate, where most New York days live; Whole tone moves to Very Unhealthy, since it is the smoothest scale by interval and the one with no centre. The Phase 0 timbre pairs are kept and moved up two grades: the axis is distance from an integer harmonicity ratio, and they were approved by ear. Hazardous is denser, not sparser: the melody's release lengthens to 1.2 s there, walked over a beat, so each eighth still sounds under the next two and the chromatic notes pile into a cluster the 100-cent σ smears. Detune σ is no longer a function of normalized PM2.5 but a slope in the hour's own PM2.5 AQI through fixed anchors, so the jitter grows all the way up while only the scale steps. Bass harmonicity climbs 1 + tier × 0.2 so it still tops out at 2. Six breath words, six tone words. The ladders draw six steps. ShareModal, dead since the scene became the page, is deleted. Amends D-02, D-17 and D-38; the listening pass is Shoro's.

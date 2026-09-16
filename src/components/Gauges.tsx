@@ -4,6 +4,7 @@ import { useEased } from "../scene/useEased";
 import { useTheme, themeColors, motion, aqiScaleColor } from "../utils/theme";
 import { MONITOR_REST } from "../content";
 import type { PulseHit } from "../scene/useListenSession";
+import { DETUNE_MAX_CENTS } from "../engine/scales";
 
 const TAU = motion.beatMs * 0.5; // the sky's easing constant: settled within about a beat
 
@@ -37,9 +38,9 @@ export function Meter({ value }: { value: number | null }) {
   );
 }
 
-// The detune band: symmetric about the centre, its half-width σ over the 60-cent maximum (σ = 40 · 1.5, §3.6), eased.
+// The detune band: symmetric about the centre, its half-width σ over the full semitone the anchors reach at AQI 400 (DETUNE_MAX_CENTS, §3.6, D-44), eased.
 export function DetuneBand({ cents }: { cents: number }) {
-  const w = useEased(Math.min(1, cents / 60), TAU, "detune band");
+  const w = useEased(Math.min(1, cents / DETUNE_MAX_CENTS), TAU, "detune band");
   return (
     <div className="scene-meter scene-detune" role="img" aria-label={`±${(cents / 100).toFixed(2)} semitones`}>
       <span className="scene-detune-centre" />

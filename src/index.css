@@ -1553,20 +1553,23 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
 .scene-monitor { --routing-h: 96px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; align-self: center; }
 .scene-monitor .scene-card-routing { grid-column: 1 / -1; }
-.scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; }
+.scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow: hidden; } /* 8 between label, value and gauge at every breakpoint (2026-09-16): 20·2 + 20 + 40 + 4 + 17 + 8·3 = 145 fits the 148 laptop row the shared section height gives a value card */
+.scene-card .scene-meter, .scene-card .scene-ladder, .scene-card .scene-lane { flex: 0 0 auto; }
+.scene-card .scene-ladder, .scene-card .scene-lane, .scene-card-aqi .scene-meter { margin-top: 8px; } /* the cards whose gauge sits straight under the value (scale, tone, beats and the two hero cards) get 16 between them (Shoro, 2026-09-16); the value cards keep 8 since their sub line follows */ /* a gauge never gives up its 4 px: the meter has no intrinsic height and was the child the column shrank to nothing when the row ran short */
 .scene-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-.scene-card-unit { font-size: var(--body-size, 15px); color: rgba(255, 255, 255, 0.78); font-style: normal; }
-/* Ladders, meters, the lane: 4 px tracks (the slider's hairline) and 8 px lane steps, from theme.ts MONITOR; the lit step and a hit fade over one beat. */
+.scene-card-unit { font-size: var(--body-size, 15px); line-height: 1; color: rgba(255, 255, 255, 0.78); font-style: normal; } /* line-height 1: at the value's line-height the smaller inline box sat on the baseline and grew the line by 7 px, dropping the lane below the ladders beside it */
+/* Ladders, meters, the lane: 4 px tracks (the slider's hairline), from theme.ts MONITOR; the lit step and a hit fade over one beat. */
 .scene-ladder { display: flex; gap: 4px; }
 .scene-ladder-step { flex: 1 1 0; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); transition: background-color 667ms ease; }
 .scene-meter { position: relative; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
 .scene-meter-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: rgba(255, 255, 255, 0.9); transition: opacity 667ms ease, background-color 667ms ease; } /* the AQI bar's colour glides between days like the ladder's lit step */
 .scene-detune-centre { position: absolute; left: calc(50% - 1px); top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.4); }
 .scene-lane { display: flex; gap: 4px; }
-.scene-lane-step { flex: 1 1 0; height: var(--lane-h, 8px); border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
-.scene-lane-step[data-hit="true"] { background: rgba(255, 255, 255, 0.32); }
+/* The lane is the ladder's own shape (Shoro, 2026-09-16): 4 px steps, the same unlit shade, the same gap, on the same line across the row; a step the bar fires is a shade brighter, and the hit flashes to white and settles back over the beat. */
+.scene-lane-step { flex: 1 1 0; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); }
+.scene-lane-step[data-hit="true"] { background: rgba(255, 255, 255, 0.4); }
 .scene-lane-step[data-lit="true"] { animation: scene-lane-hit 667ms ease-out forwards; }
-@keyframes scene-lane-hit { from { background: rgba(255, 255, 255, 0.95); } to { background: rgba(255, 255, 255, 0.32); } }
+@keyframes scene-lane-hit { from { background: rgba(255, 255, 255, 0.95); } to { background: rgba(255, 255, 255, 0.4); } }
 /* The routing card: labels in two columns, one SVG of lines between them, a line brightening on the beat its source moved. */
 .scene-routing { display: flex; align-items: stretch; gap: 12px; }
 .scene-routing-col { display: flex; flex-direction: column; justify-content: space-around; flex: 0 0 auto; min-width: 0; }
@@ -1641,7 +1644,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-ui { --row-h: 136px; }
   .scene-page-inner { --card-pad: 16px; }
   .scene-monitor { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--row-h); }
-  .scene-card { gap: 8px; min-height: 0; justify-content: space-between; } /* 16·2 + 24 + 32 + 4 + 17 + 8·3 = 133 in the 136 row */
+  .scene-card { min-height: 0; justify-content: space-between; } /* 16·2 + 24 + 32 + 4 + 17 + 8·3 = 133 in the 136 row */
   .scene-hero-pair { height: var(--row-h); }
   .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
   .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */
@@ -1673,8 +1676,8 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-hero-pair { flex: 0 0 calc((100% - 3 * 12px) / 4); height: auto; gap: 12px; } /* the first monitor row's height: a quarter of the band less the three 12 px gaps; the pair's own gap is the grid's 12 */
   /* The monitor fits the band on phones (2026-09-15): the grid takes the band's height in four equal rows, the cards shrink into them, and nothing scrolls. */
   .scene-page-monitor .scene-page-inner { height: 100%; flex: 1 1 auto; align-items: stretch; }
-  /* Phone cards read like weather widgets (Shoro, 2026-09-16): the panel's 16 px padding kept, and the elements inside a step smaller — the value at 20/24, the lane 6 — so the padding is room and not a squeeze. 16·2 + 20 + 8 + 24 + 8 + 4 + 8 + 17 = 121 in a 143 px row on an 844-tall phone. */
-  .scene-page-inner { --card-pad: 16px; --card-value-size: 20px; --card-value-line: 24px; --lane-h: 6px; }
+  /* Phone cards read like weather widgets (Shoro, 2026-09-16): the panel's 16 px padding kept, and the elements inside a step smaller — the value at 20/24 — so the padding is room and not a squeeze. 16·2 + 20 + 8 + 24 + 8 + 4 + 8 + 17 = 121 in a 143 px row on an 844-tall phone. */
+  .scene-page-inner { --card-pad: 16px; --card-value-size: 20px; --card-value-line: 24px; }
   .scene-monitor { height: 100%; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 12px; align-self: stretch; }
   .scene-card-head { flex: 0 0 auto; }
   .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; --graph-fill: 1; }

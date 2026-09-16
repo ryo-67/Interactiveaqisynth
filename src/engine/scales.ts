@@ -30,6 +30,7 @@ export function tierIndexOf(aqi: number): number {
 
 // MAPPING (PM2.5 → Brownian detune σ, §3.6, D-44): σ in cents is piecewise-linear in the HOUR'S OWN PM2.5 AQI (the raw hour, not the smoothed tier) through these anchors, held above the last. So the jitter grows all the way up the ladder while only the scale steps; at 400 σ is a full semitone. Metaphor: particulate jitter on the line. A null hour draws nothing.
 const DETUNE_ANCHORS: ReadonlyArray<readonly [number, number]> = [[0, 0], [100, 10], [150, 20], [200, 40], [300, 60], [400, 100]];
+export const DETUNE_MAX_CENTS = DETUNE_ANCHORS[DETUNE_ANCHORS.length - 1][1]; // the ceiling σ holds at: a full semitone; the monitor's detune band is drawn to it
 export function detuneSigma(aqi: number | null): number {
   if (aqi == null) return 0;
   const v = Math.max(0, aqi);

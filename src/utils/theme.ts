@@ -211,7 +211,7 @@ export const GRAPH = {
 export const MONITOR = {
   maxWidth: 1040, // the grid's width on laptop, centred in the band like the hero and graph row
   meter: 4, // meters, ladders and the detune band are 4 px tracks, the slider's hairline
-  lane: 8, // the 16-step lane's step height
+  lane: 4, // the 16-step lane's step height: the ladder's, so the two read as one control (2026-09-16)
   gap: 4, // between ladder steps and lane steps
   routingHeight: { laptop: 96, phone: 144 }, // the routing card's diagram: three sources against six destinations
   icon: 20, // the two page icons at the foot

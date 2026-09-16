@@ -1532,7 +1532,8 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-mid { --clip-pad: 32px; --page-gap: var(--ui-gap); flex: 1 1 auto; position: relative; overflow: hidden; min-height: 0; min-width: 0; margin: calc(-1 * var(--clip-pad)); padding: var(--clip-pad); }
 .scene-track { position: absolute; inset: var(--clip-pad); }
 /* Fade against travel (2026-09-16): a page leaving dissolves its glass (--glass-on to 0) over --fade-ms (three tenths of the travel) from its start, so it is gone before its panels can reach the frame's edge; a page arriving stays at nothing until the last --fade-ms, once it is wholly inside, then materializes. The transition is declared on the state the page is going TO: the base rule is the leaving state, the active rules the arriving one. */
-.scene-page { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; min-height: 0; --glass-on: 0; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), --glass-on var(--fade-ms, 200ms) ease-out; }
+/* Each page reaches --clip-pad beyond the section on every side (its padding), so the layer Chromium composites a translated page into holds that much sky around the cards: a backdrop blur at a card's edge samples real sky rather than the layer's clamped edge, which painted a dark band down cards flush with the page (Chrome only; Firefox samples the whole page, 2026-09-16). The band clips at the same distance, so nothing else changes. */
+.scene-page { position: absolute; inset: calc(-1 * var(--clip-pad)); padding: var(--clip-pad); box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; min-height: 0; --glass-on: 0; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), --glass-on var(--fade-ms, 200ms) ease-out; }
 .scene-page-inner { display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; flex: 0 1 auto; width: var(--section-w); max-width: 100%; }
 .scene-mid[data-page="scene"] .scene-page-scene, .scene-mid[data-page="monitor"] .scene-page-monitor { --glass-on: 1; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), --glass-on var(--fade-ms, 200ms) ease-in calc(var(--page-ms, 1000ms) - var(--fade-ms, 200ms)); }
 /* Vertical (above the phone width): the monitor waits a gap below; the scene leaves upward. */
@@ -1545,13 +1546,13 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-mid[data-axis="x"] .scene-track { transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1); }
 .scene-mid[data-axis="x"][data-page="monitor"] .scene-track { transform: translateX(calc(-100% - var(--page-gap))); }
 .scene-mid[data-axis="x"]:not([data-fade="true"]) .scene-page { --glass-on: 1; transition: none; }
-.scene-mid[data-axis="x"] .scene-page-monitor { left: calc(100% + var(--page-gap)); right: auto; width: 100%; }
+.scene-mid[data-axis="x"] .scene-page-monitor { left: calc(100% + var(--page-gap) - var(--clip-pad)); right: auto; width: calc(100% + 2 * var(--clip-pad)); }
 .scene-mid[data-axis="x"] .scene-track[data-dragging="true"] { transition: none; }
 /* A resize in progress: nothing on the pages animates, so a change of breakpoint lands its layout in one frame (ScenePage.tsx data-resizing). */
 .scene-mid[data-resizing="true"] .scene-track, .scene-mid[data-resizing="true"] .scene-page, .scene-mid[data-resizing="true"] .glass { transition: none !important; }
 /* Reduced motion: no travel, a cross-fade in place. */
 .scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; transition: --glass-on var(--page-ms, 1000ms) ease !important; }
-.scene-mid[data-fade="true"][data-axis="x"] .scene-page-monitor { left: 0; }
+.scene-mid[data-fade="true"][data-axis="x"] .scene-page-monitor { left: calc(-1 * var(--clip-pad)); }
 /* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
 .scene-monitor { --routing-h: 80px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; align-self: center; }
 .scene-monitor .scene-card-routing { grid-column: 1 / -1; }

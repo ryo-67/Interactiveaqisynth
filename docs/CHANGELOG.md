@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The pages' layers reach past the cards, for Chrome's backdrop blur
+
+Chrome, not Firefox, painted dark bands down the edges of cards that sit flush with a page's edge, and a dark bloom where two cards meet. Chromium composites each translated page into its own layer and clamps a backdrop blur at that layer's bounds, so a card at the edge samples clamped pixels for its outer 28 px; Firefox samples the whole page. Each page now reaches the frame's clip padding beyond the section on every side, so the layer holds real sky around the cards and the blur has something to sample. The frame clips at the same distance, and nothing in the layout moves. Not reproduced here: headless Chromium renders in software and the in-app browser has no WebGL sky; this is the mechanism the crops describe, to be confirmed in Shoro's Chrome.
+
 ## 2026-09-16 — Hazardous reads magenta, not a second pink
 
 The sixth category's crimson sat between Unhealthy's red and Very Unhealthy's violet, and once both ends were lifted toward the light end for contrast the fourth and sixth categories were two pinks. Hazardous is now a magenta, a hue 50° past red, distinct from the red below it and the violet beside it at every lift, at 0.30 luminance dark and 0.51 light so the ramp still clears 3:1 on both benchmark panels. EPA's own maroon is too dark for the frost.

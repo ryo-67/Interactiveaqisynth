@@ -1134,6 +1134,7 @@
 
 html {
   font-size: var(--font-size);
+  overscroll-behavior: none; /* the page owns its overscroll (Shoro, 2026-09-16): nothing here scrolls, so a trackpad's sideways swipe, which turns the page below laptop (ScenePage.tsx onWheel), would otherwise fall through to the browser's swipe-to-go-back on a Mac. Chromium and Firefox honour this on the root; Safari from 16 */
 }
 
 @property --tw-translate-x {
@@ -1383,11 +1384,10 @@ html {
 }
 
 /* ——— Glass material (STRATEGY §5.3, D-25, D-35): a tinted frost keyed to the sky, parameters from theme.ts GLASS via custom properties set at the scene root. Two materials: glass (controls) and frosted (content). Fallbacks per §5.4 below are part of the material. ——— */
-/* --glass-on (2026-09-16): how much of the material there is, 1 the material and 0 nothing — blur, fill, lift, edge, shadow, dither and the contents all scale by it. Registered so it animates; inherited so a page can dissolve every panel in it by animating one value on itself. No ancestor ever carries an opacity for a fade: an ancestor with opacity below 1 is flattened into a layer and the backdrop-filter inside it has no sky to sample, which showed as the panels flashing grey during the page slide. */
+/* --glass-on (2026-09-16): how much of the material there is, 1 the material and 0 nothing — fill, lift, edge, shadow, dither and the contents all scale by it here, and the sky reads it for the blur it draws behind the panel (frost.ts). Registered so it animates; inherited so a page can dissolve every panel in it by animating one value on itself. No ancestor carries an opacity for a fade: the sky must see the panel's own value, and an ancestor's opacity would hide the dissolve from it. */
 @property --glass-on { syntax: "<number>"; inherits: true; initial-value: 1; }
+/* No backdrop-filter on a glass (D-50, 2026-09-16): the blur behind every panel is drawn by the sky itself, inside the panel's rectangle (scene/FrostEffect.ts, registered by Glass.tsx), and scales with --glass-on there. The browser's filter is computed in the compositor's tiles, and both Chromium and Firefox painted bands across it that no rule here could reach. The calendar popover, which floats over cards, keeps the filter below. */
 .glass {
-  backdrop-filter: blur(calc(var(--glass-blur, 18px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 18px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
   background-color: rgba(var(--glass-fill, 8, 14, 40), calc(var(--glass-fill-alpha, 0.62) * var(--glass-on, 1)));
   background-image: linear-gradient(rgba(255, 255, 255, calc(var(--glass-lift, 0) * var(--glass-on, 1))), rgba(255, 255, 255, calc(var(--glass-lift, 0) * var(--glass-on, 1)))); /* the night's white lift over the tinted fill (D-35) */
   position: relative; /* for the dither layer below */
@@ -1398,40 +1398,33 @@ html {
   border-radius: 999px;
   box-sizing: border-box;
   max-width: 100%;
-  will-change: transform; /* each glass on its own render surface (2026-09-16): Chromium otherwise re-rasterises a backdrop blur only in the tiles a moving layer (the cursor) damaged, and the tile seams showed as bands across the frost on cursor moves — Chrome only, at random. Not reproduced in headless Chrome with GPU compositing; the mechanism the reports describe. */
 }
 /* Dither (2026-09-15, theme.ts GLASS.ditherAlpha / skyDither): the blur quantizes the sky behind a panel into 8-bit steps that read as bands, and the sky's own gradient layers band too. A fine white noise — a 160 px feTurbulence tile, white with the noise as its alpha, so it never tints — at a few percent breaks the steps: over every glass fill as a pseudo-element beneath the content, and over the sky's layers as one element. */
 .glass::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: calc(var(--glass-dither, 0.04) * var(--glass-on, 1)); }
 .glass > * { position: relative; opacity: var(--glass-on, 1); } /* the contents go with the material */
-/* The sky as one composited group (2026-09-16, for Chrome's raster bands): the WebGL canvas, the night and golden overlays, the smoke's two blend layers and the dither composite into one surface before the glass above samples it, so a backdrop blur never reads a mix of freshly and staly rastered tiles from separate layers. */
-.scene-sky { isolation: isolate; will-change: transform; }
-.scene-sky > * { will-change: opacity; } /* each overlay on its own layer: an opacity change is then compositor-only, never a re-raster */
+.scene-sky > * { will-change: opacity; } /* each overlay on its own layer: an opacity change is then compositor-only, never a re-raster. The sky box was also an isolated, promoted group and every glass its own render surface, against Chromium's tile bands under a backdrop blur; with the blur drawn by the sky (D-50) there is no backdrop to protect, and both are gone. */
 .scene-sky { touch-action: none; } /* the page drag (D-45) reads the sky's touches itself; nothing scrolls, so the browser has no pan to take */
 .scene-sky-dither { position: absolute; inset: 0; pointer-events: none; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: var(--sky-dither, 0.05); mix-blend-mode: overlay; }
 .glass.frosted {
-  backdrop-filter: blur(calc(var(--frosted-blur, 28px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
-  -webkit-backdrop-filter: blur(calc(var(--frosted-blur, 28px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
   background-color: rgba(var(--glass-fill, 8, 14, 40), calc(var(--frosted-fill-alpha, 0.7) * var(--glass-on, 1)));
   border-radius: 20px;
+}
+/* The calendar popover hangs over the top bar and the cards, which the sky's frost cannot blur (it sees only the sky), so this one glass keeps the browser's filter (Shoro, 2026-09-16). */
+.scene-popover {
+  backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
+  -webkit-backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
 }
 
 /* prefers-reduced-transparency: the material goes frosted-opaque enough to read without the scene */
 @media (prefers-reduced-transparency: reduce) {
   .glass, .glass.frosted { background-color: rgba(30, 30, 40, var(--glass-fill-alpha-opaque, 0.9)); }
-  .glass {
-    backdrop-filter: blur(var(--glass-blur-opaque, 36px));
-    -webkit-backdrop-filter: blur(var(--glass-blur-opaque, 36px));
-  }
 }
 
 /* prefers-contrast: near-solid panel with a contrasting border */
 @media (prefers-contrast: more) {
   .glass, .glass.frosted { background-color: rgba(0, 0, 0, 0.94); border: 1px solid rgba(255, 255, 255, 0.9); }
-  .glass {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    box-shadow: none;
-  }
+  .glass { box-shadow: none; }
+  .scene-popover { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 
 /* prefers-reduced-motion: no materialize/settle transitions on the material */
@@ -1452,6 +1445,7 @@ html {
   --section-w: min(1040px, 100vw - 2 * var(--ui-pad) - 2 * var(--pill-room));
   --display-size: 80px; --heading-size: 34px; --heading-line: 40px; --body-size: 15px; --body-line: 24px; /* display 96 → 64 (2026-09-15): the number shares a row with the word now */
   --ui-pad: 32px; --ui-gap: 20px;
+  --grid-gap: var(--ui-gap); /* the monitor grid's gap, which the hero pair shares so it is exactly one row tall; phones step it to 12 and 8 */
   --chip-inset: 4px; /* the inset around chips inside a pill AND the gap between them — one value, on the grid, so chips and pill edges align */
   position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--ui-gap); padding: var(--ui-pad); pointer-events: none; overflow: hidden;
 }
@@ -1535,19 +1529,19 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 
 /* The hero keeps its content height above the graph; the graph has a floor at its token plot height and takes the section's width. */
 /* ——— The two pages (D-43, reworked 2026-09-15): the band is a frame that never changes size — it takes the height the bars leave — and both pages live in it, absolutely placed. Above the phone width they stack vertically, the monitor a gap below the scene; on phones they sit side by side. A switch translates both pages along that axis over --page-ms, ease-in-out (the graph's easing), the outgoing page fading as it leaves and the incoming one as it arrives. The frame is clipped, so it is padded outward by --clip-pad (the panels' 32 px shadow) with the same negative margin, and the pages are inset by it: layout unchanged, shadows never cut. Under reduced motion the pages do not move; they cross-fade in place. ——— */
-.scene-mid { --clip-pad: 32px; --clip-pad-y: var(--ui-gap); --page-gap: var(--ui-gap); flex: 1 1 auto; position: relative; overflow: hidden; min-height: 0; min-width: 0; margin: calc(-1 * var(--clip-pad-y)) calc(-1 * var(--clip-pad)); padding: var(--clip-pad-y) var(--clip-pad); }
-/* The frame's reach above and below is the band's gap, not the clip pad (Shoro, 2026-09-16): a page leaving or arriving is clipped at the bars' edge, so no intermediate state of the switch paints over the top bar or the bottom bar's pills (the source line now sits centred right under the section). Sideways the reach stays the clip pad, where there is nothing to cover and the shadows want the room. The pages themselves still extend the full clip pad on every side (below), so Chromium's compositing room is unchanged. */
+.scene-mid { --clip-pad: 32px; --clip-pad-y: 40px; --page-gap: var(--ui-gap); --drift: 12px; flex: 1 1 auto; position: relative; overflow: hidden; min-height: 0; min-width: 0; margin: calc(-1 * var(--clip-pad-y)) calc(-1 * var(--clip-pad)); padding: var(--clip-pad-y) var(--clip-pad); }
+/* The frame's reach above and below is the shadow's, 40 px (D-48, Shoro, 2026-09-16): the panel shadow is 0 8px 32px, so it runs 40 px below a panel and 24 above, and a panel flush with the band's edge keeps all of it. The earlier reach of one gap (20) cut that shadow in a hard line on every short viewport, on a 13" laptop above all, where the graph sits on the band's edge. The bars are one gap from the band, so the frame now reaches under their pills; what keeps a page off a pill is the drift below, not the clip. Sideways the reach stays the clip pad, the shadow's 32. The pages themselves still extend the full clip pad on every side (below), so Chromium's compositing room is unchanged. */
 .scene-track { position: absolute; inset: var(--clip-pad-y) var(--clip-pad); }
-/* Fade against travel (2026-09-16): a page leaving dissolves its glass (--glass-on to 0) over --fade-ms (three tenths of the travel) from its start, so it is gone before its panels can reach the frame's edge; a page arriving stays at nothing until the last --fade-ms, once it is wholly inside, then materializes. The transition is declared on the state the page is going TO: the base rule is the leaving state, the active rules the arriving one. */
-/* Each page reaches --clip-pad beyond the section on every side (its padding), so the layer Chromium composites a translated page into holds that much sky around the cards: a backdrop blur at a card's edge samples real sky rather than the layer's clamped edge, which painted a dark band down cards flush with the page (Chrome only; Firefox samples the whole page, 2026-09-16). The band clips at the same distance, so nothing else changes. */
-.scene-page { position: absolute; inset: calc(-1 * var(--clip-pad)); padding: var(--clip-pad); box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; min-height: 0; --glass-on: 0; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), --glass-on var(--fade-ms, 200ms) ease-out; }
+/* A switch is two motions on each page (D-48, Shoro, 2026-09-16: the visible drift bound to the gap). The TRAVEL, a whole band and a gap, is the `translate` property, and it runs only while the page is invisible, in the window between the two fades. The DRIFT, `transform`, is what the eye sees: the leaving page moves one gap toward the bar it leaves by while its glass dissolves (--glass-on to 0) over --fade-ms, three tenths of the switch, and the arriving page comes in from one gap beyond the other bar over the last --fade-ms while its glass materializes. A panel flush with the band's edge therefore never crosses a pill: at the furthest it touches the pill's edge, with no glass left. Before this the visible drift was the first and last 80 to 160 px of the full travel, so a page still carried a third of its glass past the bar's edge, which the frame's hard clip at the gap was hiding. The transition is declared on the state the page is going TO: the base rule is the leaving state, the active rules the arriving one. */
+/* Each page reaches --clip-pad beyond the section on every side (its padding), so the layer Chromium composites a translated page into holds that much sky around the cards: a backdrop blur at a card's edge samples real sky rather than the layer's clamped edge, which painted a dark band down cards flush with the page (Chrome only; Firefox samples the whole page, 2026-09-16). */
+.scene-page { position: absolute; inset: calc(-1 * var(--clip-pad)); padding: var(--clip-pad); box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; min-height: 0; --glass-on: 0; transition: transform var(--fade-ms, 300ms) ease-out, translate calc(var(--page-ms, 1000ms) - 2 * var(--fade-ms, 300ms)) linear var(--fade-ms, 300ms), --glass-on var(--fade-ms, 300ms) ease-out; }
 .scene-page-inner { display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; flex: 0 1 auto; width: var(--section-w); max-width: 100%; }
-.scene-mid[data-page="scene"] .scene-page-scene, .scene-mid[data-page="monitor"] .scene-page-monitor { --glass-on: 1; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), --glass-on var(--fade-ms, 200ms) ease-in calc(var(--page-ms, 1000ms) - var(--fade-ms, 200ms)); }
-/* Vertical (above the phone width): the monitor waits a gap below; the scene leaves upward. */
-.scene-mid[data-axis="y"] .scene-page-scene { transform: translateY(0); }
-.scene-mid[data-axis="y"] .scene-page-monitor { transform: translateY(calc(100% + var(--page-gap))); }
-.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-scene { transform: translateY(calc(-100% - var(--page-gap))); }
-.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-monitor { transform: translateY(0); }
+.scene-mid[data-page="scene"] .scene-page-scene, .scene-mid[data-page="monitor"] .scene-page-monitor { --glass-on: 1; transition: transform var(--fade-ms, 300ms) ease-out calc(var(--page-ms, 1000ms) - var(--fade-ms, 300ms)), translate calc(var(--page-ms, 1000ms) - 2 * var(--fade-ms, 300ms)) linear var(--fade-ms, 300ms), --glass-on var(--fade-ms, 300ms) ease-in calc(var(--page-ms, 1000ms) - var(--fade-ms, 300ms)); }
+/* Vertical (laptop): the monitor rests a band and a gap below (its travel) and one drift further; the scene leaves upward the same way. */
+.scene-mid[data-axis="y"] .scene-page-scene { translate: 0 0; transform: translateY(0); }
+.scene-mid[data-axis="y"] .scene-page-monitor { translate: 0 calc(100% + var(--page-gap)); transform: translateY(var(--drift)); }
+.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-scene { translate: 0 calc(-100% - var(--page-gap)); transform: translateY(calc(-1 * var(--drift))); }
+.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-monitor { translate: 0 0; transform: translateY(0); }
 /* Horizontal (below laptop): the pages sit side by side with the gap between them, and the track itself is what a finger drags (ScenePage.tsx), so the track carries the switch. No fade here (Shoro, 2026-09-16): both pages stay fully opaque and simply slide. */
 .scene-mid[data-axis="x"] { --page-gap: calc(var(--clip-pad) + var(--ui-gap)); } /* the frame is clipped --clip-pad outside the section (for shadows), so the pages sit that much further apart: the neighbour rests beyond the clip and never shows a sliver */
 .scene-mid[data-axis="x"] .scene-track { transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1); }
@@ -1558,14 +1552,15 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* A resize in progress: nothing on the pages animates, so a change of breakpoint lands its layout in one frame (ScenePage.tsx data-resizing). */
 .scene-mid[data-resizing="true"] .scene-track, .scene-mid[data-resizing="true"] .scene-page, .scene-mid[data-resizing="true"] .glass { transition: none !important; }
 /* Reduced motion: no travel, a cross-fade in place. */
-.scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; transition: --glass-on var(--page-ms, 1000ms) ease !important; }
+.scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; translate: none !important; transition: --glass-on var(--page-ms, 1000ms) ease !important; }
 .scene-mid[data-fade="true"][data-axis="x"] .scene-page-monitor { left: calc(-1 * var(--clip-pad)); }
 /* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
-.scene-monitor { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; align-self: center; }
+.scene-monitor { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--grid-gap); width: 100%; align-self: center; }
 .scene-monitor .scene-card-routing { grid-column: 1 / -1; }
 .scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; } /* One spacing system for every card (Shoro, 2026-09-16): 12 from title to value and between a gauge and its unit line; the gauge block is anchored at the bottom padding, so a ladder card's bar and a value card's unit line both sit --card-pad above the edge, and a row's spare height goes between the value and the gauge. */
 .scene-card .scene-meter, .scene-card .scene-ladder, .scene-card .scene-lane { flex: 0 0 auto; margin-top: auto; } /* a gauge never gives up its 4 px (the meter has no intrinsic height and was the child the column shrank to nothing when the row ran short), and it sits at the bottom of whatever room the row gives */
 .scene-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.scene-card-value { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; } /* the unit at the right end of the value line, on its baseline (Shoro, 2026-09-16); the value's line box sets the row's height */
 .scene-card-unit { font-size: var(--body-size, 15px); line-height: 1; color: rgba(255, 255, 255, 0.78); font-style: normal; } /* line-height 1: at the value's line-height the smaller inline box sat on the baseline and grew the line by 7 px, dropping the lane below the ladders beside it */
 /* Ladders, meters, the lane: 4 px tracks (the slider's hairline), from theme.ts MONITOR; the lit step and a hit fade over one beat. */
 .scene-ladder { display: flex; gap: 4px; }
@@ -1661,17 +1656,26 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   }
   .scene-top .glass { flex: 0 1 auto; width: fit-content; max-width: 100%; margin: 0; }
   .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; justify-content: center; }
-  .scene-mid { --clip-pad: 24px; pointer-events: auto; touch-action: pan-y; } /* the bars are 16 apart here; the clip's reach stays under the gap plus the bar's own inset. The pages sit side by side below laptop and the swipe is read on the band itself, between the panels too */
+  .scene-mid { --clip-pad: 24px; } /* the pages sit side by side below laptop, so the frame's vertical reach guards nothing and stays the shadow's 40 (base rule); sideways 24, under the page padding */
+  /* The swipe is read on the band itself, between the panels too: the TRACK takes the pointer, not the frame (Shoro, 2026-09-16). The frame's box reaches 40 px past the band for the shadows and is painted after the bars, so with the pointer on it the bars' pills answered only along their far edge and the preset chips not at all on a phone; the track is inset by exactly that reach, so it is the band and nothing more, and the frame's handlers still hear it. */
+  .scene-mid .scene-track { pointer-events: auto; touch-action: pan-y; }
+  .scene-mid .scene-page { pointer-events: none; } /* a page's box reaches --clip-pad past the track on every side (its compositing room), into the bars' pills below laptop; the section inside it is the pointer surface, the ring around it is not, and a point on the band outside the section falls through to the track */
+  .scene-mid .scene-page-inner { pointer-events: auto; }
   .scene-ui { --pill-room: 0px; } /* the page pill is in the transport row below laptop; the section takes the band */
-  /* Below laptop the hero is exactly as tall as the monitor's first row (Shoro, 2026-09-16): on tablets both take --row-h; on phones both take a quarter of the band (the grid's 1fr rows, below). */
-  .scene-ui { --row-h: 144px; } /* holds a value card at the 12 px gaps: 16·2 + 20 + 12 + 32 + 12 + 4 + 12 + 17 = 141 */
+  /* Below laptop the hero is exactly as tall as the monitor's first row (Shoro, 2026-09-16): a quarter of the section, whatever the band gives (the grid's 1fr rows, below). */
+  .scene-ui { --row-h: 144px; } /* the row a value card wants at the 12 px gaps: 16·2 + 20 + 12 + 32 + 12 + 4 + 12 + 17 = 141; four of them and three gaps are the section's ceiling below laptop (D-49) */
   /* Below laptop the rows are tall and the cards whose gauge follows the value directly (scale, tone, beats, the two hero cards) space their three elements evenly, the value centred between the title and the gauge (Shoro, 2026-09-16); the value cards keep the title-value-gauge block. */
   .scene-card-scale, .scene-card-tone, .scene-card-beats, .scene-card-aqi, .scene-card-breath { justify-content: space-between; }
   .scene-card-scale .scene-ladder, .scene-card-tone .scene-ladder, .scene-card-beats .scene-lane, .scene-card-aqi .scene-meter, .scene-card-breath .scene-ladder { margin-top: 0; }
   .scene-page-inner { --card-pad: 16px; }
-  .scene-monitor { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--row-h); }
+  /* The section fills the band below laptop (D-49, Shoro, 2026-09-16: the grid never clips, at any breakpoint). Both pages take the band's height up to four rows of --row-h and their gaps, centred in a taller band like the laptop's 672; the monitor's four rows split it equally, so in a short band (a tablet in landscape) the cards shrink into their rows instead of the grid running past the bars, which fixed rows of --row-h had done; the hero pair is exactly the first row and the graph grows into the rest. Phones take the whole band (below). */
+  .scene-page-inner { height: min(100%, calc(4 * var(--row-h) + 3 * var(--grid-gap))); flex: 0 1 auto; }
+  .scene-page-monitor .scene-page-inner { align-items: stretch; }
+  .scene-monitor { height: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); align-self: stretch; }
   .scene-card { min-height: 0; }
-  .scene-hero-pair { height: var(--row-h); }
+  .scene-card-head { flex: 0 0 auto; }
+  .scene-hero-pair { flex: 0 0 calc((100% - 3 * var(--grid-gap)) / 4); height: auto; gap: var(--grid-gap); }
+  .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; --graph-fill: 1; } /* the graph grows into what the hero leaves (more specific than the panel rule below, which keeps the hero at its content) */
   .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
   .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */
   /* Below laptop the bottom bar is three rows: the transport (with the page pill at its right end on phones), the source line across, then the credit. */
@@ -1699,15 +1703,11 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   }
   .scene-panel.scene-graph { --graph-pad: 12px; --graph-pad-x: 8px; } /* tighter around the graph on phones (2026-09-15): the plot takes the room */
   /* On phones the graph fills the height the other bands leave (2026-09-15): the middle band takes the remaining height instead of centring in it, the hero keeps its content height, and the graph panel is the flexible child, its plot growing into it (--graph-fill) with --graph-tab-h as the floor. No feedback loop: the panel's height comes from the column, not from its content. */
-  .scene-page-scene .scene-page-inner { justify-content: flex-start; height: 100%; flex: 1 1 auto; }
-  .scene-hero-pair { flex: 0 0 calc((100% - 3 * 12px) / 4); height: auto; gap: 12px; } /* the first monitor row's height: a quarter of the band less the three 12 px gaps; the pair's own gap is the grid's 12 */
-  /* The monitor fits the band on phones (2026-09-15): the grid takes the band's height in four equal rows, the cards shrink into them, and nothing scrolls. */
-  .scene-page-monitor .scene-page-inner { height: 100%; flex: 1 1 auto; align-items: stretch; }
+  .scene-ui { --grid-gap: 12px; } /* the monitor grid's gap on phones, which the hero pair shares */
+  .scene-page-inner { height: 100%; flex: 1 1 auto; } /* the whole band, no ceiling: the graph grows into everything the hero leaves */
+  .scene-page-scene .scene-page-inner { justify-content: flex-start; }
   /* Phone cards read like weather widgets (Shoro, 2026-09-16): the panel's 16 px padding kept, and the elements inside a step smaller — the value at 20/24 — so the padding is room and not a squeeze. 16·2 + 20 + 8 + 24 + 8 + 4 + 8 + 17 = 121 in a 143 px row on an 844-tall phone. */
   .scene-page-inner { --card-pad: 16px; --card-value-size: 20px; --card-value-line: 24px; }
-  .scene-monitor { height: 100%; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 12px; align-self: stretch; }
-  .scene-card-head { flex: 0 0 auto; }
-  .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; --graph-fill: 1; }
   .scene-graph-unit { display: none; } /* phone tabs are the pollutant alone: AQI, PM2.5, O₃, NO₂ (2026-09-15); the qualifier "Hourly" goes with the units */
   .scene-panel.scene-graph [role="tablist"] > button { flex: 1 1 0 !important; min-width: 0; } /* four equal tabs across the band: with the units gone the labels are all short, so none needs more room than another (2026-09-15); important over the chip's inline flex: 0 0 auto */
   .scene-top .glass { width: fit-content; max-width: 100%; margin: 0; }
@@ -1719,15 +1719,12 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */
 @media (max-width: 767px) and (max-height: 720px) {
-  .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; }
-  .scene-monitor { gap: 8px; }
-  .scene-hero-pair { flex-basis: calc((100% - 3 * 8px) / 4); gap: 8px; } /* the grid's gaps are 8 here */
+  .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; --grid-gap: 8px; } /* the grid's gaps are 8 here, and the hero pair's with them */
   .scene-card { --card-pad: 12px; gap: 4px; } /* 12·2 + 20 + 24 + 4 + 17 + 4·3 = 101 in a 102 px row on a 667-tall phone; the value keeps its 20/24 */
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */
 }
 /* The shortest phones (640 tall): the graph tightens to 72, which is the floor at which the tabs and the axis still read; the pills stay 32 so every size stays on the grid. */
 @media (max-width: 767px) and (max-height: 660px) {
   .scene-ui { --graph-tab-h: 88px; --ui-gap: 8px; } /* 72 made the graph panel 4 px shorter than the hero; 88 keeps it the taller one and still fits 640 */
-  .scene-hero-pair { flex-basis: calc((100% - 3 * 8px) / 4); } /* the grid's gaps are 8 here */
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; padding-bottom: 4px; }
 }

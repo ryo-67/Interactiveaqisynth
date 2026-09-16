@@ -17,16 +17,16 @@ interface Props {
 }
 
 
-// The value line: the editorial serif at the heading size, like the mood word.
-function Value({ children }: { children: React.ReactNode }) {
+// The value line: the editorial serif at the heading size, like the mood word. A card whose reading has a unit or a measurement (the hour's ppb, µg/m³, the semitones) carries it at the right end of this line, on the value's baseline, in the data face (Shoro, 2026-09-16): a fourth line under the gauge was the first thing a short row cut, on 13" laptops and tablets in landscape, and stepping the spacing there read badly. Three elements per card, at every height.
+function Value({ children, unit }: { children: React.ReactNode; unit?: string }) {
   const c = themeColors(useTheme());
   // The size is the mood word's, unless the breakpoint sets the card's own (phones: index.css --card-value-size, a step smaller so the card keeps its padding).
-  return <div style={{ fontFamily: families.serifItalic, fontStyle: "italic", fontSize: `var(--card-value-size, var(--heading-size, ${typeScale.heading.size}))`, lineHeight: `var(--card-value-line, var(--heading-line, 40px))`, color: c.textPrimary, whiteSpace: "nowrap" }}>{children}</div>;
-}
-// The small line beneath a graphic: the data face, caption size.
-function Sub({ children }: { children: React.ReactNode }) {
-  const c = themeColors(useTheme());
-  return <div style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: typeScale.caption.line, color: c.textSecondary, whiteSpace: "nowrap" }}>{children}</div>; // spaced by the card's own gap (2026-09-16: an extra margin pushed the line past the row the section height gives it)
+  return (
+    <div className="scene-card-value" style={{ fontFamily: families.serifItalic, fontStyle: "italic", fontSize: `var(--card-value-size, var(--heading-size, ${typeScale.heading.size}))`, lineHeight: `var(--card-value-line, var(--heading-line, 40px))`, color: c.textPrimary, whiteSpace: "nowrap" }}>
+      <span>{children}</span>
+      {unit && <span style={{ fontFamily: families.data, fontStyle: "normal", fontSize: typeScale.caption.size, lineHeight: 1, color: c.textSecondary }}>{unit}</span>}
+    </div>
+  );
 }
 
 export function Monitor({ m, pulse, lifts, setRef, routing }: Props) {
@@ -55,21 +55,18 @@ export function Monitor({ m, pulse, lifts, setRef, routing }: Props) {
       </Card>
       {/* BRIGHTNESS: normalized O3 is the lowpass ceiling's input (§3.6, 2500 → 12000 Hz). Read as 1.0 to 10.0 over that input, the meter beneath it; the Hz stays in the engine. */}
       <Card label={MONITOR_LABELS.brightness} sources={["o3"]} className="scene-card-brightness">
-        <Value>{m.o3n == null ? MONITOR_REST : (1 + 9 * Math.max(0, Math.min(1, m.o3n))).toFixed(1)}</Value>
+        <Value unit={m.o3 == null ? MONITOR_REST : `${Math.round(m.o3)} ${MONITOR_UNITS.o3}`}>{m.o3n == null ? MONITOR_REST : (1 + 9 * Math.max(0, Math.min(1, m.o3n))).toFixed(1)}</Value>
         <Meter value={m.o3n} />
-        <Sub>{m.o3 == null ? MONITOR_REST : `${Math.round(m.o3)} ${MONITOR_UNITS.o3}`}</Sub>
       </Card>
       {/* DETUNE: σ of the melody's per-note detune (§3.6), in semitones. */}
       <Card label={MONITOR_LABELS.detune} sources={["pm25"]} className="scene-card-detune">
-        <Value>±{(m.detuneCents / 100).toFixed(2)}</Value>
+        <Value unit={MONITOR_UNITS.detune}>±{(m.detuneCents / 100).toFixed(2)}</Value>
         <DetuneBand cents={m.detuneCents} />
-        <Sub>{MONITOR_UNITS.detune}</Sub>
       </Card>
       {/* REVERB: normalized PM2.5 is the wet's input (§3.6, wet = 0.15 + 0.6·pm25n). Read as 0 to 100% of that input, the meter beneath it. */}
       <Card label={MONITOR_LABELS.reverb} sources={["pm25"]} className="scene-card-reverb">
-        <Value>{m.pm25n == null ? MONITOR_REST : `${Math.round(100 * Math.max(0, Math.min(1, m.pm25n)))}%`}</Value>
+        <Value unit={m.pm25 == null ? MONITOR_REST : `${m.pm25.toFixed(1)} ${MONITOR_UNITS.pm25}`}>{m.pm25n == null ? MONITOR_REST : `${Math.round(100 * Math.max(0, Math.min(1, m.pm25n)))}%`}</Value>
         <Meter value={m.pm25n} />
-        <Sub>{m.pm25 == null ? MONITOR_REST : `${m.pm25.toFixed(1)} ${MONITOR_UNITS.pm25}`}</Sub>
       </Card>
     </div>
   );

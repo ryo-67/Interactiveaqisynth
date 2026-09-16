@@ -34,12 +34,12 @@ function rgba(s: string): [number, number, number, number] {
 
 
 // A frame (D-37): everything the track draws for one state (a day on a tab), with the line in NORMALIZED height — a fraction of the tab's own scale — so two frames on different scales can be blended point by point. Presence is an alpha, so a reading that exists in one frame and not the other fades rather than pops.
+// No colours in a frame (2026-09-16): on the AQI tab the line's colour is a function of its HEIGHT alone, read off the same vertical ramp gradient the legend is drawn with, so a point on the line and the legend beside it at that height are the same pixel colour by construction, mid-morph included. Stored per-hour colours, blended between frames in sRGB, had a line halfway between a green day and a purple one showing a grey at a height where the legend showed red (Shoro: the line and the legend disagreed in some views); and a segment's two-stop gradient between hours, on a steep rise, skipped the hues the legend passes through between them.
 interface Frame {
   key: string; // the state: tab and day
   dayKey: string;
   norm: Array<number | null>;
   alpha: number[];
-  colours: Array<[number, number, number] | null>; // the line's colour at each reading
   max: number;
   gridValues: number[];
   isAqi: number; // 1 on the AQI tab: the bar, the wider line and the deeper fill fade with it
@@ -48,15 +48,21 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 function lerpFrame(a: Frame, b: Frame, t: number): Frame {
   const n = Math.max(a.norm.length, b.norm.length);
-  const norm: Array<number | null> = [], alpha: number[] = [], colours: Array<[number, number, number] | null> = [];
+  const norm: Array<number | null> = [], alpha: number[] = [];
   for (let i = 0; i < n; i++) {
     const na = a.norm[i] ?? null, nb = b.norm[i] ?? null;
     norm.push(na == null && nb == null ? null : lerp(na ?? nb!, nb ?? na!, t));
     alpha.push(lerp(a.alpha[i] ?? 0, b.alpha[i] ?? 0, t));
-    const ca = a.colours[i] ?? b.colours[i] ?? null, cb = b.colours[i] ?? a.colours[i] ?? null;
-    colours.push(ca && cb ? [lerp(ca[0], cb[0], t), lerp(ca[1], cb[1], t), lerp(ca[2], cb[2], t)] : null);
   }
-  return { ...b, norm, alpha, colours, max: lerp(a.max, b.max, t), isAqi: lerp(a.isAqi, b.isAqi, t) };
+  return { ...b, norm, alpha, max: lerp(a.max, b.max, t), isAqi: lerp(a.isAqi, b.isAqi, t) };
+}
+// The line's colour at a normalized height, on a scale whose top is `max`: the ramp at that AQI (at the panel's lift), or the secondary grey off the AQI tab, and a blend of the two while a tab morph is in flight (`isAqi` between 0 and 1). The fill's columns and the legend's stops are read with the same rule.
+const hexRgb = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+function lineColour(f: number, max: number, lift: number, isAqi: number, grey: [number, number, number], a = 1): string {
+  if (isAqi <= 0.005) return `rgba(${grey[0]},${grey[1]},${grey[2]},${a.toFixed(3)})`;
+  const r = hexRgb(aqiScaleColor(f * max, lift));
+  const m = isAqi >= 0.995 ? r : ([0, 1, 2].map((k) => Math.round(lerp(grey[k], r[k], isAqi))) as [number, number, number]);
+  return `rgba(${m[0]},${m[1]},${m[2]},${a.toFixed(3)})`;
 }
 
 export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSeek, lift = 0 }: Props) {
@@ -100,18 +106,18 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     const floor = tab === "pm25" ? 20 : tab === "o3" ? 40 : 30;
     // Scale. AQI is FIXED at the full 0–500 (GRAPH.aqiScaleMax), so the line never rescales between days, nothing clips, and the bar beside it is always the same complete ruler. The other channels have no standard ruler and take the day's own max, floored so a quiet day is not stretched to look dramatic; that changes only when the day changes.
     const max = tab === "aqi" ? GRAPH.aqiScaleMax : Math.max(floor, ...present) * 1.08;
-    const secondary = rgba(c.textSecondary);
     return {
       key: `${tab}|${dayId}`,
       dayKey: `${dayId}`,
       norm: vals.map((v) => (v == null ? null : Math.min(v, max) / max)),
       alpha: vals.map((v) => (v == null ? 0 : 1)),
-      colours: vals.map((v) => (v == null ? null : tab === "aqi" ? (rgba(aqiScaleColor(v, lift)).slice(0, 3) as [number, number, number]) : [secondary[0], secondary[1], secondary[2]])),
       max,
       gridValues: tab === "aqi" ? AQI_CATEGORIES.map((k) => k.max).filter((v) => v <= max) : [Math.round(max / 1.08), Math.round(max / 2.16)],
       isAqi: tab === "aqi" ? 1 : 0,
     };
-  }, [series, tab, lift, c, dayId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [series, tab, dayId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The lift and the theme are read at draw time (below), not baked into the frame: they colour the ramp, they do not move the line.
+  const liftRef = useRef(lift); liftRef.current = lift;
   const transitionRef = useRef<{ from: Frame | null; to: Frame; start: number; ms: number }>({ from: null, to: target, start: 0, ms: 0 });
   const shownRef = useRef<Frame | null>(null);
   if (transitionRef.current.to.key !== target.key) {
@@ -216,11 +222,16 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       const fromFrame = tr.from, toFrame = tr.to;
       let y0 = GRAPH.labelGutter;
       {
-        const { norm, alpha, max, colours } = cur;
+        const { norm, alpha, max } = cur;
         const curve = monotoneCurve(norm);
         const inner = tabH - lh - 2;
         const yOf = (f: number) => y0 + lh + (1 - Math.min(f, 1)) * inner; // f: a fraction of the shown scale
-        const rgbaOf = (col: [number, number, number] | null, a: number) => col ? `rgba(${col.map(Math.round).join(",")},${a.toFixed(3)})` : "rgba(255,255,255,0)";
+        const liftNow = liftRef.current;
+        const grey = rgba(c.textSecondary).slice(0, 3) as [number, number, number];
+        // ONE vertical gradient for the line, the dots and the trailing dashes: the ramp's stops over the plot's height, each blended toward the grey by the tab morph's progress. The legend below is drawn from the same stops, so the two agree pixel for pixel at every height.
+        const lineGrad = ctx.createLinearGradient(0, yOf(0), 0, yOf(1));
+        if (cur.isAqi > 0.005) for (const s of aqiScaleStops(max, liftNow)) lineGrad.addColorStop(s.offset, lineColour(s.offset, max, liftNow, cur.isAqi, grey));
+        else { lineGrad.addColorStop(0, lineColour(0, max, liftNow, 0, grey)); lineGrad.addColorStop(1, lineColour(1, max, liftNow, 0, grey)); }
 
         // Baseline. Gridlines at the target's values, each at the height its value has on the SHOWN scale, so a value's line slides as the scale rescales rather than jumping; the labels cross-fade, the previous frame's out and the target's in.
         hair.strokeStyle = firmLine;
@@ -240,7 +251,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         // The area under the line: colour blends horizontally along the line (a stop at every hour's colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per shown frame and size, so the playhead's per-frame redraw does not rebuild it; a transition rebuilds it every frame, which is the cost of the fill following the morphing line.
         const baseY = y0 + lh + inner;
         // Keyed on the plot's geometry too (plotX, plotW, the track's y range): plotX is measured from the data font, and when that font arrives after the first draw the edge moves a couple of pixels; the line redraws at the new positions, and a fill cached under the old edge sat visibly off the line.
-        const areaKey = `${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${cur.isAqi.toFixed(2)}|${norm.map((v, i) => (v == null ? "" : `${Math.round(v * 1000)}:${Math.round(alpha[i] * 100)}:${colours[i]?.map(Math.round).join(".")}`)).join(",")}`;
+        const areaKey = `${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${cur.isAqi.toFixed(2)}|${liftNow.toFixed(3)}|${c.textSecondary}|${norm.map((v, i) => (v == null ? "" : `${Math.round(v * 1000)}:${Math.round(alpha[i] * 100)}`)).join(",")}`;
         let area = areaCache.current;
         if (!area || area.key !== areaKey) {
           const off = document.createElement("canvas");
@@ -267,12 +278,25 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
             }
           }
           o.putImageData(mask, 0, 0);
-          // Pass 2: the colour, through the mask — each hour's colour at its presence.
+          // Pass 2: the colour, through the mask — every column in the line's own colour at that column's height (the same rule as the line and the legend), at the presence blended between its two hours. Per column, so the fill's top edge is the line's colour even on a rise that crosses several categories within one hour; a gradient with one stop per hour blended two hues in sRGB across the hour and missed the ones between.
+          // The columns are painted on their own canvas and composited through the mask in ONE draw: source-in keeps only where the new paint and the canvas overlap and clears everything else, so column fills applied one by one through the mask left only the last column standing (2026-09-16).
+          const col = document.createElement("canvas");
+          col.width = off.width; col.height = off.height;
+          const cc = col.getContext("2d")!;
+          cc.setTransform(dpr, 0, 0, dpr, 0, 0);
+          const colW1 = 1 / dpr;
+          for (let px = 0; px < off.width; px++) {
+            const xi = Math.min(n - 1, Math.max(0, (px + 0.5) / dpr / colW));
+            const v = curve(xi);
+            if (v == null) continue;
+            const i0 = Math.floor(xi), i1 = Math.min(n - 1, i0 + 1);
+            const pres = lerp(alpha[i0] ?? 0, alpha[i1] ?? 0, xi - i0);
+            cc.fillStyle = lineColour(v, max, liftNow, cur.isAqi, grey, pres);
+            cc.fillRect(px / dpr, 0, colW1, cssH);
+          }
           o.globalCompositeOperation = "source-in";
-          const colour = o.createLinearGradient(0, 0, plotW, 0);
-          for (let i = 0; i < n; i++) colour.addColorStop(Math.min(1, Math.max(0, (i * colW) / plotW)), rgbaOf(colours[i], alpha[i]));
-          o.fillStyle = colour;
-          o.fillRect(0, 0, plotW, cssH);
+          o.setTransform(1, 0, 0, 1, 0, 0);
+          o.drawImage(col, 0, 0);
           area = { key: areaKey, canvas: off };
           areaCache.current = area;
         }
@@ -285,10 +309,11 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         ctx.drawImage(area.canvas, Math.round(plotX * dpr), 0);
         ctx.restore();
 
-        // The line. Each segment is a gradient between its two ends' colours — the same rule the bar is drawn with, so a point on the line and the bar at that height always match — at the lesser of its two ends' presence.
+        // The line, stroked with the vertical ramp gradient: its colour at any point is the legend's at that height. Each hour's segment is its own stroke at the lesser of its two ends' presence.
         ctx.lineWidth = GRAPH.lineWidth.channel + (GRAPH.lineWidth.aqi - GRAPH.lineWidth.channel) * cur.isAqi;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
+        ctx.strokeStyle = lineGrad;
         // Each hour's piece is the monotone curve sampled every few pixels (graphSeries.monotoneCurve), so the line is smooth between readings and never overshoots one; the fill's height follows the same curve.
         const CURVE_STEP = 3; // css px between samples along the curve
         for (let i = 1; i < n; i++) {
@@ -296,10 +321,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           const sa = Math.min(alpha[i - 1], alpha[i]);
           if (a == null || b == null || sa <= 0.005) continue;
           const x0 = plotX + (i - 1) * colW, x1 = plotX + i * colW;
-          const seg = ctx.createLinearGradient(x0, yOf(a), x1, yOf(b));
-          seg.addColorStop(0, rgbaOf(colours[i - 1], sa));
-          seg.addColorStop(1, rgbaOf(colours[i], sa));
-          ctx.strokeStyle = seg;
+          ctx.globalAlpha = sa;
           ctx.beginPath();
           ctx.moveTo(x0, yOf(a));
           const steps = Math.max(2, Math.ceil(colW / CURVE_STEP));
@@ -311,6 +333,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           if (i === n - 1 && cur.isAqi > 0.005) ctx.lineTo(plotRight + GRAPH.scaleTrackWidth, yOf(b)); // the last segment runs straight on under the bar, which is drawn after it
           ctx.stroke();
         }
+        ctx.globalAlpha = 1;
         // Trailing hours not yet reported (a live channel AirNow has not published for the newest hours) hold the last value as a dotted flat line to the right edge: the line does not simply stop, and the dots say "not yet" rather than "zero".
         let lastIdx = -1;
         for (let i = n - 1; i >= 0; i--) if (alpha[i] > 0.5 && norm[i] != null) { lastIdx = i; break; }
@@ -319,7 +342,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           ctx.save();
           ctx.setLineDash([2, 4]);
           ctx.lineWidth = 1;
-          ctx.strokeStyle = cur.isAqi > 0.5 ? rgbaOf(colours[lastIdx], alpha[lastIdx]) : c.textMuted;
+          ctx.globalAlpha = alpha[lastIdx];
+          ctx.strokeStyle = cur.isAqi > 0.5 ? lineGrad : c.textMuted;
           ctx.beginPath(); ctx.moveTo(plotX + lastIdx * colW, y); ctx.lineTo(plotRight, y); ctx.stroke();
           ctx.restore();
         }
@@ -328,8 +352,10 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           const v = norm[i];
           if (v == null || alpha[i] <= 0.005) continue;
           if ((i === 0 || alpha[i - 1] <= 0.5) && (i === n - 1 || alpha[i + 1] <= 0.5)) {
-            ctx.fillStyle = rgbaOf(colours[i], alpha[i]);
+            ctx.globalAlpha = alpha[i];
+            ctx.fillStyle = lineGrad;
             ctx.fillRect(plotX + i * colW - 1, yOf(v) - 1, 2, 2);
+            ctx.globalAlpha = 1;
           }
         }
         ctx.restore(); // back to the wider clip, so the y values in the gutter stay drawable
@@ -341,7 +367,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           const barX = cssW - barW;
           const barTop = GRAPH.labelGutter, barBottom = yOf(0);
           const grad = ctx.createLinearGradient(0, barBottom, 0, yOf(1));
-          for (const s of aqiScaleStops(GRAPH.aqiScaleMax, lift)) grad.addColorStop(s.offset, s.color);
+          for (const s of aqiScaleStops(GRAPH.aqiScaleMax, liftNow)) grad.addColorStop(s.offset, s.color);
           const trackW = GRAPH.scaleTrackWidth, trackX = barX;
           ctx.fillStyle = grad;
           ctx.fillRect(trackX, barTop, trackW, barBottom - barTop);
@@ -441,7 +467,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     return () => { drawRef.current = null; cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); window.visualViewport?.removeEventListener("resize", onResize); };
   }, [day, playing, live]); // eslint-disable-line react-hooks/exhaustive-deps
   // What is drawn changed (a new target frame: a tab, a lift, a theme; or, when held, the held playhead): one redraw. While playing the loop already redraws every frame and needs no nudge.
-  useEffect(() => { if (!playing) drawRef.current?.(); }, [target, c, playing, running ? 0 : playheadHour]);
+  useEffect(() => { if (!playing) drawRef.current?.(); }, [target, c, lift, playing, running ? 0 : playheadHour]);
 
   return (
     <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>

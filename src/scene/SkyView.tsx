@@ -6,6 +6,7 @@ import { EffectComposer } from "@react-three/postprocessing";
 import { ToneMappingMode, BlendFunction, BloomEffect, HueSaturationEffect, ChromaticAberrationEffect, NoiseEffect, ToneMappingEffect, EffectPass, type Effect, type EffectComposer as EffectComposerImpl } from "postprocessing";
 import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3 } from "three";
 import { LensFieldEffect } from "./LensFieldEffect";
+import { FrostEffect } from "./FrostEffect";
 import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT, SKY_CAMERA } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
@@ -45,6 +46,8 @@ interface Props {
 
   // Which way the camera looks. The default camera faces north (−Z), which in New York puts the daytime sun behind the viewer — no disc, Preetham's included, was ever in frame. "south" faces the sun's arc so it crosses left to right; "sun" yaws to the sun's azimuth so it is always horizontally centered. UNDER BENCHMARK with the disc.
   facing?: CameraFacing;
+  // The glass panels' blur, drawn by the sky inside every registered glass rectangle (FrostEffect, D-50). Off for the harness and the ?fx=noblur bisect.
+  frost?: boolean;
 }
 
 export type CameraFacing = "north" | "south" | "sun";
@@ -116,7 +119,7 @@ export function grainLevel(pm25: number | null | undefined): number {
 }
 
 // The grade, created once. The r3f effect wrappers rebuild an effect whenever a prop changes (their constructor args are keyed on a JSON of the props), so the eased bloom, saturation, aberration and grain were disposing and re-creating effects and passes on nearly every frame; a frame drawn between the old pass leaving and the new one arriving is the raw render, no bloom and no tone mapping, which is the intermittent washed-out sky (2026-09-15). Now each effect is one instance for the life of the canvas and its values are set in place; the composer's children never change, so its pass chain is built once.
-interface Fx { bloom: BloomEffect; hueSat: HueSaturationEffect; lens: LensFieldEffect; aberration: ChromaticAberrationEffect; noise: NoiseEffect; tone: ToneMappingEffect }
+interface Fx { bloom: BloomEffect; hueSat: HueSaturationEffect; lens: LensFieldEffect; aberration: ChromaticAberrationEffect; noise: NoiseEffect; tone: ToneMappingEffect; frost: FrostEffect }
 function makeFx(): Fx {
   return {
     bloom: new BloomEffect({ blendFunction: BlendFunction.ADD, intensity: 0, luminanceThreshold: 0.55, luminanceSmoothing: 0.35, mipmapBlur: true }),
@@ -125,7 +128,20 @@ function makeFx(): Fx {
     aberration: new ChromaticAberrationEffect({ offset: new Vector2(0, 0), radialModulation: true, modulationOffset: 0.3 }),
     noise: new NoiseEffect({ blendFunction: BlendFunction.VIVID_LIGHT, premultiply: false }), // see GRAIN in theme.ts for the blend
     tone: new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC }),
+    frost: new FrostEffect(),
   };
+}
+// The frost's rectangles (D-50): every animation frame the registered glass elements are read against the canvas and, when any has moved, grown, or changed its material amount, the effect is fed and an on-demand canvas told to repaint, so the frost follows a page's drift and a resize while the sky itself is still. A rAF loop rather than useFrame: useFrame does not run on a demand-rendered canvas until something invalidates it, and the panels moving is that something.
+function FrostFeed({ effect, enabled }: { effect: FrostEffect; enabled: boolean }) {
+  const gl = useThree((s) => s.gl);
+  useEffect(() => {
+    if (!enabled) { effect.clear(); invalidate(); return; }
+    let raf = 0;
+    const tick = () => { if (effect.feed(gl.domElement)) invalidate(); raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [gl, effect, enabled]);
+  return null;
 }
 // Pushes the frame's values into the effects. Set on change and the canvas told to repaint (an on-demand canvas repaints only when told); the lens field also needs the clock, so it is fed every frame.
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -238,7 +254,7 @@ function Exposure({ value }: { value: number }) {
 // The renderer's configuration, one object for the life of the module: r3f compares the gl prop with the renderer on every render and re-applies it when they differ, and the composer sets the renderer's toneMapping to none, so a fresh object literal here had r3f writing toneMapping back every render (harmless in the composer's pass, three only tone-maps when drawing to the canvas, but churn all the same). Tone mapping is set explicitly because r3f v8's ACES default goes through a pre-three-r155 path that no longer lands on three 0.172. preserveDrawingBuffer so the scene can snapshot the last frame for a dissolve (D-32).
 const GL_CONFIG = { antialias: true, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true } as const;
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0 }: Props) {
+export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0, frost = false }: Props) {
   // The grade's effects, once per canvas; the composer's children are one memoized element so its pass chain is never rebuilt (see Fx).
   // ORDER (2026-09-15, measured): lens; tone mapping; bloom; saturation; aberration; noise. This is the order the sky was tuned against. The wrappers re-appended every re-created effect at the end of the list, so after the first eased change the chain settled into this order, with tone mapping BEFORE the bloom and the grade: the bloom's blur is taken from the HDR input of its pass and added onto the mapped image with nothing mapping it again, so the sun's glow goes to white — that is the glow every exposure and bloom value was judged on. The physically ordered chain (bloom and grade before tone mapping) is what showed on a fresh mount before any change, and reads as the dim, washed-out sky. The lens comes first, in its own pass (CONVOLUTION), so the frame it refracts is the raw sky and nothing it re-samples is lost.
   const fx = useMemo(makeFx, []);
@@ -250,6 +266,8 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
       <primitive object={fx.hueSat} />
       <primitive object={fx.aberration} />
       <primitive object={fx.noise} />
+      {/* The frost last (D-50): it blurs the finished frame, grain and all, as the CSS filter blurred the finished canvas. */}
+      <primitive object={fx.frost} />
     </>
   ), [fx]);
   const composerRef = useRef<EffectComposerImpl>(null);
@@ -278,6 +296,7 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
         <CameraRig pitch={cameraRotationX} yaw={yaw} />
         <Exposure value={params.exposure} />
         <Grade fx={fx} bloom={params.bloomIntensity} saturation={saturation} particles={particles} grain={grain} />
+        <FrostFeed effect={fx.frost} enabled={frost} />
         <SkyWatchdog composerRef={composerRef} fx={fx} snapshot={snapshot} />
         <DevHandle composerRef={composerRef} fx={fx} />
         {/* Preetham always draws beneath (opaque, renderOrder 0); Hosek draws over it with alpha = hosekAlpha and is unmounted once fully faded, so night costs one dome, not two. */}

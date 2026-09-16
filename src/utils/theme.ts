@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import { oklchToHex, maxChroma, type OKLCH } from "./oklch";
 
 export type Theme = "dark" | "light";
 
@@ -129,56 +130,58 @@ function buildThemeColors(theme: Theme) {
 
 // The standard AQI categories (EPA, six), D-23/D-27: the ONE colour scheme. The graph's line and bar, and the mood word, all take their colour from aqiScaleColor(aqi) — the word is the colour of its own AQI on the same scale as the line, so the two never disagree. The former five tier colours are deleted.
 // The colours are the standard hues lifted to pass WCAG 1.4.11 (≥ 3:1 for graphics) against the dark panel (#0e0e1c, the hard case). The standard values fail for the top two: Very Unhealthy #8f3f97 is 3.0:1 and Hazardous #7e0023 is 1.7:1. Measured: Good 11.0, Moderate 17.8, USG 8.2, Unhealthy 6.3, Very Unhealthy 7.3, Hazardous 6.3.
-// One ramp with two ends (D-36, 2026-09-15): the same six hues, `dark` set for 3:1 on the darkest panel the scene makes and `light` for 3:1 on the brightest, blended by the ramp lift the scene derives from the predicted panel (panelLuminance.ts). The legend, the line, the fill and the mood word all read the one ramp at the one lift, so they never disagree within a state; between states the scale lightens as the panel does, the way the material does. Contrast is luminance only: a saturated violet at 0.25 measured 2.0:1 on the smoke panel, so the top of the scale has to be lighter than the red on bright panels, and there the step from red is a change of hue rather than a fall into dark.
-export const AQI_CATEGORIES = [
-  { max: 50, dark: "#3ed35a", light: "#66df7c" }, // green softened from the EPA #00e400 (2026-09-15): at full chroma it shouted next to the rest of the ramp; 0.48 → 0.57 luminance
-  { max: 100, dark: "#ffff00", light: "#ffff00" },
-  // Each end is the most saturated colour of its hue at the luminance 3:1 needs there (R pinned at 255 for the warm hues, B for the violet): chroma is spent on luminance, so a denser frost is what buys saturation.
-  { max: 150, dark: "#ff8c1a", light: "#ffa64d" }, // orange, 0.40 → 0.49
-  { max: 200, dark: "#ff5050", light: "#ffa0a0" }, // red, 0.28 → 0.49
-  { max: 300, dark: "#ff3ddb", light: "#ff85e8" }, // magenta, hue 310°, 0.30 → 0.44: the hue cycle continues past red (Shoro, 2026-09-16). Its light end keeps its chroma at 2.7:1 on the brightest panel by Shoro's call, since at 3:1 it collapsed toward the red beside it.
-  { max: 500, dark: "#8f80ff", light: "#bcb0ff" }, // purple, hue 248°, 0.28 → 0.49, at 3:1 on every panel: the hue cycle's last step. At 270° the light end was a lavender that read as faded pink against orange and haze; the bluer hue holds. EPA's maroon is too dark for any panel.
-] as const;
-// The panels the ramp's ends are set for, as WCAG luminance of composited frosted panels measured 2026-09-15 with the denser frost: the night graph (0.057) at the dark end, the hazy-noon hero (0.130) at the light end, the brightest any panel reached. At 0.058 a colour needs 0.27 for 3:1; at 0.13 it needs 0.49. Each panel predicts its own luminance and lifts the ramp it draws linearly between the two; the light end is placed at 0.12 and the dark colours a step above their floor so the measured minimum along the legend carries about 5% of margin (it read 2.92 to 3.02 with none).
+// One ramp with two ends (D-36, 2026-09-15), built in OKLCH (D-51, 2026-09-16): six hues at ONE lightness and ONE chroma per end, so the six read as one family. The former hex ends had been picked per hue for the most saturation each could carry at the luminance 3:1 needed, which left yellow at 0.93 luminance beside a red at 0.28 (Shoro: green and yellow shouted, red, magenta and purple read washed out). Now every hue at an end has the same lightness and the same chroma (the chroma the least able hue, purple, can hold at that lightness; the rest are held to it rather than allowed more). `dark` is set for AA, 4.5:1 or better, on the darkest panel the scene makes; `light` for as near AA as the brightest panel allows, 3.9:1 (Shoro, 2026-09-16: AA or close across every variation; at 4.5:1 on the brightest panel the purple has no chroma left). The lift the scene derives from the predicted panel (panelLuminance.ts) blends between them. The legend, the line, the fill, the bars and the mood word all read the one ramp at the one lift, so they never disagree within a state; between states the scale lightens as the panel does, the way the material does.
+// The hues are the standard EPA hues as OKLCH read them from the former ends: green, yellow, orange, red, then the cycle continues past red into magenta and purple (Shoro, 2026-09-16); EPA's maroon is too dark for any panel. A blend along the ramp, between the categories and between the ends, is in OKLCH too, so lightness and chroma hold along the whole legend and no midpoint dips toward grey or dark.
+export const AQI_RAMP = {
+  hues: [146, 108, 60, 24, 337, 288],
+  dark: { L: 0.78, C: 0.12 }, // WCAG Y 0.44 to 0.50: 4.6 to 5.1 on the darkest panel (0.058)
+  light: { L: 0.86, C: 0.08 }, // Y 0.61 to 0.66: 3.9 to 4.2 on the brightest panel (0.12), 6.1 or better on the darkest
+} as const;
+const CATEGORY_MAX = [50, 100, 150, 200, 300, 500] as const;
+export const AQI_CATEGORIES = CATEGORY_MAX.map((max, i) => ({ max, dark: oklchToHex({ ...AQI_RAMP.dark, h: AQI_RAMP.hues[i] }), light: oklchToHex({ ...AQI_RAMP.light, h: AQI_RAMP.hues[i] }) }));
+// The panels the ramp's ends are set for, as WCAG luminance of composited frosted panels measured 2026-09-15 with the denser frost: the night graph (0.057) at the dark end, the hazy-noon hero (0.130) at the light end, the brightest any panel reached. Each panel predicts its own luminance and lifts the ramp it draws linearly between the two.
 
 export const RAMP = { panelDark: 0.058, panelBright: 0.12 } as const;
 
-// ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends linearly to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
-type Stops = Array<{ at: number; rgb: [number, number, number] }>;
-const hex = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-const aqiStops = (key: "dark" | "light"): Stops => {
+// ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
+type Stops = Array<{ at: number; c: OKLCH }>;
+const stopsFor = (end: { L: number; C: number }): Stops => {
   let lo = 0;
-  return AQI_CATEGORIES.map((c) => { const at = (lo + c.max) / 2; lo = c.max; return { at, rgb: hex(c[key]) }; });
+  return CATEGORY_MAX.map((max, i) => { const at = (lo + max) / 2; lo = max; const h = AQI_RAMP.hues[i]; return { at, c: { L: end.L, C: Math.min(end.C, maxChroma(end.L, h)), h } }; });
 };
-const DARK_STOPS = aqiStops("dark");
-const LIGHT_STOPS = aqiStops("light");
-// The stops at a lift, blended end to end IN LINEAR LIGHT, so a colour's luminance rises in step with the lift (the panel's luminance is what the lift tracks); blended in sRGB the midpoint measured 8% short of the 3:1 it was set for. The last lift's stops are kept, since a draw asks for many colours at one lift.
-const toLinear = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-const toSrgb = (v: number) => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+const DARK_STOPS = stopsFor(AQI_RAMP.dark);
+const LIGHT_STOPS = stopsFor(AQI_RAMP.light);
+const mixHue = (a: number, b: number, t: number) => { const d = ((b - a + 540) % 360) - 180; return (a + d * t + 360) % 360; }; // the shorter way round the wheel
+const mixOklch = (a: OKLCH, b: OKLCH, t: number): OKLCH => ({ L: a.L + (b.L - a.L) * t, C: a.C + (b.C - a.C) * t, h: mixHue(a.h, b.h, t) });
+// The stops at a lift. The last lift's stops are kept, since a draw asks for many colours at one lift.
 let liftCache: { lift: number; stops: Stops } | null = null;
 function stopsAt(lift: number): Stops {
   const l = Math.max(0, Math.min(1, Number.isFinite(lift) ? lift : 0));
   if (liftCache && liftCache.lift === l) return liftCache.stops;
-  const stops = DARK_STOPS.map((s, i) => ({ at: s.at, rgb: s.rgb.map((x, k) => toSrgb(toLinear(x) + (toLinear(LIGHT_STOPS[i].rgb[k]) - toLinear(x)) * l)) as [number, number, number] }));
+  const stops = DARK_STOPS.map((s, i) => ({ at: s.at, c: mixOklch(s.c, LIGHT_STOPS[i].c, l) }));
   liftCache = { lift: l, stops };
   return stops;
 }
-// Between two categories the blend is in linear light too: blended in sRGB, red to violet passes through a magenta 4% darker than either end, and the line and the legend dipped under 3:1 there.
-const mixLinear = (a: [number, number, number], b: [number, number, number], t: number): [number, number, number] => a.map((x, k) => toSrgb(toLinear(x) + (toLinear(b[k]) - toLinear(x)) * t)) as [number, number, number];
 function rampColor(stops: Stops, aqi: number): string {
   const v = Math.max(0, aqi);
-  const rgb = (c: [number, number, number]) => `rgb(${c.map(Math.round).join(",")})`;
-  if (v <= stops[0].at) return rgb(stops[0].rgb);
+  if (v <= stops[0].at) return oklchToHex(stops[0].c);
   for (let i = 1; i < stops.length; i++) {
     const a = stops[i - 1], b = stops[i];
-    if (v <= b.at) return rgb(mixLinear(a.rgb, b.rgb, (v - a.at) / (b.at - a.at)));
+    if (v <= b.at) return oklchToHex(mixOklch(a.c, b.c, (v - a.at) / (b.at - a.at)));
   }
-  return rgb(stops[stops.length - 1].rgb);
+  return oklchToHex(stops[stops.length - 1].c);
 }
-// The colour of an AQI on the ramp at a lift (0 = the dark end, 1 = the light end).
+// The colour of an AQI on the ramp at a lift (0 = the dark end, 1 = the light end), as a hex.
 export function aqiScaleColor(aqi: number, lift = 0): string { return rampColor(stopsAt(lift), aqi); }
+// Where an AQI sits along the ramp, 0..1: the category's step of six plus the way through its band, so a bar filled to it is the continuous form of the six-step ladders (Shoro, 2026-09-16: the AQI card's bar flexes by the ramp, not by the number over 500, where a Moderate 54 was a sliver).
+export function aqiRampPosition(aqi: number): number {
+  const v = Math.max(0, Math.min(500, aqi));
+  let lo = 0;
+  for (let i = 0; i < CATEGORY_MAX.length; i++) { const max = CATEGORY_MAX[i]; if (v <= max) return (i + (v - lo) / (max - lo)) / CATEGORY_MAX.length; lo = max; }
+  return 1;
+}
 // The gradient's stops, on a 0..max scale, for a canvas or CSS gradient drawn with the same rule.
-// A canvas gradient interpolates in sRGB, so between each pair of category stops three intermediate stops are placed at the linear-light blend, and the gradient follows the line's own colours to within a rounding.
+// A canvas gradient interpolates in sRGB, so between each pair of category stops three intermediate stops are placed at the OKLCH blend, and the gradient follows the ramp's own colours to within a rounding.
 export function aqiScaleStops(max: number, lift = 0): Array<{ offset: number; color: string }> {
   const out: Array<{ offset: number; color: string }> = [{ offset: 0, color: aqiScaleColor(0, lift) }];
   const stops = stopsAt(lift);
@@ -464,8 +467,10 @@ export const GLASS = {
   veilFull: 0.9, // …and at which the frost is at its night alpha (a wildfire or summer-haze day sits at 0.92, its sky at 0.05 luminance)
   edgeAlpha: 0.35,
   // Frosted (the content material): heavier blur and a touch more fill than the control material.
-  frostedBlur: "28px",
+  frostedBlur: "28px", // the calendar popover alone still uses the browser's blur (it floats over cards, which the sky cannot blur); the panels' blur is `frost` below
   frostedExtraAlpha: 0.08,
+  // The panels' blur is the sky's own (FrostEffect, D-50, 2026-09-16): a mipmap (dual-filter) blur of the rendered frame, shown inside every glass rectangle. `levels` is how many halvings the blur runs over, each roughly doubling its reach, measured in CSS pixels whatever the device pixel ratio; `radius` the upsample's spread. `saturate` is the frost's own, applied in sRGB as the CSS filter was; it is higher than the old 1.6 because the filter saturated the plume and night layers too, which now sit unblurred over the frost, and the fill's tint takes some colour back. One blur for both materials now. Shoro, 2026-09-16: the first pass (6 levels, 1.6 in linear light) read as less blur and less of the sky's colour than the CSS blur; both raised.
+  frost: { levels: 7, radius: 0.85, saturate: 2.0 },
   // Dither (2026-09-15): the blur quantizes the sky behind a panel into 8-bit steps that read as bands, more so in Chromium; a fine white noise over the fill at this opacity breaks them. skyDither is the same noise over the sky's gradient layers (night, golden, plume), which band on their own.
   ditherAlpha: 0.04,
   skyDither: 0.05,

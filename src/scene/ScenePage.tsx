@@ -120,13 +120,17 @@ export default function ScenePage() {
       if (e.key === fwd) switchView("monitor");
       if (e.key === back) switchView("scene");
     };
+    // The wheel along the pages' axis: vertical travel on laptop, horizontal travel where the pages sit side by side (Shoro, 2026-09-16: a narrow laptop window is the horizontal layout too, and a trackpad's two-finger swipe sideways should turn the page there, not only a drag). A page's own horizontal scroll strips (the pins, the graph's tabs) get the gesture first: a wheel over one that can still scroll is theirs.
     const onWheel = (e: WheelEvent) => {
-      if (!vertical) return;
       const w = wheelRef.current, now = performance.now();
       if (now - w.at > 400) w.acc = 0; // a fresh gesture
       w.at = now;
       if (now < lockRef.current) { w.acc = 0; return; } // inertia from the gesture that switched
-      w.acc += e.deltaY;
+      if (!vertical) {
+        const strip = (e.target as Element | null)?.closest?.(".scene-strip, [role=\"tablist\"]");
+        if (strip && strip.scrollWidth > strip.clientWidth) return;
+      }
+      w.acc += vertical ? e.deltaY : e.deltaX;
       if (Math.abs(w.acc) >= WHEEL_PX) { switchView(w.acc > 0 ? "monitor" : "scene"); w.acc = 0; }
     };
     window.addEventListener("keydown", onKey);
@@ -323,7 +327,7 @@ export default function ScenePage() {
         {!FX_OFF.has("nocursor") && <Cursor />}
         {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (Cursor.tsx reads data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
         <div ref={skyBoxRef} className="scene-sky" data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClick={phone ? undefined : () => { if (consumeSuppressedClick() || performance.now() - swipedAt.current < 400) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
-          <SkyView params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} frost={!FX_OFF.has("noblur")} style={{ width: "100%", height: "100%" }} />
           {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
           <canvas ref={dissolveCanvasRef} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />
           {!FX_OFF.has("nonight") && <NightLayer blend={nightEased} density={view.smoke} />}
@@ -358,7 +362,7 @@ export default function ScenePage() {
             </div>
           </div>
 
-          {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame reaches the panels' shadow room sideways, and only the band's gap above and below (index.css --clip-pad-y), so a page mid-switch is clipped at the bars' edge and never paints over a pill (Shoro, 2026-09-16). */}
+          {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame reaches the panels' shadow room on every side (index.css --clip-pad, --clip-pad-y), and what keeps a page mid-switch off the bars' pills is the drift: on laptop the visible motion is one gap, the travel between the fades runs unseen (D-48, Shoro, 2026-09-16). */}
           <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} style={{ "--page-ms": `${PAGE_MS}ms`, "--fade-ms": `${FADE_MS}ms` } as React.CSSProperties} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
             // Below laptop the band takes pointer events for the swipe, so it stands between the sky and a tap on the empty space around the panels; that tap is still the sky's play/pause (tablets), and the cursor there is the sky's.
             data-cursor={phone || laptop ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"}

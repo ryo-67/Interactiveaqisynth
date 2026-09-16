@@ -1,5 +1,5 @@
 // panelLuminance — what a frosted panel will look like, predicted from what is behind it (D-36). The scene cannot read its own composited pixels, but it knows every layer: the sky canvas can be sampled behind the panel, the DOM layers are gradients with known maths (night and golden screened, the plume multiplied then screened), and the glass is a fill over a saturated backdrop. Composited here in sRGB the way the browser does it, at the panel's own vertical band, so the ramp that has to read on the panel can be set for the panel it will actually sit on. Calibrated against composited screenshots (2026-09-15): see RAMP in theme.ts.
-import { NIGHT, GOLDEN, GLASS, RAMP } from "../utils/theme";
+import { NIGHT, GOLDEN, RAMP } from "../utils/theme";
 import { smokeStop } from "./SmokeLayer";
 
 export type RGB = [number, number, number]; // sRGB 0..255
@@ -18,15 +18,6 @@ function hslToRgb(h: number, s: number, l: number): RGB {
 // CSS mix-blend-mode screen and multiply, applied at the layer's alpha.
 const screen = (base: RGB, top: RGB, alpha: number): RGB => base.map((b, i) => { const t = top[i]; const s = 255 - ((255 - b) * (255 - t)) / 255; return lerp(b, s, alpha); }) as RGB;
 const multiply = (base: RGB, top: RGB, alpha: number): RGB => base.map((b, i) => lerp(b, (b * top[i]) / 255, alpha)) as RGB;
-// CSS filter: saturate(s), the matrix the spec gives.
-function saturate(c: RGB, s: number): RGB {
-  const [r, g, b] = c;
-  return [
-    (0.213 + 0.787 * s) * r + (0.715 - 0.715 * s) * g + (0.072 - 0.072 * s) * b,
-    (0.213 - 0.213 * s) * r + (0.715 + 0.285 * s) * g + (0.072 - 0.072 * s) * b,
-    (0.213 - 0.213 * s) * r + (0.715 - 0.715 * s) * g + (0.072 + 0.928 * s) * b,
-  ].map((v) => Math.max(0, Math.min(255, v))) as RGB;
-}
 const lin = (v: number) => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
 export const luminance = (c: RGB): number => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
 export const contrast = (a: RGB, b: RGB): number => { const x = luminance(a), y = luminance(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
@@ -53,8 +44,7 @@ export function predictPanel(i: PanelInputs): { rgb: RGB; luminance: number } {
     const at = smokeStop("attenuation", d, i.smoke.regime, t); c = multiply(c, hslToRgb(at.h, at.s, at.l), at.a);
     const sc = smokeStop("inscatter", d, i.smoke.regime, t); c = screen(c, hslToRgb(sc.h, sc.s, sc.l), sc.a);
   }
-  // The glass: the backdrop saturated by the filter, the fill over it, the night's white lift over that.
-  c = saturate(c, Number(GLASS.saturate));
+  // The glass: the fill over the backdrop, the night's white lift over that. The saturation the material adds is already in the sample: the sky draws the frost, saturated, inside the panel's rectangle (FrostEffect, D-50, 2026-09-16), so the canvas behind a panel is the frosted sky itself.
   const fill = i.glass.fill.split(",").map(Number) as RGB;
   c = mix(c, fill, clamp01(i.glass.alpha));
   c = mix(c, [255, 255, 255], clamp01(i.glass.lift));

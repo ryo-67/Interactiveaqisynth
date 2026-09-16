@@ -1,7 +1,7 @@
 // Gauges — the small readouts the widgets share (D-43, 2026-09-16): the five-step ladder, the meter, the detune band, the sixteen-step lane, and a single bar in one colour. All 4 px tracks (the slider's hairline; theme.ts MONITOR), lit steps and fills fading over one beat (index.css). The monitor's cards and the hero's two cards draw from the same set, so the pages are one family.
 import React from "react";
 import { useEased } from "../scene/useEased";
-import { useTheme, themeColors, motion, aqiScaleColor } from "../utils/theme";
+import { useTheme, themeColors, motion, aqiScaleColor, aqiRampPosition } from "../utils/theme";
 import { MONITOR_REST } from "../content";
 import type { PulseHit } from "../scene/useListenSession";
 import { DETUNE_MAX_CENTS } from "../engine/scales";
@@ -19,11 +19,12 @@ export function Ladder({ step, aqi, lift }: { step: number; aqi: number | null; 
   );
 }
 
-// One full bar in the ramp's colour for an AQI (the hero's number card): the six EPA categories as one continuous scale, at this panel's lift (D-36). Unlit when there is no number.
+// The bar under the AQI number (the hero's number card): filled to where the AQI sits along the ramp, the category's step of six plus the way through its band (theme.ts aqiRampPosition), in the ramp's colour for that AQI at this panel's lift (D-36). The continuous form of the six-step ladders beside it (Shoro, 2026-09-16: it flexes by the ramp, not by the number over 500). Unlit when there is no number; the fill eases like the meters.
 export function AQIBar({ aqi, lift }: { aqi: number | null; lift: number }) {
+  const w = useEased(aqi == null ? 0 : aqiRampPosition(aqi), TAU, "aqi bar");
   return (
     <div className="scene-meter" role="img" aria-label={aqi == null ? MONITOR_REST : `AQI ${aqi}`}>
-      <span className="scene-meter-fill scene-aqi-bar" style={{ width: "100%", background: aqi == null ? undefined : aqiScaleColor(aqi, lift), opacity: aqi == null ? 0 : 1 }} />
+      <span className="scene-meter-fill scene-aqi-bar" style={{ width: `${(w * 100).toFixed(2)}%`, background: aqi == null ? undefined : aqiScaleColor(aqi, lift), opacity: aqi == null ? 0 : 1 }} />
     </div>
   );
 }

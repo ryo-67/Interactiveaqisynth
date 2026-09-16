@@ -42,6 +42,7 @@ function viewFromUrl(): View {
   return v && VIEWS.includes(v) ? v : "scene";
 }
 const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-43)
+const FADE_MS = PAGE_MS * 0.2; // the outgoing page is gone within the first fifth of the travel, before its panels can reach the frame's edge; the incoming one appears only in the last fifth, once it is wholly inside
 const SWIPE_LOCK_PX = 8; // movement before a touch commits to an axis
 const SWIPE_PX = 48; // a horizontal touch travel that counts as a swipe
 const SWIPE_GAP_PX = 16; // the gap between the pages on phones while they slide (index.css --page-gap)
@@ -64,9 +65,22 @@ function usePhone(): boolean {
   return phone;
 }
 
+// Laptop (≥1024): the hero and graph share a row and the pages stack vertically with the page pill beside the section. Below that the panels are full width, so the pages sit side by side like the phone's and the pill joins the transport row (Shoro, 2026-09-16).
+function useLaptop(): boolean {
+  const [laptop, setLaptop] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const on = () => setLaptop(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return laptop;
+}
+
 export default function ScenePage() {
   const s = useListenSession();
   const phone = usePhone();
+  const laptop = useLaptop();
   const { day, beat, playing, paused, channels, skyChannels, rest } = s;
   const hour = s.playheadHour; // the one transport position: the graph's playhead reads it as an index
   const clock = s.playheadClock; // the same position as time of day: the sun and the stars read it
@@ -87,7 +101,7 @@ export default function ScenePage() {
     if (page === "scene") p.delete("view"); else p.set("view", page);
     window.history.replaceState(null, "", `?${p}`);
   }, [tab, page]);
-  const vertical = !phone;
+  const vertical = laptop;
   // The arrows along the pages' axis switch pages (only Space and Escape were bound); not while a control that uses them (the volume slider) has focus. Above the phone width the wheel does too: a scroll of more than WHEEL_PX in one direction, then nothing more until the slide is over, so a trackpad's inertia does not carry the page back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -115,7 +129,7 @@ export default function ScenePage() {
   const swipe = useRef<{ id: number; x: number; y: number; axis: "x" | "y" | null; skip: boolean; w: number } | null>(null);
   const swipedAt = useRef(0); // a swipe that began on a chip must not also be the chip's tap: the click it leaves behind is swallowed
   const onBandDown = (e: React.PointerEvent) => {
-    if (e.pointerType !== "touch" || vertical) return;
+    if (e.pointerType !== "touch" || vertical) return; // a mouse never drags the pages; the wheel and the keys are its routes
     const skip = !!(e.target as HTMLElement).closest("canvas, input, select, a"); // the plot (its seek), the slider and links keep their own gesture; a swipe may start on a chip
     swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, skip, w: e.currentTarget.getBoundingClientRect().width };
   };
@@ -321,7 +335,10 @@ export default function ScenePage() {
           </div>
 
           {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame is padded outward by the panels' shadow so the clip never cuts a shadow. */}
-          <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} style={{ "--page-ms": `${PAGE_MS}ms` } as React.CSSProperties} onPointerDown={onBandDown} onPointerMove={onBandMove} onPointerUp={onBandUp} onPointerCancel={onBandUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}>
+          <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} style={{ "--page-ms": `${PAGE_MS}ms`, "--fade-ms": `${FADE_MS}ms` } as React.CSSProperties} onPointerDown={onBandDown} onPointerMove={onBandMove} onPointerUp={onBandUp} onPointerCancel={onBandUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
+            // Below laptop the band takes pointer events for the swipe, so it stands between the sky and a tap on the empty space around the panels; that tap is still the sky's play/pause (tablets), and the cursor there is the sky's.
+            data-cursor={phone || laptop ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"}
+            onClick={phone || laptop ? undefined : (e) => { if ((e.target as HTMLElement).closest(".glass")) return; if (consumeSuppressedClick()) return; s.togglePlay(); }}>
             <div ref={trackRef} className="scene-track">
               <div className="scene-page scene-page-scene" data-page="scene" aria-hidden={page !== "scene"} inert={page !== "scene" ? "" : undefined}>
                 <div className="scene-page-inner">
@@ -352,8 +369,8 @@ export default function ScenePage() {
               </div>
             </div>
           </div>
-          {/* The page control above the phone width (D-43): a glass pill at the left, centred on the band, the two icons stacked along the pages' axis. On phones it sits at the right end of the transport row. */}
-          {!phone && (
+          {/* The page control on laptop (D-43): a glass pill 16 px left of the section, centred on the band, the two icons stacked along the pages' axis. Below laptop it sits at the right end of the transport row. */}
+          {laptop && (
             <Glass material="glass" className="scene-pill scene-views-pill scene-views-side">
               <PageIndicator view={page} onView={switchView} vertical />
             </Glass>
@@ -367,12 +384,13 @@ export default function ScenePage() {
               <Glass material="glass" className="scene-pill">
                 <VolumeSlider onVolume={s.setVolume} />
               </Glass>
+              {/* Below laptop the page pill is part of the transport group, beside the volume (Shoro, 2026-09-16). */}
+              {!laptop && (
+                <Glass material="glass" className="scene-pill scene-views-pill">
+                  <PageIndicator view={page} onView={switchView} vertical={false} />
+                </Glass>
+              )}
             </div>
-            {phone && (
-              <Glass material="glass" className="scene-pill scene-views-pill">
-                <PageIndicator view={page} onView={switchView} vertical={false} />
-              </Glass>
-            )}
             {day && day.length > 0 && (
               <Glass material="frosted" className="scene-source">
                 <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} />

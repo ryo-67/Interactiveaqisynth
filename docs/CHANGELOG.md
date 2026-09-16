@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — One section width, the fade ahead of the clip, horizontal below laptop
+
+Shoro's second pass. A page leaving faded while it was still crossing the frame's edge, so it read as clipped grey; now it is at nothing within the first fifth of its travel and the arriving page appears only in the last fifth, once it is wholly inside. Both pages are one section of the same width at every breakpoint (1040 on laptop, the band below), the hero-and-graph row and the monitor's grid each filling it, and the page pill stands 16 px left of that section rather than at the page's edge. Where the panels go full width (below 1024) the pages sit side by side like the phone's and the pill joins the transport group beside the volume; a tap on the band's empty space there is still the sky's play/pause.
+
 ## 2026-09-16 — The monitor page reworked: a static frame, vertical above phones, the finger's own swipe
 
 Shoro's review of D-43. The band no longer changes height between pages, which had the panels drifting during the slide: it is a frame that takes the height the bars leave, both pages live in it, and a switch pushes them through it with the outgoing page fading to nothing as it goes. Above the phone width the pages stack vertically (the monitor below the scene) and the wheel, the up and down arrows or a vertical glass pill of two icons at the left of the band turn them; on phones the pages sit side by side with a gap and the swipe follows the finger, snapping on release, with the left and right arrows and the pill in the transport row as the other routes. The frame is padded outward by the panels' shadow so the clip never cuts one. The routing card loses its source pill (it is the routing); brightness reads 1.0 to 10.0 and reverb 0 to 100% in the serif, like detune; on phones the six cards fit the band in four equal rows and nothing scrolls, down to a 667-tall phone. Play and pause take Lucide's current filled shapes.

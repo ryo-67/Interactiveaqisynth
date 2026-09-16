@@ -1440,6 +1440,9 @@ html {
 /* ——— Scene layout (D-26): Shoro's scaffold, on a 4 px grid, at three breakpoints — laptop (≥1024), tablet (768–1023), phone (<768). The whole scaffold fits the viewport at every one: NOTHING SCROLLS. Sizes step down per breakpoint through the custom properties below (all multiples of 4), which every control reads; the middle band takes the remaining height and its panels are allowed to shrink. ——— */
 .scene-ui {
   --ctl-pill: 40px; --ctl-inner: 32px; --ctl-gap-wide: 16px; --slider-width: 96px;
+  /* The section (2026-09-16): both pages' content is one column of this width, centred in the band — the hero-and-graph row fills it, the monitor's grid fills it — so the two pages are exactly as wide as each other at every breakpoint. Above the phone width the page pill stands in --pill-room to its left (the pill's 40 plus a 16 gap), and the section leaves that room on both sides so it stays centred. */
+  --pill-room: 56px;
+  --section-w: min(1040px, 100vw - 2 * var(--ui-pad) - 2 * var(--pill-room));
   --display-size: 80px; --heading-size: 34px; --heading-line: 40px; --body-size: 15px; --body-line: 24px; /* display 96 → 64 (2026-09-15): the number shares a row with the word now */
   --ui-pad: 32px; --ui-gap: 20px;
   --chip-inset: 4px; /* the inset around chips inside a pill AND the gap between them — one value, on the grid, so chips and pill edges align */
@@ -1526,8 +1529,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* ——— The two pages (D-43, reworked 2026-09-15): the band is a frame that never changes size — it takes the height the bars leave — and both pages live in it, absolutely placed. Above the phone width they stack vertically, the monitor a gap below the scene; on phones they sit side by side. A switch translates both pages along that axis over --page-ms, ease-in-out (the graph's easing), the outgoing page fading as it leaves and the incoming one as it arrives. The frame is clipped, so it is padded outward by --clip-pad (the panels' 32 px shadow) with the same negative margin, and the pages are inset by it: layout unchanged, shadows never cut. Under reduced motion the pages do not move; they cross-fade in place. ——— */
 .scene-mid { --clip-pad: 32px; --page-gap: var(--ui-gap); flex: 1 1 auto; position: relative; overflow: hidden; min-height: 0; min-width: 0; margin: calc(-1 * var(--clip-pad)); padding: var(--clip-pad); }
 .scene-track { position: absolute; inset: var(--clip-pad); }
-.scene-page { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 0; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), opacity var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1); opacity: 0; }
-.scene-page-inner { display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; flex: 0 1 auto; }
+/* Fade against travel (2026-09-16): a page leaving fades out over --fade-ms from the start of the travel, so it is gone before its panels can reach the frame's edge; a page arriving stays at nothing until the last --fade-ms, once it is wholly inside, then fades in. The transition is declared on the state the page is going TO: the base rule is the leaving state, the active rules the arriving one. */
+.scene-page { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; min-height: 0; transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), opacity var(--fade-ms, 200ms) ease-out; opacity: 0; }
+.scene-page-inner { display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; flex: 0 1 auto; width: var(--section-w); max-width: 100%; }
+.scene-mid[data-page="scene"] .scene-page-scene, .scene-mid[data-page="monitor"] .scene-page-monitor { transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1), opacity var(--fade-ms, 200ms) ease-in calc(var(--page-ms, 1000ms) - var(--fade-ms, 200ms)); }
 /* Vertical (above the phone width): the monitor waits a gap below; the scene leaves upward. */
 .scene-mid[data-axis="y"] .scene-page-scene { transform: translateY(0); opacity: 1; }
 .scene-mid[data-axis="y"] .scene-page-monitor { transform: translateY(calc(100% + var(--page-gap))); }
@@ -1543,10 +1548,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-mid[data-axis="x"] .scene-track[data-dragging="true"] { transition: none; }
 .scene-mid[data-axis="x"] .scene-track[data-dragging="true"] .scene-page { opacity: 1; transition: none; } /* both pages in view under the finger */
 /* Reduced motion: no travel, a cross-fade in place. */
-.scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; transition: opacity var(--page-ms, 1000ms) ease; }
+.scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; transition: opacity var(--page-ms, 1000ms) ease !important; }
 .scene-mid[data-fade="true"][data-axis="x"] .scene-page-monitor { left: 0; }
 /* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
-.scene-monitor { --card-pad: 20px; --routing-h: 96px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; max-width: 1040px; align-self: center; }
+.scene-monitor { --card-pad: 20px; --routing-h: 96px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; align-self: center; }
 .scene-monitor .scene-card-routing { grid-column: 1 / -1; }
 .scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; }
 .scene-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
@@ -1575,14 +1580,14 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-views[data-vertical="true"] { flex-direction: column; }
 .scene-pill.scene-views-pill { padding: 0 var(--chip-inset); }
 /* Above the phone width the pill stands at the left edge of the page, centred on the band, absolutely placed in the scaffold so the band keeps its full width. */
-.scene-pill.scene-views-side { position: absolute; left: var(--ui-pad); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: var(--chip-inset) 0; flex-direction: column; justify-content: center; }
+.scene-pill.scene-views-side { position: absolute; left: calc(50% - var(--section-w) / 2 - var(--pill-room)); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: var(--chip-inset) 0; flex-direction: column; justify-content: center; } /* 16 px off the section's left edge, centred on the band (2026-09-16) */
 .scene-view-btn { transition: color var(--state-ms, 120ms) ease; }
 .scene-view-btn:not([aria-selected="true"]):hover { color: rgba(255, 255, 255, 0.9) !important; }
 
 /* Side-by-side only (laptop): the shorter hero sits on the graph's horizontal centre line, and the graph has a floor above the hero's natural height. In the column layouts each panel takes its content height and the plot stays at its breakpoint minimum. */
 @media (min-width: 1024px) {
   .scene-panel.scene-hero { align-self: center; }
-  .scene-panel.scene-graph { min-height: 352px; --graph-fill: 1; } /* 20 + tabs 32 + 8 + gutter 8 + plot 240 + axis 24 + 20: the laptop plot at its token height; --graph-fill lets the plot grow into a stretched panel */
+  .scene-panel.scene-graph { min-height: 352px; --graph-fill: 1; flex: 1 1 auto; } /* the row fills the section: the graph takes what the hero leaves (2026-09-16) */ /* 20 + tabs 32 + 8 + gutter 8 + plot 240 + axis 24 + 20: the laptop plot at its token height; --graph-fill lets the plot grow into a stretched panel */
 }
 .scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; border-radius: calc(var(--ctl-pill) / 2); }
 
@@ -1612,20 +1617,19 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   }
   .scene-top .glass { flex: 0 1 auto; width: fit-content; max-width: 100%; margin: 0; }
   .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; justify-content: center; }
-  .scene-mid { --clip-pad: 24px; } /* the bars are 16 apart here; the clip's reach stays under the gap plus the bar's own inset */
+  .scene-mid { --clip-pad: 24px; pointer-events: auto; touch-action: pan-y; } /* the bars are 16 apart here; the clip's reach stays under the gap plus the bar's own inset. The pages sit side by side below laptop and the swipe is read on the band itself, between the panels too */
+  .scene-ui { --pill-room: 0px; } /* the page pill is in the transport row below laptop; the section takes the band */
   .scene-monitor { --card-pad: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
   .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */
   /* Below laptop the bottom bar is two rows: the transport (with the page pill at its right end on phones), then the source line across. */
-  .scene-bottom { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "transport views" "source source"; row-gap: 12px; align-items: center; }
-  .scene-bottom > .scene-transport { grid-area: transport; justify-self: stretch; }
-  .scene-bottom > .scene-views-pill { grid-area: views; }
-  .scene-bottom > .scene-source { grid-area: source; justify-self: center; }
+  .scene-bottom { flex-direction: column; align-items: stretch; gap: 12px; }
+  .scene-transport > .scene-pill:nth-child(2) { flex: 1 1 auto; max-width: 320px; } /* the volume grows; the page pill after it keeps its size */
+  .scene-monitor .scene-card-reverb { grid-column: 1 / -1; } /* six cards in two columns with beats across: reverb takes the last row rather than half of it */
   .scene-panel { flex: 0 0 auto; width: 100%; max-width: 100%; } /* content height; never squeezed */
   /* Below laptop width (tablet and phone alike): the play and volume pills centred on their own row — the volume pill taking most of it — and the source line full width beneath them, its text centred, breaking between the sources and the coverage sentence. */
   .scene-ui { --slider-width: 100%; }
   .scene-transport { flex: 0 0 auto; align-self: center; width: 100%; justify-content: center; }
-  .scene-transport > .scene-pill:last-child { flex: 1 1 auto; max-width: 320px; }
   .scene-source { width: fit-content; max-width: 100%; align-self: center; padding: 8px 16px; justify-content: center; }
   .scene-source p, .scene-source div { text-align: center; }
   .scene-panel.scene-hero { --hero-pad: 24px; align-self: center; }
@@ -1645,12 +1649,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-panel.scene-hero { --hero-pad: 16px; } /* phones: the same fit-content panel as everywhere, tighter padding; the text scales down only where the column is narrower than the number and the widest text (MoodLine.tsx) (2026-09-15) */
   .scene-panel.scene-hero .scene-hero-row { gap: 16px; }
   /* On phones the graph fills the height the other bands leave (2026-09-15): the middle band takes the remaining height instead of centring in it, the hero keeps its content height, and the graph panel is the flexible child, its plot growing into it (--graph-fill) with --graph-tab-h as the floor. No feedback loop: the panel's height comes from the column, not from its content. */
-  .scene-mid { pointer-events: auto; touch-action: pan-y; } /* the swipe is read on the band itself, between the panels too; phones have no sky click to keep clear of */
   .scene-page-scene .scene-page-inner { justify-content: flex-start; height: 100%; flex: 1 1 auto; }
   /* The monitor fits the band on phones (2026-09-15): the grid takes the band's height in four equal rows, the cards shrink into them, and nothing scrolls. */
   .scene-page-monitor .scene-page-inner { height: 100%; flex: 1 1 auto; align-items: stretch; }
   .scene-monitor { --card-pad: 12px; height: 100%; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 12px; align-self: stretch; }
-  .scene-monitor .scene-card-reverb { grid-column: 1 / -1; } /* six cards in two columns with beats across: reverb takes the last row rather than half of it */
   .scene-card { gap: 8px; min-height: 0; justify-content: space-between; }
   .scene-card-head { flex: 0 0 auto; }
   .scene-panel.scene-hero { flex: 0 0 auto; }

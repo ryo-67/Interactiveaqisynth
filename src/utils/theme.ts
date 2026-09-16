@@ -470,7 +470,7 @@ export const GLASS = {
   frostedBlur: "28px", // the calendar popover alone still uses the browser's blur (it floats over cards, which the sky cannot blur); the panels' blur is `frost` below
   frostedExtraAlpha: 0.08,
   // The panels' blur is the sky's own (FrostEffect, D-50, 2026-09-16): a mipmap (dual-filter) blur of the rendered frame, shown inside every glass rectangle. `levels` is how many halvings the blur runs over, each roughly doubling its reach, measured in CSS pixels whatever the device pixel ratio; `radius` the upsample's spread. `saturate` is the frost's own, applied in sRGB as the CSS filter was; it is higher than the old 1.6 because the filter saturated the plume and night layers too, which now sit unblurred over the frost, and the fill's tint takes some colour back. One blur for both materials now. Shoro, 2026-09-16: the first pass (6 levels, 1.6 in linear light) read as less blur and less of the sky's colour than the CSS blur; both raised.
-  frost: { levels: 7, radius: 0.85, saturate: 2.0 },
+  frost: { levels: 7, radius: 0.85, saturate: 2.0, lightLevels: 3 }, // lightLevels: the small blur a panel passes through as it dissolves (FrostEffect), in place of a mix of sharp and blurred that read as a ghost
   // Dither (2026-09-15): the blur quantizes the sky behind a panel into 8-bit steps that read as bands, more so in Chromium; a fine white noise over the fill at this opacity breaks them. skyDither is the same noise over the sky's gradient layers (night, golden, plume), which band on their own.
   ditherAlpha: 0.04,
   skyDither: 0.05,

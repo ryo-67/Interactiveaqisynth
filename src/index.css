@@ -1645,6 +1645,9 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-ui { --pill-room: 0px; } /* the page pill is in the transport row below laptop; the section takes the band */
   /* Below laptop the hero is exactly as tall as the monitor's first row (Shoro, 2026-09-16): on tablets both take --row-h; on phones both take a quarter of the band (the grid's 1fr rows, below). */
   .scene-ui { --row-h: 144px; } /* holds a value card at the 12 px gaps: 16·2 + 20 + 12 + 32 + 12 + 4 + 12 + 17 = 141 */
+  /* Below laptop the rows are tall and the cards whose gauge follows the value directly (scale, tone, beats, the two hero cards) space their three elements evenly, the value centred between the title and the gauge (Shoro, 2026-09-16); the value cards keep the title-value-gauge block. */
+  .scene-card-scale, .scene-card-tone, .scene-card-beats, .scene-card-aqi, .scene-card-breath { justify-content: space-between; }
+  .scene-card-scale .scene-ladder, .scene-card-tone .scene-ladder, .scene-card-beats .scene-lane, .scene-card-aqi .scene-meter, .scene-card-breath .scene-ladder { margin-top: 0; }
   .scene-page-inner { --card-pad: 16px; }
   .scene-monitor { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--row-h); }
   .scene-card { min-height: 0; }

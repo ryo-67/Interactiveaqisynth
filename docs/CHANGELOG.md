@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — Values centred on the tall cards below laptop
+
+On phones and tablets the rows are tall, and the cards whose gauge follows the value directly (scale, tone, beats, the two hero cards) had the value pressed under the title with the room beneath. They now space their three elements evenly, the value centred between the title and the gauge; the value cards keep their title-value-gauge block with the unit line at the bottom padding.
+
 ## 2026-09-16 — One spacing system for the cards; no ghosting at a breakpoint flip; a roomier page pill
 
 Shoro's pass on the rows. Every card now spaces the same way: 12 from title to value and between a gauge and its unit line, and the gauge block anchored at the bottom padding, so a ladder card's bar and a value card's unit line both sit 20 above the edge on laptop and a row's spare height goes between the value and the gauge. The routing diagram gives up 16 px so the value rows hold that; short laptops step the card gap to 8 with a shallower diagram; tablets take a 144 row. When the viewport crossed the laptop line the pages' transitions carried them from their old axis positions to the new and painted a slide that meant nothing; during a resize every page transition is off and a drag's leftover transform is cleared, so a breakpoint flip lands in one frame. The vertical page pill's icons sit 12 apart in a 92 px pill, and the pill stands 96 px clear of the section where the width allows, as far out as the page padding permits below that.

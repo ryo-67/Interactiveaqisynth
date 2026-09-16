@@ -288,6 +288,7 @@ export const CURSOR = {
   dot: 8, // pressed: the ring closes to a filled dot of this diameter, the one press signal for every clickable
   glyph: 14,
   stroke: 1.5,
+  arrowStroke: 3, // the page drag's arrows (D-45) on Lucide's 24 grid: 2 read light beside the filled play and pause at 14 px; 3 is about 1.75 px, near the filled glyphs' weight (Shoro, 2026-09-16)
   ms: 160,
 } as const;
 

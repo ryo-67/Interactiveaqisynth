@@ -63,10 +63,10 @@ export function Cursor() {
       <span className="scene-cursor-glyph" data-glyph="play"><PlayIcon size={CURSOR.glyph} /></span>
       <span className="scene-cursor-glyph" data-glyph="pause"><PauseIcon size={CURSOR.glyph} /></span>
       <span className="scene-cursor-glyph" data-glyph="drag"><MoveHorizontalIcon size={CURSOR.glyph} /></span>
-      <span className="scene-cursor-glyph" data-glyph="move-up"><MoveUpIcon size={CURSOR.glyph} /></span>
-      <span className="scene-cursor-glyph" data-glyph="move-down"><MoveDownIcon size={CURSOR.glyph} /></span>
-      <span className="scene-cursor-glyph" data-glyph="move-left"><MoveLeftIcon size={CURSOR.glyph} /></span>
-      <span className="scene-cursor-glyph" data-glyph="move-right"><MoveRightIcon size={CURSOR.glyph} /></span>
+      <span className="scene-cursor-glyph" data-glyph="move-up"><MoveUpIcon size={CURSOR.glyph} strokeWidth={CURSOR.arrowStroke} /></span>
+      <span className="scene-cursor-glyph" data-glyph="move-down"><MoveDownIcon size={CURSOR.glyph} strokeWidth={CURSOR.arrowStroke} /></span>
+      <span className="scene-cursor-glyph" data-glyph="move-left"><MoveLeftIcon size={CURSOR.glyph} strokeWidth={CURSOR.arrowStroke} /></span>
+      <span className="scene-cursor-glyph" data-glyph="move-right"><MoveRightIcon size={CURSOR.glyph} strokeWidth={CURSOR.arrowStroke} /></span>
     </div>,
     document.body,
   );

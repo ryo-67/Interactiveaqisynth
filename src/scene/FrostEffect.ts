@@ -41,7 +41,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     vec4 R = uRect[i];
     vec2 ro = uRadiusOn[i];
     float d = roundRect(p - R.xy, R.zw, ro.x);
-    m = max(m, (1.0 - smoothstep(-0.5, 0.5, d)) * ro.y); // one CSS pixel of anti-aliasing at the edge; a dissolving panel shows that much less blur
+    // At full material the edge is one CSS pixel of anti-aliasing. As a panel dissolves, its blur weighs the SQUARE of its material, so the blur leaves before the tint and arrives after it, and the mask's edge feathers out to 16 px, so what is left of a thinning panel is a soft patch, not a faint rectangle: at a tenth of the material a fifth of the light blur inside a crisp edge had read as a shadow of the panel through the switch (Shoro, 2026-09-16).
+    float on = ro.y;
+    float e = 0.5 + 16.0 * (1.0 - on);
+    m = max(m, (1.0 - smoothstep(-e, e, d)) * on * on);
   }
   if (m <= 0.0) { outputColor = inputColor; return; }
   // A panel with part of its material (a page dissolving, --glass-on between 0 and 1) is drawn with a SMALLER blur, not with the full blur at part strength: the CSS filter scaled its radius with --glass-on, and a straight mix of the sharp sky with its full blur is a double exposure, which read as a ghost of the panel through the switch (Shoro, 2026-09-16). The way station is a light blur: from the sharp sky to it over the first half of the material, from it to the full blur over the second.

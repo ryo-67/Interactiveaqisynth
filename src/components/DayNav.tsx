@@ -273,33 +273,14 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
   );
 }
 
-// PinStrip — the measured days as chips (§2.2), its own pill in the scaffold. The chips wrap onto further rows when the pill is narrow, rather than scrolling or clipping.
+// PinStrip — the measured days as chips (§2.2), its own pill in the scaffold, always one row.
 export function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
   const c = themeColors(useTheme());
   const ref = useRef<HTMLDivElement>(null);
 
-  // Hug the chips even when they wrap. CSS fit-content on a wrapping row means "all chips on one line", which clamps to the container and fills it; so after layout the pill (the parent glass) is sized to its widest row plus the inset. Every row is at most that wide, so the new width cannot re-wrap anything. Re-measured on resize.
-  useLayoutEffect(() => {
-    const strip = ref.current;
-    const pill = strip?.parentElement;
-    if (!strip || !pill) return;
-    const fit = () => {
-      pill.style.width = "";
-      const chips = [...strip.querySelectorAll("button")].map((b) => b.getBoundingClientRect());
-      if (!chips.length) return;
-      const left = Math.min(...chips.map((r) => r.left)), right = Math.max(...chips.map((r) => r.right));
-      const inset = parseFloat(getComputedStyle(pill).paddingLeft) || 0;
-      const w = Math.ceil(right - left + inset * 2);
-      if (Math.abs(pill.getBoundingClientRect().width - w) > 1) pill.style.width = `${w}px`;
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(pill.parentElement ?? pill);
-    return () => { ro.disconnect(); pill.style.width = ""; };
-  }, []);
-
+  // One row, always (2026-09-15): the chips never wrap, so the pill's fit-content is exact and needs no script; when the day group cannot hold this pill beside the date pill, the group wraps the whole pill onto its own row (index.css). A chip folding onto a second line inside the pill read as an overflow.
   return (
-    <div ref={ref} style={{ display: "flex", flexWrap: "wrap", gap: `var(--chip-inset, ${CONTROL.gap}px)`, maxWidth: "100%" }}>
+    <div ref={ref} style={{ display: "flex", flexWrap: "nowrap", gap: `var(--chip-inset, ${CONTROL.gap}px)` }}>
       {PINS.map((p) => {
         const active = date === p.date;
         return (

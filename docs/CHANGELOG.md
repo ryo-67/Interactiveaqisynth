@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The preset chips never wrap
+
+Around 1360 wide a preset chip folded onto a second line inside its pill, and the script that hugged the pill to its wrapped chips then locked the narrow width in. The chips are one row by construction now, the pill never shrinks, and fit-content is exact without a script; when the date pill and the presets cannot share a row, the day group wraps the whole pill onto its own row, centred. Measured at eleven widths from 580 to 1440: one row of chips every time, the pill inside the viewport.
+
 ## 2026-09-15 — The hero's number and text as one centred group; phones full width
 
 Where the panel fits its content, its row is fixed at the widest group any tier makes (the number's three-digit column, the gap, the widest text) and the number and text sit centred in it, so a shorter sentence leaves even room at both sides instead of a hole at the right; the number is centred in its column and the text column takes its own width. Eight pixels of air between the word and the sentence. On phones the hero spans the column like the graph, number and text spread evenly across it, and where the panel is narrower than the two the text scales down to fit, floored at 0.8, its line heights fixed in pixels so the height never moves; measured 12.5 px on a 390-wide phone.

@@ -1410,11 +1410,13 @@ html {
   background-color: rgba(var(--glass-fill, 8, 14, 40), calc(var(--frosted-fill-alpha, 0.7) * var(--glass-on, 1)));
   border-radius: 20px;
 }
-/* The calendar popover hangs over the top bar and the cards, which the sky's frost cannot blur (it sees only the sky), so this one glass keeps the browser's filter (Shoro, 2026-09-16). */
-.scene-popover {
+/* The calendar popover hangs over the top bar and the cards, and the playhead's readout over the plot: glass over things the sky's frost cannot blur (it sees only the sky), so these two keep the browser's filter (Shoro, 2026-09-16). */
+.scene-popover, .scene-playhead-chip {
   backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
   -webkit-backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
 }
+/* The playhead's readout (2026-09-16): a small frosted pill in the DOM over the graph's canvas, placed by the graph each frame, in the popover's material rather than the flat dark chip the canvas drew, which was the one element on the page in no material (Shoro). It is kept inside the plot: to the right of the playhead where there is room, to the left otherwise, and never past either edge, where the canvas chip was cut on a phone. */
+.glass.scene-playhead-chip { position: absolute; left: 0; top: 0; height: 24px; padding: 0 8px; border-radius: 8px; display: flex; align-items: center; white-space: nowrap; pointer-events: none; visibility: hidden; will-change: transform; z-index: 1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-edge-alpha, 0.35) * var(--glass-on, 1))), 0 4px 16px rgba(0, 0, 0, calc(0.18 * var(--glass-on, 1))); }
 
 /* prefers-reduced-transparency: the material goes frosted-opaque enough to read without the scene */
 @media (prefers-reduced-transparency: reduce) {
@@ -1425,7 +1427,7 @@ html {
 @media (prefers-contrast: more) {
   .glass, .glass.frosted { background-color: rgba(0, 0, 0, 0.94); border: 1px solid rgba(255, 255, 255, 0.9); }
   .glass { box-shadow: none; }
-  .scene-popover { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .scene-popover, .scene-playhead-chip { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 
 /* prefers-reduced-motion: no materialize/settle transitions on the material */
@@ -1558,10 +1560,18 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
 .scene-monitor { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--grid-gap); width: 100%; align-self: center; }
 .scene-monitor .scene-card-routing { grid-column: 1 / -1; }
-.scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; } /* One spacing system for every card (Shoro, 2026-09-16): 12 from title to value and between a gauge and its unit line; the gauge block is anchored at the bottom padding, so a ladder card's bar and a value card's unit line both sit --card-pad above the edge, and a row's spare height goes between the value and the gauge. */
+/* One spacing system for every card (Shoro, 2026-09-16): --card-pad around, --card-gap (12) from title to value; the gauge is anchored at the bottom padding, so a ladder card's bar and a value card's meter both sit --card-pad above the edge, and a row's spare height goes between the value and the gauge. */
+/* A card fits the row it is given, whatever the viewport (D-52, Shoro, 2026-09-16: on a 820×720 window the gauges were cut off, and a foldable will make such rows common). The card is a size container; its inner column reads the card's height and CAPS the padding, the gap and the value type as the row gets short (three steps below), never raising them past the breakpoint's own values, since a cap is a min(). Below the last step the value line is what gives, clipped on its own axis; the gauge is the last element and never hides. Size containment needs a card whose height the layout gives (a grid row, a quarter of the section); a card sized by its content (the hero pair on a short laptop) is not a container and keeps its breakpoint's values. */
+.scene-card { min-width: 0; overflow: hidden; }
+.scene-card-in { box-sizing: border-box; height: 100%; padding: min(var(--card-pad), var(--card-pad-cap, 999px)); display: flex; flex-direction: column; gap: min(var(--card-gap, 12px), var(--card-gap-cap, 999px)); min-width: 0; min-height: 0; }
+.scene-monitor .scene-card { container-type: size; }
+@container (max-height: 127px) { .scene-card-in { --card-pad-cap: 16px; --card-gap-cap: 8px; --card-value-cap: 28px; --card-value-line-cap: 32px; } } /* 16·2 + 20 + 8 + 32 + 8 + 4 = 104 */
+@container (max-height: 103px) { .scene-card-in { --card-pad-cap: 12px; --card-gap-cap: 6px; --card-value-cap: 24px; --card-value-line-cap: 28px; } } /* 12·2 + 20 + 6 + 28 + 6 + 4 = 88 */
+@container (max-height: 87px) { .scene-card-in { --card-pad-cap: 10px; --card-gap-cap: 4px; --card-value-cap: 20px; --card-value-line-cap: 24px; } } /* 10·2 + 20 + 4 + 24 + 4 + 4 = 76 */
+.scene-card-value, .scene-card-body { flex: 0 1 auto; min-height: 0; overflow-x: visible; overflow-y: clip; } /* the value line is what a row shorter than the last step cuts, never the gauge; clip on one axis only, so an italic's overhang is not cut sideways */
 .scene-card .scene-meter, .scene-card .scene-ladder, .scene-card .scene-lane { flex: 0 0 auto; margin-top: auto; } /* a gauge never gives up its 4 px (the meter has no intrinsic height and was the child the column shrank to nothing when the row ran short), and it sits at the bottom of whatever room the row gives */
 .scene-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-.scene-card-value { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; } /* the unit at the right end of the value line, on its baseline (Shoro, 2026-09-16); the value's line box sets the row's height */
+.scene-card-value { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; } /* the unit at the right end of the value line, on its baseline (Shoro, 2026-09-16); the value's line box sets the row's height */
 .scene-card-unit { font-size: var(--body-size, 15px); line-height: 1; color: rgba(255, 255, 255, 0.78); font-style: normal; } /* line-height 1: at the value's line-height the smaller inline box sat on the baseline and grew the line by 7 px, dropping the lane below the ladders beside it */
 /* Ladders, meters, the lane: 4 px tracks (the slider's hairline), from theme.ts MONITOR; the lit step and a hit fade over one beat. */
 .scene-ladder { display: flex; gap: 4px; }
@@ -1605,7 +1615,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* Short laptops (720 tall, 2026-09-16): the section is the band's 476, so a monitor row is 145 and a value card at the 12 px gaps (157) does not fit; the cards step to the tablet's 16 px padding and 8 px gaps (137). */
 @media (min-width: 1024px) and (max-height: 760px) {
   .scene-monitor { grid-template-rows: repeat(3, minmax(0, 1fr)); } /* three equal rows: the band's 476 cannot hold the 2-1-1 split */
-  .scene-monitor .scene-card { --card-pad: 16px; gap: 8px; }
+  .scene-monitor .scene-card { --card-pad: 16px; --card-gap: 8px; }
 }
 .scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; border-radius: calc(var(--ctl-pill) / 2); }
 
@@ -1627,6 +1637,9 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (min-width: 1024px) {
   .scene-hero-pair { flex: 0 0 calc((100% - 2 * var(--ui-gap)) / 4); } /* the monitor's unit: its three rows put two gaps in the section, so a unit is a quarter of the rest (158 at 672) */
   .scene-hero-pair > .scene-card { height: 100%; }
+}
+@media (min-width: 1024px) and (min-height: 761px) {
+  .scene-hero-pair > .scene-card { container-type: size; } /* the hero unit is a quarter of the section here; on short laptops the pair is its content's height and cannot be a size container */
 }
 @media (min-width: 1024px) and (max-height: 760px) {
   .scene-hero-pair { flex: 0 0 auto; } /* the band's 476 has no 158 px hero unit: the pair keeps its content height and the graph takes the rest */
@@ -1666,8 +1679,9 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   /* Below laptop the hero is exactly as tall as the monitor's first row (Shoro, 2026-09-16): a quarter of the section, whatever the band gives (the grid's 1fr rows, below). */
   .scene-ui { --row-h: 144px; } /* the row a value card wants at the 12 px gaps: 16·2 + 20 + 12 + 32 + 12 + 4 + 12 + 17 = 141; four of them and three gaps are the section's ceiling below laptop (D-49) */
   /* Below laptop the rows are tall and the cards whose gauge follows the value directly (scale, tone, beats, the two hero cards) space their three elements evenly, the value centred between the title and the gauge (Shoro, 2026-09-16); the value cards keep the title-value-gauge block. */
-  .scene-card-scale, .scene-card-tone, .scene-card-beats, .scene-card-aqi, .scene-card-breath { justify-content: space-between; }
-  .scene-card-scale .scene-ladder, .scene-card-tone .scene-ladder, .scene-card-beats .scene-lane, .scene-card-aqi .scene-meter, .scene-card-breath .scene-ladder { margin-top: 0; }
+  .scene-card-in { justify-content: space-between; } /* every card is three elements now (D-49), so the rule is one: the value centred between the title and the gauge; the value cards had kept the value under the title with the gap below (Shoro, 2026-09-16) */
+  .scene-card .scene-meter, .scene-card .scene-ladder, .scene-card .scene-lane { margin-top: 0; }
+  .scene-hero-pair > .scene-card { container-type: size; } /* the hero's row is a quarter of the section here, so the two cards step with it like the monitor's */
   .scene-page-inner { --card-pad: 16px; }
   /* The section fills the band below laptop (D-49, Shoro, 2026-09-16: the grid never clips, at any breakpoint). Both pages take the band's height up to four rows of --row-h and their gaps, centred in a taller band like the laptop's 672; the monitor's four rows split it equally, so in a short band (a tablet in landscape) the cards shrink into their rows instead of the grid running past the bars, which fixed rows of --row-h had done; the hero pair is exactly the first row and the graph grows into the rest. Phones take the whole band (below). */
   .scene-page-inner { height: min(100%, calc(4 * var(--row-h) + 3 * var(--grid-gap))); flex: 0 1 auto; }
@@ -1721,7 +1735,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */
 @media (max-width: 767px) and (max-height: 720px) {
   .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; --grid-gap: 8px; } /* the grid's gaps are 8 here, and the hero pair's with them */
-  .scene-card { --card-pad: 12px; gap: 4px; } /* 12·2 + 20 + 24 + 4 + 17 + 4·3 = 101 in a 102 px row on a 667-tall phone; the value keeps its 20/24 */
+  .scene-card { --card-pad: 12px; --card-gap: 4px; } /* 12·2 + 20 + 4 + 24 + 4 + 4 = 68 in a 102 px row on a 667-tall phone; the value keeps its 20/24 */
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */
 }
 /* The shortest phones (640 tall): the graph tightens to 72, which is the floor at which the tabs and the axis still read; the pills stay 32 so every size stays on the grid. */

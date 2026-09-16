@@ -22,7 +22,7 @@ function Value({ children, unit }: { children: React.ReactNode; unit?: string })
   const c = themeColors(useTheme());
   // The size is the mood word's, unless the breakpoint sets the card's own (phones: index.css --card-value-size, a step smaller so the card keeps its padding).
   return (
-    <div className="scene-card-value" style={{ fontFamily: families.serifItalic, fontStyle: "italic", fontSize: `var(--card-value-size, var(--heading-size, ${typeScale.heading.size}))`, lineHeight: `var(--card-value-line, var(--heading-line, 40px))`, color: c.textPrimary, whiteSpace: "nowrap" }}>
+    <div className="scene-card-value" style={{ fontFamily: families.serifItalic, fontStyle: "italic", fontSize: `min(var(--card-value-cap, 999px), var(--card-value-size, var(--heading-size, ${typeScale.heading.size})))`, lineHeight: `min(var(--card-value-line-cap, 999px), var(--card-value-line, var(--heading-line, 40px)))`, color: c.textPrimary, whiteSpace: "nowrap" }}>
       <span>{children}</span>
       {unit && <span style={{ fontFamily: families.data, fontStyle: "normal", fontSize: typeScale.caption.size, lineHeight: 1, color: c.textSecondary }}>{unit}</span>}
     </div>

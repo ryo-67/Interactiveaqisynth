@@ -214,6 +214,7 @@ export const GRAPH = {
   scaleTrackWidth: 4, // the gradient track at the column's left, flush against the plot's right edge, square-ended, the full height of the y axis (2026-09-15)
   scaleCaret: 8, // the value marker: a caret at the track's right, 8 tall and 4 deep, pointing left at the value (2026-09-15: a round thumb read as a control)
   scaleCaretGap: 2, // between the caret's tip and the track
+  chipDateMinPlotWidth: 420, // the playhead's readout names the date only on a plot at least this wide (the live window straddles two days); narrower, on a phone, it is the hour and the value (Shoro, 2026-09-16)
   transitionBeats: 1.5, // a change of day or tab morphs the line, the fill, the scale and the caret over this many beats (D-37, 2026-09-15): the same span as the sun's glide and the dissolve
 } as const;
 

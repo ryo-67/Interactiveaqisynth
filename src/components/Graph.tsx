@@ -70,6 +70,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
   const c = themeColors(theme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const chipRef = useRef<HTMLDivElement>(null); // the playhead's readout, a frosted pill the draw loop places over the canvas
   // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
   const areaCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
   const hairRef = useRef<HTMLCanvasElement | null>(null); // the firm hairlines, opaque white, reused across draws
@@ -424,22 +425,20 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, GRAPH.labelGutter); ctx.lineTo(x, axisY); ctx.stroke();
         const hi = Math.max(0, Math.min(n - 1, Math.floor(playheadHour))); // clamped both ways: this indexes the day
-        // Clock time from the reading's own timestamp, not the index. The date joins it only on the live window, whose readings straddle two days ("Sep 14, 6pm"); a chosen day already names its date in the axis label, so its chip is just "4am".
-        const parts: string[] = [readingLabel(day[hi].ts, live)];
+        // Clock time from the reading's own timestamp, not the index. The date joins it only on the live window, whose readings straddle two days ("Sep 14, 6pm"), and only where the plot is wide enough to hold it beside the value; on a phone's plot the readout is the hour and the value ("11pm · AQI 32"). A chosen day already names its date in the axis label, so its readout is just "4am".
+        const parts: string[] = [readingLabel(day[hi].ts, live && plotW >= GRAPH.chipDateMinPlotWidth)];
         { const v = series[tab][hi]; parts.push(`${TRACK_LABELS[tab]} ${v == null ? "—" : Math.round(v)}`); }
         const label = parts.join(" · ");
-        // The readout is a chip, in the site's vocabulary: 24 tall, 8 px side padding, 8 px corners, the panel's dark fill with the chips' hairline border, caption type.
-        const chipH = 24, chipPad = 8, chipR = 8;
-        const w = Math.ceil(ctx.measureText(label).width) + chipPad * 2;
-        const lx = x + 8 + w > plotRight ? x - 8 - w : x + 8;
-        const ly = GRAPH.labelGutter;
-        ctx.fillStyle = c.bgPanel;
-        ctx.strokeStyle = "rgba(255,255,255,0.14)";
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.roundRect(lx + 0.5, ly + 0.5, w, chipH, chipR); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = c.textPrimary;
-        ctx.fillText(label, lx + chipPad, ly + chipH / 2 + labelPx * 0.36);
-      }
+        // The readout is a frosted pill in the DOM (index.css .scene-playhead-chip), placed here each frame: 24 tall, 8 px side padding, in the caption's data face, so its width is the text's in the canvas's own font plus the padding. Right of the playhead where there is room, left otherwise, and never past either edge of the plot.
+        const chip = chipRef.current;
+        if (chip) {
+          if (chip.textContent !== label) chip.textContent = label;
+          const w = Math.ceil(ctx.measureText(label).width) + 16;
+          const lx = Math.max(plotX, Math.min(plotRight - w, x + 8 + w > plotRight ? x - 8 - w : x + 8));
+          chip.style.transform = `translate(${lx}px, ${canvas.offsetTop + GRAPH.labelGutter}px)`;
+          chip.style.visibility = "visible";
+        }
+      } else if (chipRef.current) chipRef.current.style.visibility = "hidden";
 
       ctx.restore();
       if (playing || transitioning) raf = requestAnimationFrame(draw);
@@ -470,7 +469,9 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
   useEffect(() => { if (!playing) drawRef.current?.(); }, [target, c, lift, playing, running ? 0 : playheadHour]);
 
   return (
-    <div ref={wrapRef} style={{ width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+    <div ref={wrapRef} style={{ position: "relative", width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      {/* The playhead's readout: text and place set by the draw loop, never through React state (a render per frame while playing). Not a <Glass>: it floats over the plot, which the sky's frost cannot see, so it keeps the browser's filter like the popover (index.css). */}
+      <div ref={chipRef} className="glass frosted scene-playhead-chip" aria-hidden style={{ fontFamily: families.data, fontSize: typeScale.caption.size, color: c.textPrimary }} />
       {/* The tabs are a header band attached to the top of the graph container, built to the preset bar's spec (§5.3): the same chips (chip.ts), the same 4 px gaps with a roomier 8 px inset, the band spanning the container edge to edge so the container's own top corners round it and its bottom is square, and no line, fill or shadow of its own — the band and the graph are one container. */}
       <div role="tablist" style={{ position: "relative", display: "flex", alignItems: "center", flex: "0 0 auto", gap: CONTROL.gap, height: `calc(var(--ctl-inner, ${CONTROL.inner}px) + ${GRAPH.tabsInset * 2}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad-x, 16px)) ${GRAPH.tabsGap}px`, padding: `0 ${GRAPH.tabsInset}px`, boxSizing: "border-box", overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", scrollbarWidth: "none" }}>
         {TRACK_ORDER.map((t) => {

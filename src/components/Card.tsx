@@ -11,12 +11,15 @@ export function Card({ label, sources, className, children, cardRef }: { label: 
   const c = themeColors(useTheme());
   return (
     <Glass ref={cardRef} material="frosted" className={`scene-card ${className}`}>
-      <div className="scene-card-head">
-        <span style={{ fontFamily: families.ui, letterSpacing: "0.04em", fontSize: typeScale.caption.size, lineHeight: 1, color: c.textMuted }}>{label}</span>
-        {/* The source pill: the chip style in its inactive state, 20 tall with the micro size (Shoro, 2026-09-16: smaller than the card's label, whatever the breakpoint). Cards without a driving measurement (routing, the hero's two) have none. */}
-        {sources && <span style={chipStyle(c, false, { height: 20, padding: "0 8px", borderRadius: 10, fontSize: typeScale.micro.size })}>{sources.map((s) => SOURCE_LABELS[s]).join(SOURCE_JOIN)}</span>}
+      {/* The inner column (D-52, 2026-09-16): the card is a size container and this column reads its height, so the padding, the gaps and the value step down as the row gets short (index.css @container), and the gauge is never the thing a short row cuts. A container cannot style itself, hence the column. */}
+      <div className="scene-card-in">
+        <div className="scene-card-head">
+          <span style={{ fontFamily: families.ui, letterSpacing: "0.04em", fontSize: typeScale.caption.size, lineHeight: 1, color: c.textMuted }}>{label}</span>
+          {/* The source pill: the chip style in its inactive state, 20 tall with the micro size (Shoro, 2026-09-16: smaller than the card's label, whatever the breakpoint). Cards without a driving measurement (routing, the hero's two) have none. */}
+          {sources && <span style={chipStyle(c, false, { height: 20, padding: "0 8px", borderRadius: 10, fontSize: typeScale.micro.size })}>{sources.map((s) => SOURCE_LABELS[s]).join(SOURCE_JOIN)}</span>}
+        </div>
+        {children}
       </div>
-      {children}
     </Glass>
   );
 }

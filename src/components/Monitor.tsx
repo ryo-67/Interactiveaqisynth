@@ -21,14 +21,14 @@ interface Props {
 const TAU = motion.beatMs * 0.5; // the sky's easing constant: settled within about a beat
 
 // One card: label top-left in the UI face, the source pill top-right (the routing), the readout beneath.
-function Card({ label, sources, className, children, cardRef }: { label: string; sources: Channel[]; className: string; children: React.ReactNode; cardRef?: (el: HTMLDivElement | null) => void }) {
+function Card({ label, sources, className, children, cardRef }: { label: string; sources?: Channel[]; className: string; children: React.ReactNode; cardRef?: (el: HTMLDivElement | null) => void }) {
   const c = themeColors(useTheme());
   return (
     <Glass ref={cardRef} material="frosted" className={`scene-card ${className}`}>
       <div className="scene-card-head">
         <span style={{ fontFamily: families.ui, letterSpacing: "0.04em", fontSize: typeScale.caption.size, lineHeight: 1, color: c.textMuted }}>{label}</span>
-        {/* The source pill: the chip style in its inactive state at the small (phone) chip height, whatever the breakpoint. */}
-        <span style={chipStyle(c, false, { height: 24, padding: "0 8px", borderRadius: 12 })}>{sources.map((s) => SOURCE_LABELS[s]).join(SOURCE_JOIN)}</span>
+        {/* The source pill: the chip style in its inactive state at the small (phone) chip height, whatever the breakpoint. The routing card has none: it is the routing. */}
+        {sources && <span style={chipStyle(c, false, { height: 24, padding: "0 8px", borderRadius: 12 })}>{sources.map((s) => SOURCE_LABELS[s]).join(SOURCE_JOIN)}</span>}
       </div>
       {children}
     </Glass>
@@ -43,7 +43,7 @@ function Value({ children }: { children: React.ReactNode }) {
 // The small line beneath a graphic: the data face, caption size.
 function Sub({ children }: { children: React.ReactNode }) {
   const c = themeColors(useTheme());
-  return <div style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: typeScale.caption.line, color: c.textSecondary, marginTop: space.xs, whiteSpace: "nowrap" }}>{children}</div>;
+  return <div style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: typeScale.caption.line, color: c.textSecondary, marginTop: `var(--sub-gap, ${space.xs})`, whiteSpace: "nowrap" }}>{children}</div>;
 }
 
 // A five-step ladder with one step lit, in the ramp's colour for the AQI the step was chosen from (the same rule as the mood word), white when there is none.
@@ -97,7 +97,7 @@ export function Monitor({ m, pulse, lifts, setRef, routing }: Props) {
   return (
     <div className="scene-monitor" data-routing={routing}>
       {routing && (
-        <Card label={MONITOR_LABELS.routing} sources={["pm25", "o3", "no2"]} className="scene-card-routing">
+        <Card label={MONITOR_LABELS.routing} className="scene-card-routing">
           <Routing m={m} />
         </Card>
       )}
@@ -116,8 +116,9 @@ export function Monitor({ m, pulse, lifts, setRef, routing }: Props) {
         <Value>{m.k == null ? MONITOR_REST : m.k} <span className="scene-card-unit">{MONITOR_UNITS.beats}</span></Value>
         <Lane steps={m.steps} pulse={pulse} hour={m.hour} />
       </Card>
-      {/* BRIGHTNESS: normalized O3 is the lowpass ceiling's input (§3.6, 2500 → 12000 Hz). The meter is that input; the Hz stays in the engine. */}
+      {/* BRIGHTNESS: normalized O3 is the lowpass ceiling's input (§3.6, 2500 → 12000 Hz). Read as 1.0 to 10.0 over that input, the meter beneath it; the Hz stays in the engine. */}
       <Card label={MONITOR_LABELS.brightness} sources={["o3"]} className="scene-card-brightness">
+        <Value>{m.o3n == null ? MONITOR_REST : (1 + 9 * Math.max(0, Math.min(1, m.o3n))).toFixed(1)}</Value>
         <Meter value={m.o3n} />
         <Sub>{m.o3 == null ? MONITOR_REST : `${Math.round(m.o3)} ${MONITOR_UNITS.o3}`}</Sub>
       </Card>
@@ -127,8 +128,9 @@ export function Monitor({ m, pulse, lifts, setRef, routing }: Props) {
         <DetuneBand cents={m.detuneCents} />
         <Sub>{MONITOR_UNITS.detune}</Sub>
       </Card>
-      {/* REVERB: normalized PM2.5 is the wet's input (§3.6, wet = 0.15 + 0.6·pm25n). */}
+      {/* REVERB: normalized PM2.5 is the wet's input (§3.6, wet = 0.15 + 0.6·pm25n). Read as 0 to 100% of that input, the meter beneath it. */}
       <Card label={MONITOR_LABELS.reverb} sources={["pm25"]} className="scene-card-reverb">
+        <Value>{m.pm25n == null ? MONITOR_REST : `${Math.round(100 * Math.max(0, Math.min(1, m.pm25n)))}%`}</Value>
         <Meter value={m.pm25n} />
         <Sub>{m.pm25 == null ? MONITOR_REST : `${m.pm25.toFixed(1)} ${MONITOR_UNITS.pm25}`}</Sub>
       </Card>

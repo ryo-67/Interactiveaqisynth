@@ -44,7 +44,11 @@ function viewFromUrl(): View {
 const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-43)
 const SWIPE_LOCK_PX = 8; // movement before a touch commits to an axis
 const SWIPE_PX = 48; // a horizontal touch travel that counts as a swipe
+const SWIPE_GAP_PX = 16; // the gap between the pages on phones while they slide (index.css --page-gap)
+const WHEEL_PX = 120; // a wheel travel that counts as a page turn above the phone width
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+declare module "react" { interface HTMLAttributes<T> { inert?: "" } } // React 18's typings lack the attribute; "" sets it, undefined removes it
 
 const DISSOLVE_BEATS = 1.5; // the dissolve's length on a change of day while playing (D-32): the same span as the glide at rest
 
@@ -68,72 +72,78 @@ export default function ScenePage() {
   const clock = s.playheadClock; // the same position as time of day: the sun and the stars read it
 
   const [tab, setTab] = useState<TrackKey>(tabFromUrl);
-  // The page (D-43): the scene or the monitor. `pos` is where the band's track IS; `view` is where it is going. On a switch both pages mount, the track is still at the old page, and on the next frame pos follows view so the CSS transition carries it; when the slide ends the old page unmounts. The band's height is pinned during the slide and eased from the old page's to the new one's (index.css), so the centred band does not jump at either end.
+  // The page (D-43): the scene or the monitor. Both pages are always mounted in a frame that never changes size (the band fills the height the bars leave); a switch translates them, the outgoing page fading as it leaves and the incoming one fading as it arrives (index.css, PAGE_MS). Above the phone width the pages stack vertically, the monitor below the scene, and the wheel, the up and down arrows or the side icons move between them; on phones they sit side by side and a swipe, the left and right arrows or the icons do.
   const [page, setPage] = useState<View>(viewFromUrl);
-  const [pos, setPos] = useState<View>(page);
-  const [slide, setSlide] = useState<{ from: View; to: View } | null>(null);
-  const midRef = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef<Record<View, HTMLDivElement | null>>({ scene: null, monitor: null });
-  const [bandH, setBandH] = useState<number | null>(null);
+  const lockRef = useRef(0); // the time until which a switch is refused: one slide at a time, and the wheel's inertia is not a second gesture
+  const wheelRef = useRef({ acc: 0, at: 0 }); // the wheel's travel within one gesture (a ref: the listener is re-bound each render and must not forget)
   const switchView = (next: View) => {
-    if (next === page || slide) return;
-    setBandH(midRef.current?.getBoundingClientRect().height ?? null);
-    setSlide({ from: page, to: next });
+    if (next === page || performance.now() < lockRef.current) return;
+    lockRef.current = performance.now() + PAGE_MS;
     setPage(next);
   };
-  useLayoutEffect(() => {
-    if (!slide) return;
-    // Both pages are mounted now and the track sits at the old page. Measure the incoming page's own height, then next frame move the track and the band's height together.
-    const incoming = pageRefs.current[slide.to];
-    const content = incoming?.firstElementChild as HTMLElement | null;
-    const phoneBand = window.matchMedia("(max-width: 767px)").matches; // on phones the band fills the column; its height does not follow the page
-    const h1 = phoneBand ? null : content?.scrollHeight ?? null; // scrollHeight: the page's content height even while the band is pinned shorter than it
-    let inner = 0;
-    const outer = requestAnimationFrame(() => { inner = requestAnimationFrame(() => { setPos(slide.to); if (h1 != null) setBandH(h1); }); });
-    const done = window.setTimeout(() => { setSlide(null); setBandH(null); }, PAGE_MS + 40);
-    return () => { cancelAnimationFrame(outer); cancelAnimationFrame(inner); window.clearTimeout(done); };
-  }, [slide]);
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     p.set("tab", tab);
     if (page === "scene") p.delete("view"); else p.set("view", page);
     window.history.replaceState(null, "", `?${p}`);
   }, [tab, page]);
-  // Left and right arrows switch pages (only Space and Escape were bound); not while a control that uses them (the volume slider) has focus.
+  const vertical = !phone;
+  // The arrows along the pages' axis switch pages (only Space and Escape were bound); not while a control that uses them (the volume slider) has focus. Above the phone width the wheel does too: a scroll of more than WHEEL_PX in one direction, then nothing more until the slide is over, so a trackpad's inertia does not carry the page back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target;
       if (t instanceof HTMLInputElement || t instanceof HTMLSelectElement || t instanceof HTMLTextAreaElement) return;
-      if (e.key === "ArrowRight") switchView("monitor");
-      if (e.key === "ArrowLeft") switchView("scene");
+      const fwd = vertical ? "ArrowDown" : "ArrowRight", back = vertical ? "ArrowUp" : "ArrowLeft";
+      if (e.key === fwd) switchView("monitor");
+      if (e.key === back) switchView("scene");
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (!vertical) return;
+      const w = wheelRef.current, now = performance.now();
+      if (now - w.at > 400) w.acc = 0; // a fresh gesture
+      w.at = now;
+      if (now < lockRef.current) { w.acc = 0; return; } // inertia from the gesture that switched
+      w.acc += e.deltaY;
+      if (Math.abs(w.acc) >= WHEEL_PX) { switchView(w.acc > 0 ? "monitor" : "scene"); w.acc = 0; }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("wheel", onWheel, { passive: true });
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("wheel", onWheel); };
   });
-  // Where the track sits: the page in view, measured from the first page mounted. With one page mounted it is at the track's start whichever page it is; during a slide both are, in order, and the track moves by one slot. The transition runs only while sliding, so the unmount at the end (which moves the remaining page to the first slot and the track back to 0 in the same render) is not animated.
-  const trackShift = -(VIEWS.indexOf(pos) - VIEWS.indexOf(slide ? "scene" : page)) * 50;
-  // A horizontal touch swipe on the band switches pages (phones); one that starts on the graph's plot is the plot's seek and is left alone. The band's touch-action keeps vertical scrolling native.
-  const swipe = useRef<{ id: number; x: number; y: number; axis: "x" | "y" | null; skip: boolean } | null>(null);
+  // The phone swipe: the pages follow the finger (the track is translated directly, no React state per move), and on release the nearer page wins, or the one the finger was heading for past SWIPE_PX. A touch that starts on the graph's plot is the plot's seek and is left alone, as is one that commits to the vertical. Both pages are visible while dragging; the CSS transition then carries the track from where the finger left it.
+  const trackRef = useRef<HTMLDivElement>(null);
+  const swipe = useRef<{ id: number; x: number; y: number; axis: "x" | "y" | null; skip: boolean; w: number } | null>(null);
+  const swipedAt = useRef(0); // a swipe that began on a chip must not also be the chip's tap: the click it leaves behind is swallowed
   const onBandDown = (e: React.PointerEvent) => {
-    if (e.pointerType !== "touch") return;
-    const skip = !!(e.target as HTMLElement).closest("canvas, button, input, select, a");
-    swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, skip };
+    if (e.pointerType !== "touch" || vertical) return;
+    const skip = !!(e.target as HTMLElement).closest("canvas, input, select, a"); // the plot (its seek), the slider and links keep their own gesture; a swipe may start on a chip
+    swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, skip, w: e.currentTarget.getBoundingClientRect().width };
   };
   const onBandMove = (e: React.PointerEvent) => {
-    const s = swipe.current;
-    if (!s || s.id !== e.pointerId || s.axis) return;
+    const s = swipe.current, track = trackRef.current;
+    if (!s || s.id !== e.pointerId || s.skip || !track) return;
     const dx = e.clientX - s.x, dy = e.clientY - s.y;
-    if (Math.abs(dx) >= SWIPE_LOCK_PX || Math.abs(dy) >= SWIPE_LOCK_PX) s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    if (!s.axis && (Math.abs(dx) >= SWIPE_LOCK_PX || Math.abs(dy) >= SWIPE_LOCK_PX)) s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    if (s.axis !== "x") return;
+    const base = page === "scene" ? 0 : -(s.w + SWIPE_GAP_PX);
+    const bounded = page === "scene" ? Math.min(0, dx) : Math.max(0, dx); // no pull past the first or last page
+    track.dataset.dragging = "true";
+    track.style.transform = `translateX(${base + bounded}px)`;
   };
   const onBandUp = (e: React.PointerEvent) => {
-    const s = swipe.current;
+    const s = swipe.current, track = trackRef.current;
     swipe.current = null;
-    if (!s || s.id !== e.pointerId || s.skip || s.axis !== "x") return;
-    const dx = e.clientX - s.x;
-    if (Math.abs(dx) >= SWIPE_PX) switchView(dx < 0 ? "monitor" : "scene");
+    if (!s || s.id !== e.pointerId || !track) return;
+    if (s.axis === "x" && !s.skip) {
+      swipedAt.current = performance.now();
+      const dx = e.clientX - s.x;
+      const next: View = page === "scene" ? (dx <= -SWIPE_PX ? "monitor" : "scene") : (dx >= SWIPE_PX ? "scene" : "monitor");
+      lockRef.current = 0; // the finger's own release is never refused
+      if (next !== page) switchView(next);
+    }
+    // Hand the track back to the stylesheet: from the dragged position the transition runs to the page's own.
+    requestAnimationFrame(() => { delete track.dataset.dragging; track.style.transform = ""; });
   };
-
-
   // Every input that steps with the data is eased in the space where it is USED, so in and out take the same curve: the particulate LEVELS (0..1), not the raw µg/m³ — eased in µg/m³ the field appeared at once on the way up (the value rushed through the 35–150 band) and receded slowly on the way down (it lingered there on the exponential tail). The sky's own channels ease too, so the dome, the plume and the type move together instead of the dome cutting while the plume fades. Time constant: half a beat (~330 ms), settled within about a second.
   const tau = motion.beatMs * 0.5;
   const pm25Target = beat ? (beat.pm25 ?? 0) : (rest?.reading.pm25 ?? 0);
@@ -231,7 +241,7 @@ export default function ScenePage() {
   const graphLift = useEased(rampLiftFor(panels.graph.luminance), tau, "graph ramp lift");
   const scaleLift = useEased(rampLiftFor(panels.scale.luminance), tau, "scale card ramp lift");
   const toneLift = useEased(rampLiftFor(panels.tone.luminance), tau, "tone card ramp lift");
-  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, pos, slide, hour, playing }; // a handle for measurement, like the sky's __sky
+  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, hour, playing }; // a handle for measurement, like the sky's __sky
 
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
   const skyBoxRef = useRef<HTMLDivElement>(null);
@@ -310,42 +320,44 @@ export default function ScenePage() {
             </div>
           </div>
 
-          {/* The middle band (D-43): a track of two pages, the scene and the monitor, slid horizontally over PAGE_MS (cross-faded under reduced motion). Only the page on screen is mounted, both during a slide. The band's height is pinned and eased during the slide. */}
-          <div ref={midRef} className="scene-mid" data-pos={pos} data-sliding={slide != null} data-fade={REDUCED_MOTION} style={{ height: bandH == null ? undefined : `${bandH}px`, "--page-ms": `${PAGE_MS}ms` } as React.CSSProperties} onPointerDown={onBandDown} onPointerMove={onBandMove} onPointerUp={onBandUp} onPointerCancel={() => { swipe.current = null; }}>
-            <div className="scene-track" style={{ transform: `translateX(${trackShift}%)` }}>
-              {(page === "scene" || slide) && (
-                <div ref={(el) => { pageRefs.current.scene = el; }} className="scene-page scene-page-scene" data-page="scene" aria-hidden={page !== "scene"}>
-                  <div className="scene-page-inner">
-                    <Glass ref={setPanelRef("hero")} material="frosted" className="scene-panel scene-hero">
-                      <MoodLine tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} number={<AQINumber value={s.displayAqi} />} value={s.displayAqi} />
+          {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame is padded outward by the panels' shadow so the clip never cuts a shadow. */}
+          <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} style={{ "--page-ms": `${PAGE_MS}ms` } as React.CSSProperties} onPointerDown={onBandDown} onPointerMove={onBandMove} onPointerUp={onBandUp} onPointerCancel={onBandUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}>
+            <div ref={trackRef} className="scene-track">
+              <div className="scene-page scene-page-scene" data-page="scene" aria-hidden={page !== "scene"} inert={page !== "scene" ? "" : undefined}>
+                <div className="scene-page-inner">
+                  <Glass ref={setPanelRef("hero")} material="frosted" className="scene-panel scene-hero">
+                    <MoodLine tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} number={<AQINumber value={s.displayAqi} />} value={s.displayAqi} />
+                  </Glass>
+                  {day && day.length > 0 && (
+                    <Glass ref={setPanelRef("graph")} material="frosted" className="scene-panel scene-graph">
+                      <Graph
+                        day={day}
+                        aqi={s.aqiHours}
+                        playheadHour={playing || paused ? hour : null}
+                        running={playing && page === "scene"}
+                        lift={graphLift}
+                        live={s.live}
+                        tab={tab}
+                        onTab={setTab}
+                        onSeek={s.seek}
+                      />
                     </Glass>
-                    {day && day.length > 0 && (
-                      <Glass ref={setPanelRef("graph")} material="frosted" className="scene-panel scene-graph">
-                        <Graph
-                          day={day}
-                          aqi={s.aqiHours}
-                          playheadHour={playing || paused ? hour : null}
-                          running={playing}
-                          lift={graphLift}
-                          live={s.live}
-                          tab={tab}
-                          onTab={setTab}
-                          onSeek={s.seek}
-                        />
-                      </Glass>
-                    )}
-                  </div>
+                  )}
                 </div>
-              )}
-              {(page === "monitor" || slide) && (
-                <div ref={(el) => { pageRefs.current.monitor = el; }} className="scene-page scene-page-monitor" data-page="monitor" aria-hidden={page !== "monitor"}>
-                  <div className="scene-page-inner">
-                    <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} routing />
-                  </div>
+              </div>
+              <div className="scene-page scene-page-monitor" data-page="monitor" aria-hidden={page !== "monitor"} inert={page !== "monitor" ? "" : undefined}>
+                <div className="scene-page-inner">
+                  <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} routing />
                 </div>
-              )}
+              </div>
             </div>
           </div>
+          {/* The page control above the phone width (D-43): a glass pill at the left, centred on the band, the two icons stacked along the pages' axis. On phones it sits at the right end of the transport row. */}
+          {!phone && (
+            <Glass material="glass" className="scene-pill scene-views-pill scene-views-side">
+              <PageIndicator view={page} onView={switchView} vertical />
+            </Glass>
+          )}
 
           <div className="scene-bottom">
             <div className="scene-transport">
@@ -356,8 +368,11 @@ export default function ScenePage() {
                 <VolumeSlider onVolume={s.setVolume} />
               </Glass>
             </div>
-            {/* The page indicator (D-43): bottom centre on laptop, at the right end of the transport row below it; on the sky, no pill. */}
-            <PageIndicator view={page} onView={switchView} />
+            {phone && (
+              <Glass material="glass" className="scene-pill scene-views-pill">
+                <PageIndicator view={page} onView={switchView} vertical={false} />
+              </Glass>
+            )}
             {day && day.length > 0 && (
               <Glass material="frosted" className="scene-source">
                 <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} />

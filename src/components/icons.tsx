@@ -4,12 +4,12 @@ import React from "react";
 interface IconProps { size?: number; strokeWidth?: number; style?: React.CSSProperties }
 const base = (size: number, strokeWidth: number, style?: React.CSSProperties) => ({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true, focusable: false as const, style: { flex: "0 0 auto", display: "block", ...style } });
 
-// Lucide's play triangle sits at x 6–20 on the 24 grid; its visual centre (a third of the way from the flat side) is left of the box's, so it is shifted right by one unit to read centred in the round button.
+// Lucide's play and pause, current shapes (the rounded triangle, the two 5-wide bars), filled with the current colour rather than stroked, so they read as solid glyphs at 16 px. The triangle's visual centre (a third of the way from its flat side) sits left of the box's, so it is shifted right by one unit to read centred in the round button.
 export const PlayIcon = ({ size = 16, strokeWidth = 2, style }: IconProps) => (
-  <svg {...base(size, strokeWidth, style)}><polygon points="6 3 20 12 6 21 6 3" fill="currentColor" transform="translate(1 0)" /></svg>
+  <svg {...base(size, strokeWidth, style)}><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" fill="currentColor" transform="translate(1 0)" /></svg>
 );
 export const PauseIcon = ({ size = 16, strokeWidth = 2, style }: IconProps) => (
-  <svg {...base(size, strokeWidth, style)}><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" /><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" /></svg>
+  <svg {...base(size, strokeWidth, style)}><rect x="14" y="3" width="5" height="18" rx="1" fill="currentColor" /><rect x="5" y="3" width="5" height="18" rx="1" fill="currentColor" /></svg>
 );
 export const CalendarIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></svg>

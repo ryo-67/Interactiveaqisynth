@@ -1,5 +1,5 @@
 // build-archive.ts — the static hourly archive (DAT-02, SON-03; STRATEGY §4.3 layer 1).
-// Run locally: npx tsx scripts/build-archive.ts. No API key: EPA AirData bulk zips only.
+// Run locally: npx tsx scripts/build-archive.ts. No API key: EPA AirData bulk zips only. The current year's snapshot is build-current-year.ts (D-41), through the historical route.
 // Downloads hourly_{88101,88502,44201,42602}_{2020..2025}.zip into scripts/.cache/ (gitignored, ~1.5 GB, skipped when present), streams each CSV, keeps state 36 counties 005/047/061/081/085, runs the shared §4.4 transform per local day, and writes:
 //   public/data/{borough}-{year}.json  — HourReading[] for the year, flat, ordered by ts
 //   public/data/citywide-{year}.json

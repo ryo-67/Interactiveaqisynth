@@ -91,13 +91,18 @@ export async function getLast24h(borough: Borough): Promise<DaySeries> {
   return (await getCurrentAll()).series[borough];
 }
 
-// Archive files are one flat HourReading[] per borough-year; cached per URL so a timeline scrub loads each year once.
+// Archive files are one flat HourReading[] per borough-year; cached per URL so a timeline scrub loads each year once. The current year has a snapshot file too (scripts/build-current-year.ts, D-41): the year so far, rebuilt when EPA publishes more; a year without a file resolves to no hours, so a fresh January before the first snapshot still works through the route.
 const archiveCache = new Map<string, Promise<HourReading[]>>();
 
 function archiveYear(borough: Borough, year: number): Promise<HourReading[]> {
   const url = `/data/${slug(borough)}-${year}.json`;
-  if (!archiveCache.has(url)) archiveCache.set(url, fetchJson<HourReading[]>(url, 60000));
+  if (!archiveCache.has(url)) archiveCache.set(url, fetchJson<HourReading[]>(url, 60000).catch((e) => { if (year === new Date().getFullYear()) return []; throw e; }));
   return archiveCache.get(url)!;
+}
+// The last day the current year's snapshot holds, or null when there is none.
+async function snapshotLastDate(borough: Borough): Promise<string | null> {
+  const hours = await archiveYear(borough, new Date().getFullYear());
+  return hours.length ? hours[hours.length - 1].ts.slice(0, 10) : null;
 }
 
 export function clientSeriesAQI(hours: HourReading[]): SeriesAQI {
@@ -142,11 +147,12 @@ function monthDays(borough: Borough, ym: string): Promise<Map<string, { hours: D
   return monthCache.get(key)!;
 }
 
-// One local day of hourly readings. Past years come from the static archive; the current year from its month. DST days genuinely have 23 or 25 hours.
+// One local day of hourly readings. Past years come from the static archive, and so does the current year up to its snapshot's last day (D-41); only days after that come from the route, a month at a time. DST days genuinely have 23 or 25 hours.
 export async function getDay(borough: Borough, date: string): Promise<DaySeries> {
   const year = Number(date.slice(0, 4));
   const currentYear = new Date().getFullYear();
-  if (year < currentYear) {
+  const snapshotLast = year === currentYear ? await snapshotLastDate(borough) : null;
+  if (year < currentYear || (snapshotLast != null && date <= snapshotLast)) {
     const hours = (await archiveYear(borough, year)).filter((h) => h.ts.startsWith(date));
     return { hours, aqi: clientSeriesAQI(hours), fallback: null, fetchedAt: null };
   }
@@ -156,26 +162,33 @@ export async function getDay(borough: Borough, date: string): Promise<DaySeries>
 
 // The last day the archive can play, in two stages. The static archive's last day answers at once (its last hour's date); the current year then refines it to the last day EPA has published, which lags real time by days to weeks, by loading months backwards from the current one until one has data (the same loads getDay uses, so the month a visitor lands in is already in memory). Yesterday is never assumed: a day is available only if it has hours.
 export async function getArchiveLastDate(borough: Borough): Promise<string> {
+  const snap = await snapshotLastDate(borough);
+  if (snap) return snap;
   const year = new Date().getFullYear() - 1;
   const hours = await archiveYear(borough, year);
   return hours.length ? hours[hours.length - 1].ts.slice(0, 10) : `${year}-12-31`;
 }
+// The route is asked only about months the snapshot does not already cover: from this month back to the snapshot's own month, and no further, since everything before is on the CDN.
 export async function getLatestAvailableDate(borough: Borough): Promise<string | null> {
   const now = new Date();
   const year = now.getFullYear();
+  const snap = await snapshotLastDate(borough);
+  const floorYm = snap ? snap.slice(0, 7) : null;
   for (let k = 0; k < 4; k++) {
     const d = new Date(Date.UTC(year, now.getMonth() - k, 1));
     if (d.getUTCFullYear() < year) break;
     const ym = d.toISOString().slice(0, 7);
-    const days = [...(await monthDays(borough, ym)).entries()].filter(([, v]) => v.hours.length > 0).map(([date]) => date).sort();
+    if (floorYm && ym < floorYm) break;
+    const days = [...(await monthDays(borough, ym)).entries()].filter(([, v]) => v.hours.length > 0).map(([date]) => date).filter((date) => !snap || date > snap).sort();
     if (days.length) {
-      // Warm the month before it, so the first step back across the month edge is as instant as the steps within it.
+      // Warm the month before it, so the first step back across the month edge is as instant as the steps within it; not when the snapshot already holds it.
       const prev = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
-      if (prev.getUTCFullYear() === year) void monthDays(borough, prev.toISOString().slice(0, 7)).catch(() => undefined);
+      const prevYm = prev.toISOString().slice(0, 7);
+      if (prev.getUTCFullYear() === year && (!floorYm || prevYm >= floorYm)) void monthDays(borough, prevYm).catch(() => undefined);
       return days[days.length - 1];
     }
   }
-  return null;
+  return snap;
 }
 
 // Normalization anchors from the archive build (p05/p95 per borough per pollutant over 2020–2025, §3.10).

@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The current year is cached like the years before it (D-41)
+
+EPA's published days do not change, yet every current-year day went through the EPA route, re-fetched from EPA once a day per month per borough, and the first load of any of them waited on EPA. Now the year so far is a static snapshot per borough, built through the same historical route (so the snapshot and the route cannot disagree on a day) and committed; the loader serves every day up to the snapshot's last day from the CDN and asks the route only for days after it, and the search for the latest available day stops at the snapshot's month instead of walking back through months already on disk. Re-run the script and commit when EPA publishes further.
+
 ## 2026-09-15 — The scene is the page (D-40)
 
 / renders the scene; /scene stays as an alias so earlier links land. The typographic page it stood in for is deleted with the two pieces only it used, the date-status line and the live/archive status words. The scene is imported directly now, since it is the page; the harness at /scene-test stays lazy.

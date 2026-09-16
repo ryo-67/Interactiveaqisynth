@@ -95,7 +95,7 @@ Code
 - Architectural problems get architectural fixes. The timeline gap (BUG-03) is two sources in one array; fix the structure, not the scrubber.
 - api/ has its own CommonJS tsconfig; the root tsconfig scopes to src/. Vercel's function builder uses the nearest tsconfig.
 - vercel dev does not reproduce the production function build; after every push that touches api/, hit /api/health and /api/aqi/current on the deployed URL before calling it done.
-- Archive data comes from public/data/; the EPA API is only ever asked about the current year.
+- Archive data comes from public/data/, including a snapshot of the current year so far (`scripts/build-current-year.ts`, D-41; re-run and commit when EPA publishes more). The EPA API is only ever asked about current-year days after the snapshot's last day.
 - Mobile-first layout, two breakpoints (laptop 1024+, phone <768).
 
 Docs

@@ -1,36 +1,40 @@
 // MoodLine — the hero's content (§5.2 items 2 and 3): the AQI number at the left, and to its right the tier word over the two-line mood sentence, both left-aligned, the number centred on that block (layout of 2026-09-15, from Shoro's mock). The word is the one full-strength appearance of the tier colour. Word and sentence change only at tier boundaries, with a 0.5 s blur (§5.4); the number never animates and is passed in so it stays outside the blur. The sentence's second clause ("At 8 pm, ozone carried the line") was cut on 2026-09-15 with the panel's re-layout: the panel is one thought now.
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useTheme, themeColors, families, typeScale, space, motion, aqiScaleColor } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, motion, aqiScaleColor, MOOD_SPLIT } from "../utils/theme";
 import { TIER_NAMES, MOOD_SENTENCES } from "../content";
 
 interface Props {
   aqi: number | null; // the AQI the word describes: colours the word on the same scale as the graph (D-27)
   tierIndex: number;
   number: React.ReactNode; // the AQINumber
-  numberSizer: React.ReactNode; // the AQINumber at its widest (three digits), laid out hidden in the same cell so the number's column has one width whatever the value — the DOM measures it, since a canvas cannot see the tabular digits
+  value?: number | null; // what the number shows, for its optical centring: Georgia's figures are old-style (a 1 sits at x-height, a 6 rises, a 5 drops), so each value's ink is measured and placed on the stack's centre, then lifted by the optical bias
   lift?: number; // the ramp lift for the hero panel (D-36)
 }
 
-// Two lines, always, with no orphan (2026-09-15): the sentence is split at the word boundary nearest its middle by character count, at least two words a side, and the break is rendered, so the browser never re-wraps it. Left to wrapping, the five sentences (36 to 75 characters) cannot all be two lines at one width.
-export function splitTwoLines(sentence: string): [string, string] {
+// Two lines, always, with no orphan (2026-09-15): the break is chosen and rendered, so the browser never re-wraps it (left to wrapping, the five sentences, 36 to 75 characters, cannot all be two lines at one width). The first line has a floor (MOOD_SPLIT.firstLineMinChars) so a short sentence is not cut into two stubs: among the splits whose first line clears the floor, the most balanced; if none does, the longest first line. Two words a side, always.
+export function splitTwoLines(sentence: string, firstLineMin: number = MOOD_SPLIT.firstLineMinChars): [string, string] {
   const words = sentence.split(" ");
   if (words.length < 4) return [sentence, ""];
-  let best = 2, bestDiff = Infinity;
+  let best = -1, bestDiff = Infinity, longest = 2;
   for (let i = 2; i <= words.length - 2; i++) {
-    const d = Math.abs(words.slice(0, i).join(" ").length - words.slice(i).join(" ").length);
+    const a = words.slice(0, i).join(" ").length, b = words.slice(i).join(" ").length;
+    longest = i; // i rises, so the last feasible split has the longest first line
+    if (a < firstLineMin) continue;
+    const d = Math.abs(a - b);
     if (d < bestDiff) { bestDiff = d; best = i; }
   }
-  return [words.slice(0, best).join(" "), words.slice(best).join(" ")];
+  const at = best >= 0 ? best : longest;
+  return [words.slice(0, at).join(" "), words.slice(at).join(" ")];
 }
 
-export function MoodLine({ tierIndex, aqi, number, numberSizer, lift = 0 }: Props) {
+export function MoodLine({ tierIndex, aqi, number, value = null, lift = 0 }: Props) {
   const c = themeColors(useTheme());
-  // Both columns have fixed widths: the number's from a hidden three-digit number in its cell, the text's measured in the elements' own fonts at the widest line of the five sentences or the widest tier word. So the panel's width and height are the same whatever the tier. Re-measured when the type size changes with the breakpoint and once the fonts have loaded.
+  // The panel fits each tier's content (2026-09-15: a width fixed at the widest tier left holes); what is fixed is the layout — two lines, the split, the spacing — and the height. On a full-width phone panel the text scales to the room left beside the number; the widest text line of the five is measured for that.
   const pRef = useRef<HTMLParagraphElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const wordRef = useRef<HTMLDivElement>(null);
-  const [rowWidth, setRowWidth] = useState<number | null>(null); // the number's column, the gap and the widest text: the row is fixed at this where the panel fits its content, and the number and text sit centred in it as one group, so a shorter sentence leaves even room at both sides rather than a hole at the right (2026-09-15)
-  const [textScale, setTextScale] = useState(1); // < 1 where the two columns are wider than the panel (phones): the text's type scales down to fit; its line heights are fixed pixels, so the height holds
+  const [textScale, setTextScale] = useState(1);
+  const [numberShift, setNumberShift] = useState(0); // px, applied as translateY: the shown digits' ink centre onto the box centre, then the optical lift // < 1 where the two columns are wider than the panel (phones): the text's type scales down to fit; its line heights are fixed pixels, so the height holds
   useLayoutEffect(() => {
     const measure = () => {
       const p = pRef.current, row = rowRef.current, word = wordRef.current;
@@ -46,21 +50,33 @@ export function MoodLine({ tierIndex, aqi, number, numberSizer, lift = 0 }: Prop
       for (const s of MOOD_SENTENCES) for (const line of splitTwoLines(s)) w = Math.max(w, ctx.measureText(line).width);
       ctx.font = fontOf(word, baseSize(word, "--heading-size", typeScale.heading.size));
       for (const name of TIER_NAMES) w = Math.max(w, ctx.measureText(name).width);
-      // Where the panel is full width (phones set --hero-flex: 1 on it), the text column may have the row's width less the number's column and the gap, and the text scales to that if it is less. Where the panel fits its content, the row's width is the text's own, so there is nothing to fit to and the scale is 1.
-      const hero = row.closest(".scene-hero");
-      const flexed = hero ? getComputedStyle(hero).getPropertyValue("--hero-flex").trim() === "1" : false;
+      // The room the text can have: the column the panel sits in, less the panel's padding, the number and the gap. Where that is less than the widest text (narrow phones), the text scales down to it — floored at 0.8, since below about 350 wide the longest sentence would need less and the panel clips it rather than shrink the type past reading size. Everywhere else the scale is 1 and the panel simply fits its content.
+      const hero = row.closest(".scene-hero") as HTMLElement | null;
+      const column = hero?.parentElement;
       const numberCol = row.firstElementChild as HTMLElement | null;
-      const avail = row.clientWidth - (numberCol ? numberCol.getBoundingClientRect().width : 0) - parseFloat(getComputedStyle(row).columnGap || "0");
-      // Floored at 0.8: a 375-wide phone lands near 0.86 (12 px); below about 350 wide the longest sentence would need less than that, and the panel clips it rather than shrink the type past reading size.
-      const scale = flexed && row.clientWidth > 0 && avail > 0 && avail < w ? Math.max(0.8, avail / w) : 1;
+      const pad = hero ? parseFloat(getComputedStyle(hero).paddingLeft) + parseFloat(getComputedStyle(hero).paddingRight) : 0;
+      const avail = column ? column.clientWidth - pad - (numberCol ? numberCol.getBoundingClientRect().width : 0) - parseFloat(getComputedStyle(row).columnGap || "0") : w;
+      const scale = avail > 0 && avail < w ? Math.max(0.8, avail / w) : 1;
+      // The number's optical centre. The row centres the number's LINE BOX on the text block; where the ink of the shown digits sits in that box depends on the digits (old-style figures), so it is measured: the baseline's place in the box from the font's ascent and descent and the line height, the ink's extent from the string itself. The shift puts the ink centre on the box centre, then lifts it by the optical bias, since the stack's descenders pull its own visual centre up.
+      const numberEl = numberCol?.querySelector<HTMLElement>("div") ?? numberCol;
+      if (numberEl) {
+        const cs = getComputedStyle(numberEl);
+        ctx.font = fontOf(numberEl, cs.fontSize);
+        const text = numberEl.textContent || "0";
+        const m = ctx.measureText(text);
+        const size = parseFloat(cs.fontSize), lineH = parseFloat(cs.lineHeight) || size;
+        const fontAsc = m.fontBoundingBoxAscent ?? size * 0.9, fontDesc = m.fontBoundingBoxDescent ?? size * 0.2;
+        const baselineY = (lineH - (fontAsc + fontDesc)) / 2 + fontAsc;
+        const inkCentreY = baselineY + (m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2;
+        setNumberShift(Math.round((lineH / 2 - inkCentreY - size * typeScale.display.opticalLiftEm) * 10) / 10);
+      }
       setTextScale(scale);
-      setRowWidth(flexed ? null : Math.ceil((numberCol ? numberCol.getBoundingClientRect().width : 0) + parseFloat(getComputedStyle(row).columnGap || "0") + w));
     };
     measure();
     window.addEventListener("resize", measure);
     document.fonts?.ready.then(measure);
     return () => window.removeEventListener("resize", measure);
-  }, []);
+  }, [value]); // the digits shown set the number's shift
   // Hold the displayed tier and swap only when the tier actually changes, with the blur transition.
   const [shown, setShown] = useState(tierIndex);
   const [blurred, setBlurred] = useState(false);
@@ -78,11 +94,8 @@ export function MoodLine({ tierIndex, aqi, number, numberSizer, lift = 0 }: Prop
   const transition = `filter ${motion.blurMs / 2}ms ease, opacity ${motion.blurMs / 2}ms ease`;
   const blur: React.CSSProperties = { filter: blurred ? "blur(6px)" : "none", opacity: blurred ? 0.4 : 1, transition };
   return (
-    <div className="scene-hero-row" ref={rowRef} style={{ maxWidth: "100%", width: rowWidth != null ? `${rowWidth}px` : undefined }}>
-      <div style={{ display: "grid", justifyItems: "center", flex: "0 0 auto" }}> {/* the number centred in its three-digit column, so a low number does not sit left with a gap before the text (2026-09-15) */}
-        <div style={{ gridArea: "1 / 1" }}>{number}</div>
-        <div style={{ gridArea: "1 / 1", visibility: "hidden" }} aria-hidden>{numberSizer}</div>
-      </div>
+    <div className="scene-hero-row" ref={rowRef} style={{ maxWidth: "100%" }}>
+      <div style={{ flex: "0 0 auto", transform: `translateY(${numberShift}px)` }}>{number}</div>
       <div style={{ flex: "0 0 auto", minWidth: 0 }}>
         <div
           ref={wordRef}

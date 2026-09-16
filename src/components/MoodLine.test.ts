@@ -11,9 +11,13 @@ describe("splitTwoLines", () => {
       expect(b.split(" ").length).toBeGreaterThanOrEqual(2);
     }
   });
-  it("splits at the word boundary nearest the middle", () => {
-    const [a, b] = splitTwoLines("one two three four five six");
-    expect([a, b]).toEqual(["one two three", "four five six"]);
+  it("balances when the floor is off", () => {
+    expect(splitTwoLines("one two three four five six", 0)).toEqual(["one two three", "four five six"]);
+  });
+  it("gives the first line the floor where the sentence allows it, else the longest first line with two words left", () => {
+    expect(splitTwoLines("The piece is still the piece, and that is the problem.")).toEqual(["The piece is still the piece,", "and that is the problem."]);
+    expect(splitTwoLines("The day has a grip on the music now.")).toEqual(["The day has a grip on the", "music now."]);
+    expect(splitTwoLines("The air is doing almost nothing, and the piece does almost nothing with it.")).toEqual(["The air is doing almost nothing, and", "the piece does almost nothing with it."]);
   });
   it("leaves a sentence under four words on one line", () => {
     expect(splitTwoLines("too short here")).toEqual(["too short here", ""]);

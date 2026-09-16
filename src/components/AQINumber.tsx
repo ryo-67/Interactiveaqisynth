@@ -10,7 +10,7 @@ export function AQINumber({ value }: { value: number | null }) {
         fontFamily: families.serifItalic,
         fontSize: `var(--display-size, ${typeScale.display.size})`, // the scene scales this per breakpoint
         lineHeight: typeScale.display.line,
-        fontVariantNumeric: "tabular-nums",
+        fontVariantNumeric: "lining-nums tabular-nums", // lining (2026-09-15): Georgia's default figures are old-style, so a 5 or a 4 dropped below the baseline and the number's visual centre moved with its digits; lining figures share one height
         color: c.textPrimary,
       }}
     >

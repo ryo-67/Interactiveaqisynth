@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The hero fits each tier; the number centred by its own ink; phone tabs equal
+
+The fixed width left holes, so the panel fits each tier's content again, on phones too, with the layout fixed instead: two lines, the split, the spacing, and the height. The number is a step larger (80/64/56/48). It is centred optically, not by its box: Georgia's figures are old-style (a 1 sits at x-height, a 6 rises, a 5 drops) and the font here has no lining set, so each shown value's ink is measured and its centre placed on the word-and-sentence stack's centre, then lifted by a small bias for the stack's descenders; measured across four values at laptop, the number's ink centre sits within a 3.5 px band, where the box centring had varied by 16. The sentence's first line has a floor of 28 characters where the sentence allows, so a short sentence is not cut into two stubs. On phones the four graph tabs share the band equally, since their labels are all short now.
+
 ## 2026-09-15 — The preset chips never wrap
 
 Around 1360 wide a preset chip folded onto a second line inside its pill, and the script that hugged the pill to its wrapped chips then locked the narrow width in. The chips are one row by construction now, the pill never shrinks, and fit-content is exact without a script; when the date pill and the presets cannot share a row, the day group wraps the whole pill onto its own row, centred. Measured at eleven widths from 580 to 1440: one row of chips every time, the pill inside the viewport.

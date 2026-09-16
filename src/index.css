@@ -1437,7 +1437,7 @@ html {
 /* ——— Scene layout (D-26): Shoro's scaffold, on a 4 px grid, at three breakpoints — laptop (≥1024), tablet (768–1023), phone (<768). The whole scaffold fits the viewport at every one: NOTHING SCROLLS. Sizes step down per breakpoint through the custom properties below (all multiples of 4), which every control reads; the middle band takes the remaining height and its panels are allowed to shrink. ——— */
 .scene-ui {
   --ctl-pill: 40px; --ctl-inner: 32px; --ctl-gap-wide: 16px; --slider-width: 96px;
-  --display-size: 64px; --heading-size: 34px; --heading-line: 40px; --body-size: 15px; --body-line: 24px; /* display 96 → 64 (2026-09-15): the number shares a row with the word now */
+  --display-size: 80px; --heading-size: 34px; --heading-line: 40px; --body-size: 15px; --body-line: 24px; /* display 96 → 64 (2026-09-15): the number shares a row with the word now */
   --ui-pad: 32px; --ui-gap: 20px;
   --chip-inset: 4px; /* the inset around chips inside a pill AND the gap between them — one value, on the grid, so chips and pill edges align */
   position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--ui-gap); padding: var(--ui-pad); pointer-events: none; overflow: hidden;
@@ -1538,7 +1538,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
 /* The hero (2026-09-15): fits its content with one padding on every side; the number at the left, the tier word over the two-line sentence at the right; both columns measured to fixed widths (MoodLine.tsx), so the panel never changes size. It never stretches to the graph. */
 .scene-panel.scene-hero { padding: var(--hero-pad, 28px); flex: 0 0 auto; width: fit-content; max-width: 100%; }
-.scene-hero-row { display: flex; align-items: center; justify-content: center; gap: 24px; } /* the number, centred on the text block to its right; the two together centred in the fixed row (2026-09-15) */
+.scene-hero-row { display: flex; align-items: center; gap: 24px; } /* the number, centred on the text block to its right (2026-09-15) */
 .scene-panel.scene-graph { --graph-pad: 20px; --graph-pad-x: 16px; padding: var(--graph-pad) var(--graph-pad-x); display: flex; flex-direction: column; overflow: hidden; } /* --graph-pad (vertical) and --graph-pad-x (sides, one step tighter, 2026-09-15): read by the tab band, which spans the panel edge to edge */
 .scene-panel.scene-graph > div { flex: 1 1 auto; min-height: 0; }
 .scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
@@ -1549,7 +1549,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (max-width: 1023px) {
   .scene-ui {
     --ctl-gap-wide: 12px;
-    --display-size: 56px; --heading-size: 28px; --heading-line: 32px; --body-size: 14px; --body-line: 20px; /* display 72 → 56 with the laptop's 96 → 64 (2026-09-15) */
+    --display-size: 64px; --heading-size: 28px; --heading-line: 32px; --body-size: 14px; --body-line: 20px; /* display 72 → 56 → 64 (2026-09-15) */
     --ui-pad: 24px; --ui-gap: 16px;
   }
   .scene-top .glass { flex: 0 1 auto; width: fit-content; max-width: 100%; margin: 0; }
@@ -1570,20 +1570,20 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (max-width: 767px) {
   .scene-ui {
     --ctl-pill: 32px; --ctl-inner: 24px; --ctl-gap-wide: 12px; /* 12 between the short borough names: they leave the room (2026-09-15) */
-    --display-size: 48px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
+    --display-size: 56px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
     --graph-tab-h: 240px; /* taller plot on phones (2026-09-15): 120 read as cramped, then 160 still did; 240 leaves 27 px above the transport on an 844-tall phone; the short-height steps below still override */
     --graph-faint-alpha: 0; /* the faint hour lines are off on phones: dense information on a small display (2026-09-15); the firm lines stay */
     /* Spacing stays at the tablet values (24 / 16): the phone step changes control and type sizes, not the room around them. */
   }
   .scene-panel.scene-graph { --graph-pad: 12px; --graph-pad-x: 8px; } /* tighter around the graph on phones (2026-09-15): the plot takes the room */
-  .scene-panel.scene-hero { width: 100%; --hero-pad: 16px; --hero-flex: 1; } /* on phones the hero spans the column like the graph; number and text spread evenly across it, so the width flexes and the height cannot; the text scales down to fit where the panel is narrower than the two (MoodLine.tsx) (2026-09-15) */
-  .scene-panel.scene-hero .scene-hero-row { justify-content: space-evenly; gap: 16px; }
+  .scene-panel.scene-hero { --hero-pad: 16px; } /* phones: the same fit-content panel as everywhere, tighter padding; the text scales down only where the column is narrower than the number and the widest text (MoodLine.tsx) (2026-09-15) */
+  .scene-panel.scene-hero .scene-hero-row { gap: 16px; }
   /* On phones the graph fills the height the other bands leave (2026-09-15): the middle band takes the remaining height instead of centring in it, the hero keeps its content height, and the graph panel is the flexible child, its plot growing into it (--graph-fill) with --graph-tab-h as the floor. No feedback loop: the panel's height comes from the column, not from its content. */
   .scene-mid { flex: 1 1 auto; min-height: 0; margin: 0; justify-content: flex-start; }
   .scene-panel.scene-hero { flex: 0 0 auto; }
   .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; --graph-fill: 1; }
   .scene-graph-unit { display: none; } /* phone tabs are the pollutant alone: AQI, PM2.5, O₃, NO₂ (2026-09-15) */
-  .scene-panel.scene-graph [role="tablist"] > button { flex: 1 1 auto !important; } /* the tabs fill the band, each growing from its own text so PM2.5 µg/m³, the longest, is never cropped; important over the chip's inline flex: 0 0 auto */
+  .scene-panel.scene-graph [role="tablist"] > button { flex: 1 1 0 !important; min-width: 0; } /* four equal tabs across the band: with the units gone the labels are all short, so none needs more room than another (2026-09-15); important over the chip's inline flex: 0 0 auto */
   .scene-top .glass { width: fit-content; max-width: 100%; margin: 0; }
   .scene-pill { padding: 0 12px; }
   .scene-pill.scene-borough { padding: 0 12px; }
@@ -1593,7 +1593,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 
 /* Short phones (an iPhone SE is 667 tall): the hero type and the graph step down once more so the panels never clip. */
 @media (max-width: 767px) and (max-height: 720px) {
-  .scene-ui { --display-size: 40px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; }
+  .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; }
   .scene-panel.scene-hero { --hero-pad: 16px; }
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */
 }

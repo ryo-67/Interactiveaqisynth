@@ -1,6 +1,6 @@
 // Transport controls (§5.3): a play/pause icon button and a volume slider, each its own glass pill in the page, both 28 tall inside 40-tall pills. Lucide glyphs (icons.tsx), tokens only. The gesture that starts audio must be the button's own click (Tone.start inside the call stack), so the toggle is wired straight to the session's togglePlay.
 import React, { useState } from "react";
-import { useTheme, themeColors, CONTROL } from "../utils/theme";
+import { useTheme, themeColors, CONTROL, families, typeScale } from "../utils/theme";
 import { TRANSPORT_PLAY, TRANSPORT_PAUSE, TRANSPORT_VOLUME, ABOUT_LABEL } from "../content";
 import { PlayIcon, PauseIcon, InfoIcon } from "./icons";
 
@@ -48,7 +48,8 @@ export function AboutButton({ onOpen }: { onOpen?: () => void }) {
   const c = themeColors(useTheme());
   const s = `var(--ctl-inner, ${CONTROL.inner}px)`;
   return (
-    <button className="scene-play scene-about-btn" onClick={onOpen} style={{ height: s, padding: "0 12px 0 10px", display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "none", borderRadius: `calc(${s} / 2)`, color: c.textPrimary }}>
+    // The label in the source line's and the credit's style (Shoro, 2026-09-16): the caps face at the caption size, the secondary colour; the icon takes the label's colour so the two read as one lockup.
+    <button className="scene-play scene-about-btn" onClick={onOpen} style={{ height: s, padding: "0 12px 0 10px", display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "none", borderRadius: `calc(${s} / 2)`, color: c.textSecondary, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5 }}>
       <InfoIcon size={16} />
       <span>{ABOUT_LABEL}</span>
     </button>

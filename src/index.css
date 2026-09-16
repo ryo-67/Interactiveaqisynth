@@ -1633,7 +1633,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-transport-side .scene-volume { transform: rotate(-90deg); }
 /* The About button's pill (Shoro, 2026-09-16): the chips' inset around the button, so its hover fill sits inside the pill as a chip's does. */
 .scene-pill.scene-about-pill { padding: 0 var(--chip-inset, 4px); }
-.scene-about-btn { font-family: inherit; font-size: var(--body-size, 15px); letter-spacing: 0.01em; white-space: nowrap; }
+.scene-about-btn { white-space: nowrap; } /* face, size and colour are the source line's, set inline from the tokens (Transport.tsx) */
 .scene-bottom-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
 /* The hero (2026-09-15): fits its content with one padding on every side; the number at the left, the tier word over the two-line sentence at the right; both columns measured to fixed widths (MoodLine.tsx), so the panel never changes size. It never stretches to the graph. */

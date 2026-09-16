@@ -7,13 +7,13 @@ import type { PulseHit } from "../scene/useListenSession";
 
 const TAU = motion.beatMs * 0.5; // the sky's easing constant: settled within about a beat
 
-// A five-step ladder with one step lit, in the ramp's colour for the AQI the step was chosen from (the same rule as the mood word), white when there is none.
+// A six-step ladder, one step per EPA grade (D-44), with one step lit, in the ramp's colour for the AQI the step was chosen from (the same rule as the mood word), white when there is none.
 export function Ladder({ step, aqi, lift }: { step: number; aqi: number | null; lift: number }) {
   const c = themeColors(useTheme());
   const lit = aqi == null ? c.textPrimary : aqiScaleColor(aqi, lift);
   return (
-    <div className="scene-ladder" role="img" aria-label={`step ${step + 1} of 5`}>
-      {[0, 1, 2, 3, 4].map((i) => <span key={i} className="scene-ladder-step" style={{ background: i === step ? lit : undefined }} />)}
+    <div className="scene-ladder" role="img" aria-label={`step ${step + 1} of 6`}>
+      {[0, 1, 2, 3, 4, 5].map((i) => <span key={i} className="scene-ladder-step" style={{ background: i === step ? lit : undefined }} />)}
     </div>
   );
 }

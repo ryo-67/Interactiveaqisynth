@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — Six tiers, one per EPA grade, on one axis (D-44)
+
+The ladder had five scales for six EPA grades, with the top two sharing Chromatic and Whole tone sitting second. Now each grade has its own scale and the scales are ordered on a single axis, loss of tonal centre: Pentatonic, Major, Dorian, Phrygian, Whole tone, Chromatic. Major is inserted at Moderate, where most New York days live; Whole tone moves to Very Unhealthy, since it is the smoothest scale by interval and the one with no centre. The Phase 0 timbre pairs are kept and moved up two grades: the axis is distance from an integer harmonicity ratio, and they were approved by ear. Hazardous is denser, not sparser: the melody's release lengthens to 1.2 s there, walked over a beat, so each eighth still sounds under the next two and the chromatic notes pile into a cluster the 100-cent σ smears. Detune σ is no longer a function of normalized PM2.5 but a slope in the hour's own PM2.5 AQI through fixed anchors, so the jitter grows all the way up while only the scale steps. Bass harmonicity climbs 1 + tier × 0.2 so it still tops out at 2. Six breath words, six tone words. The ladders draw six steps. ShareModal, dead since the scene became the page, is deleted. Amends D-02, D-17 and D-38; the listening pass is Shoro's.
+
 ## 2026-09-16 — The hero cards with the widgets' anatomy: label, value, gauge
 
 The subtitle went. In its place each hero card carries a gauge like the synth widgets: the AQI card one bar in the number's own colour on the six-category ramp, the Breath card the five-step ladder the scale and tone cards carry, its lit step in the tier's colour, the word itself now white since the ladder holds the colour. The gauges moved to one file the monitor and the hero share. With the sentence gone went its two-line split, its width probes, its token and its test. The two hero cards are now the same look and feel as the six below them.

@@ -266,7 +266,7 @@ export default function ScenePage() {
   const graphLift = useEased(rampLiftFor(panels.graph.luminance), tau, "graph ramp lift");
   const scaleLift = useEased(rampLiftFor(panels.scale.luminance), tau, "scale card ramp lift");
   const toneLift = useEased(rampLiftFor(panels.tone.luminance), tau, "tone card ramp lift");
-  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, aqi: aqiLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, hour, playing }; // a handle for measurement, like the sky's __sky
+  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, aqi: aqiLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, hour, playing, beat }; // a handle for measurement, like the sky's __sky
 
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
   const skyBoxRef = useRef<HTMLDivElement>(null);

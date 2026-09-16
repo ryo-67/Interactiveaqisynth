@@ -1,7 +1,7 @@
 // content.ts — all prose and labels live here (CLAUDE.md, DSN-01). Copy is Shoro's; placeholders are flagged.
 
 // Tier names for the scale ladder (STRATEGY §3.4). Order matches engine/scales.ts TIERS. Mood words are provisional copy; prose pass pending (STRATEGY §9).
-export const TIER_NAMES = ["Easy", "Shallow", "Tight", "Ragged", "Suffocating"] as const;
+export const TIER_NAMES = ["Easy", "Shallow", "Short", "Tight", "Ragged", "Suffocating"] as const; // six, one per EPA grade (D-44, 2026-09-16)
 
 // Score legend, one micro line under the canvas (§5.2).
 
@@ -49,9 +49,9 @@ export const MONITOR_LABELS = { routing: "Routing", scale: "Scale", tone: "Tone"
 export const SOURCE_LABELS = { pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // the same subscripts as the graph tabs
 export const SOURCE_JOIN = " · "; // between two sources on one pill: "PM2.5 · NO₂"
 // Harmonicity and modulation index folded into one listener-facing word per tier (§3.5 tier table); indexed like TIER_NAMES.
-export const TONE_WORDS = ["Clean", "Warm", "Edged", "Metallic", "Harsh"] as const;
+export const TONE_WORDS = ["Pure", "Clean", "Warm", "Edged", "Metallic", "Harsh"] as const; // six (D-44)
 // The scale names as the card shows them, keyed by the engine's own names (scales.ts).
-export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pentatonic", "Whole Tone": "Whole tone", Dorian: "Dorian", Phrygian: "Phrygian", Chromatic: "Chromatic" };
+export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pentatonic", Major: "Major", Dorian: "Dorian", Phrygian: "Phrygian", "Whole Tone": "Whole tone", Chromatic: "Chromatic" };
 export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", o3: "ppb", pm25: "µg/m³" } as const;
 export const MONITOR_REST = "—"; // a value the held hour lacks
 

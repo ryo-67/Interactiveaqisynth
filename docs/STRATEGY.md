@@ -113,15 +113,20 @@ PM10 is not a channel. It is monitored one day in six in two boroughs and is oth
 
 Timelapse compression ratio is an open item (§9). 365 days at 16 s each is 97 minutes; timelapse needs its own clock.
 
-### §3.4 Scale ladder (boundaries on EPA's category lines since D-38, 2026-09-15)
+### §3.4 Scale ladder (six tiers, one per EPA grade, since D-44, 2026-09-16)
 
-| AQI | EPA category | Mood | Scale | Character |
-|---|---|---|---|---|
-| 0–50 | Good | Easy | Major Pentatonic | Consonant, open |
-| 51–100 | Moderate | Shallow | Whole Tone | Suspended, ambiguous |
-| 101–150 | Unhealthy for Sensitive Groups | Tight | Dorian | Minor, bittersweet |
-| 151–200 | Unhealthy | Ragged | Phrygian | Flat second, tense |
-| 201+ | Very Unhealthy, Hazardous | Suffocating | Chromatic | No center |
+One axis: loss of tonal centre. Whole tone sits fifth, not second — it is the smoothest scale by interval and the one with no centre, and the ladder is ordered by centre, not roughness. Major is at Moderate, where most New York days live.
+
+| AQI | EPA category | Breath | Tone | Scale | harmonicity | index | note | detune σ |
+|---|---|---|---|---|---|---|---|---|
+| 0–50 | Good | Easy | Pure | Major Pentatonic | 1 | 1 | 1n | 0 |
+| 51–100 | Moderate | Shallow | Clean | Major | 2 | 2 | 2n. | 10 |
+| 101–150 | Unhealthy for Sensitive Groups | Short | Warm | Dorian | 2 | 3 | 2n | 20 |
+| 151–200 | Unhealthy | Tight | Edged | Phrygian | 3 | 6 | 4n | 40 |
+| 201–300 | Very Unhealthy | Ragged | Metallic | Whole Tone | 2.76 | 12 | 8n | 60 |
+| 301+ | Hazardous | Suffocating | Harsh | Chromatic | 1.414 | 24 | 8n | 100 |
+
+Detune σ is in cents at the tier's upper line and is a slope, not a step: piecewise-linear in the hour's own PM2.5 AQI through 0 at 0, 10 at 100, 20 at 150, 40 at 200, 60 at 300, 100 at 400, held above (§3.6). Hazardous is denser, not sparser: the melody's release lengthens to 1.2 s there so each 8n note still sounds when the second-next starts and a third fades under it, and the 100-cent σ smears the cluster (§3.5).
 
 The tier is PM2.5 alone, through EPA's PM2.5 table (the May 2024 revision: Good ends at 9.0 µg/m³). The number and the mood word the page shows are EPA's reported AQI, the highest pollutant sub-index (D-42), so on an ozone afternoon the word can read a category above the tier the ear is in: the sound is the particles, the word is the air. The word follows the graph's AQI line at the hour being heard.
 
@@ -134,20 +139,23 @@ Mood words are provisional copy; prose pass pending (§9).
 All voices are Tone.FMSynth. Modulation index and harmonicity follow AQI tier: low AQI, low index and integer ratios (warm, simple); high AQI, high index and irrational ratios (metallic, beating). Timbral degradation happens at the oscillator, not in an external distortion stage.
 
 Voices, with the identities locked in Phase 0 (prototype/phase0.html V4):
-- Melody: FM lead, O3-driven (§3.2). Tier table harmonicity and index. Brownian detune (§3.6). Note length by tier: Easy 1n, Shallow 2n., Tight 2n, Ragged 4n, Suffocating 8n.
+- Melody: FM lead, O3-driven (§3.2). Tier table harmonicity and index. Brownian detune (§3.6). Note length by tier: Easy 1n, Shallow 2n., Short 2n, Tight 4n, Ragged 8n, Suffocating 8n. Envelope release 0.3 s, and 1.2 s at Suffocating (D-44), walked to the tier's value over one beat into and out of the top tier.
 - Pulse: click/mallet. Fixed harmonicity 7 (11 auditioned as the alternative, not adopted), full tier index plus up to +50% from NO2, attack 1 ms, decay 80 ms, no sustain, pitch envelope from one octave above snapping to target over 30 ms. Pitch = chord root +1 octave. Euclidean E(k,16) per bar, k = round(3 + 8 × bar-mean normalized NO2) clamped 3..11, rotation = bar-start hour mod 16.
-- Bass: sub. Harmonicity 1 at Easy rising linearly to 2 at Suffocating (never metallic), index at 0.5× the tier table plus NO2 boost, attack 40 ms, release 0.8 s, two octaves below the chord root, private 400 Hz lowpass before the shared chain. Beat 1 of every bar; beat 3 also when k ≥ 8.
+- Bass: sub. Harmonicity 1 at Easy rising linearly to 2 at Suffocating (1 + tier × 0.2 over the six tiers; never metallic), index at 0.5× the tier table plus NO2 boost, attack 40 ms, release 0.8 s, two octaves below the chord root, private 400 Hz lowpass before the shared chain. Beat 1 of every bar; beat 3 also when k ≥ 8.
 - Bed: FM pad playing the composed six-bar chord bed (§3.8), tier table harmonicity and index, the fixed thing the ear holds onto.
 
-Tier table (locked from Phase 0, applied to melody and bed; pulse and bass as above):
+Tier table (the Phase 0 pairs, moved up the six-tier ladder by D-44; applied to melody and bed; pulse and bass as above):
 
 | Tier | harmonicity | modulationIndex |
 |---|---|---|
 | Easy | 1 | 1 |
-| Shallow | 2 | 3 |
+| Shallow | 2 | 2 |
+| Short | 2 | 3 |
 | Tight | 3 | 6 |
 | Ragged | 2.76 | 12 |
 | Suffocating | 1.414 | 24 |
+
+The timbre axis is distance from an integer ratio, not the harmonicity number: 1, 2, 2, 3 are integers and the partials line up; 2.76 is 0.24 from 3; 1.414 is 0.414 from 1 and 0.586 from 2, further from any integer than 2.76 is. Inharmonicity runs one way up the ladder although the raw number drops at the last step, and the index doubling makes the inharmonic partials louder at each step.
 
 Parameter changes ramp over one beat. Tier is computed per hour from the hourly PM2.5 AQI with exponential smoothing α = 0.3, state carried across the loop wrap.
 
@@ -161,7 +169,7 @@ Four voices, three data channels. The bed carries no data of its own; it inherit
 | O3 | Lowpass filter ceiling | Visibility |
 | NO2 | FM modulation depth on pulse and bass | Combustion grit |
 
-Locked values from Phase 0. Reverb: two static reverbs (1.5 s and 7.5 s decay) crossfaded by normalized PM2.5, wet = 0.15 + 0.6 × normalizedPM25 clamped 0.9; Tone.Reverb cannot ramp decay, so the crossfade is the implementation. Lowpass: 2500 Hz at normalized O3 = 0 rising to 12000 Hz at 1; on high-NO2 mornings overnight O3 near zero holds the piece under 2.6 kHz until noon, which is NO titration rendered as arrangement and is intended. Detune: per note, normal distribution σ = 40 × min(normalizedPM25, 1.5) cents. Normalization: p05 → 0, p95 → 1 per pollutant from the borough's own hourly distribution (Phase 0 used 2023 Queens: PM2.5 1.3/20.8, O3 1.0/54.0, NO2 3.3/35.8).
+Locked values from Phase 0. Reverb: two static reverbs (1.5 s and 7.5 s decay) crossfaded by normalized PM2.5, wet = 0.15 + 0.6 × normalizedPM25 clamped 0.9; Tone.Reverb cannot ramp decay, so the crossfade is the implementation. Lowpass: 2500 Hz at normalized O3 = 0 rising to 12000 Hz at 1; on high-NO2 mornings overnight O3 near zero holds the piece under 2.6 kHz until noon, which is NO titration rendered as arrangement and is intended. Detune: per note, normal distribution with σ piecewise-linear in the hour's own PM2.5 AQI — 0 at 0, 10 at 100, 20 at 150, 40 at 200, 60 at 300, 100 at 400 cents, held above (D-44; Phase 0 used 40 × min(normalizedPM25, 1.5)). Normalization: p05 → 0, p95 → 1 per pollutant from the borough's own hourly distribution (Phase 0 used 2023 Queens: PM2.5 1.3/20.8, O3 1.0/54.0, NO2 3.3/35.8).
 
 The effects chain is uniform across voices: lowpass → reverb → destination. Every voice passes through it (v1 routed melody around it; see BUGS).
 
@@ -180,7 +188,7 @@ Fixed 90 BPM as the phrase clock (§3.3). The transport never encodes data, so O
 Perceived speed comes from event rate and articulation, not from the clock:
 
 1. Pulse density. Euclidean k rises with NO2 and, at the top tiers, with tier: E(3,16) at Easy reads as slow, E(11,16) at Suffocating reads as a hammering sixteenth-note pulse at the same BPM.
-2. Melody articulation. Note length shortens with tier: sustained through the beat at Easy, staccato at Suffocating. Same notes, less air between them.
+2. Melody articulation. Note length shortens with tier: sustained through the beat at Easy, an eighth from Ragged up. At Suffocating the release lengthens instead (1.2 s), so the short notes pile into a cluster: the top reads as accumulation, not absence.
 3. Bed harmonic rhythm. One chord per bar at Easy; from Ragged upward the bed may change on beats 1 and 3. Harmonic acceleration without a tempo change.
 
 Fallback, only if Phase 0 listening says Suffocating still feels too composed: stepped tempo per tier (on the order of 84 / 88 / 92 / 98 / 108 BPM), applied at tier boundaries only, never continuously, with the day still quantized to 24 beats. Stepped changes are the only form that keeps timeline scrubbing from wobbling. See O-09.
@@ -404,6 +412,7 @@ Code
 | D-31 | 2026-09-15 | A change of day moves the sun by the shortest path: elevation and azimuth interpolated directly from where the sun is to where the new day's time puts it, over 1.5 beats, ease-in-out; everything derived from elevation follows; the stars' clock takes the shortest way round. Amends D-29 | D-29's sunset → night → sunrise sequence | The sequence made 11 am → 7 pm set the sun and then raise it again to set it a second time, and it forced a hidden night between any two daytimes. One arc from A to B is shorter, predictable, and reads as a change of light rather than a day passing |
 | D-32 | 2026-09-15 | A change of day while PLAYING is a dissolve: the last rendered sky is copied over the scene and faded out over 1.5 beats while the new day renders beneath with its clock taken as is; the night-blue layer eases so nothing pops above the fade. At rest the D-31 glide stands. Trial | Glide always; dissolve always | While playing the target keeps moving, so a glide bends toward a moving point and the sun heads off in arcs that read as arbitrary. A cut between days shown as a dissolve is predictable; the glide at rest keeps the sunset feel Shoro liked. Two behaviours, on trial |
 | D-33 | 2026-09-15 | A change of day's sun path is planned in the camera's screen space (sunPath.ts): a straight screen line while the sun is visible, angles while it is unseen (behind the camera or below the horizon), with exit and entry points on the frame's edge. Amends D-31 | Interpolate azimuth and elevation (D-31); the great circle | The viewer judges the path on screen, and the rectilinear projection bends constant-elevation paths upward toward the frame's edges, so a setting sun swinging toward the edge dipped and then climbed; the great circle between a morning and an evening sun passes over the zenith. A straight line on screen is monotonic by construction, and what is unseen need not be planned for the eye. Pinned by unit tests over the cases that failed |
+| D-44 | 2026-09-16 | Six tiers, one per EPA grade, on EPA's lines; scales ordered on one axis, loss of tonal centre (Pentatonic, Major, Dorian, Phrygian, Whole tone, Chromatic); Hazardous denser, not sparser (a 1.2 s melody release); detune σ a slope in the hour's PM2.5 AQI. Amends D-02, D-17 and D-38 | Five tiers with the top two EPA grades sharing Chromatic, Whole tone second, Phase 0's locked table, σ = 40·min(pm25n, 1.5) | Each EPA grade gets its own scale; the ladder is now a single axis (loss of centre); the top tier reads as accumulation rather than absence. The Phase 0 timbre pairs are kept and moved up two grades, since the axis is distance from an integer ratio and they were approved by ear |
 | D-43 | 2026-09-15 | Monitor page: a second scene page, a bento of synth readouts with a source pill per card; pagination by two translucent icons and swipe; the page persists in the URL | One page: the hero and the graph | The sonification has to be legible without an about page or a crowded score, and the synth construct explains itself when its parameters are labelled with what drives them. The sound's state comes from the beat report (σ and the bar's pattern added to it), never re-derived on the page. The ROUTING card is a trial |
 | D-42 | 2026-09-15 | The AQI is EPA's reported AQI: the highest pollutant sub-index, the daily value from daily statistics for a chosen day, the NowCast composite for Live and for the graph's line, on the May 2024 PM2.5 breakpoints; the sound's tier stays PM2.5 alone; the archive is held at 2026-07-20 until EPA's PM2.5 catches up | Every AQI on the page was the hour's PM2.5 through the 2012 breakpoints; the O3 and NO2 sub-indices existed unused | "That's not how it's reported." The number a visitor compares with their weather app is the daily or NowCast composite; an ozone day read green here and orange everywhere else, and 12 µg/m³ read 50 where EPA now says 56. Sound stays PM2.5 because particles are the dissonance axis (§3) and the other two already have voices; the word follows the air. Source: AirNow TAD, May 2026 revision |
 | D-41 | 2026-09-15 | The current year has a static snapshot too: public/data/{borough}-{year}.json for the year so far, built by scripts/build-current-year.ts through the historical route and committed; the loader serves every day up to the snapshot's last day from the CDN and asks the EPA route only for days after it. Amends §4.3 (archive is past years only) | The whole current year through the EPA route, CDN-cached a day per month URL | Days EPA has already published do not change; serving them through the route re-fetched from EPA once a day per month per borough and made the first load of any current-year day wait on EPA. The snapshot makes them as immediate as 2025, and the route's job shrinks to the weeks EPA has not yet published |

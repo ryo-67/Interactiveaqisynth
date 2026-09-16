@@ -3,9 +3,9 @@ import { hourOfTs, warnOnce } from "../utils/time";
 import { sunAnglesAt, tzOffsetFromTs, type SunAngles } from "./solar";
 import { sunAlongPath } from "./sunPath";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SynthEngine, detuneSigma, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
+import { SynthEngine, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { barK, barSteps } from "../engine/euclid";
-import { TIERS } from "../engine/scales";
+import { TIERS, detuneSigma } from "../engine/scales";
 import { pm25ToAQI } from "../engine/aqi";
 import { motion, NYC_LAT, NYC_LON, CAMERA_FACING } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
@@ -20,7 +20,7 @@ export const DEV = new URLSearchParams(window.location.search).has("dev");
 
 export type Channel = "pm25" | "o3" | "no2";
 
-// What the monitor page reads (D-43): the engine's state for the hour being heard, from the beat report while playing, and for the held hour at rest through the same engine functions (the tier from PM2.5 alone, §3.4; the bar's k and pattern from euclid.ts; σ from detuneSigma). Nothing here is a second formula.
+// What the monitor page reads (D-43): the engine's state for the hour being heard, from the beat report while playing, and for the held hour at rest through the same engine functions (the tier from PM2.5 alone, §3.4; the bar's k and pattern from euclid.ts; σ from the hour's PM2.5 AQI through scales.ts detuneSigma). Nothing here is a second formula.
 export interface MonitorState {
   hour: number | null; // the index the values describe
   tierIndex: number; // the scale ladder's step, and the tone word's
@@ -292,7 +292,7 @@ export function useListenSession(): ListenSession {
     const tierIndex = tierAqi == null ? 0 : tierIndexOf(tierAqi);
     const bar = rest ? Math.floor(rest.index / 4) : 0;
     const k = day ? barK(day.slice(bar * 4, bar * 4 + 4).map((h) => normalize(h.no2, a.no2))) : null;
-    return { hour: rest?.index ?? null, tierIndex, tierAqi, scaleName: TIERS[tierIndex].scaleName, k, steps: barSteps(k, (bar * 4) % 16), o3n: normalize(r?.o3 ?? null, a.o3), o3: r?.o3 ?? null, pm25n, pm25, no2n: normalize(r?.no2 ?? null, a.no2), detuneCents: detuneSigma(pm25n) };
+    return { hour: rest?.index ?? null, tierIndex, tierAqi, scaleName: TIERS[tierIndex].scaleName, k, steps: barSteps(k, (bar * 4) % 16), o3n: normalize(r?.o3 ?? null, a.o3), o3: r?.o3 ?? null, pm25n, pm25, no2n: normalize(r?.no2 ?? null, a.no2), detuneCents: detuneSigma(tierAqi) };
   }, [report, rest, day, a]);
   const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.index ?? 12);
   const playheadHour = useEasedHour(clockTarget, playing);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { barSteps, euclidHit, barK } from "./euclid";
-import { detuneSigma } from "./SynthEngine";
+import { detuneSigma, tierIndexOf, TIERS } from "./scales";
 
 describe("barSteps (the monitor's lane is the engine's pattern)", () => {
   it("matches euclidHit step for step, with rotation", () => {
@@ -19,12 +19,31 @@ describe("barSteps (the monitor's lane is the engine's pattern)", () => {
   });
 });
 
-describe("detuneSigma (§3.6)", () => {
-  it("is 40·min(pm25n, 1.5) cents: in tune on clean air, 60 at the ceiling", () => {
+describe("detuneSigma (§3.6, D-44): piecewise-linear in the hour's PM2.5 AQI", () => {
+  it("passes through the anchors and holds above the last", () => {
     expect(detuneSigma(0)).toBe(0);
     expect(detuneSigma(null)).toBe(0);
-    expect(detuneSigma(0.5)).toBe(20);
-    expect(detuneSigma(1.5)).toBe(60);
-    expect(detuneSigma(13)).toBe(60); // June 7 sits far off the top; the ceiling holds
+    expect(detuneSigma(100)).toBe(10);
+    expect(detuneSigma(150)).toBe(20);
+    expect(detuneSigma(200)).toBe(40);
+    expect(detuneSigma(300)).toBe(60);
+    expect(detuneSigma(400)).toBe(100);
+    expect(detuneSigma(500)).toBe(100);
+  });
+  it("slopes inside a tier: 101 and 149 do not share a σ", () => {
+    expect(detuneSigma(101)).toBeCloseTo(10.2, 5);
+    expect(detuneSigma(149)).toBeCloseTo(19.8, 5);
+    expect(detuneSigma(250)).toBe(50);
+  });
+});
+
+describe("six tiers on EPA's lines (D-44)", () => {
+  it("steps at 50, 100, 150, 200, 300", () => {
+    expect(TIERS.length).toBe(6);
+    expect([0, 50, 51, 100, 101, 150, 151, 200, 201, 300, 301, 500].map(tierIndexOf)).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+  });
+  it("orders the scales by loss of centre and rings only the top tier", () => {
+    expect(TIERS.map((t) => t.scaleName)).toEqual(["Major Pentatonic", "Major", "Dorian", "Phrygian", "Whole Tone", "Chromatic"]);
+    expect(TIERS.map((t) => t.melodyRelease)).toEqual([0.3, 0.3, 0.3, 0.3, 0.3, 1.2]);
   });
 });

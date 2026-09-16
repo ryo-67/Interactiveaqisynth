@@ -7,7 +7,7 @@ import * as Tone from "tone";
 import { normalize, SmoothedAQI, melodyMidi, type PollutantAnchors } from "./contour";
 import { pm25ToAQI } from "./aqi";
 import { euclidHit, barK, barSteps, barAndStep } from "./euclid";
-import { TIERS, tierIndexOf, chordMidi, midiToFreq } from "./scales";
+import { TIERS, tierIndexOf, detuneSigma, chordMidi, midiToFreq } from "./scales";
 
 export type SourceTag = "own" | "citywide" | "typical"; // typical = live NO2 filled from the archive profile (D-18)
 
@@ -40,11 +40,7 @@ export interface BeatInfo {
   // For the monitor page (D-43), so it draws what the engine did and re-derives nothing: the σ the melody's detune was drawn from this beat, and the current bar's 16-step pattern (null = no pulse this bar).
   detuneCents: number;
   steps: boolean[] | null;
-}
-
-// MAPPING (PM2.5 → Brownian detune, §3.6): σ = 40·min(pm25n, 1.5) cents, the width of the normal distribution each melody note's detune is drawn from. Clean days are in tune; June 7 (σ = 60) is out of tune. Particulate jitter on the line. Exported so the monitor's rest state reads the same rule.
-export function detuneSigma(pm25n: number | null): number {
-  return 40 * Math.min(1.5, pm25n ?? 0);
+  melodyRelease: number; // the melody envelope's release as it stands at this beat, seconds (D-44): it walks to the tier's value over the beat, so this trails the tier by one
 }
 
 export interface PulseInfo {
@@ -245,6 +241,22 @@ export class SynthEngine {
     Tone.getTransport().start("+0.05", pos);
   }
 
+  // The melody's envelope release walked to a tier's value over one beat in eight steps (Tone's envelope times are numbers, not signals, so there is no rampTo). A new target cancels the walk in progress and starts from where it is.
+  private releaseTimer: ReturnType<typeof setInterval> | null = null;
+  private rampRelease(target: number): void {
+    const env = this.melody.envelope;
+    const from = Number(env.release);
+    if (this.releaseTimer) { clearInterval(this.releaseTimer); this.releaseTimer = null; }
+    if (Math.abs(from - target) < 1e-3) { env.release = target; return; }
+    const steps = 8;
+    let i = 0;
+    this.releaseTimer = setInterval(() => {
+      i++;
+      env.release = from + (target - from) * (i / steps);
+      if (i >= steps && this.releaseTimer) { clearInterval(this.releaseTimer); this.releaseTimer = null; }
+    }, (BEAT_S * 1000) / steps);
+  }
+
   // Tone schedules callbacks ahead of the audible moment (its lookahead, ~100 ms). Anything the page draws from a callback waits for that moment, so a flash or a playhead step lands with the sound rather than before it.
   private deferToAudible(time: number, fn: () => void): void {
     const ms = Math.max(0, (time - Tone.now()) * 1000);
@@ -278,14 +290,16 @@ export class SynthEngine {
     if (smoothed != null) this.curTier = tierIndexOf(smoothed);
     const tier = TIERS[this.curTier];
 
-    // MAPPING (PM2.5 → FM harmonicity/modulationIndex by tier, §3.5): timbral degradation at the oscillator. Melody and bed take the tier table; pulse keeps fixed harmonicity and full index; bass harmonicity rises only 1 (Easy) → 2 (Suffocating), linear, at 0.5× index — it stays a sub. MAPPING (NO2 → modulation depth, §3.6): pulse and bass index raised up to +50% at normalized NO2 = 1 — combustion grit. All ramped over one beat, never jumped.
+    // MAPPING (PM2.5 → FM harmonicity/modulationIndex by tier, §3.5): timbral degradation at the oscillator (the axis is distance from an integer ratio; scales.ts). Melody and bed take the tier table; pulse keeps fixed harmonicity and full index; bass harmonicity rises only 1 (Easy) → 2 (Suffocating), linear over the six tiers, at 0.5× index — it stays a sub. MAPPING (NO2 → modulation depth, §3.6): pulse and bass index raised up to +50% at normalized NO2 = 1 — combustion grit. All ramped over one beat, never jumped.
     const no2Boost = 1 + 0.5 * Math.min(1, no2n ?? 0);
     for (const v of [this.melody, ...this.bedVoices]) {
       v.harmonicity.rampTo(tier.harmonicity, BEAT_S, time);
       v.modulationIndex.rampTo(tier.modulationIndex, BEAT_S, time);
     }
     this.pulse.modulationIndex.rampTo(tier.modulationIndex * no2Boost, BEAT_S, time);
-    this.bass.harmonicity.rampTo(1 + this.curTier * 0.25, BEAT_S, time);
+    this.bass.harmonicity.rampTo(1 + this.curTier * 0.2, BEAT_S, time);
+    // MAPPING (tier → melody release, §3.5, D-44): Hazardous is denser, not sparser. At the top tier the release lengthens to 1.2 s so each 8n note still sounds when the second-next starts and a third fades under it: consecutive chromatic notes pile into a cluster rather than dropping out. The envelope's release is a plain number, so it is walked to the tier's value over the beat rather than jumped.
+    this.rampRelease(tier.melodyRelease);
     this.bass.modulationIndex.rampTo(0.5 * tier.modulationIndex * no2Boost, BEAT_S, time);
 
     // Effects follow the current hour; a null hour holds the previous value (no data, no movement — §4.4).
@@ -298,7 +312,7 @@ export class SynthEngine {
       this.revLongGain.gain.rampTo(wet * x, BEAT_S, time);
     }
 
-    // Bed (§3.8): one chord per bar, the bed cycling with the day. From Ragged up, the progression advances on beats 1 and 3 — harmonic rhythm doubles, acceleration without a tempo change (§3.9).
+    // Bed (§3.8): one chord per bar, the bed cycling with the day. From Phrygian up (tier index 3), the progression advances on beats 1 and 3 — harmonic rhythm doubles, acceleration without a tempo change (§3.9).
     const bedLen = this.bedDegrees.length;
     const fastBed = this.curTier >= 3;
     let chordIdx: number | null = null;
@@ -318,9 +332,9 @@ export class SynthEngine {
     }
 
     // Melody (§3.2): one note per beat from O3; null hour = rest, never interpolated (§4.4). Note length by tier (§3.9).
-    const sigma = detuneSigma(pm25n);
+    const sigma = detuneSigma(pm25ToAQI(pm25)); // the hour's own PM2.5 AQI, unsmoothed (scales.ts)
     if (o3n != null) {
-      // Per-note cents from N(0, σ) (detuneSigma above).
+      // Per-note cents from N(0, σ) (scales.ts detuneSigma).
       this.melody.detune.setValueAtTime(sigma * randNormal(), time);
       this.melody.triggerAttackRelease(midiToFreq(melodyMidi(o3n, tier.semis, MELODY_ROOT_MIDI)), tier.melodyNoteLength, time);
     }
@@ -345,6 +359,7 @@ export class SynthEngine {
       pm25nSmoothed,
       detuneCents: sigma,
       steps: barSteps(this.curBarK, this.bars[bar]?.rotation ?? 0),
+      melodyRelease: Number(this.melody.envelope.release),
     }));
   }
 

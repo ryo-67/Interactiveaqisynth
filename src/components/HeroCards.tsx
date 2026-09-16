@@ -22,11 +22,46 @@ export function splitTwoLines(sentence: string, firstLineMin: number = MOOD_SPLI
   return [words.slice(0, at).join(" "), words.slice(at).join(" ")];
 }
 
+// Fixed widths (Shoro, 2026-09-16): neither card may change width with what it shows, so each body is sized from the widest thing it could show, measured on hidden probes inside the card that set the same variables as the live text (a canvas measurement under-read Georgia by a tenth): the number card from three of the widest digit and the widest label ("AQI · now" or any month and day), the breath card from the longest of the five sentences and the widest tier name. From the tablet width up the sentence runs on one line (--hero-one-line, index.css); on phones it is two lines and, where the card is narrower than the widest text, the type scales down to it, floored at 0.8.
+function useProbeWidth(ref: React.RefObject<HTMLElement>, deps: unknown[] = []): number {
+  const [w, setW] = useState(0);
+  useLayoutEffect(() => {
+    const measure = () => { const el = ref.current; if (el) setW(Math.ceil(el.scrollWidth)); };
+    measure();
+    window.addEventListener("resize", measure);
+    document.fonts?.ready.then(measure);
+    return () => window.removeEventListener("resize", measure);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return w;
+}
+function useOneLine(): boolean {
+  const [one, setOne] = useState(false);
+  useLayoutEffect(() => {
+    const read = () => { const pair = document.querySelector(".scene-hero-pair"); setOne(!!pair && getComputedStyle(pair).getPropertyValue("--hero-one-line").trim() === "1"); };
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+  return one;
+}
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 // The number card. Its label names the day the number is for: "now" on Live (the current AQI, the NowCast composite at the latest hour), the day's date on an archive day (its official daily AQI), both from engine/aqi.ts (D-42).
 export function AQICard({ value, date }: { value: number | null; date: string | null }) {
+  const c = themeColors(useTheme());
+  const probe = useRef<HTMLDivElement>(null);
+  const width = useProbeWidth(probe);
   return (
     <Card label={HERO_AQI_LABEL.replace("{when}", date ? shortDate(date) : HERO_AQI_NOW)} className="scene-card-aqi">
-      <div className="scene-card-aqi-body"><AQINumber value={value} /></div>
+      <div className="scene-card-aqi-body" style={{ width: width || undefined }}>
+        <AQINumber value={value} />
+        {/* The probe: every width the card could need, hidden; the body takes the widest. */}
+        <div ref={probe} className="scene-measure" aria-hidden>
+          {["000", "888", "500"].map((d) => <div key={d} style={{ fontFamily: families.serifItalic, fontSize: `var(--card-value-size, var(--heading-size, ${typeScale.heading.size}))` }}>{d}</div>)}
+          {[HERO_AQI_NOW, ...MONTHS.map((m) => `${m} 30`)].map((when) => <div key={when} style={{ fontFamily: families.ui, letterSpacing: "0.04em", fontSize: typeScale.caption.size, color: c.textMuted }}>{HERO_AQI_LABEL.replace("{when}", when)}</div>)}
+        </div>
+      </div>
     </Card>
   );
 }
@@ -38,36 +73,26 @@ interface BreathProps {
   cardRef?: (el: HTMLDivElement | null) => void; // the page samples the sky behind this card for the lift
 }
 
-// The breath card: the word and the sentence. The layout is fixed — two lines, the split, the spacing; where the card is narrower than the widest of the five sentences (phones), the type scales down to it, floored at 0.8.
+// The breath card: the word and the sentence. From the tablet width up the sentence is one line and the body is as wide as the longest of the five (the card never changes width with the tier); on phones the sentence is two lines and, where the card is narrower than the widest text, the type scales down to it, floored at 0.8.
 export function BreathCard({ tierIndex, aqi, lift = 0, cardRef }: BreathProps) {
   const c = themeColors(useTheme());
+  const oneLine = useOneLine();
+  const probe = useRef<HTMLDivElement>(null);
+  const textW = useProbeWidth(probe, [oneLine]);
   const pRef = useRef<HTMLParagraphElement>(null);
-  const wordRef = useRef<HTMLDivElement>(null);
   const [textScale, setTextScale] = useState(1);
   useLayoutEffect(() => {
     const measure = () => {
-      const p = pRef.current, word = wordRef.current;
-      if (!p || !word) return;
-      const ctx = document.createElement("canvas").getContext("2d");
-      if (!ctx) return;
-      // The base size comes from the scene's variable, not the element (whose size already carries the last scale); the canvas font is built from its parts.
-      const baseSize = (el: Element, v: string, fallback: string) => { const raw = getComputedStyle(el).getPropertyValue(v).trim(); return raw || fallback; };
-      const fontOf = (el: Element, size: string) => { const cs = getComputedStyle(el); return `${cs.fontStyle} ${cs.fontWeight} ${size} ${cs.fontFamily}`; };
-      ctx.font = fontOf(p, baseSize(p, "--body-size", typeScale.body.size));
-      let w = 0;
-      for (const s of MOOD_SENTENCES) for (const line of splitTwoLines(s)) w = Math.max(w, ctx.measureText(line).width);
-      ctx.font = fontOf(word, baseSize(word, "--heading-size", typeScale.heading.size));
-      for (const name of TIER_NAMES) w = Math.max(w, ctx.measureText(name).width);
-      // The room the text has: the card's inner width. Where that is less than the widest text, the text scales down to it, floored at 0.8.
+      const p = pRef.current;
+      if (!p || !textW) return;
       const card = p.closest(".scene-card") as HTMLElement | null;
-      const avail = card ? card.clientWidth - parseFloat(getComputedStyle(card).paddingLeft) - parseFloat(getComputedStyle(card).paddingRight) : w;
-      setTextScale(avail > 0 && avail < w ? Math.max(0.8, avail / w) : 1);
+      const avail = card ? card.clientWidth - parseFloat(getComputedStyle(card).paddingLeft) - parseFloat(getComputedStyle(card).paddingRight) : textW;
+      setTextScale(!oneLine && avail > 0 && avail < textW ? Math.max(0.8, avail / textW) : 1);
     };
     measure();
     window.addEventListener("resize", measure);
-    document.fonts?.ready.then(measure);
     return () => window.removeEventListener("resize", measure);
-  }, []);
+  }, [textW, oneLine]);
   // Hold the displayed tier and swap only when the tier actually changes, with the blur transition.
   const [shown, setShown] = useState(tierIndex);
   const [blurred, setBlurred] = useState(false);
@@ -81,14 +106,14 @@ export function BreathCard({ tierIndex, aqi, lift = 0, cardRef }: BreathProps) {
     return () => clearTimeout(t);
   }, [tierIndex, shown]);
 
-  const [line1, line2] = splitTwoLines(MOOD_SENTENCES[shown]);
+  const sentence = MOOD_SENTENCES[shown];
+  const [line1, line2] = oneLine ? [sentence, ""] : splitTwoLines(sentence);
   const transition = `filter ${motion.blurMs / 2}ms ease, opacity ${motion.blurMs / 2}ms ease`;
   const blur: React.CSSProperties = { filter: blurred ? "blur(6px)" : "none", opacity: blurred ? 0.4 : 1, transition };
   return (
     <Card label={HERO_BREATH_LABEL} className="scene-card-breath" cardRef={cardRef}>
-      <div className="scene-card-breath-body">
+      <div className="scene-card-breath-body" style={{ width: oneLine && textW ? textW : undefined }}>
         <div
-          ref={wordRef}
           style={{
             ...blur,
             fontFamily: families.serifItalic,
@@ -114,8 +139,13 @@ export function BreathCard({ tierIndex, aqi, lift = 0, cardRef }: BreathProps) {
             whiteSpace: "nowrap",
           }}
         >
-          {line1}<br />{line2}
+          {line1}{line2 ? <><br />{line2}</> : null}
         </p>
+        {/* The probe: every line the card could show, at the base sizes, hidden; the body (one-line mode) or the scale (two-line mode) follows the widest. */}
+        <div ref={probe} className="scene-measure" aria-hidden>
+          {TIER_NAMES.map((n) => <div key={n} style={{ fontFamily: families.serifItalic, fontStyle: "italic", fontSize: `var(--heading-size, ${typeScale.heading.size})` }}>{n}</div>)}
+          {MOOD_SENTENCES.flatMap((sent) => (oneLine ? [sent] : splitTwoLines(sent)).filter(Boolean)).map((line, i) => <div key={i} style={{ fontFamily: families.serifItalic, fontStyle: "italic", fontSize: `var(--body-size, ${typeScale.body.size})` }}>{line}</div>)}
+        </div>
       </div>
     </Card>
   );

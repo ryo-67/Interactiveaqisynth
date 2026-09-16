@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The hero cards at fixed widths, the number at the widgets' size, the sentence on one line
+
+Shoro's pass on the two cards. On laptop the pair no longer fills the section: each card is a fixed width measured on hidden probes inside it (the widest three digits and the widest possible label; the longest of the five sentences and the widest tier word), so a change of day or tier moves nothing, and the pair sits centred at 676. The number is set at the widgets' value size, like Phrygian or 7.9. From the tablet width up the sentence runs on one line, the longest of the five fitting the section with room; phones keep two lines. A canvas measurement had under-read Georgia by a tenth, which is why the probes are DOM.
+
 ## 2026-09-16 — The hero as two widgets
 
 The one panel with the number beside the text split into two cards in the monitor's style, so the whole scene reads as one family of widgets: the number under "AQI · now" (Live) or "AQI · Jun 7" (an archive day, its own date), and the word and sentence under "Breath". The number card takes its content width, the breath card the rest of the section; the text still fits by scaling down to 0.8 on narrow phones, and the pair keeps the first monitor row's height below laptop. The number's optical centring against a text stack went with the old layout.

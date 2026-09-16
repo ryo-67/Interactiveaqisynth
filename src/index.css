@@ -1611,7 +1611,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* The hero (2026-09-15): fits its content with one padding on every side; the number at the left, the tier word over the two-line sentence at the right; both columns measured to fixed widths (MoodLine.tsx), so the panel never changes size. It never stretches to the graph. */
 /* The hero pair (2026-09-16): two cards across the section, the number card at its content width and the breath card taking the rest. The card variables (padding, inner sizes) live on the page inner so both pages' cards share them per breakpoint. */
 .scene-page-inner { --card-pad: 20px; }
-.scene-hero-pair { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--ui-gap); width: 100%; flex: 0 0 auto; }
+.scene-hero-pair { --hero-one-line: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--ui-gap); width: 100%; flex: 0 0 auto; }
+@media (min-width: 768px) { .scene-hero-pair { --hero-one-line: 1; } } /* the sentence on one line from the tablet width up (Shoro, 2026-09-16); the breath body is measured to the longest sentence (HeroCards.tsx) */
+@media (min-width: 1024px) { .scene-hero-pair { width: fit-content; max-width: 100%; grid-template-columns: auto auto; align-self: center; } } /* on laptop the pair need not fill the section (Shoro, 2026-09-16): each card at its measured width, the pair centred */
+.scene-measure { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; white-space: nowrap; height: 0; overflow: visible; } /* the hero cards' width probes (HeroCards.tsx): hidden lines in the live styles, measured, never laid out into the card's height */
 .scene-hero-pair > .scene-card { min-height: 0; }
 .scene-card-aqi-body { flex: 1 1 auto; display: flex; align-items: center; } /* the number centred in the room the label leaves */
 .scene-card-breath-body { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; justify-content: center; }
@@ -1665,7 +1668,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-panel.scene-graph { --graph-pad: 12px; --graph-pad-x: 8px; } /* tighter around the graph on phones (2026-09-15): the plot takes the room */
   /* On phones the graph fills the height the other bands leave (2026-09-15): the middle band takes the remaining height instead of centring in it, the hero keeps its content height, and the graph panel is the flexible child, its plot growing into it (--graph-fill) with --graph-tab-h as the floor. No feedback loop: the panel's height comes from the column, not from its content. */
   .scene-page-scene .scene-page-inner { justify-content: flex-start; height: 100%; flex: 1 1 auto; }
-  .scene-hero-pair { flex: 0 0 calc((100% - 3 * 12px) / 4); height: auto; } /* the first monitor row's height: a quarter of the band less the three 12 px gaps */
+  .scene-hero-pair { flex: 0 0 calc((100% - 3 * 12px) / 4); height: auto; gap: 12px; } /* the first monitor row's height: a quarter of the band less the three 12 px gaps; the pair's own gap is the grid's 12, which is also the 4 px the longest sentence needs to sit inside the 0.8 scale floor */
   /* The monitor fits the band on phones (2026-09-15): the grid takes the band's height in four equal rows, the cards shrink into them, and nothing scrolls. */
   .scene-page-monitor .scene-page-inner { height: 100%; flex: 1 1 auto; align-items: stretch; }
   /* Phone cards read like weather widgets (Shoro, 2026-09-16): the panel's 16 px padding kept, and the elements inside a step smaller — the value at 20/24, the lane 6 — so the padding is room and not a squeeze. 16·2 + 20 + 8 + 24 + 8 + 4 + 8 + 17 = 121 in a 143 px row on an 844-tall phone. */
@@ -1686,7 +1689,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (max-width: 767px) and (max-height: 720px) {
   .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; }
   .scene-monitor { gap: 8px; }
-  .scene-hero-pair { flex-basis: calc((100% - 3 * 8px) / 4); --heading-line: 20px; --body-size: 12px; --body-line: 16px; } /* the grid's gaps are 8 here; the breath card's word and lines a step tighter: 12·2 + 12 + 4 + 20 + 4 + 32 = 96 in the 98 row */
+  .scene-hero-pair { flex-basis: calc((100% - 3 * 8px) / 4); gap: 8px; --heading-line: 20px; --body-size: 12px; --body-line: 16px; } /* the grid's gaps are 8 here; the breath card's word and lines a step tighter: 12·2 + 12 + 4 + 20 + 4 + 32 = 96 in the 98 row */
   .scene-card-breath-body { gap: 4px; }
   .scene-card { --card-pad: 12px; --sub-gap: 0px; gap: 4px; } /* 12·2 + 20 + 24 + 4 + 17 + 4·3 = 101 in a 102 px row on a 667-tall phone; the value keeps its 20/24 */
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */

@@ -1,4 +1,4 @@
-// AQINumber — the number (§5.2 item 2). Display size, serif, text primary — never the tier color, and it never animates. A chosen day shows its official daily AQI, Live the current AQI (the NowCast composite at the latest hour), both from engine/aqi.ts (D-42): the number a weather app would show, not the PM2.5 tier the sound plays.
+// AQINumber — the number (§5.2 item 2). The widgets' value size (2026-09-16: the hero is two cards in the monitor's style, so the number is set like the cards' values), serif, text primary — never the tier color, and it never animates. A chosen day shows its official daily AQI, Live the current AQI (the NowCast composite at the latest hour), both from engine/aqi.ts (D-42): the number a weather app would show, not the PM2.5 tier the sound plays.
 import React from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
 
@@ -8,8 +8,8 @@ export function AQINumber({ value }: { value: number | null }) {
     <div
       style={{
         fontFamily: families.serifItalic,
-        fontSize: `var(--display-size, ${typeScale.display.size})`, // the scene scales this per breakpoint
-        lineHeight: typeScale.display.line,
+        fontSize: `var(--card-value-size, var(--heading-size, ${typeScale.heading.size}))`, // the cards' value size per breakpoint (index.css)
+        lineHeight: `var(--card-value-line, var(--heading-line, 40px))`,
         fontVariantNumeric: "lining-nums tabular-nums", // lining (2026-09-15): Georgia's default figures are old-style, so a 5 or a 4 dropped below the baseline and the number's visual centre moved with its digits; lining figures share one height
         color: c.textPrimary,
       }}

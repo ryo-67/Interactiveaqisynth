@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The phone's day control is one button
+
+Shoro: on phones the day control was a chip nested in a glass pill; it is now the Patch notes button's twin, the frosted pill itself the button with the same padding, colour and hover fill, the caret kept as it was. The label keeps the data face, since it is a reading and the widest-label cell relies on its fixed pitch.
+
 ## 2026-09-16 — A phone's plot starts at 0 to 100
 
 Shoro: on a phone the axis should default to 0 to 100, stepping up when a day exceeds it, as the desktop's 0 to 200 does. The phone's plot is a third the height, so a Good day at a 200 ceiling sat in its bottom fifth. The graph reads its own panel's width in the draw, as it does for its type sizes, and keeps it as state, so the frame re-derives its ceiling from the phone's steps, 100, 200, 300, 500, and morphs to it like any change of scale.

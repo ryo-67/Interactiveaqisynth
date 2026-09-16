@@ -178,11 +178,11 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
   const label = date ? (pin ? pin.name : labelOf(date)) : NAV_LAST_24H;
   const options: Array<{ name: string; date: string | null }> = [{ name: NAV_LAST_24H, date: null }, ...PINS.map((p) => ({ name: p.name, date: p.date }))];
   return (
-    <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
+    <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
+      {/* The trigger is the pill (Shoro, 2026-09-16): the Patch notes button's shape, padding, colour and hover fill, in place of a chip nested in a glass pill; the label keeps the data face (it is a reading, and the widest-label cell relies on its fixed pitch) and the caret its style. */}
       <button
-        className="scene-chip"
-        data-active={open}
-        style={{ ...chip(open), display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center", opacity: loading ? 0.5 : 1 }}
+        className="scene-play scene-about-btn"
+        style={{ padding: "8px 14px 8px 16px", minHeight: `var(--ctl-pill, ${CONTROL.pillHeight}px)`, boxSizing: "border-box", display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center", background: "none", border: "none", borderRadius: 999, color: c.textSecondary, fontSize: typeScale.caption.size, lineHeight: 1.5, opacity: loading ? 0.5 : 1 }}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -191,7 +191,7 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
         {/* No calendar glyph on phones: the caret is the affordance, and the 18 px is what lets the chip share a row with the boroughs from 408 wide. Every label the chip can show is laid out in the same cell — the current one visible, the rest hidden — so the chip's width is the widest label's and never changes as the choice does. */}
         <span style={{ display: "inline-grid", textAlign: "center" }}>
           {[label, ...WIDTH_LABELS.filter((l) => l !== label)].map((l, i) => (
-            <span key={l} style={{ gridArea: "1 / 1", color: c.textPrimary, fontFamily: families.data, letterSpacing: 0, visibility: i === 0 ? "visible" : "hidden" }} aria-hidden={i !== 0}>{l}</span>
+            <span key={l} style={{ gridArea: "1 / 1", color: c.textSecondary, fontFamily: families.data, letterSpacing: 0, visibility: i === 0 ? "visible" : "hidden" }} aria-hidden={i !== 0}>{l}</span>
           ))}
         </span>
         <span aria-hidden style={{ color: c.textMuted, marginLeft: 2, display: "inline-flex" }}>{open ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}</span>

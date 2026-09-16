@@ -6,6 +6,10 @@ Why, not just what. Newest first.
 
 Chrome, not Firefox, painted dark bands down the edges of cards that sit flush with a page's edge, and a dark bloom where two cards meet. Chromium composites each translated page into its own layer and clamps a backdrop blur at that layer's bounds, so a card at the edge samples clamped pixels for its outer 28 px; Firefox samples the whole page. Each page now reaches the frame's clip padding beyond the section on every side, so the layer holds real sky around the cards and the blur has something to sample. The frame clips at the same distance, and nothing in the layout moves. Not reproduced here: headless Chromium renders in software and the in-app browser has no WebGL sky; this is the mechanism the crops describe, to be confirmed in Shoro's Chrome.
 
+## 2026-09-16 — Each glass on its own render surface, for Chrome's cursor bands; the violet back to 3:1
+
+The Chrome bands turned out to come and go with the cursor. What a cursor move changes is one composited layer sweeping over the frost, and Chromium re-rasterises a backdrop blur only in the tiles that layer damaged, so a tile seam can paint a band or a bloom across a card until the next full raster; Firefox does not tile the blur. Every glass now carries will-change: transform, which gives it a render surface of its own that Chromium rasterises whole. Not reproduced here: a 48-move cursor sweep in the installed Chrome with GPU compositing, measuring the plain frost under every card edge, found no band (the one deviation it flagged was the cursor glyph in the strip), so this is the mechanism the reports describe, to be confirmed in Shoro's Chrome. The blue-violet's light end goes back to 3:1: at 248° a periwinkle holds the hue where the 270° lavender did not.
+
 ## 2026-09-16 — Very Unhealthy as a blue-violet
 
 Even with its blue kept at the light end the 270° violet sat between red and magenta. Its hue moves to 248°, a periwinkle at the light end and a blue-violet at the dark, so the top three categories run salmon, blue-violet, magenta on every panel; its dark end keeps 3:1 and its light end 2.7:1 as before.

@@ -1398,6 +1398,7 @@ html {
   border-radius: 999px;
   box-sizing: border-box;
   max-width: 100%;
+  will-change: transform; /* each glass on its own render surface (2026-09-16): Chromium otherwise re-rasterises a backdrop blur only in the tiles a moving layer (the cursor) damaged, and the tile seams showed as bands across the frost on cursor moves — Chrome only, at random. Not reproduced in headless Chrome with GPU compositing; the mechanism the reports describe. */
 }
 /* Dither (2026-09-15, theme.ts GLASS.ditherAlpha / skyDither): the blur quantizes the sky behind a panel into 8-bit steps that read as bands, and the sky's own gradient layers band too. A fine white noise — a 160 px feTurbulence tile, white with the noise as its alpha, so it never tints — at a few percent breaks the steps: over every glass fill as a pseudo-element beneath the content, and over the sky's layers as one element. */
 .glass::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: calc(var(--glass-dither, 0.04) * var(--glass-on, 1)); }

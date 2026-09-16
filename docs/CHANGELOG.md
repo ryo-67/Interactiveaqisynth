@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The page pill centred in its whitespace
+
+Shoro: on laptop the page pill should sit centred in the whitespace between the browser's edge and the section's left edge, vertically centred on the band, until the minimum gaps take over. It had stood a fixed 96 px off the section, centred at one width only. The band spans the viewport, so the section's left edge is half the width less half the section, and the pill sits halfway to it, clamped to the page padding outside and 16 px from the section inside. Measured: its centre is the whitespace's centre at 1280 and 1900 wide; at 1024, the narrowest laptop, the clamp holds the 32 px padding and the 16 px gap.
+
 ## 2026-09-16 — Corners that step with the breakpoint
 
 Shoro: corner radii should scale with the breakpoint so the phone keeps the desktop's look. The frosted surfaces had one radius, 20 px, at every size, so a phone's 12 px-padded card carried a desktop corner. Two tokens on the scene root now, on the 4 px grid like the padding steps: the panel radius, 20 on laptop, 16 on tablets, 12 on phones, read by every frosted surface (cards, the graph, the popover), and a chip radius, 8 then 6, for the playhead's readout and the calendar's day cells. The pills were already round at every height; the source and credit pills, which had a fixed 20, are declared round like the rest. The sky's frost reads each panel's computed radius, so its blur follows the corners without a change.

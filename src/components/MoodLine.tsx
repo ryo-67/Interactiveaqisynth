@@ -68,7 +68,7 @@ export function MoodLine({ tierIndex, aqi, number, numberSizer, lift = 0 }: Prop
   const blur: React.CSSProperties = { filter: blurred ? "blur(6px)" : "none", opacity: blurred ? 0.4 : 1, transition };
   return (
     <div className="scene-hero-row" ref={rowRef} style={{ maxWidth: "100%" }}>
-      <div style={{ display: "grid", flex: "0 0 auto" }}>
+      <div style={{ display: "grid", justifyItems: "center", flex: "0 0 auto" }}> {/* the number centred in its three-digit column, so a low number does not sit left with a gap before the text (2026-09-15) */}
         <div style={{ gridArea: "1 / 1" }}>{number}</div>
         <div style={{ gridArea: "1 / 1", visibility: "hidden" }} aria-hidden>{numberSizer}</div>
       </div>

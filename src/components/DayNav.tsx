@@ -260,7 +260,7 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
         {/* The date keeps the data face: it is a reading, not a control label. The icon and the label are one centred pair with a 6 px gap (Shoro, 2026-09-16: the icon had stood at a fixed place with the label centred beside it), and a hidden copy of the pair with the widest label holds the chip's width underneath, so the chip is one width whatever the day; the data face is monospaced, so the widest label is the longest, a two-digit day with the year. */}
         <span style={{ display: "inline-grid" }}>
           <span aria-hidden style={{ gridArea: "1 / 1", visibility: "hidden", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: families.data, letterSpacing: 0 }}><CalendarIcon size={14} />{WIDEST_DATE_LABEL}</span>
-          <span style={{ gridArea: "1 / 1", justifySelf: "center", display: "inline-flex", alignItems: "center", gap: 6, color: c.textPrimary, fontFamily: families.data, letterSpacing: 0 }}><CalendarIcon size={14} />{date ? labelOf(date) : NAV_LAST_24H}</span>
+          <span style={{ gridArea: "1 / 1", justifySelf: "center", display: "inline-flex", alignItems: "center", gap: 6, color: c.textPrimary, fontFamily: families.data, letterSpacing: 0 }}><span style={{ display: "inline-flex", color: c.textMuted }}><CalendarIcon size={14} /></span>{date ? labelOf(date) : NAV_LAST_24H}</span>
         </span>
       </button>
       <button className="scene-chip" style={chip(false)} onClick={next} aria-label="next day" disabled={!date}><ChevronRightIcon /></button>

@@ -1631,9 +1631,9 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-transport-side { --page-pill-h: calc(2 * var(--ctl-inner) + 12px + 16px); position: absolute; left: clamp(var(--ui-pad), calc((50% - var(--section-w) / 2 - var(--ctl-pill)) / 2), calc(50% - var(--section-w) / 2 - var(--ctl-pill) - 16px)); top: calc(50% - var(--page-pill-h) / 2); flex-direction: column; align-items: center; z-index: 1; }
 .scene-transport-side .scene-volume-pill { width: var(--ctl-pill); height: calc(var(--slider-width) + 32px); padding: 0; position: relative; }
 .scene-transport-side .scene-volume { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); } /* centred by its own translate, not by the pill's alignment: the input's box is wider than the pill, and Firefox aligns an overflowing grid item to the start, which put the track on the pill's edge (Shoro, 2026-09-16) */
-/* The About button's pill (Shoro, 2026-09-16): the chips' inset around the button, so its hover fill sits inside the pill as a chip's does. */
-.scene-pill.scene-about-pill { padding: 0 var(--chip-inset, 4px); }
-.scene-about-btn { white-space: nowrap; } /* face, size and colour are the source line's, set inline from the tokens (Transport.tsx) */
+/* The About pill (Shoro, 2026-09-16): the credit's material and shape exactly, the button filling it so the play button's hover fill covers the whole pill. */
+.scene-about-pill { padding: 0; min-height: var(--ctl-pill); display: flex; align-items: center; flex: 0 0 auto; }
+.glass.frosted.scene-credit, .glass.frosted.scene-about-pill { border-radius: 999px; } /* pills, at every breakpoint: the frosted material's panel radius would otherwise outrank the single class and square them off on phones */
 .scene-bottom-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
 /* The hero (2026-09-15): fits its content with one padding on every side; the number at the left, the tier word over the two-line sentence at the right; both columns measured to fixed widths (MoodLine.tsx), so the panel never changes size. It never stretches to the graph. */

@@ -439,7 +439,7 @@ export default function ScenePage() {
             )}
             {laptop ? (
               <>
-                <Glass material="glass" className="scene-pill scene-about-pill">
+                <Glass material="frosted" className="scene-about-pill">
                   <AboutButton />
                 </Glass>
                 {day && day.length > 0 && (
@@ -453,7 +453,7 @@ export default function ScenePage() {
               </>
             ) : (
               <div className="scene-bottom-row">
-                <Glass material="glass" className="scene-pill scene-about-pill">
+                <Glass material="frosted" className="scene-about-pill">
                   <AboutButton />
                 </Glass>
                 <Glass material="frosted" className="scene-credit">

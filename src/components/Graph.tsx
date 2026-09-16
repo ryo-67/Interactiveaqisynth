@@ -147,7 +147,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       const minTab = Number.isFinite(cssTab) && cssTab > 0 ? cssTab : GRAPH.tabHeight[bp];
       // Side by side (the scene sets --graph-fill: 1 there), the plot grows into the height the stretched panel gives it, never below the breakpoint's minimum — so the graph is taller than the hero. In the column layouts the panel's height is its content, and growing into it would be a feedback loop, so the plot stays at the minimum.
       const fill = getComputedStyle(wrap).getPropertyValue("--graph-fill").trim() === "1";
-      const tabs = wrap.firstElementChild as HTMLElement | null;
+      const tabs = wrap.querySelector<HTMLElement>("[role=\"tablist\"]"); // by role, not by position (2026-09-16): the playhead's pill was put first in the wrap and was measured as the tab band, so the plot's height came out wrong and changed as the pill moved
       // The band is pulled up into the panel's padding, so the space it takes inside the wrap is from the wrap's top to the band's bottom, plus the gap below it.
       const tabsH = tabs ? tabs.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top + parseFloat(getComputedStyle(tabs).marginBottom || "0") : 0;
       const available = wrap.clientHeight - tabsH - GRAPH.labelGutter - axisH;
@@ -423,9 +423,10 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       if (n > 0) {
         ctx.fillStyle = c.textMuted;
         // The date is on the left label only for the live window, whose readings straddle two days; a chosen day is named by the picker already, so its label is just the time.
-        ctx.fillText(readingLabel(day[0].ts, live), plotX + 2, cssH - 5);
+        const axisLabelY = cssH - axisH / 2 + labelPx * 0.36; // centred in the axis row (2026-09-16): on the row's floor the plot's bottom read as cramped against the top's gutter (Shoro)
+        ctx.fillText(readingLabel(day[0].ts, live), plotX + 2, axisLabelY);
         const right = live ? "now" : readingLabel(day[n - 1].ts, false);
-        ctx.fillText(right, plotRight - ctx.measureText(right).width - 2, cssH - 5);
+        ctx.fillText(right, plotRight - ctx.measureText(right).width - 2, axisLabelY);
       }
 
       // Playhead: the eased hour, one line through every track, with the hour's values printed at its head.
@@ -481,8 +482,6 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
 
   return (
     <div ref={wrapRef} style={{ position: "relative", width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
-      {/* The playhead's readout: text and place set by the draw loop, never through React state (a render per frame while playing). Not a <Glass>: it floats over the plot, which the sky's frost cannot see, so it keeps the browser's filter like the popover (index.css). */}
-      <div ref={chipRef} className="glass frosted scene-playhead-chip" aria-hidden style={{ fontFamily: families.data, fontSize: typeScale.caption.size, color: c.textPrimary }} />
       {/* The tabs are a header band attached to the top of the graph container, built to the preset bar's spec (§5.3): the same chips (chip.ts), the same 4 px gaps with a roomier 8 px inset, the band spanning the container edge to edge so the container's own top corners round it and its bottom is square, and no line, fill or shadow of its own — the band and the graph are one container. */}
       <div role="tablist" style={{ position: "relative", display: "flex", alignItems: "center", flex: "0 0 auto", gap: CONTROL.gap, height: `calc(var(--ctl-inner, ${CONTROL.inner}px) + ${GRAPH.tabsInset * 2}px)`, margin: `calc(-1 * var(--graph-pad, 20px)) calc(-1 * var(--graph-pad-x, 16px)) ${GRAPH.tabsGap}px`, padding: `0 ${GRAPH.tabsInset}px`, boxSizing: "border-box", overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", scrollbarWidth: "none" }}>
         {TRACK_ORDER.map((t) => {
@@ -505,6 +504,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         style={{ display: "block", touchAction: "none" }} // width and height are set by draw() to exactly buffer ÷ ratio
         aria-label="24-hour graph; press or drag to move the playhead"
       />
+      {/* The playhead's readout, after the canvas so nothing measures it as the tab band: text and place set by the draw loop, never through React state (a render per frame while playing). Not a <Glass>: it floats over the plot, which the sky's frost cannot see, so it keeps the browser's filter like the popover (index.css). */}
+      <div ref={chipRef} className="glass frosted scene-playhead-chip" aria-hidden style={{ fontFamily: families.data, fontSize: typeScale.caption.size, color: c.textPrimary }} />
     </div>
   );
 }

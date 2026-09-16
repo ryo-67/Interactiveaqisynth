@@ -162,7 +162,8 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
 
 // DayPicker — the phone's one control for the day (§2.2 on phones): a chip naming the current choice that opens a menu of Last 24h and the presets, then "or choose a date" and the calendar. Replaces the arrows, the date chip, the Live chip and the preset strip, which need more width than a phone has.
 // The labels that size the phone chip: Last 24h, the presets, and the longest date the calendar can produce.
-const WIDTH_LABELS = [NAV_LAST_24H, ...PINS.map((p) => p.name), "Sep 30, 2026"];
+const WIDEST_DATE_LABEL = "Sep 30, 2026"; // the longest label a date chip can show in the monospaced data face: a two-digit day and the year
+const WIDTH_LABELS = [NAV_LAST_24H, ...PINS.map((p) => p.name), WIDEST_DATE_LABEL];
 export function DayPicker({ date, onChange, loading, latestDate }: Props) {
   const c = themeColors(useTheme());
   const chip = (active: boolean) => chipStyle(c, active);
@@ -257,8 +258,11 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
         aria-label={`${NAV_CALENDAR}: ${date ? labelOf(date) : NAV_LAST_24H}`}
       >
         <CalendarIcon size={14} />
-        {/* The date keeps the data face: it is a reading, not a control label. */}
-        <span style={{ color: c.textPrimary, fontFamily: families.data, letterSpacing: 0 }}>{date ? labelOf(date) : NAV_LAST_24H}</span>
+        {/* The date keeps the data face: it is a reading, not a control label. The widest label the chip can show is laid out in the same cell, hidden, so the chip is one width whatever the day (Shoro, 2026-09-16: it grew and shrank with the date's digits); the data face is monospaced, so the widest label is the longest, a two-digit day with the year. */}
+        <span style={{ display: "inline-grid", textAlign: "center" }}>
+          <span style={{ gridArea: "1 / 1", color: c.textPrimary, fontFamily: families.data, letterSpacing: 0 }}>{date ? labelOf(date) : NAV_LAST_24H}</span>
+          <span aria-hidden style={{ gridArea: "1 / 1", visibility: "hidden", fontFamily: families.data, letterSpacing: 0 }}>{WIDEST_DATE_LABEL}</span>
+        </span>
       </button>
       <button className="scene-chip" style={chip(false)} onClick={next} aria-label="next day" disabled={!date}><ChevronRightIcon /></button>
       <button className="scene-chip" data-active={date === null} style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>

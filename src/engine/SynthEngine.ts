@@ -138,8 +138,9 @@ export class SynthEngine {
     transport.loop = true;
     transport.loopStart = 0;
     transport.loopEnd = "6m";
-    transport.scheduleRepeat((t) => this.onBeatTick(t), "4n", 0);
-    transport.scheduleRepeat((t) => this.onStep16(t), "16n", 0);
+    // A tick that throws is named in the console with its time, once per message, rather than dying as an uncaught exception in Tone's clock (2026-09-16): a refused voice start had been silent to read and silent to hear, the voices after it in that tick skipped.
+    transport.scheduleRepeat((t) => this.guarded("beat", t, () => this.onBeatTick(t)), "4n", 0);
+    transport.scheduleRepeat((t) => this.guarded("step", t, () => this.onStep16(t)), "16n", 0);
   }
 
   // Precompute per-bar Euclidean state from the day's NO2. Rotation = bar-start hour mod 16 (§3.5).
@@ -160,7 +161,8 @@ export class SynthEngine {
     this.hazeSmoother.reset();
     if (wasPlaying) {
       this.lastBeatTime = this.lastStepTime = -1;
-      transport.start("+0.05", `${Math.floor(this.startHour / 4)}:${this.startHour % 4}:0`);
+      // Beyond Tone's lookahead (~100 ms), not within it (2026-09-16): the transport that just stopped had already run its callbacks up to a lookahead ahead, so a voice may hold a start scheduled at now + 0.1; a restart inside that window asks the same voice to start EARLIER than that, and Tone refuses ("Start time must be strictly greater than previous start time"), which threw out of the first beat of the new day and left the voices after it in that tick silent. 150 ms is one more sixteenth of a beat before the new day speaks.
+      transport.start("+0.15", `${Math.floor(this.startHour / 4)}:${this.startHour % 4}:0`);
     }
   }
 
@@ -262,6 +264,16 @@ export class SynthEngine {
     const ms = Math.max(0, (time - Tone.now()) * 1000);
     if (ms < 4) fn();
     else setTimeout(fn, ms);
+  }
+
+  private reported = new Set<string>();
+  private guarded(what: string, time: number, fn: () => void): void {
+    try { fn(); } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (this.reported.has(msg)) return;
+      this.reported.add(msg);
+      console.error(`[engine] ${what} tick failed at ${time.toFixed(3)}s (transport ${Tone.getTransport().state}, position ${Tone.getTransport().position}):`, err);
+    }
   }
 
   private onBeatTick(time: number): void {

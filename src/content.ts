@@ -65,3 +65,8 @@ export const TONE_WORDS = ["Clean", "Warm", "Edged", "Metallic", "Harsh"] as con
 export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pentatonic", "Whole Tone": "Whole tone", Dorian: "Dorian", Phrygian: "Phrygian", Chromatic: "Chromatic" };
 export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", o3: "ppb", pm25: "µg/m³" } as const;
 export const MONITOR_REST = "—"; // a value the held hour lacks
+
+// The hero's two cards (2026-09-16): the number under "AQI · now" on Live or "AQI · Oct 29" on an archive day, the word and sentence under "Breath". PLACEHOLDERS — Shoro's.
+export const HERO_AQI_LABEL = "AQI · {when}";
+export const HERO_AQI_NOW = "now";
+export const HERO_BREATH_LABEL = "Breath";

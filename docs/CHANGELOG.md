@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The hero as two widgets
+
+The one panel with the number beside the text split into two cards in the monitor's style, so the whole scene reads as one family of widgets: the number under "AQI · now" (Live) or "AQI · Jun 7" (an archive day, its own date), and the word and sentence under "Breath". The number card takes its content width, the breath card the rest of the section; the text still fits by scaling down to 0.8 on narrow phones, and the pair keeps the first monitor row's height below laptop. The number's optical centring against a text stack went with the old layout.
+
 ## 2026-09-16 — The scene stacked at every width
 
 The tablet's column read better than the laptop's row: the hero centred above the graph, the graph across the section's whole 1040 rather than the 614 the hero left it. It is the layout everywhere now.

@@ -19,8 +19,7 @@ import { Cursor } from "../components/Cursor";
 import { usePopoverOpen, consumeSuppressedClick } from "../components/popoverStore";
 import { PlayButton, VolumeSlider } from "../components/Transport";
 import { BoroughToggle } from "../components/BoroughToggle";
-import { AQINumber } from "../components/AQINumber";
-import { MoodLine } from "../components/MoodLine";
+import { AQICard, BreathCard } from "../components/HeroCards";
 import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
 import { DayNav, PinStrip, DayPicker } from "../components/DayNav";
 import { SourceLine } from "../components/SourceLine";
@@ -342,9 +341,11 @@ export default function ScenePage() {
             <div ref={trackRef} className="scene-track">
               <div className="scene-page scene-page-scene" data-page="scene" aria-hidden={page !== "scene"} inert={page !== "scene" ? "" : undefined}>
                 <div className="scene-page-inner">
-                  <Glass ref={setPanelRef("hero")} material="frosted" className="scene-panel scene-hero">
-                    <MoodLine tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} number={<AQINumber value={s.displayAqi} />} value={s.displayAqi} />
-                  </Glass>
+                  {/* The hero as two widgets (2026-09-16): the number under its day, the word and sentence under "Breath". The breath card is the sampled one: its word takes the ramp. */}
+                  <div className="scene-hero-pair">
+                    <AQICard value={s.displayAqi} date={s.date} />
+                    <BreathCard tierIndex={s.moodTier} aqi={s.moodAqi} lift={heroLift} cardRef={setPanelRef("hero")} />
+                  </div>
                   {day && day.length > 0 && (
                     <Glass ref={setPanelRef("graph")} material="frosted" className="scene-panel scene-graph">
                       <Graph

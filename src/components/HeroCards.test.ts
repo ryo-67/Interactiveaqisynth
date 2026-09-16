@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitTwoLines } from "./MoodLine";
+import { splitTwoLines } from "./HeroCards";
 import { MOOD_SENTENCES } from "../content";
 
 describe("splitTwoLines", () => {

@@ -13,6 +13,11 @@ function nyYear(): number {
 }
 
 // "2pm"; with the date "Sep 14, 2pm"; from an earlier year "Jun 7, 2023, 4am". Hours only: the data is hourly, so minutes would be noise (2026-09-15).
+// A date as "Oct 29": the hero's label for an archive day (2026-09-16).
+export function shortDate(date: string): string {
+  return `${MONTHS[Number(date.slice(5, 7)) - 1]} ${Number(date.slice(8, 10))}`;
+}
+
 export function readingLabel(ts: string, withDate: boolean): string {
   const h = hourOfTs(ts);
   const time = `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? "am" : "pm"}`;

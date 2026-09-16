@@ -1,14 +1,12 @@
 // Monitor — the second scene page (D-43): the synthesizer's state as a bento of frosted cards, each labelled with the measurement that drives it, so a visitor can see that synthesis is happening and which pollutant is doing what. Reads the session's MonitorState (the beat report while playing, the held hour at rest) and re-derives nothing: the tier, the pattern and σ are the engine's own; the meters show the normalized values the engine's mappings take as input (§3.6), not the Hz or the wet they become.
 // Every value moves on the beat: meters ease over half a beat like the sky's inputs (useEased), the ladders' lit step and the lane's hits fade over one beat (index.css).
 import React from "react";
-import { Glass } from "./Glass";
-import { chipStyle } from "./chip";
+import { Card } from "./Card";
 import { Routing } from "./Routing";
 import { useEased } from "../scene/useEased";
 import { useTheme, themeColors, families, typeScale, space, motion, MONITOR, aqiScaleColor } from "../utils/theme";
-import { MONITOR_LABELS, SOURCE_LABELS, SOURCE_JOIN, TONE_WORDS, SCALE_DISPLAY, MONITOR_UNITS, MONITOR_REST } from "../content";
+import { MONITOR_LABELS, TONE_WORDS, SCALE_DISPLAY, MONITOR_UNITS, MONITOR_REST } from "../content";
 import type { MonitorState, PulseHit } from "../scene/useListenSession";
-import type { Channel } from "../scene/useListenSession";
 
 interface Props {
   m: MonitorState;
@@ -19,21 +17,6 @@ interface Props {
 }
 
 const TAU = motion.beatMs * 0.5; // the sky's easing constant: settled within about a beat
-
-// One card: label top-left in the UI face, the source pill top-right (the routing), the readout beneath.
-function Card({ label, sources, className, children, cardRef }: { label: string; sources?: Channel[]; className: string; children: React.ReactNode; cardRef?: (el: HTMLDivElement | null) => void }) {
-  const c = themeColors(useTheme());
-  return (
-    <Glass ref={cardRef} material="frosted" className={`scene-card ${className}`}>
-      <div className="scene-card-head">
-        <span style={{ fontFamily: families.ui, letterSpacing: "0.04em", fontSize: typeScale.caption.size, lineHeight: 1, color: c.textMuted }}>{label}</span>
-        {/* The source pill: the chip style in its inactive state, 20 tall with the micro size (Shoro, 2026-09-16: smaller than the card's label, whatever the breakpoint). The routing card has none: it is the routing. */}
-        {sources && <span style={chipStyle(c, false, { height: 20, padding: "0 8px", borderRadius: 10, fontSize: typeScale.micro.size })}>{sources.map((s) => SOURCE_LABELS[s]).join(SOURCE_JOIN)}</span>}
-      </div>
-      {children}
-    </Glass>
-  );
-}
 
 // The value line: the editorial serif at the heading size, like the mood word.
 function Value({ children }: { children: React.ReactNode }) {

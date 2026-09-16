@@ -1551,7 +1551,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; transition: --glass-on var(--page-ms, 1000ms) ease !important; }
 .scene-mid[data-fade="true"][data-axis="x"] .scene-page-monitor { left: 0; }
 /* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
-.scene-monitor { --card-pad: 20px; --routing-h: 96px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; align-self: center; }
+.scene-monitor { --routing-h: 96px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; align-self: center; }
 .scene-monitor .scene-card-routing { grid-column: 1 / -1; }
 .scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; }
 .scene-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
@@ -1588,7 +1588,6 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (min-width: 1024px) {
   /* The scene page is a column at every breakpoint (Shoro, 2026-09-16): the hero centred above, the graph across the section's full width. Side by side, the graph was squeezed beside the hero; stacked, the plot gets the whole 1040. */
   .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; }
-  .scene-panel.scene-hero { align-self: center; }
   .scene-panel.scene-graph { flex: 0 0 auto; width: 100%; } /* the plot at its token height (GRAPH.tabHeight.laptop, 240): 20 + tabs 32 + 8 + gutter 8 + 240 + axis 24 + 20 = 352; with the hero's 152 and the 20 gap the section is 524 in a 780 band at 900 tall */
 }
 /* Short laptops (720 tall): the band is 498, so the plot takes the tablet's height (176) and the section is 460. */
@@ -1610,8 +1609,12 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
 /* The hero (2026-09-15): fits its content with one padding on every side; the number at the left, the tier word over the two-line sentence at the right; both columns measured to fixed widths (MoodLine.tsx), so the panel never changes size. It never stretches to the graph. */
-.scene-panel.scene-hero { padding: var(--hero-pad, 28px); flex: 0 0 auto; width: fit-content; max-width: 100%; }
-.scene-hero-row { display: flex; align-items: center; gap: 24px; } /* the number, centred on the text block to its right (2026-09-15) */
+/* The hero pair (2026-09-16): two cards across the section, the number card at its content width and the breath card taking the rest. The card variables (padding, inner sizes) live on the page inner so both pages' cards share them per breakpoint. */
+.scene-page-inner { --card-pad: 20px; }
+.scene-hero-pair { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--ui-gap); width: 100%; flex: 0 0 auto; }
+.scene-hero-pair > .scene-card { min-height: 0; }
+.scene-card-aqi-body { flex: 1 1 auto; display: flex; align-items: center; } /* the number centred in the room the label leaves */
+.scene-card-breath-body { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; justify-content: center; }
 .scene-panel.scene-graph { --graph-pad: 20px; --graph-pad-x: 16px; padding: var(--graph-pad) var(--graph-pad-x); display: flex; flex-direction: column; overflow: hidden; } /* --graph-pad (vertical) and --graph-pad-x (sides, one step tighter, 2026-09-15): read by the tab band, which spans the panel edge to edge */
 .scene-panel.scene-graph > div { flex: 1 1 auto; min-height: 0; }
 .scene-source { padding: 8px 16px; border-radius: 20px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
@@ -1631,9 +1634,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-ui { --pill-room: 0px; } /* the page pill is in the transport row below laptop; the section takes the band */
   /* Below laptop the hero is exactly as tall as the monitor's first row (Shoro, 2026-09-16): on tablets both take --row-h; on phones both take a quarter of the band (the grid's 1fr rows, below). */
   .scene-ui { --row-h: 136px; }
-  .scene-monitor { --card-pad: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--row-h); }
+  .scene-page-inner { --card-pad: 16px; }
+  .scene-monitor { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--row-h); }
   .scene-card { gap: 8px; --sub-gap: 0px; min-height: 0; justify-content: space-between; } /* 16·2 + 24 + 32 + 4 + 17 + 8·3 = 133 in the 136 row */
-  .scene-panel.scene-hero { height: var(--row-h); display: flex; align-items: center; justify-content: center; }
+  .scene-hero-pair { height: var(--row-h); }
   .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
   .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */
   /* Below laptop the bottom bar is two rows: the transport (with the page pill at its right end on phones), then the source line across. */
@@ -1646,7 +1650,6 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-transport { flex: 0 0 auto; align-self: center; width: 100%; justify-content: center; }
   .scene-source { width: fit-content; max-width: 100%; align-self: center; padding: 8px 16px; justify-content: center; }
   .scene-source p, .scene-source div { text-align: center; }
-  .scene-panel.scene-hero { --hero-pad: 24px; align-self: center; }
   .scene-panel.scene-graph { --graph-pad: 16px; --graph-pad-x: 12px; }
 }
 
@@ -1660,15 +1663,14 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
     /* Spacing stays at the tablet values (24 / 16): the phone step changes control and type sizes, not the room around them. */
   }
   .scene-panel.scene-graph { --graph-pad: 12px; --graph-pad-x: 8px; } /* tighter around the graph on phones (2026-09-15): the plot takes the room */
-  .scene-panel.scene-hero { --hero-pad: 16px; } /* phones: the same fit-content panel as everywhere, tighter padding; the text scales down only where the column is narrower than the number and the widest text (MoodLine.tsx) (2026-09-15) */
-  .scene-panel.scene-hero .scene-hero-row { gap: 16px; }
   /* On phones the graph fills the height the other bands leave (2026-09-15): the middle band takes the remaining height instead of centring in it, the hero keeps its content height, and the graph panel is the flexible child, its plot growing into it (--graph-fill) with --graph-tab-h as the floor. No feedback loop: the panel's height comes from the column, not from its content. */
   .scene-page-scene .scene-page-inner { justify-content: flex-start; height: 100%; flex: 1 1 auto; }
-  .scene-panel.scene-hero { flex: 0 0 calc((100% - 3 * 12px) / 4); height: auto; } /* the first monitor row's height: a quarter of the band less the three 12 px gaps */
+  .scene-hero-pair { flex: 0 0 calc((100% - 3 * 12px) / 4); height: auto; } /* the first monitor row's height: a quarter of the band less the three 12 px gaps */
   /* The monitor fits the band on phones (2026-09-15): the grid takes the band's height in four equal rows, the cards shrink into them, and nothing scrolls. */
   .scene-page-monitor .scene-page-inner { height: 100%; flex: 1 1 auto; align-items: stretch; }
   /* Phone cards read like weather widgets (Shoro, 2026-09-16): the panel's 16 px padding kept, and the elements inside a step smaller — the value at 20/24, the lane 6 — so the padding is room and not a squeeze. 16·2 + 20 + 8 + 24 + 8 + 4 + 8 + 17 = 121 in a 143 px row on an 844-tall phone. */
-  .scene-monitor { --card-pad: 16px; --card-value-size: 20px; --card-value-line: 24px; --lane-h: 6px; height: 100%; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 12px; align-self: stretch; }
+  .scene-page-inner { --card-pad: 16px; --card-value-size: 20px; --card-value-line: 24px; --lane-h: 6px; }
+  .scene-monitor { height: 100%; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 12px; align-self: stretch; }
   .scene-card-head { flex: 0 0 auto; }
   .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; --graph-fill: 1; }
   .scene-graph-unit { display: none; } /* phone tabs are the pollutant alone: AQI, PM2.5, O₃, NO₂ (2026-09-15) */
@@ -1684,15 +1686,14 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (max-width: 767px) and (max-height: 720px) {
   .scene-ui { --display-size: 48px; --heading-size: 20px; --heading-line: 24px; --body-size: 13px; --body-line: 20px; --graph-tab-h: 88px; }
   .scene-monitor { gap: 8px; }
-  .scene-panel.scene-hero { flex-basis: calc((100% - 3 * 8px) / 4); } /* the grid's gaps are 8 here */
+  .scene-hero-pair { flex-basis: calc((100% - 3 * 8px) / 4); --heading-line: 20px; --body-size: 12px; --body-line: 16px; } /* the grid's gaps are 8 here; the breath card's word and lines a step tighter: 12·2 + 12 + 4 + 20 + 4 + 32 = 96 in the 98 row */
+  .scene-card-breath-body { gap: 4px; }
   .scene-card { --card-pad: 12px; --sub-gap: 0px; gap: 4px; } /* 12·2 + 20 + 24 + 4 + 17 + 4·3 = 101 in a 102 px row on a 667-tall phone; the value keeps its 20/24 */
-  .scene-panel.scene-hero { --hero-pad: 16px; }
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */
 }
 /* The shortest phones (640 tall): the graph tightens to 72, which is the floor at which the tabs and the axis still read; the pills stay 32 so every size stays on the grid. */
 @media (max-width: 767px) and (max-height: 660px) {
   .scene-ui { --graph-tab-h: 88px; --ui-gap: 8px; } /* 72 made the graph panel 4 px shorter than the hero; 88 keeps it the taller one and still fits 640 */
-  .scene-panel.scene-hero { flex-basis: calc((100% - 3 * 8px) / 4); } /* the grid's gaps are 8 here */
-  .scene-panel.scene-hero { --hero-pad: 12px; }
+  .scene-hero-pair { flex-basis: calc((100% - 3 * 8px) / 4); } /* the grid's gaps are 8 here */
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; padding-bottom: 4px; }
 }

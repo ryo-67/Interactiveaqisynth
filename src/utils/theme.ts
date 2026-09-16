@@ -133,7 +133,7 @@ export const AQI_CATEGORIES = [
   { max: 500, dark: "#ff527e", light: "#ff9fb7" }, // crimson, 0.29 → 0.49
 ] as const;
 // The panels the ramp's ends are set for, as WCAG luminance of composited frosted panels measured 2026-09-15 with the denser frost: the night graph (0.057) at the dark end, the hazy-noon hero (0.130) at the light end, the brightest any panel reached. At 0.058 a colour needs 0.27 for 3:1; at 0.13 it needs 0.49. Each panel predicts its own luminance and lifts the ramp it draws linearly between the two; the light end is placed at 0.12 and the dark colours a step above their floor so the measured minimum along the legend carries about 5% of margin (it read 2.92 to 3.02 with none).
-// The mood sentence's two lines (MoodLine.splitTwoLines): the first line is at least this many characters where the sentence allows it, so a short sentence is not cut into two stubs; among the splits that clear the floor the most balanced is taken, and the second line always keeps two words (2026-09-15).
+// The mood sentence's two lines (HeroCards.splitTwoLines): the first line is at least this many characters where the sentence allows it, so a short sentence is not cut into two stubs; among the splits that clear the floor the most balanced is taken, and the second line always keeps two words (2026-09-15).
 export const MOOD_SPLIT = { firstLineMinChars: 28 } as const;
 
 export const RAMP = { panelDark: 0.058, panelBright: 0.12 } as const;
@@ -240,7 +240,7 @@ export const families = {
 
 // Named type scale (§5.5): [fontSize, lineHeight].
 export const typeScale = {
-  display: { size: "96px", line: 1.0 , opticalLiftEm: 0.04 }, // opticalLiftEm (2026-09-15): once the shown digits' ink is centred on the word-and-sentence stack (MoodLine measures it: Georgia's figures are old-style and each value's ink sits differently), the number is lifted by this share of its size, since the stack's descenders pull its own visual centre up // the AQI number
+  display: { size: "96px", line: 1.0 }, // the AQI number (the optical lift against a text stack went with the two-card hero, 2026-09-16)
   heading: { size: "34px", line: 40 / 34 }, // mood word; a 40 px line box, on the grid
   body: { size: "15px", line: 1.6 }, // mood sentence
   caption: { size: "12px", line: 1.4 }, // borough row, legend

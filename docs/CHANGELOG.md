@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — The two sections share one height and one place in the vertical stack
+
+The scene section (hero pair, gap, graph) and the monitor section had their own heights, and since each page centres its content in the band they sat at different y. The scene section's rendered height is now watched and given to the monitor section, whose grid fills it with the routing row at its own height and the two card rows sharing the rest, so the sections are the same height and land at the same y at every laptop size. The cards' sub line lost its extra margin, which had pushed it 5 px past the row.
+
 ## 2026-09-16 — The hero cards at fixed widths, the number at the widgets' size, the sentence on one line
 
 Shoro's pass on the two cards. On laptop the pair no longer fills the section: each card is a fixed width measured on hidden probes inside it (the widest three digits and the widest possible label; the longest of the five sentences and the widest tier word), so a change of day or tier moves nothing, and the pair sits centred at 676. The number is set at the widgets' value size, like Phrygian or 7.9. From the tablet width up the sentence runs on one line, the longest of the five fitting the section with room; phones keep two lines. A canvas measurement had under-read Georgia by a tenth, which is why the probes are DOM.

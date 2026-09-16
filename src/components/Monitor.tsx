@@ -4,7 +4,7 @@ import React from "react";
 import { Card } from "./Card";
 import { Routing } from "./Routing";
 import { useEased } from "../scene/useEased";
-import { useTheme, themeColors, families, typeScale, space, motion, MONITOR, aqiScaleColor } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, motion, MONITOR, aqiScaleColor } from "../utils/theme";
 import { MONITOR_LABELS, TONE_WORDS, SCALE_DISPLAY, MONITOR_UNITS, MONITOR_REST } from "../content";
 import type { MonitorState, PulseHit } from "../scene/useListenSession";
 
@@ -27,7 +27,7 @@ function Value({ children }: { children: React.ReactNode }) {
 // The small line beneath a graphic: the data face, caption size.
 function Sub({ children }: { children: React.ReactNode }) {
   const c = themeColors(useTheme());
-  return <div style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: typeScale.caption.line, color: c.textSecondary, marginTop: `var(--sub-gap, ${space.xs})`, whiteSpace: "nowrap" }}>{children}</div>;
+  return <div style={{ fontFamily: families.data, fontSize: typeScale.caption.size, lineHeight: typeScale.caption.line, color: c.textSecondary, whiteSpace: "nowrap" }}>{children}</div>; // spaced by the card's own gap (2026-09-16: an extra margin pushed the line past the row the section height gives it)
 }
 
 // A five-step ladder with one step lit, in the ramp's colour for the AQI the step was chosen from (the same rule as the mood word), white when there is none.

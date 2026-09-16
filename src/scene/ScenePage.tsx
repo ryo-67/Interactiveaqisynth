@@ -100,6 +100,17 @@ export default function ScenePage() {
     window.history.replaceState(null, "", `?${p}`);
   }, [tab, page]);
   const vertical = laptop;
+  // In the vertical stack the two sections share one height and so one place (Shoro, 2026-09-16): the scene section's rendered height (hero pair, gap, graph) is watched and given to the monitor section, whose grid fills it. Both pages centre their content in the band, so equal heights put both at the same y.
+  const sceneInnerRef = useRef<HTMLDivElement>(null);
+  const [sectionH, setSectionH] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = sceneInnerRef.current;
+    if (!el || !laptop) { setSectionH(null); return; }
+    const ro = new ResizeObserver(() => setSectionH(Math.round(el.getBoundingClientRect().height)));
+    ro.observe(el);
+    setSectionH(Math.round(el.getBoundingClientRect().height));
+    return () => ro.disconnect();
+  }, [laptop]);
   // The arrows along the pages' axis switch pages (only Space and Escape were bound); not while a control that uses them (the volume slider) has focus. Above the phone width the wheel does too: a scroll of more than WHEEL_PX in one direction, then nothing more until the slide is over, so a trackpad's inertia does not carry the page back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -340,7 +351,7 @@ export default function ScenePage() {
             onClick={phone || laptop ? undefined : (e) => { if ((e.target as HTMLElement).closest(".glass")) return; if (consumeSuppressedClick()) return; s.togglePlay(); }}>
             <div ref={trackRef} className="scene-track">
               <div className="scene-page scene-page-scene" data-page="scene" aria-hidden={page !== "scene"} inert={page !== "scene" ? "" : undefined}>
-                <div className="scene-page-inner">
+                <div ref={sceneInnerRef} className="scene-page-inner">
                   {/* The hero as two widgets (2026-09-16): the number under its day, the word and sentence under "Breath". The breath card is the sampled one: its word takes the ramp. */}
                   <div className="scene-hero-pair">
                     <AQICard value={s.displayAqi} date={s.date} />
@@ -364,7 +375,7 @@ export default function ScenePage() {
                 </div>
               </div>
               <div className="scene-page scene-page-monitor" data-page="monitor" aria-hidden={page !== "monitor"} inert={page !== "monitor" ? "" : undefined}>
-                <div className="scene-page-inner">
+                <div className="scene-page-inner" style={{ height: laptop && sectionH ? sectionH : undefined }}>
                   <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} routing />
                 </div>
               </div>

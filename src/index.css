@@ -1588,6 +1588,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (min-width: 1024px) {
   /* The scene page is a column at every breakpoint (Shoro, 2026-09-16): the hero centred above, the graph across the section's full width. Side by side, the graph was squeezed beside the hero; stacked, the plot gets the whole 1040. */
   .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; }
+  /* The monitor section is as tall as the scene section (ScenePage.tsx measures it): the routing row at its height, the two card rows sharing the rest. */
+  .scene-page-monitor .scene-page-inner { align-items: stretch; }
+  .scene-monitor { height: 100%; grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); }
+  .scene-monitor .scene-card { min-height: 0; }
   .scene-panel.scene-graph { flex: 0 0 auto; width: 100%; } /* the plot at its token height (GRAPH.tabHeight.laptop, 240): 20 + tabs 32 + 8 + gutter 8 + 240 + axis 24 + 20 = 352; with the hero's 152 and the 20 gap the section is 524 in a 780 band at 900 tall */
 }
 /* Short laptops (720 tall): the band is 498, so the plot takes the tablet's height (176) and the section is 460. */
@@ -1639,7 +1643,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-ui { --row-h: 136px; }
   .scene-page-inner { --card-pad: 16px; }
   .scene-monitor { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--row-h); }
-  .scene-card { gap: 8px; --sub-gap: 0px; min-height: 0; justify-content: space-between; } /* 16·2 + 24 + 32 + 4 + 17 + 8·3 = 133 in the 136 row */
+  .scene-card { gap: 8px; min-height: 0; justify-content: space-between; } /* 16·2 + 24 + 32 + 4 + 17 + 8·3 = 133 in the 136 row */
   .scene-hero-pair { height: var(--row-h); }
   .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
   .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */
@@ -1691,7 +1695,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-monitor { gap: 8px; }
   .scene-hero-pair { flex-basis: calc((100% - 3 * 8px) / 4); gap: 8px; --heading-line: 20px; --body-size: 12px; --body-line: 16px; } /* the grid's gaps are 8 here; the breath card's word and lines a step tighter: 12·2 + 12 + 4 + 20 + 4 + 32 = 96 in the 98 row */
   .scene-card-breath-body { gap: 4px; }
-  .scene-card { --card-pad: 12px; --sub-gap: 0px; gap: 4px; } /* 12·2 + 20 + 24 + 4 + 17 + 4·3 = 101 in a 102 px row on a 667-tall phone; the value keeps its 20/24 */
+  .scene-card { --card-pad: 12px; gap: 4px; } /* 12·2 + 20 + 24 + 4 + 17 + 4·3 = 101 in a 102 px row on a 667-tall phone; the value keeps its 20/24 */
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; } /* the variables, not the padding: the tab band reads them for its edge-to-edge margin */
 }
 /* The shortest phones (640 tall): the graph tightens to 72, which is the floor at which the tabs and the axis still read; the pills stay 32 so every size stays on the grid. */

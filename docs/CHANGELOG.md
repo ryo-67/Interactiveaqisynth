@@ -6,6 +6,10 @@ Why, not just what. Newest first.
 
 Chrome, not Firefox, painted dark bands down the edges of cards that sit flush with a page's edge, and a dark bloom where two cards meet. Chromium composites each translated page into its own layer and clamps a backdrop blur at that layer's bounds, so a card at the edge samples clamped pixels for its outer 28 px; Firefox samples the whole page. Each page now reaches the frame's clip padding beyond the section on every side, so the layer holds real sky around the cards and the blur has something to sample. The frame clips at the same distance, and nothing in the layout moves. Not reproduced here: headless Chromium renders in software and the in-app browser has no WebGL sky; this is the mechanism the crops describe, to be confirmed in Shoro's Chrome.
 
+## 2026-09-16 — The patch bay takes two of four units
+
+Three equal rows made the value cards look empty and the patch bay still shallow. The section is 672 on laptop, four units of 158 with its two gaps, and the monitor's rows split it 2-1-1: the routing card is 316 tall with 252 px for its cables to hang, the card rows are 158, which is a value card's height at the 12 px gaps with a pixel to spare. Short laptops keep three equal rows, since their 476 cannot hold the split.
+
 ## 2026-09-16 — A taller section on laptop: the rows grow, the graph fills, the cables curve
 
 The patch bay had 36 px of vertical room in a 1040 px card and its cables ran flat. Shoro's call: both sections take one explicit height on laptop, the band's up to 640, the monitor's three rows sharing it equally and the scene's graph growing into what the hero pair leaves. The routing card's diagram is now 136 px deep at 900 tall and the cables hang like cables; the value cards' gauges sit at the bottom of a 200 px row. The measured-height plumbing that had matched the monitor to the scene is gone, as is the routing height token. Short laptops (720 tall) step the monitor cards to 16 px padding and 8 px gaps so they fit the 145 px row the band allows.

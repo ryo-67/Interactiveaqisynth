@@ -1595,16 +1595,17 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (min-width: 1024px) {
   /* The scene page is a column at every breakpoint (Shoro, 2026-09-16): the hero centred above, the graph across the section's full width. Side by side, the graph was squeezed beside the hero; stacked, the plot gets the whole 1040. */
   .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; }
-  /* One section height for both pages (Shoro, 2026-09-16): the band's height up to MONITOR.sectionHeight. The monitor's three rows share it equally, so the routing card has room for its cables to curve; the scene's graph grows into what the hero pair leaves. Both pages centre the section in the band, so it sits at one y. */
-  .scene-page-inner { height: min(100%, 640px); }
+  /* One section height for both pages (Shoro, 2026-09-16): the band's height up to MONITOR.sectionHeight. The monitor's rows split it 2-1-1, so the routing card has real room for its cables to hang; the scene's graph grows into what the hero pair leaves. Both pages centre the section in the band, so it sits at one y. */
+  .scene-page-inner { height: min(100%, 672px); } /* MONITOR.sectionHeight: four equal units of 158 with the two 20 px gaps, a value card's height at the 12 px gaps */
   .scene-page-monitor .scene-page-inner { align-items: stretch; }
-  .scene-monitor { height: 100%; grid-template-rows: repeat(3, minmax(0, 1fr)); }
+  .scene-monitor { height: 100%; grid-template-rows: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); } /* the patch bay takes two of the four units (Shoro, 2026-09-16), the card rows one each */
   .scene-monitor .scene-card { min-height: 0; }
   .scene-card-routing .scene-routing { flex: 1 1 auto; min-height: 0; }
   .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; width: 100%; --graph-fill: 1; } /* the plot fills the panel; at 720 tall the section is the band's 476 and the plot sits near its token 240 */
 }
 /* Short laptops (720 tall, 2026-09-16): the section is the band's 476, so a monitor row is 145 and a value card at the 12 px gaps (157) does not fit; the cards step to the tablet's 16 px padding and 8 px gaps (137). */
 @media (min-width: 1024px) and (max-height: 760px) {
+  .scene-monitor { grid-template-rows: repeat(3, minmax(0, 1fr)); } /* three equal rows: the band's 476 cannot hold the 2-1-1 split */
   .scene-monitor .scene-card { --card-pad: 16px; gap: 8px; }
 }
 .scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; border-radius: calc(var(--ctl-pill) / 2); }

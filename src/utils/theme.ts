@@ -210,7 +210,7 @@ export const GRAPH = {
 // The monitor page (D-43, 2026-09-15): a bento of frosted cards reading the engine. Every size a multiple of 4, on the control grid.
 export const MONITOR = {
   maxWidth: 1040, // the grid's width on laptop, centred in the band like the hero and graph row
-  sectionHeight: 640, // the sections' height on laptop (2026-09-16): both pages take the band's height up to this; the monitor's three rows share it equally and the scene's graph grows into what the hero leaves
+  sectionHeight: 672, // the sections' height on laptop (2026-09-16): both pages take the band's height up to this; the monitor's rows split it 2-1-1 (four units of 158, a value card's height at the 12 px gaps) and the scene's graph grows into what the hero leaves
   meter: 4, // meters, ladders and the detune band are 4 px tracks, the slider's hairline
   lane: 4, // the 16-step lane's step height: the ladder's, so the two read as one control (2026-09-16)
   gap: 4, // between ladder steps and lane steps

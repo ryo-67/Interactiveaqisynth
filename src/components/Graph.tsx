@@ -3,7 +3,7 @@
 // One clock: the playhead is the session's eased hour — the same number that moves the sun.
 // The graph is a transport surface, as in a DAW: press or drag anywhere on the plot to move the playhead, and the engine seeks with it, playing or paused. Play and pause live in the transport pill.
 import { readingLabel } from "../utils/time";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS, TRACK_QUALIFIERS } from "../content";
 import { monotoneCurve } from "./graphSeries";
@@ -71,6 +71,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLDivElement>(null); // the playhead's readout, a frosted pill the draw loop places over the canvas
+  const [narrow, setNarrow] = useState(false);
+  const narrowRef = useRef(false); // the plot at a phone's width (the draw measures it): the AQI axis then starts at 0 to 100
   // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
   const areaCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
   const maskCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null); // the fill's alpha mask, keyed on the geometry alone (see the draw)
@@ -108,7 +110,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     const floor = tab === "pm25" ? 20 : tab === "o3" ? 40 : 30;
     // Scale. AQI takes the smallest of GRAPH.aqiCeilings that holds the day's highest hour, 200 by default (D-53, 2026-09-16): a fixed 0 to 500 had left ordinary days in the bottom tenth of the plot. A change of ceiling is a change of state, so it morphs like a change of day (D-37), the line, the gridlines and the legend re-fitting together; comparability between days is carried by that motion rather than by one scale. The other channels have no standard ruler and take the day's own max, floored so a quiet day is not stretched to look dramatic; that changes only when the day changes.
     const peak = present.length ? Math.max(...present) : 0;
-    const max = tab === "aqi" ? (GRAPH.aqiCeilings.find((c) => c >= peak) ?? GRAPH.aqiCeilings[GRAPH.aqiCeilings.length - 1]) : Math.max(floor, ...present) * 1.08;
+    const ceilings = narrow ? GRAPH.aqiCeilingsPhone : GRAPH.aqiCeilings; // a phone's plot starts at 0 to 100 (Shoro, 2026-09-16); the breakpoint is the panel's own width, read by the draw
+    const max = tab === "aqi" ? (ceilings.find((c) => c >= peak) ?? ceilings[ceilings.length - 1]) : Math.max(floor, ...present) * 1.08;
     return {
       key: `${tab}|${dayId}|${tab === "aqi" ? max : ""}`, // the ceiling is part of the state: the live window's newest hour can raise it without a change of day
       dayKey: `${dayId}`,
@@ -118,7 +121,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       gridValues: tab === "aqi" ? AQI_CATEGORIES.map((k) => k.max).filter((v) => v <= max) : [Math.round(max / 1.08), Math.round(max / 2.16)],
       isAqi: tab === "aqi" ? 1 : 0,
     };
-  }, [series, tab, dayId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [series, tab, dayId, narrow]); // eslint-disable-line react-hooks/exhaustive-deps
   // The lift and the theme are read at draw time (below), not baked into the frame: they colour the ramp, they do not move the line.
   const liftRef = useRef(lift); liftRef.current = lift;
   const transitionRef = useRef<{ from: Frame | null; to: Frame; start: number; ms: number }>({ from: null, to: target, start: 0, ms: 0 });
@@ -142,6 +145,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       const cssW = wrap.getBoundingClientRect().width; // the real, fractional width: clientWidth rounds, and a buffer sized from the rounded width was stretched across the real box by a fraction of a pixel, blurring every line
       // Breakpoint from the panel's own width: the panel is ~640 on laptop, ~700 on a portrait tablet, ~320 on a phone.
       const bp: "laptop" | "tablet" | "phone" = cssW < 480 ? "phone" : cssW < 760 ? "tablet" : "laptop";
+      if ((bp === "phone") !== narrowRef.current) { narrowRef.current = bp === "phone"; setNarrow(narrowRef.current); } // a state change, so the frame re-derives its ceiling and morphs to it
       // The scene may override the tab height by CSS (--graph-tab-h) where the VIEWPORT is short — a phone's width says nothing about its height.
       const axisH = GRAPH.axisHeight[bp];
       const cssTab = parseInt(getComputedStyle(wrap).getPropertyValue("--graph-tab-h"));

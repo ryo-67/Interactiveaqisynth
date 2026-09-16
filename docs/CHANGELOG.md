@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — A phone's plot starts at 0 to 100
+
+Shoro: on a phone the axis should default to 0 to 100, stepping up when a day exceeds it, as the desktop's 0 to 200 does. The phone's plot is a third the height, so a Good day at a 200 ceiling sat in its bottom fifth. The graph reads its own panel's width in the draw, as it does for its type sizes, and keeps it as state, so the frame re-derives its ceiling from the phone's steps, 100, 200, 300, 500, and morphs to it like any change of scale.
+
 ## 2026-09-16 — The credit as a button
 
 Shoro: the credit was one link already, so it is the same button as Patch notes beside it, reading "by Shoro Roy", the whole pill the link, with Lucide's pencil-sparkles before the words, and the play button's hover fill over the pill in place of the underline.

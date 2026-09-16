@@ -26,6 +26,19 @@ export const ChevronDownIcon = ({ size = 14, strokeWidth = 2, style }: IconProps
 export const MoveHorizontalIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="m18 8 4 4-4 4" /><path d="M2 12h20" /><path d="m6 8-4 4 4 4" /></svg>
 );
+// The drag's four arrows (D-45): Lucide's move-up, move-down, move-left, move-right, the cursor's glyph while a page drag is far enough to switch on release.
+export const MoveUpIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="M8 6L12 2L16 6" /><path d="M12 2V22" /></svg>
+);
+export const MoveDownIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="M8 18L12 22L16 18" /><path d="M12 2V22" /></svg>
+);
+export const MoveLeftIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="M6 8L2 12L6 16" /><path d="M2 12H22" /></svg>
+);
+export const MoveRightIcon = ({ size = 14, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="M18 8L22 12L18 16" /><path d="M2 12H22" /></svg>
+);
 // The two page icons (D-43): Lucide's cloud-sun for the scene and audio-lines for the monitor.
 export const CloudSunIcon = ({ size = 20, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="M12 2v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="M20 12h2" /><path d="m19.07 4.93-1.41 1.41" /><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" /><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" /></svg>

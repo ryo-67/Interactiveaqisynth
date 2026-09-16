@@ -44,8 +44,8 @@ function viewFromUrl(): View {
 }
 const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-43)
 const FADE_MS = PAGE_MS * 0.3; // the outgoing page is gone within the first three tenths of the travel (a fifth read as a cut, Shoro 2026-09-16), still before its panels can reach the frame's edge; the incoming one appears only in the last three tenths, once it is wholly inside
-const SWIPE_LOCK_PX = 8; // movement before a touch commits to an axis
-const SWIPE_PX = 48; // a horizontal touch travel that counts as a swipe
+const SWIPE_LOCK_PX = 8; // movement before a drag commits to an axis
+const SWIPE_PX = 48; // a travel along the pages' axis that counts as a swipe (D-45)
 const WHEEL_PX = 120; // a wheel travel that counts as a page turn above the phone width
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -132,40 +132,51 @@ export default function ScenePage() {
     window.addEventListener("wheel", onWheel, { passive: true });
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("wheel", onWheel); };
   });
-  // The phone swipe: the pages follow the finger (the track is translated directly, no React state per move), and on release the nearer page wins, or the one the finger was heading for past SWIPE_PX. A touch that starts on the graph's plot is the plot's seek and is left alone, as is one that commits to the vertical. Both pages are visible while dragging; the CSS transition then carries the track from where the finger left it.
+  // The page drag (D-45, 2026-09-16, Shoro): a press on a safe surface (the sky, or the band's empty space; never a panel, a chip, the plot or the slider, so a drag never contends with a control) dragged along the pages' axis switches pages on release past SWIPE_PX. Below laptop the axis is horizontal and the track follows the pointer as it does the finger (translated directly, no React state per move; on release the nearer page wins, or the one the pointer was heading for). On laptop the axis is vertical, the pages stay put, and the cursor says what release will do: Lucide's move-up or move-down (move-left or move-right below laptop) once the drag has gone SWIPE_PX in a direction that has a page, nothing in one that does not (body data-drag, read by Cursor.tsx). A touch below laptop keeps its wider start, any panel but the plot, the slider and links, so a swipe may cross a card; it keeps its implicit capture, which a chip's tap relies on. A mouse or pen is captured once the drag is allowed, so leaving the surface mid-drag does not lose it. A drag that commits to the other axis does nothing, and no drag is ever the sky's click (swipedAt).
   const trackRef = useRef<HTMLDivElement>(null);
-  const swipe = useRef<{ id: number; x: number; y: number; axis: "x" | "y" | null; skip: boolean; base: number } | null>(null);
-  const swipedAt = useRef(0); // a swipe that began on a chip must not also be the chip's tap: the click it leaves behind is swallowed
-  const onBandDown = (e: React.PointerEvent) => {
-    if (e.pointerType !== "touch" || vertical) return; // a mouse never drags the pages; the wheel and the keys are its routes
-    const skip = !!(e.target as HTMLElement).closest("canvas, input, select, a"); // the plot (its seek), the slider and links keep their own gesture; a swipe may start on a chip
-    const track = trackRef.current;
-    const base = track ? new DOMMatrix(getComputedStyle(track).transform).m41 : 0; // where the track rests now (0, or one page and a gap to the left), read rather than recomputed
-    swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, skip, base };
+  const swipe = useRef<{ id: number; x: number; y: number; axis: "x" | "y" | null; base: number } | null>(null);
+  const swipedAt = useRef(0); // a drag must not also be a tap: the click it leaves behind is swallowed (the sky's play/pause, a chip a swipe began on)
+  const dragGlyph = (d: number): string | null => {
+    if (Math.abs(d) < SWIPE_PX) return null;
+    const fwd = d < 0; // the content follows the pointer: pulling up or left reaches the monitor below or to the right of the scene
+    if (fwd ? page === "monitor" : page === "scene") return null; // nothing past the last or before the first page
+    return vertical ? (fwd ? "move-up" : "move-down") : (fwd ? "move-left" : "move-right");
   };
-  const onBandMove = (e: React.PointerEvent) => {
+  const setDragGlyph = (g: string | null) => { if (g) document.body.dataset.drag = g; else delete document.body.dataset.drag; };
+  const onDragDown = (e: React.PointerEvent) => {
+    const t = e.target as HTMLElement, touch = e.pointerType === "touch";
+    if (touch && !vertical ? t.closest(".scene-graph canvas, input, select, a") : t.closest(".glass, input, select, a, button")) return; // the plot's canvas is the seek (the sky's canvases are the sky), the slider and links keep their gesture; a pointer with a cursor starts only on the background
+    if (!touch) e.currentTarget.setPointerCapture(e.pointerId);
+    const track = trackRef.current;
+    const base = track && !vertical ? new DOMMatrix(getComputedStyle(track).transform).m41 : 0; // where the track rests now (0, or one page and a gap to the left), read rather than recomputed
+    swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, base };
+  };
+  const onDragMove = (e: React.PointerEvent) => {
     const s = swipe.current, track = trackRef.current;
-    if (!s || s.id !== e.pointerId || s.skip || !track) return;
+    if (!s || s.id !== e.pointerId || !track) return;
     const dx = e.clientX - s.x, dy = e.clientY - s.y;
     if (!s.axis && (Math.abs(dx) >= SWIPE_LOCK_PX || Math.abs(dy) >= SWIPE_LOCK_PX)) s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-    if (s.axis !== "x") return;
+    if (s.axis !== (vertical ? "y" : "x")) return;
+    setDragGlyph(dragGlyph(vertical ? dy : dx));
+    if (vertical) return;
     const bounded = page === "scene" ? Math.min(0, dx) : Math.max(0, dx); // no pull past the first or last page
     track.dataset.dragging = "true";
     track.style.transform = `translateX(${s.base + bounded}px)`;
   };
-  const onBandUp = (e: React.PointerEvent) => {
+  const onDragUp = (e: React.PointerEvent) => {
     const s = swipe.current, track = trackRef.current;
     swipe.current = null;
+    setDragGlyph(null);
     if (!s || s.id !== e.pointerId || !track) return;
-    if (s.axis === "x" && !s.skip) {
-      swipedAt.current = performance.now();
-      const dx = e.clientX - s.x;
-      const next: View = page === "scene" ? (dx <= -SWIPE_PX ? "monitor" : "scene") : (dx >= SWIPE_PX ? "scene" : "monitor");
-      lockRef.current = 0; // the finger's own release is never refused
+    if (s.axis) swipedAt.current = performance.now();
+    if (s.axis === (vertical ? "y" : "x")) {
+      const d = vertical ? e.clientY - s.y : e.clientX - s.x;
+      const next: View = page === "scene" ? (d <= -SWIPE_PX ? "monitor" : "scene") : (d >= SWIPE_PX ? "scene" : "monitor");
+      lockRef.current = 0; // the pointer's own release is never refused
       if (next !== page) switchView(next);
     }
     // Hand the track back to the stylesheet: from the dragged position the transition runs to the page's own.
-    requestAnimationFrame(() => { delete track.dataset.dragging; track.style.transform = ""; });
+    if (!vertical) requestAnimationFrame(() => { delete track.dataset.dragging; track.style.transform = ""; });
   };
   // Every input that steps with the data is eased in the space where it is USED, so in and out take the same curve: the particulate LEVELS (0..1), not the raw µg/m³ — eased in µg/m³ the field appeared at once on the way up (the value rushed through the 35–150 band) and receded slowly on the way down (it lingered there on the exponential tail). The sky's own channels ease too, so the dome, the plume and the type move together instead of the dome cutting while the plume fades. Time constant: half a beat (~330 ms), settled within about a second.
   const tau = motion.beatMs * 0.5;
@@ -308,7 +319,7 @@ export default function ScenePage() {
         {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
         {!FX_OFF.has("nocursor") && <Cursor />}
         {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (Cursor.tsx reads data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
-        <div ref={skyBoxRef} className="scene-sky" data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onClick={phone ? undefined : () => { if (consumeSuppressedClick()) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
+        <div ref={skyBoxRef} className="scene-sky" data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClick={phone ? undefined : () => { if (consumeSuppressedClick() || performance.now() - swipedAt.current < 400) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
           <SkyView params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={{ width: "100%", height: "100%" }} />
           {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
           <canvas ref={dissolveCanvasRef} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />
@@ -345,7 +356,7 @@ export default function ScenePage() {
           </div>
 
           {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame is padded outward by the panels' shadow so the clip never cuts a shadow. */}
-          <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} style={{ "--page-ms": `${PAGE_MS}ms`, "--fade-ms": `${FADE_MS}ms` } as React.CSSProperties} onPointerDown={onBandDown} onPointerMove={onBandMove} onPointerUp={onBandUp} onPointerCancel={onBandUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
+          <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} style={{ "--page-ms": `${PAGE_MS}ms`, "--fade-ms": `${FADE_MS}ms` } as React.CSSProperties} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
             // Below laptop the band takes pointer events for the swipe, so it stands between the sky and a tap on the empty space around the panels; that tap is still the sky's play/pause (tablets), and the cursor there is the sky's.
             data-cursor={phone || laptop ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"}
             onClick={phone || laptop ? undefined : (e) => { if ((e.target as HTMLElement).closest(".glass")) return; if (consumeSuppressedClick()) return; s.togglePlay(); }}>

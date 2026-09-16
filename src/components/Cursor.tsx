@@ -1,10 +1,10 @@
 // Cursor — the page's own pointer (CURSOR in theme.ts), drawn in the DOM so its states can move rather than snap: a ring that grows over anything clickable, and over the sky or the graph grows further while a glyph fades in at its centre — play or pause for the sky (from the sky's data-cursor, which the scene sets), the drag arrows for the graph. While the pointer is down the ring closes to a filled dot: the press is shown here, once, for every clickable, rather than by each element's own pressed fill; where a glyph sits in the ring the ring fades out as it closes, leaving the icon. A CSS cursor image cannot animate, which is why this is an element that follows the pointer; the native cursor is hidden while it runs (index.css, html.has-cursor) and returns if it unmounts. Fine pointers only. Glyphs are Lucide's (icons.tsx).
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { PlayIcon, PauseIcon, MoveHorizontalIcon } from "./icons";
+import { PlayIcon, PauseIcon, MoveHorizontalIcon, MoveUpIcon, MoveDownIcon, MoveLeftIcon, MoveRightIcon } from "./icons";
 import { CURSOR } from "../utils/theme";
 
-type Mode = "ring" | "pointer" | "play" | "pause" | "drag" | "hidden";
+type Mode = "ring" | "pointer" | "play" | "pause" | "drag" | "move-up" | "move-down" | "move-left" | "move-right" | "hidden"; // the four move arrows: a page drag in progress (ScenePage, body data-drag), whatever is under the pointer
 const CLICKABLE = "button:not(:disabled), [role=\"button\"], [role=\"option\"], [role=\"tab\"], a, .scene-volume";
 
 export function Cursor() {
@@ -17,6 +17,8 @@ export function Cursor() {
     if (!el) return;
     document.documentElement.classList.add("has-cursor");
     const classify = (t: EventTarget | null): Mode => {
+      const drag = document.body.getAttribute("data-drag");
+      if (drag) return drag as Mode; // a page drag owns the cursor until release
       if (!(t instanceof Element)) return "ring";
       const tagged = t.closest("[data-cursor]");
       if (tagged) return (tagged.getAttribute("data-cursor") as Mode) || "ring";
@@ -31,7 +33,7 @@ export function Cursor() {
     // The element under the pointer can change what it asks for without the pointer moving: a click or the space bar flips the sky from play to pause. Re-read the point whenever a data-cursor attribute changes anywhere, so the glyph cross-fades to the other (the glyphs' opacity transitions do the fade).
     const reread = () => { if (last) setMode(classify(document.elementFromPoint(last[0], last[1]))); };
     const observer = new MutationObserver(reread);
-    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ["data-cursor"] });
+    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ["data-cursor", "data-drag"] });
     const leave = (e: PointerEvent) => { if (e.relatedTarget == null) setMode("hidden"); };
     const enter = (e: PointerEvent) => setMode(classify(e.target));
     const down = () => setPressed(true);
@@ -61,6 +63,10 @@ export function Cursor() {
       <span className="scene-cursor-glyph" data-glyph="play"><PlayIcon size={CURSOR.glyph} /></span>
       <span className="scene-cursor-glyph" data-glyph="pause"><PauseIcon size={CURSOR.glyph} /></span>
       <span className="scene-cursor-glyph" data-glyph="drag"><MoveHorizontalIcon size={CURSOR.glyph} /></span>
+      <span className="scene-cursor-glyph" data-glyph="move-up"><MoveUpIcon size={CURSOR.glyph} /></span>
+      <span className="scene-cursor-glyph" data-glyph="move-down"><MoveDownIcon size={CURSOR.glyph} /></span>
+      <span className="scene-cursor-glyph" data-glyph="move-left"><MoveLeftIcon size={CURSOR.glyph} /></span>
+      <span className="scene-cursor-glyph" data-glyph="move-right"><MoveRightIcon size={CURSOR.glyph} /></span>
     </div>,
     document.body,
   );

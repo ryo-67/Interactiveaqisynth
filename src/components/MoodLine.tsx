@@ -1,6 +1,6 @@
 // MoodLine — the hero's content (§5.2 items 2 and 3): the AQI number at the left, and to its right the tier word over the two-line mood sentence, both left-aligned, the number centred on that block (layout of 2026-09-15, from Shoro's mock). The word is the one full-strength appearance of the tier colour. Word and sentence change only at tier boundaries, with a 0.5 s blur (§5.4); the number never animates and is passed in so it stays outside the blur. The sentence's second clause ("At 8 pm, ozone carried the line") was cut on 2026-09-15 with the panel's re-layout: the panel is one thought now.
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useTheme, themeColors, families, typeScale, motion, aqiScaleColor } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, motion, aqiScaleColor } from "../utils/theme";
 import { TIER_NAMES, MOOD_SENTENCES } from "../content";
 
 interface Props {
@@ -29,7 +29,8 @@ export function MoodLine({ tierIndex, aqi, number, numberSizer, lift = 0 }: Prop
   const pRef = useRef<HTMLParagraphElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const wordRef = useRef<HTMLDivElement>(null);
-  const [textWidth, setTextWidth] = useState<number | null>(null);
+  const [rowWidth, setRowWidth] = useState<number | null>(null); // the number's column, the gap and the widest text: the row is fixed at this where the panel fits its content, and the number and text sit centred in it as one group, so a shorter sentence leaves even room at both sides rather than a hole at the right (2026-09-15)
+  const [textScale, setTextScale] = useState(1); // < 1 where the two columns are wider than the panel (phones): the text's type scales down to fit; its line heights are fixed pixels, so the height holds
   useLayoutEffect(() => {
     const measure = () => {
       const p = pRef.current, row = rowRef.current, word = wordRef.current;
@@ -37,13 +38,23 @@ export function MoodLine({ tierIndex, aqi, number, numberSizer, lift = 0 }: Prop
       const ctx = document.createElement("canvas").getContext("2d");
       if (!ctx) return;
       // The font for the canvas is built from its parts: the computed `font` shorthand serializes to nothing for an element with font-variant-numeric set (the number), and the measurement then ran at the wrong size.
-      const fontOf = (el: Element) => { const cs = getComputedStyle(el); return `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; };
-      ctx.font = fontOf(p);
+      // The base size comes from the scene's variable, not the element (whose size already carries the last scale).
+      const baseSize = (el: Element, v: string, fallback: string) => { const raw = getComputedStyle(el.closest(".scene-ui") ?? document.documentElement).getPropertyValue(v).trim(); return raw || fallback; };
+      const fontOf = (el: Element, size?: string) => { const cs = getComputedStyle(el); return `${cs.fontStyle} ${cs.fontWeight} ${size ?? cs.fontSize} ${cs.fontFamily}`; };
+      ctx.font = fontOf(p, baseSize(p, "--body-size", typeScale.body.size));
       let w = 0;
       for (const s of MOOD_SENTENCES) for (const line of splitTwoLines(s)) w = Math.max(w, ctx.measureText(line).width);
-      ctx.font = fontOf(word);
+      ctx.font = fontOf(word, baseSize(word, "--heading-size", typeScale.heading.size));
       for (const name of TIER_NAMES) w = Math.max(w, ctx.measureText(name).width);
-      setTextWidth(Math.ceil(w)); // the text column: the widest sentence line or tier word
+      // Where the panel is full width (phones set --hero-flex: 1 on it), the text column may have the row's width less the number's column and the gap, and the text scales to that if it is less. Where the panel fits its content, the row's width is the text's own, so there is nothing to fit to and the scale is 1.
+      const hero = row.closest(".scene-hero");
+      const flexed = hero ? getComputedStyle(hero).getPropertyValue("--hero-flex").trim() === "1" : false;
+      const numberCol = row.firstElementChild as HTMLElement | null;
+      const avail = row.clientWidth - (numberCol ? numberCol.getBoundingClientRect().width : 0) - parseFloat(getComputedStyle(row).columnGap || "0");
+      // Floored at 0.8: a 375-wide phone lands near 0.86 (12 px); below about 350 wide the longest sentence would need less than that, and the panel clips it rather than shrink the type past reading size.
+      const scale = flexed && row.clientWidth > 0 && avail > 0 && avail < w ? Math.max(0.8, avail / w) : 1;
+      setTextScale(scale);
+      setRowWidth(flexed ? null : Math.ceil((numberCol ? numberCol.getBoundingClientRect().width : 0) + parseFloat(getComputedStyle(row).columnGap || "0") + w));
     };
     measure();
     window.addEventListener("resize", measure);
@@ -67,19 +78,19 @@ export function MoodLine({ tierIndex, aqi, number, numberSizer, lift = 0 }: Prop
   const transition = `filter ${motion.blurMs / 2}ms ease, opacity ${motion.blurMs / 2}ms ease`;
   const blur: React.CSSProperties = { filter: blurred ? "blur(6px)" : "none", opacity: blurred ? 0.4 : 1, transition };
   return (
-    <div className="scene-hero-row" ref={rowRef} style={{ maxWidth: "100%" }}>
+    <div className="scene-hero-row" ref={rowRef} style={{ maxWidth: "100%", width: rowWidth != null ? `${rowWidth}px` : undefined }}>
       <div style={{ display: "grid", justifyItems: "center", flex: "0 0 auto" }}> {/* the number centred in its three-digit column, so a low number does not sit left with a gap before the text (2026-09-15) */}
         <div style={{ gridArea: "1 / 1" }}>{number}</div>
         <div style={{ gridArea: "1 / 1", visibility: "hidden" }} aria-hidden>{numberSizer}</div>
       </div>
-      <div style={{ width: textWidth != null ? `${textWidth}px` : undefined, flex: "0 0 auto", minWidth: 0 }}>
+      <div style={{ flex: "0 0 auto", minWidth: 0 }}>
         <div
           ref={wordRef}
           style={{
             ...blur,
             fontFamily: families.serifItalic,
             fontStyle: "italic",
-            fontSize: `var(--heading-size, ${typeScale.heading.size})`, // the scene scales this per breakpoint
+            fontSize: `calc(var(--heading-size, ${typeScale.heading.size}) * ${textScale.toFixed(3)})`, // the scene scales this per breakpoint; textScale fits it to a narrow panel
             lineHeight: "var(--heading-line, 40px)", // in px per breakpoint, so the line box stays on the 4 px grid
             color: aqi == null ? c.textPrimary : aqiScaleColor(aqi, lift), // the one ramp, at this panel's lift (D-36)
             whiteSpace: "nowrap",
@@ -93,10 +104,11 @@ export function MoodLine({ tierIndex, aqi, number, numberSizer, lift = 0 }: Prop
           ...blur,
           fontFamily: families.serifItalic,
           fontStyle: "italic",
-          fontSize: `var(--body-size, ${typeScale.body.size})`,
+          fontSize: `calc(var(--body-size, ${typeScale.body.size}) * ${textScale.toFixed(3)})`,
           lineHeight: "var(--body-line, 24px)",
           color: c.textSecondary,
           margin: 0,
+          marginTop: space.xs, // air between the word and the sentence (2026-09-15)
           whiteSpace: "nowrap",
         }}
       >

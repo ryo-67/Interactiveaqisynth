@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The hero's number and text as one centred group; phones full width
+
+Where the panel fits its content, its row is fixed at the widest group any tier makes (the number's three-digit column, the gap, the widest text) and the number and text sit centred in it, so a shorter sentence leaves even room at both sides instead of a hole at the right; the number is centred in its column and the text column takes its own width. Eight pixels of air between the word and the sentence. On phones the hero spans the column like the graph, number and text spread evenly across it, and where the panel is narrower than the two the text scales down to fit, floored at 0.8, its line heights fixed in pixels so the height never moves; measured 12.5 px on a 390-wide phone.
+
 ## 2026-09-15 — The hero re-laid to Shoro's mock; the stuck blur
 
 The number sits at the left, and to its right the tier word over the two-line sentence, both left-aligned, the number centred on that block; the hairline is gone. Both columns have fixed widths so the panel never changes size: the number's from a hidden three-digit number laid out in its cell (a canvas cannot see its tabular digits), the text's measured at the widest sentence line or tier word in its own font. Measured across the five tiers and four number widths at two viewports: one size each, no overflow. The tier blur could strand itself: when the tier crossed a boundary and came back before the swap fired, the cleanup cleared the timer and the effect returned early with the blur still on. It lifts the blur now.

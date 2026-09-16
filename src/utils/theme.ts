@@ -130,7 +130,7 @@ export const AQI_CATEGORIES = [
   { max: 150, dark: "#ff8c1a", light: "#ffa64d" }, // orange, 0.40 → 0.49
   { max: 200, dark: "#ff5050", light: "#ffa0a0" }, // red, 0.28 → 0.49
   { max: 300, dark: "#bd6bff", light: "#d6a6ff" }, // violet, 0.29 → 0.49
-  { max: 500, dark: "#ff3ddb", light: "#ff9ceb" }, // magenta, 0.30 → 0.51 (2026-09-16: the crimson converged with Unhealthy's red once both were lifted toward the light end, so Hazardous takes a hue 50° past red, distinct from the red below it and the violet beside it at every lift; EPA's maroon is too dark for 3:1 on any panel)
+  { max: 500, dark: "#ffffff", light: "#ffffff" }, // white: the scale burns out (2026-09-16). At the 0.49 luminance the brightest panel demands for 3:1, every hue from red to violet needs a green channel near 160 and loses its chroma, so crimson, then magenta, converged with Unhealthy's red and Very Unhealthy's violet on hazy and warm panels; white is the one end that stays distinct from both at every lift. EPA's maroon is too dark for 3:1 on any panel; cyan keeps chroma but reads clean.
 ] as const;
 // The panels the ramp's ends are set for, as WCAG luminance of composited frosted panels measured 2026-09-15 with the denser frost: the night graph (0.057) at the dark end, the hazy-noon hero (0.130) at the light end, the brightest any panel reached. At 0.058 a colour needs 0.27 for 3:1; at 0.13 it needs 0.49. Each panel predicts its own luminance and lifts the ramp it draws linearly between the two; the light end is placed at 0.12 and the dark colours a step above their floor so the measured minimum along the legend carries about 5% of margin (it read 2.92 to 3.02 with none).
 

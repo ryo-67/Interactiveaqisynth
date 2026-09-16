@@ -1,4 +1,4 @@
-// BoroughToggle — one row of words (§5.2 item 1), always one line, centred. No chrome: every word is set in caps with the same tracking; the selected borough changes to the same face's bold italic, not case or size, so both states share one baseline. When the row is wider than its pill it scrolls horizontally rather than wrapping. The date and status live in DateStatus, their own pill.
+// BoroughToggle — one row of words (§5.2 item 1), always one line, centred. No chrome: every word is set in caps with the same tracking; the selected borough changes to the same face's bold italic, not case or size, so both states share one baseline. When the row is wider than its pill it scrolls horizontally rather than wrapping.
 import { BOROUGH_SHORT } from "../content";
 import React from "react";
 import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
@@ -77,26 +77,6 @@ export function BoroughToggle({ selected, onSelect }: Props) {
           </button>
         );
       })}
-    </div>
-  );
-}
-
-// DateStatus — "Jul 12 · 23:00 · archive": the loaded day's date, its latest hour, and whether it is live or archive. One line, tabular figures.
-export function DateStatus({ dateLabel, hourLabel, status }: { dateLabel: string; hourLabel: string; status: string }) {
-  const c = themeColors(useTheme());
-  return (
-    <div
-      style={{
-        fontFamily: families.data,
-        fontSize: typeScale.micro.size,
-        lineHeight: typeScale.micro.line,
-        color: c.textMuted,
-        fontVariantNumeric: "tabular-nums",
-        whiteSpace: "nowrap",
-        textAlign: "center",
-      }}
-    >
-      {dateLabel} · {hourLabel} · {status}
     </div>
   );
 }

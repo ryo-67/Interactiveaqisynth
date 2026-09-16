@@ -1,14 +1,13 @@
 import { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
+import ScenePage from "./scene/ScenePage";
 import "./index.css";
 
-// The three.js routes are lazy so their bundle never ships to /. /scene is the Listen page as the scene (D-19); / stays the typographic page until the scene passes review.
+// The scene is the page (D-40, 2026-09-15): / and /scene both render it, /scene kept so earlier links still land. The typographic page it replaced (App.tsx) is gone with its own components. The harness stays lazy at /scene-test so its extras never ship to the page.
 const SceneTestPage = lazy(() => import("./scene/SceneTestPage"));
-const ScenePage = lazy(() => import("./scene/ScenePage"));
 
 const path = window.location.pathname;
-const Root = path === "/scene-test" ? SceneTestPage : path === "/scene" ? ScenePage : App;
+const Root = path === "/scene-test" ? SceneTestPage : ScenePage;
 
 createRoot(document.getElementById("root")!).render(
   <Suspense fallback={<div style={{ background: "#05050a", position: "fixed", inset: 0 }} />}>

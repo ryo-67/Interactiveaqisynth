@@ -17,8 +17,6 @@ export const MOOD_SENTENCES: readonly string[] = [
 // Score legend, one micro line under the canvas (§5.2).
 
 // Status words in the borough row.
-export const STATUS_LIVE = "live";
-export const STATUS_ARCHIVE = "archive";
 
 // Source line (§5.3 panel 6). The coverage clause is built from the source flags, never hardcoded. Shortened 2026-09-15 at Shoro's request; Shoro's to revise. Two parts: the sources, then coverage.
 export const SOURCE_LINE_BASE = "Live from AirNow · Archive from EPA"; // LOCKED (Shoro, 2026-09-15). Rendered with AirNow and EPA as links.

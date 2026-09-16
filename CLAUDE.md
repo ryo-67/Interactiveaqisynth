@@ -16,7 +16,7 @@ Shipped and working:
 - React 18 + TypeScript + Vite (SWC), Tailwind v4, Tone.js, motion/react, Canvas API.
 - Vercel serverless routes under `api/`: `aqi/current.ts` (AirNow proxy), `aqi/historical.ts` (EPA AQS proxy), `health.ts`, `aqi/diagnostic.ts`. Shared logic in `api/_lib/aqi.ts`. CDN caching via `Cache-Control: s-maxage` (current 1800, historical 86400 with swr 604800). No storage layer.
 - Deployed at interactive-aqi-synth.vercel.app from GitHub main. Env vars on Vercel: `AIRNOW_API_KEY`, `EPA_AQS_EMAIL`, `EPA_AQS_API_KEY`.
-- `App.tsx` orchestrates all state. Components: `SynthEngine`, `AQIVisualizer`, `TimelineScrubber`, `NYCBoroughMap`, `AQIInfo`, `RecordButton`, `ShareModal`. Utilities: `utils/theme.ts`, `utils/mockData.ts`, `utils/nycOpenData.ts`.
+- `/` is the scene (`src/scene/ScenePage.tsx`, D-40, 2026-09-15); `/scene` is kept as an alias and `/scene-test` is the tuning harness. The earlier typographic page (`App.tsx`) is deleted. Utilities: `utils/theme.ts`, `utils/nycOpenData.ts`.
 
 Not yet done (see BACKLOG.md):
 - The engine in `SynthEngine.tsx` is the Figma Make PolySynth random-walk engine. It does not implement STRATEGY §3. Do not extend it; it is replaced wholesale by the Phase 0 engine (BACKLOG PH0-02, SON-01).
@@ -48,7 +48,7 @@ public/data/
 scripts/
   build-archive.*        Local only. No API key. Filters state 36, counties 005/047/061/081/085.
 src/
-  App.tsx                Orchestrator. Listen loads last 24 h only; archive loads when the timeline opens.
+  scene/ScenePage.tsx    The page. Listen loads last 24 h only; archive days load by month on demand.
   content.ts             All prose, mood words, pin labels, counterfactual values with sources, UI labels
   components/            Hand-styled, tokens only: EntryMoment, AQIDisplay, BoroughSelector, PhraseIndicator,
                          Timeline (pins + lag gap), CounterfactualSelector, PollutantSliders, AQIVisualizer,

@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The scene is the page (D-40)
+
+/ renders the scene; /scene stays as an alias so earlier links land. The typographic page it stood in for is deleted with the two pieces only it used, the date-status line and the live/archive status words. The scene is imported directly now, since it is the page; the harness at /scene-test stays lazy.
+
 ## 2026-09-15 — The hero fits each tier; the number centred by its own ink; phone tabs equal
 
 The fixed width left holes, so the panel fits each tier's content again, on phones too, with the layout fixed instead: two lines, the split, the spacing, and the height. The number is a step larger (80/64/56/48). It is centred optically, not by its box: Georgia's figures are old-style (a 1 sits at x-height, a 6 rises, a 5 drops) and the font here has no lining set, so each shown value's ink is measured and its centre placed on the word-and-sentence stack's centre, then lifted by a small bias for the stack's descenders; measured across four values at laptop, the number's ink centre sits within a 3.5 px band, where the box centring had varied by 16. The sentence's first line has a floor of 28 characters where the sentence allows, so a short sentence is not cut into two stubs. On phones the four graph tabs share the band equally, since their labels are all short now.

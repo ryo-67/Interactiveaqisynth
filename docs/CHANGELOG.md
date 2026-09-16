@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-15 — The AQI is the AQI EPA reports (D-42)
+
+Every AQI on the page was the hour's PM2.5 through the 2012 breakpoint table, so an ozone afternoon read green here and orange on AirNow, and 12 µg/m³ read 50 where EPA has said 56 since May 2024. Now one module (engine/aqi.ts, after AirNow's Technical Assistance Document) computes what is reported: the highest pollutant sub-index, from daily statistics for a chosen day's number (PM2.5 24-hour mean, ozone's best 8-hour window from 7 am, NO2's worst hour) and from the NowCast for Live and for the graph's AQI line (PM2.5 a weighted 12-hour mean that leans on recent hours when the air moves; ozone the trailing 8-hour mean, a stated stand-in for EPA's regression NowCast; NO2 the hour). The day's neighbours load with it so the windows reach across midnight. The routes now ship hours only, so the api and the page cannot disagree. The sound's tier stays PM2.5 alone: particles are the dissonance axis, ozone and NO2 already have voices; the mood word follows the graph line at the hour being heard, so the word says what the air is and the ladder says what the particles are. The archive is held at July 20, 2026, the last day EPA has complete PM2.5 for, until the snapshot is rebuilt.
+
 ## 2026-09-15 — The current year is cached like the years before it (D-41)
 
 EPA's published days do not change, yet every current-year day went through the EPA route, re-fetched from EPA once a day per month per borough, and the first load of any of them waited on EPA. Now the year so far is a static snapshot per borough, built through the same historical route (so the snapshot and the route cannot disagree on a day) and committed; the loader serves every day up to the snapshot's last day from the CDN and asks the route only for days after it, and the search for the latest available day stops at the snapshot's month instead of walking back through months already on disk. Re-run the script and commit when EPA publishes further.

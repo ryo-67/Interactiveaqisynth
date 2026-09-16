@@ -51,6 +51,7 @@ Version 2, August 26, 2026. BUG-01 to BUG-10 are the March list with statuses up
 | BUG-26 | S2 | SUPERSEDED | Bass and pad read the same hardcoded `PROG` array | Bass is a root doubler. SON-01 |
 | BUG-27 | S2 | SUPERSEDED | All triggers except pad and bass root are probabilistic | No metrical commitment; the "no hook" critique in code form. SON-01 |
 | BUG-28 | S2 | SUPERSEDED | Displayed BPM range 72 to 110 does not match the v1 spec's 60 to 140 | Moot under D-12 (fixed 90). SON-01 |
+| BUG-30 | S1 | FIXED 2026-09-15 | AQI is PM2.5 alone on the 2012 breakpoints | Every AQI on the page (number, word, graph line, daily) ran the hour's PM2.5 through the pre-2024 table; O3 and NO2 sub-indices existed in api/_lib/aqi.ts unused. EPA reports the highest sub-index, daily from daily statistics, real time from the NowCast, PM2.5 Good ending at 9.0 since May 2024. Fix: engine/aqi.ts, D-42 |
 | BUG-29 | S2 | SUPERSEDED | `getMusicMapping` in `mockData.ts` still uses v1 mood words (Serene, Dreamy, Pensive, Uneasy, Turbulent) | Replaced by Easy / Shallow / Tight / Ragged / Suffocating in content.ts. DSN-01 |
 
 ---

@@ -1,6 +1,6 @@
 // Pins the §4.4/D-16 transform rules: per-borough max across sites, citywide mean of reporting boroughs, substitution with provenance, null when nobody reports, and the New York state filter.
 import { describe, it, expect } from "vitest";
-import { toBoroughHours, seriesAQI, pm25ToAQI, utcToNyIso, fillTypicalNo2, addDays, type SiteHourRow } from "./aqi";
+import { toBoroughHours, reverseAQI, PM25_BANDS, O3_8H_BANDS, NO2_1H_BANDS, utcToNyIso, fillTypicalNo2, addDays, type SiteHourRow } from "./aqi";
 
 const H0 = "2026-06-01T00:00:00-04:00";
 const H1 = "2026-06-01T01:00:00-04:00";
@@ -95,13 +95,20 @@ describe("utcToNyIso", () => {
   });
 });
 
-describe("seriesAQI", () => {
-  it("computes daily from the 24-h mean, hourlyMax from the peak hour, latestHour from the last non-null hour", () => {
-    const hours = result.boroughs.Bronx.hours; // pm25 10 then 11
-    const aqi = seriesAQI(hours);
-    expect(aqi.daily).toBe(pm25ToAQI(10.5));
-    expect(aqi.hourlyMax).toBe(pm25ToAQI(11));
-    expect(aqi.latestHour).toBe(pm25ToAQI(11));
+describe("reverseAQI (zip-code fallback)", () => {
+  it("returns the band edges for the index edges, on the 2024 PM2.5 table", () => {
+    expect(reverseAQI(0, PM25_BANDS)).toBe(0);
+    expect(reverseAQI(50, PM25_BANDS)).toBeCloseTo(9.0, 5);
+    expect(reverseAQI(51, PM25_BANDS)).toBeCloseTo(9.1, 5);
+    expect(reverseAQI(100, PM25_BANDS)).toBeCloseTo(35.4, 5);
+    expect(reverseAQI(200, PM25_BANDS)).toBeCloseTo(125.4, 5);
+    expect(reverseAQI(300, PM25_BANDS)).toBeCloseTo(225.4, 5);
+  });
+  it("sits mid-band for a mid-band index and caps at the table's top", () => {
+    expect(reverseAQI(75, PM25_BANDS)).toBeCloseTo(9.1 + (24 / 49) * 26.3, 5);
+    expect(reverseAQI(100, O3_8H_BANDS)).toBe(70);
+    expect(reverseAQI(150, NO2_1H_BANDS)).toBe(360);
+    expect(reverseAQI(9999, NO2_1H_BANDS)).toBe(2049);
   });
 });
 

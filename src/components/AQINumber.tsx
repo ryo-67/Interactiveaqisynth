@@ -1,4 +1,4 @@
-// AQINumber — the number (§5.2 item 2). Display size, serif, text primary — never the tier color, and it never animates. Live shows aqi.latestHour: the most recent hour's AQI, the value the tier is computed from when the playhead is at "now" (not NowCast, not the 24-h mean).
+// AQINumber — the number (§5.2 item 2). Display size, serif, text primary — never the tier color, and it never animates. A chosen day shows its official daily AQI, Live the current AQI (the NowCast composite at the latest hour), both from engine/aqi.ts (D-42): the number a weather app would show, not the PM2.5 tier the sound plays.
 import React from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
 

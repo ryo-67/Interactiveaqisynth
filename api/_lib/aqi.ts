@@ -39,92 +39,48 @@ export interface SiteHourRow {
   value: number;
 }
 
-export interface SeriesAQI {
-  daily: number | null; // AQI of the 24-h mean PM2.5 (one rule everywhere; EPA's own daily value waits for O-10)
-  hourlyMax: number | null; // max hourly PM2.5 AQI — for pin labels only, never the displayed number (BUG-18)
-  latestHour: number | null; // AQI of the most recent non-null hour — the Listen-mode number, so the number and the tier agree. AirNow's displayed number is NowCast and may differ; we are not reproducing NowCast.
-}
-
 export interface BoroughSeries {
-  hours: HourReading[];
-  aqi: SeriesAQI;
+  hours: HourReading[]; // hours only: every AQI on the page is computed on the client from these by one rule (src/engine/aqi.ts, D-42)
 }
 
-// ——— AQI breakpoint math ———
+// ——— AQI breakpoints ———
+// The same tables as src/engine/aqi.ts (the two tsconfigs cannot share a file; keep them identical). Here they serve only the zip-code fallback, which receives AQI values from AirNow and must turn them back into concentrations.
 
-type Band = readonly [number, number, number, number];
+type Band = readonly [number, number, number, number]; // concentration low, concentration high, index low, index high
 
-function piecewise(value: number, bands: readonly Band[]): number {
-  for (const [cLo, cHi, iLo, iHi] of bands) {
-    if (value <= cHi) return Math.round(iLo + ((value - cLo) / (cHi - cLo)) * (iHi - iLo));
-  }
-  return 500;
-}
-
-// EPA PM2.5 breakpoints (24-h averaging basis; we apply them to hourly values for the phrase and to the 24-h mean for the daily number).
-const PM25_BANDS: readonly Band[] = [
-  [0.0, 12.0, 0, 50],
-  [12.1, 35.4, 51, 100],
+// PM2.5, 24-hour µg/m³, the May 2024 revision.
+export const PM25_BANDS: readonly Band[] = [
+  [0.0, 9.0, 0, 50],
+  [9.1, 35.4, 51, 100],
   [35.5, 55.4, 101, 150],
-  [55.5, 150.4, 151, 200],
-  [150.5, 250.4, 201, 300],
-  [250.5, 500.4, 301, 500],
+  [55.5, 125.4, 151, 200],
+  [125.5, 225.4, 201, 300],
+  [225.5, 325.4, 301, 500],
 ];
-
-export function pm25ToAQI(conc: number | null): number | null {
-  if (conc == null) return null;
-  return piecewise(Math.max(0, conc), PM25_BANDS);
-}
-
-// O3 sub-index: EPA 8-hour breakpoints (ppb) against the max 8-h rolling mean. Display only; the phrase always plays raw hourly concentrations (BUG-19).
-const O3_8H_BANDS: readonly Band[] = [
+// Ozone, 8-hour ppb.
+export const O3_8H_BANDS: readonly Band[] = [
   [0, 54, 0, 50],
   [55, 70, 51, 100],
   [71, 85, 101, 150],
   [86, 105, 151, 200],
   [106, 200, 201, 300],
 ];
-
-export function o3SubIndexAQI(hourly: ReadonlyArray<number | null>): number | null {
-  let maxMean: number | null = null;
-  for (let i = 0; i < hourly.length; i++) {
-    const window = hourly.slice(Math.max(0, i - 7), i + 1).filter((v): v is number => v != null);
-    if (window.length === 0) continue;
-    const mean = window.reduce((s, v) => s + v, 0) / window.length;
-    if (maxMean == null || mean > maxMean) maxMean = mean;
-  }
-  return maxMean == null ? null : piecewise(maxMean, O3_8H_BANDS);
-}
-
-// NO2 sub-index: EPA 1-hour breakpoints (ppb) against the max hourly value. Display only.
-const NO2_1H_BANDS: readonly Band[] = [
+// NO2, 1-hour ppb.
+export const NO2_1H_BANDS: readonly Band[] = [
   [0, 53, 0, 50],
   [54, 100, 51, 100],
   [101, 360, 101, 150],
   [361, 649, 151, 200],
   [650, 1249, 201, 300],
+  [1250, 2049, 301, 500],
 ];
 
-export function no2SubIndexAQI(hourly: ReadonlyArray<number | null>): number | null {
-  const vals = hourly.filter((v): v is number => v != null);
-  if (vals.length === 0) return null;
-  return piecewise(Math.max(...vals), NO2_1H_BANDS);
-}
-
-export function seriesAQI(hours: HourReading[]): SeriesAQI {
-  const pm25Vals = hours.map((h) => h.pm25).filter((v): v is number => v != null);
-  const daily = pm25Vals.length ? pm25ToAQI(pm25Vals.reduce((s, v) => s + v, 0) / pm25Vals.length) : null;
-  const hourlyAQIs = hours.map((h) => pm25ToAQI(h.pm25)).filter((v): v is number => v != null);
-  const hourlyMax = hourlyAQIs.length ? Math.max(...hourlyAQIs) : null;
-  let latestHour: number | null = null;
-  for (let i = hours.length - 1; i >= 0; i--) {
-    const a = pm25ToAQI(hours[i].pm25);
-    if (a != null) {
-      latestHour = a;
-      break;
-    }
+// Equation 1 of the AirNow TAD inverted: the concentration at the same fraction of the band the index sits in. Approximate by nature (an index is a rounded value); enough for sound.
+export function reverseAQI(aqi: number, bands: readonly Band[]): number {
+  for (const [cLo, cHi, iLo, iHi] of bands) {
+    if (aqi <= iHi) return cLo + ((Math.max(aqi, iLo) - iLo) / (iHi - iLo)) * (cHi - cLo);
   }
-  return { daily, hourlyMax, latestHour };
+  return bands[bands.length - 1][1];
 }
 
 // ——— The transform (§4.4 as amended, D-16) ———
@@ -189,7 +145,7 @@ export function toBoroughHours(rows: SiteHourRow[], hoursAxis: string[]): Transf
       }
       return reading;
     });
-    boroughs[b] = { hours, aqi: seriesAQI(hours) };
+    boroughs[b] = { hours };
   }
 
   const citywideHours: HourReading[] = hoursAxis.map((ts) => {
@@ -203,7 +159,7 @@ export function toBoroughHours(rows: SiteHourRow[], hoursAxis: string[]): Transf
     } as HourReading;
   });
 
-  return { boroughs, citywide: { hours: citywideHours, aqi: seriesAQI(citywideHours) } };
+  return { boroughs, citywide: { hours: citywideHours } };
 }
 
 function round1(v: number): number {

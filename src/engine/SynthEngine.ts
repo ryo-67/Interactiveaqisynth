@@ -4,7 +4,8 @@
 // Carried from Phase 0 engineering: offset start (never pre-set .position while stopped — a stopped transport replays skipped events in one same-time burst), loop-boundary dedup (Tone fires the wrap event at both "6m" and "0"), two-reverb crossfade (Tone.Reverb cannot ramp decay), private bass lowpass, one-beat parameter ramps throughout.
 
 import * as Tone from "tone";
-import { normalize, pm25ToAQI, SmoothedAQI, melodyMidi, type PollutantAnchors } from "./contour";
+import { normalize, SmoothedAQI, melodyMidi, type PollutantAnchors } from "./contour";
+import { pm25ToAQI } from "./aqi";
 import { euclidHit, barK, barAndStep } from "./euclid";
 import { TIERS, tierIndexOf, chordMidi, midiToFreq } from "./scales";
 

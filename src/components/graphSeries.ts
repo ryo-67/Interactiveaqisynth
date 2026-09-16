@@ -1,11 +1,4 @@
-// graphSeries — per-hour series for the graph. AQI is the hour's PM2.5 through the same breakpoint table the number uses (contour.ts), so the line and the number agree.
-import { pm25ToAQI } from "../engine/contour";
-import type { Day } from "../engine/SynthEngine";
-
-export function pmToAQISeries(day: Day): Array<number | null> {
-  return day.map((h) => (h.pm25 == null ? null : pm25ToAQI(Math.max(0, h.pm25))));
-}
-
+// graphSeries — the curve through the graph's hourly points. The AQI series itself comes from the session (engine/aqi.ts, the hourly composite), so the line, the word and the number are one computation.
 // A smooth curve through the hourly points that never overshoots them — a monotone cubic (Fritsch–Carlson), so an AQI on the curve is never higher than any reading around it. Null hours break the curve into runs; between runs there is no line. Returns the value at a fractional index, or null in a gap. Used for the line and for the fill's height under it, so the two always agree.
 export function monotoneCurve(vals: ReadonlyArray<number | null>): (index: number) => number | null {
   const n = vals.length;

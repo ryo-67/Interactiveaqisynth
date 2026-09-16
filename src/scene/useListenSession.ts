@@ -5,11 +5,12 @@ import { sunAlongPath } from "./sunPath";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { motion, NYC_LAT, NYC_LON, CAMERA_FACING } from "../utils/theme";
-import { normalize, pm25ToAQI, type PollutantAnchors } from "../engine/contour";
+import { normalize, type PollutantAnchors } from "../engine/contour";
 import { tierIndexOf } from "../engine/scales";
+import { seriesAQI } from "../engine/aqi";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
 import { PINS } from "../content";
-import { getCurrentAll, getAnchors, getDay, clientSeriesAQI, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
+import { getCurrentAll, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
 
 // Dev-only fixture select (?dev=1): never renders for a visitor.
 export const DEV = new URLSearchParams(window.location.search).has("dev");
@@ -43,10 +44,11 @@ export interface ListenSession {
   togglePlay: () => void;
   setVolume: (db: number) => void;
   displayAqi: number | null;
+  aqiHours: Array<number | null>; // the loaded day's current AQI hour by hour (engine/aqi.ts): the graph's AQI line
   latest: { reading: HourReading; index: number; hour: number } | null; // latest non-null hour of the loaded day: its index and its clock hour
   rest: { reading: HourReading; index: number; hour: number } | null; // the hour the page reads at rest: the paused or seeked hour if the day has it, else latest
+  // The category the mood word names and the AQI its colour reads: the current AQI (the composite) at the hour being heard while playing, at the rest hour otherwise, so the word follows the graph line at the playhead. The sound's tier stays PM2.5 alone (§3.4); the word and the number read EPA's category (D-42).
   moodTier: number;
-  // The AQI the mood word describes: the smoothed AQI the tier is computed from while playing, the latest hour's AQI at rest.
   moodAqi: number | null;
   // Normalized channels for whatever the page is showing right now: the beat while playing, the rest hour otherwise. A null channel is null here (the mood sentence must not name it).
   channels: { pm25: number | null; o3: number | null; no2: number | null };
@@ -110,7 +112,7 @@ export function useListenSession(): ListenSession {
         if (!cancelled) setChosen(s);
       } catch (err) {
         console.warn("[App] Day fetch failed:", err);
-        if (!cancelled) setChosen({ hours: [], aqi: { daily: null, hourlyMax: null, latestHour: null }, fallback: null, fetchedAt: null });
+        if (!cancelled) setChosen({ hours: [], aqi: { daily: null, current: null, hourly: [] }, fallback: null, fetchedAt: null });
       } finally {
         if (!cancelled) setDayLoading(false);
       }
@@ -219,11 +221,10 @@ export function useListenSession(): ListenSession {
 
   // ——— Derived display state ———
   const series = devFixture ? null : date ? chosen : (snapshot?.series[borough] ?? null);
-  const displayAqi = devFixture
-    ? (day ? clientSeriesAQI(day).daily : null) // archive semantics for fixture days
-    : date
-      ? (series?.aqi.daily ?? null) // a chosen day shows its daily AQI (§4: daily from EPA where present, else the 24-h mean)
-      : (series?.aqi.latestHour ?? null);
+  const fixtureAqi = useMemo(() => (devFixture && day ? seriesAQI(day) : null), [devFixture, day]); // a fixture day has no neighbours; its windows start at midnight
+  const aqi = fixtureAqi ?? series?.aqi ?? null;
+  const displayAqi = aqi == null ? null : date || devFixture ? aqi.daily : aqi.current; // a chosen day its official daily AQI, Live the current AQI (D-42)
+  const aqiHours = aqi?.hourly ?? EMPTY_HOURS;
 
   // Latest non-null hour of the loaded day — the resting state before playback.
   const latest = (() => {
@@ -247,16 +248,9 @@ export function useListenSession(): ListenSession {
 
   // Mood inputs: the beat report while playing (it describes what you are hearing); the rest hour otherwise.
   const a = anchors ?? QUEENS_2023_ANCHORS;
-  const moodTier = report
-    ? report.tierIndex
-    : rest?.reading.pm25 != null
-      ? tierIndexOf(pm25ToAQI(Math.max(0, rest.reading.pm25))!)
-      : 0;
-  const moodAqi = report
-    ? report.smoothedAQI
-    : rest?.reading.pm25 != null
-      ? pm25ToAQI(Math.max(0, rest.reading.pm25))
-      : null;
+  const moodIndex = report ? report.hour : rest?.index;
+  const moodAqi = moodIndex == null ? null : (aqiHours[moodIndex] ?? null);
+  const moodTier = moodAqi == null ? 0 : tierIndexOf(moodAqi); // the ladder's lines are EPA's category lines (D-38), so the tier index is the category index
   const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.index ?? 12);
   const playheadHour = useEasedHour(clockTarget, playing);
   // The clock glides where the index cannot: a day switch keeps the transport position but the same index is a different time of day on the new day (live index 23 is 1 pm; an archive day's is 11 pm), and the sun must not jump between them.
@@ -289,12 +283,13 @@ export function useListenSession(): ListenSession {
   return {
     borough, setBorough, date, setDate, latestDate, dayLoading, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
     snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
-    displayAqi, latest, rest, moodTier, moodAqi, channels, skyChannels, devDayKey, setDevDayKey,
+    displayAqi, aqiHours, latest, rest, moodTier, moodAqi, channels, skyChannels, devDayKey, setDevDayKey,
   };
 }
 
 // The beat report says hour h has just STARTED. The clock therefore runs from h toward h+1 over the beat, so the playhead crosses each column in time with the sound and the sun glides continuously; the next report lands as it reaches h+1, and any drift between the audio clock and the frame clock is corrected there. (Easing from the previous hour TO h made the playhead arrive a full beat late, so pulse hits flashed a column ahead of the line.) Across the loop seam it runs 23 → 24 (= 0), never backward. Under reduced motion it still moves, because it is the playhead.
 // A change of day moves the sun from where it is to where the new day's time puts it over SUN_GLIDE_BEATS beats, ease-in-out, along a path planned in the camera's screen space (sunPath.ts, D-33 amending D-31): straight on screen while the sun is visible, so it never reverses on screen, and in angles while it is unseen. Everything the sky derives from elevation — exposure, the night blue, golden hour, the stars' visibility — follows the interpolated sun, and the clock the stars turn on takes the shortest way round too. No sunset-then-sunrise sequence: 11 am to 7 pm is one arc down and to the right; 11 pm to 3 pm is one arc up. That is the glide AT REST. While PLAYING a change of day is a cut shown as a dissolve (D-32): the target keeps moving during playback, so a glide bends toward a moving point and the sun heads off in arcs that read as arbitrary; the page fades the last rendered frame out over the new sky instead. Outside a change of day the sun is where the clock puts it, exactly — playback, and a scrub in either direction. A target that moves during the glide (playback) is re-read each frame, so the glide lands on it; a second change restarts from where the sun is.
+const EMPTY_HOURS: Array<number | null> = [];
 const SUN_GLIDE_BEATS = 1.5;
 interface SunDay { date: string; tz: number }
 interface SunState { clock: number; sun: SunAngles | null; dissolve: number } // sun: the interpolated position during a glide, else null (the page computes it from the day and the clock). dissolve: a counter the page watches — each increment is a change of day made while playing, to be shown as a dissolve of the rendered sky rather than a glide (D-32).

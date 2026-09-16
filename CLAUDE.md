@@ -85,7 +85,7 @@ Sonification
 
 Data
 - Missing is null only when no borough reports. Citywide is the per-hour mean of reporting boroughs.
-- Daily AQI comes from EPA where present, else from the 24-h mean. Hourly max is kept for the phrase and pin labels, never for the AQI number.
+- The AQI is EPA's reported AQI (D-42, `src/engine/aqi.ts`): the highest pollutant sub-index on the current breakpoint tables. A chosen day's number is the official daily AQI from daily statistics; Live and the graph line are the NowCast composite. The routes ship hours only; never compute an AQI anywhere else. The sound's tier is PM2.5 alone.
 - Look up API behavior before proposing a fix. AirNow and EPA AQS both have quirks; do not cycle through guesses.
 - Live NO2: New York publishes none in real time, so absence is filled from the archive's typical profile, flagged source.no2 = 'typical' and disclosed on the page (D-18, amending §4.2/§4.4).
 
@@ -95,7 +95,7 @@ Code
 - Architectural problems get architectural fixes. The timeline gap (BUG-03) is two sources in one array; fix the structure, not the scrubber.
 - api/ has its own CommonJS tsconfig; the root tsconfig scopes to src/. Vercel's function builder uses the nearest tsconfig.
 - vercel dev does not reproduce the production function build; after every push that touches api/, hit /api/health and /api/aqi/current on the deployed URL before calling it done.
-- Archive data comes from public/data/, including a snapshot of the current year so far (`scripts/build-current-year.ts`, D-41; re-run and commit when EPA publishes more). The EPA API is only ever asked about current-year days after the snapshot's last day.
+- Archive data comes from public/data/, including a snapshot of the current year so far (`scripts/build-current-year.ts`, D-41; re-run and commit when EPA publishes more). The EPA API is only ever asked about current-year days after the snapshot's last day. The last day offered is held by `ARCHIVE_LAST_DATE` in `nycOpenData.ts` (2026-07-20, the last day with complete PM2.5); move it when the snapshot is rebuilt.
 - Mobile-first layout, two breakpoints (laptop 1024+, phone <768).
 
 Docs

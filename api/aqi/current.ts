@@ -2,7 +2,10 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   toBoroughHours,
   utcToNyIso,
-  pm25ToAQI,
+  reverseAQI,
+  PM25_BANDS,
+  O3_8H_BANDS,
+  NO2_1H_BANDS,
   BOROUGHS,
   type SiteHourRow,
   type Pollutant,
@@ -127,9 +130,9 @@ async function zipCodeFallback(apiKey: string): Promise<TransformResult> {
   let o3: number | null = null;
   let no2: number | null = null;
   for (const o of obs) {
-    if (o.ParameterName === "PM2.5") pm25 = reverseAQI_PM25(o.AQI);
-    if (o.ParameterName === "O3" || o.ParameterName === "OZONE") o3 = reverseAQI_O3(o.AQI);
-    if (o.ParameterName === "NO2") no2 = reverseAQI_NO2(o.AQI);
+    if (o.ParameterName === "PM2.5") pm25 = reverseAQI(o.AQI, PM25_BANDS);
+    if (o.ParameterName === "O3" || o.ParameterName === "OZONE") o3 = reverseAQI(o.AQI, O3_8H_BANDS);
+    if (o.ParameterName === "NO2") no2 = reverseAQI(o.AQI, NO2_1H_BANDS);
   }
 
   const hour: HourReading = {
@@ -139,28 +142,7 @@ async function zipCodeFallback(apiKey: string): Promise<TransformResult> {
     no2,
     source: { pm25: "citywide", o3: "citywide", no2: "citywide" },
   };
-  const series = {
-    hours: [hour],
-    aqi: { daily: null, hourlyMax: null, latestHour: pm25ToAQI(pm25) },
-  };
+  const series = { hours: [hour] };
   const boroughs = Object.fromEntries(BOROUGHS.map((b) => [b, series])) as TransformResult["boroughs"];
   return { boroughs, citywide: series };
-}
-
-// Approximate reverse AQI → concentration for the fallback path only.
-function reverseAQI_PM25(aqi: number): number {
-  if (aqi <= 50) return (aqi / 50) * 12;
-  if (aqi <= 100) return 12.1 + ((aqi - 51) / 49) * 23.3;
-  if (aqi <= 150) return 35.5 + ((aqi - 101) / 49) * 19.9;
-  return 55.5 + ((aqi - 151) / 49) * 94.9;
-}
-function reverseAQI_O3(aqi: number): number {
-  if (aqi <= 50) return (aqi / 50) * 54;
-  if (aqi <= 100) return 55 + ((aqi - 51) / 49) * 15;
-  return 71 + ((aqi - 101) / 49) * 14;
-}
-function reverseAQI_NO2(aqi: number): number {
-  if (aqi <= 50) return (aqi / 50) * 53;
-  if (aqi <= 100) return 54 + ((aqi - 51) / 49) * 46;
-  return 101 + ((aqi - 101) / 49) * 259;
 }

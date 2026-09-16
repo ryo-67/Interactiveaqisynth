@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   toBoroughHours,
-  seriesAQI,
   utcToNyIso,
   addDays,
   BOROUGHS,
@@ -124,7 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const days = [...byDate.entries()]
       .filter(([date]) => date >= from && date <= to) // trim the padding back to the requested range
-      .map(([date, hours]) => ({ date, hours, aqi: seriesAQI(hours) }));
+      .map(([date, hours]) => ({ date, hours }));
 
     res.setHeader("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=604800");
     res.status(200).json({ status: "ok", source: "epa_aqs", borough: boroughParam, from, to, days });

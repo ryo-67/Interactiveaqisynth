@@ -6,7 +6,7 @@ import { readingLabel } from "../utils/time";
 import React, { useEffect, useMemo, useRef } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS } from "../content";
-import { pmToAQISeries, monotoneCurve } from "./graphSeries";
+import { monotoneCurve } from "./graphSeries";
 import { chipStyle } from "./chip";
 import type { Day } from "../engine/SynthEngine";
 
@@ -15,6 +15,7 @@ export const TRACK_ORDER: TrackKey[] = ["aqi", "pm25", "o3", "no2"];
 
 interface Props {
   day: Day;
+  aqi: Array<number | null>; // the day's hourly AQI (engine/aqi.ts): the current AQI as reported each hour, NowCast PM2.5 or ozone or NO2, whichever is highest
   playheadHour: number | null; // eased, fractional; null = at rest
   running: boolean; // playing: animate; paused: draw the held playhead once
   live: boolean;
@@ -58,7 +59,7 @@ function lerpFrame(a: Frame, b: Frame, t: number): Frame {
   return { ...b, norm, alpha, colours, max: lerp(a.max, b.max, t), isAqi: lerp(a.isAqi, b.isAqi, t) };
 }
 
-export function Graph({ day, playheadHour, running, live, tab, onTab, onSeek, lift = 0 }: Props) {
+export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSeek, lift = 0 }: Props) {
   const theme = useTheme();
   const c = themeColors(theme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -82,11 +83,11 @@ export function Graph({ day, playheadHour, running, live, tab, onTab, onSeek, li
   };
 
   const series = useMemo(() => ({
-    aqi: pmToAQISeries(day),
+    aqi,
     pm25: day.map((h) => (h.pm25 == null ? null : Math.max(0, h.pm25))),
     o3: day.map((h) => h.o3),
     no2: day.map((h) => h.no2),
-  }), [day]);
+  }), [day, aqi]);
 
   // The target frame for this state, and the transition to it. When the state changes (a new day or a new tab) the frame last SHOWN becomes the start, so a change made mid-transition continues from where the line is rather than from where it was going.
   // Which data is on screen: a counter that steps whenever the day array changes identity (a new date, a new borough, a live refresh), so the state's key follows the data rather than the date, and a change of borough morphs too.

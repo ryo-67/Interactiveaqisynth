@@ -252,16 +252,15 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
       <button
         className="scene-chip"
         data-active={open}
-        style={{ ...chip(open), border: "none", display: "inline-flex", alignItems: "center", gap: 6, minWidth: "8em", justifyContent: "center", opacity: loading ? 0.5 : 1 }} // no hairline on the date chip (Shoro, 2026-09-16): its fills, hover and open, stay; the arrows and Live keep theirs
+        style={{ ...chip(open), border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: loading ? 0.5 : 1 }} // no hairline on the date chip (Shoro, 2026-09-16): its fills, hover and open, stay; the arrows and Live keep theirs
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={`${NAV_CALENDAR}: ${date ? labelOf(date) : NAV_LAST_24H}`}
       >
-        <CalendarIcon size={14} />
-        {/* The date keeps the data face: it is a reading, not a control label. The widest label the chip can show is laid out in the same cell, hidden, so the chip is one width whatever the day (Shoro, 2026-09-16: it grew and shrank with the date's digits); the data face is monospaced, so the widest label is the longest, a two-digit day with the year. */}
-        <span style={{ display: "inline-grid", textAlign: "center" }}>
-          <span style={{ gridArea: "1 / 1", color: c.textPrimary, fontFamily: families.data, letterSpacing: 0 }}>{date ? labelOf(date) : NAV_LAST_24H}</span>
-          <span aria-hidden style={{ gridArea: "1 / 1", visibility: "hidden", fontFamily: families.data, letterSpacing: 0 }}>{WIDEST_DATE_LABEL}</span>
+        {/* The date keeps the data face: it is a reading, not a control label. The icon and the label are one centred pair with a 6 px gap (Shoro, 2026-09-16: the icon had stood at a fixed place with the label centred beside it), and a hidden copy of the pair with the widest label holds the chip's width underneath, so the chip is one width whatever the day; the data face is monospaced, so the widest label is the longest, a two-digit day with the year. */}
+        <span style={{ display: "inline-grid" }}>
+          <span aria-hidden style={{ gridArea: "1 / 1", visibility: "hidden", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: families.data, letterSpacing: 0 }}><CalendarIcon size={14} />{WIDEST_DATE_LABEL}</span>
+          <span style={{ gridArea: "1 / 1", justifySelf: "center", display: "inline-flex", alignItems: "center", gap: 6, color: c.textPrimary, fontFamily: families.data, letterSpacing: 0 }}><CalendarIcon size={14} />{date ? labelOf(date) : NAV_LAST_24H}</span>
         </span>
       </button>
       <button className="scene-chip" style={chip(false)} onClick={next} aria-label="next day" disabled={!date}><ChevronRightIcon /></button>

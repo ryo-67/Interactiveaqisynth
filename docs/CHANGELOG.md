@@ -6,6 +6,10 @@ Why, not just what. Newest first.
 
 Chrome, not Firefox, painted dark bands down the edges of cards that sit flush with a page's edge, and a dark bloom where two cards meet. Chromium composites each translated page into its own layer and clamps a backdrop blur at that layer's bounds, so a card at the edge samples clamped pixels for its outer 28 px; Firefox samples the whole page. Each page now reaches the frame's clip padding beyond the section on every side, so the layer holds real sky around the cards and the blur has something to sample. The frame clips at the same distance, and nothing in the layout moves. Not reproduced here: headless Chromium renders in software and the in-app browser has no WebGL sky; this is the mechanism the crops describe, to be confirmed in Shoro's Chrome.
 
+## 2026-09-16 — Hazardous keeps its magenta, at 2.7:1 on the brightest panel
+
+White read as off the scale rather than the worst of it. Shoro's call: the sixth category alone may dip under the ramp's 3:1 floor at its light end so it keeps a hue. Its light end is a saturated magenta at 0.44 luminance, 2.7:1 on the brightest panel and 3.2:1 on the darkest, distinct from Unhealthy's salmon and Very Unhealthy's lavender on the hazy noon panel where the earlier magenta had converged. The other five categories keep their 3:1.
+
 ## 2026-09-16 — Hazardous burns out to white
 
 The magenta held only on clear days. On hazy and warm panels the ramp lifts toward its light ends for 3:1, and at the 0.49 luminance the brightest panel demands every hue from red to violet needs a green channel near 160, which strips its chroma: red, violet and magenta all arrived as pastels. Only yellow, green, cyan and white keep chroma at that brightness; cyan reads clean, so Hazardous is white, the scale burning out, distinct from the red below and the violet beside it on every panel (5.8:1 on the brightest, 9.7:1 on the darkest). Nothing else on the ramp changed.

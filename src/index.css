@@ -1629,8 +1629,8 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 /* Laptop: the transport stands in the whitespace left of the section, where the page pill stood, stacked with the play button on top and its top on the page pill's top (Shoro, 2026-09-16). The page pill is 8 + 32 + 12 + 32 + 8 tall and centred on the band, so its top is half that above the band's middle. The volume slider turns vertical: the same input, rotated a quarter turn in a pill the play pill's width, so its track, its thumb and its fill are the ones tuned for the row, the fill rising from the bottom. */
 .scene-transport-side { --page-pill-h: calc(2 * var(--ctl-inner) + 12px + 16px); position: absolute; left: clamp(var(--ui-pad), calc((50% - var(--section-w) / 2 - var(--ctl-pill)) / 2), calc(50% - var(--section-w) / 2 - var(--ctl-pill) - 16px)); top: calc(50% - var(--page-pill-h) / 2); flex-direction: column; align-items: center; z-index: 1; }
-.scene-transport-side .scene-volume-pill { width: var(--ctl-pill); height: calc(var(--slider-width) + 32px); padding: 0; display: grid; place-items: center; }
-.scene-transport-side .scene-volume { transform: rotate(-90deg); }
+.scene-transport-side .scene-volume-pill { width: var(--ctl-pill); height: calc(var(--slider-width) + 32px); padding: 0; position: relative; }
+.scene-transport-side .scene-volume { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); } /* centred by its own translate, not by the pill's alignment: the input's box is wider than the pill, and Firefox aligns an overflowing grid item to the start, which put the track on the pill's edge (Shoro, 2026-09-16) */
 /* The About button's pill (Shoro, 2026-09-16): the chips' inset around the button, so its hover fill sits inside the pill as a chip's does. */
 .scene-pill.scene-about-pill { padding: 0 var(--chip-inset, 4px); }
 .scene-about-btn { white-space: nowrap; } /* face, size and colour are the source line's, set inline from the tokens (Transport.tsx) */

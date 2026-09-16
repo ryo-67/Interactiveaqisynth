@@ -1547,15 +1547,17 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-mid[data-axis="x"]:not([data-fade="true"]) .scene-page { --glass-on: 1; transition: none; }
 .scene-mid[data-axis="x"] .scene-page-monitor { left: calc(100% + var(--page-gap)); right: auto; width: 100%; }
 .scene-mid[data-axis="x"] .scene-track[data-dragging="true"] { transition: none; }
+/* A resize in progress: nothing on the pages animates, so a change of breakpoint lands its layout in one frame (ScenePage.tsx data-resizing). */
+.scene-mid[data-resizing="true"] .scene-track, .scene-mid[data-resizing="true"] .scene-page, .scene-mid[data-resizing="true"] .glass { transition: none !important; }
 /* Reduced motion: no travel, a cross-fade in place. */
 .scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; transition: --glass-on var(--page-ms, 1000ms) ease !important; }
 .scene-mid[data-fade="true"][data-axis="x"] .scene-page-monitor { left: 0; }
 /* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
-.scene-monitor { --routing-h: 96px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; align-self: center; }
+.scene-monitor { --routing-h: 80px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-gap); width: 100%; align-self: center; }
 .scene-monitor .scene-card-routing { grid-column: 1 / -1; }
-.scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow: hidden; } /* 8 between label, value and gauge at every breakpoint (2026-09-16): 20·2 + 20 + 40 + 4 + 17 + 8·3 = 145 fits the 148 laptop row the shared section height gives a value card */
-.scene-card .scene-meter, .scene-card .scene-ladder, .scene-card .scene-lane { flex: 0 0 auto; }
-.scene-card .scene-ladder, .scene-card .scene-lane, .scene-card-aqi .scene-meter { margin-top: 8px; } /* the cards whose gauge sits straight under the value (scale, tone, beats and the two hero cards) get 16 between them (Shoro, 2026-09-16); the value cards keep 8 since their sub line follows */ /* a gauge never gives up its 4 px: the meter has no intrinsic height and was the child the column shrank to nothing when the row ran short */
+.scene-card { padding: var(--card-pad); display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; } /* One spacing system for every card (Shoro, 2026-09-16): 12 from title to value and between a gauge and its unit line; the gauge block is anchored at the bottom padding, so a ladder card's bar and a value card's unit line both sit --card-pad above the edge, and a row's spare height goes between the value and the gauge. */
+.scene-card .scene-meter, .scene-card .scene-ladder, .scene-card .scene-lane { flex: 0 0 auto; margin-top: auto; } /* a gauge never gives up its 4 px (the meter has no intrinsic height and was the child the column shrank to nothing when the row ran short), and it sits at the bottom of whatever room the row gives */
+@media (min-width: 1024px) { .scene-hero-pair .scene-card .scene-ladder, .scene-hero-pair .scene-card .scene-meter { margin-top: 4px; } } /* on laptop the hero cards are content-sized, so their gauge takes 16 under the value; below laptop they fill the first row's height and the gauge drops to the bottom like the row's */
 .scene-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 .scene-card-unit { font-size: var(--body-size, 15px); line-height: 1; color: rgba(255, 255, 255, 0.78); font-style: normal; } /* line-height 1: at the value's line-height the smaller inline box sat on the baseline and grew the line by 7 px, dropping the lane below the ladders beside it */
 /* Ladders, meters, the lane: 4 px tracks (the slider's hairline), from theme.ts MONITOR; the lit step and a hit fade over one beat. */
@@ -1579,11 +1581,11 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-routing-lines line[data-moved="true"] { animation: scene-routing-move 667ms ease-out forwards; }
 @keyframes scene-routing-move { from { stroke: rgba(255, 255, 255, 0.9); } to { stroke: rgba(255, 255, 255, 0.18); } }
 /* The page icons: bottom centre on laptop, where the bottom bar is a three-column grid; below that the bar is two rows and the icons take the right end of the transport row. */
-.scene-views { display: flex; align-items: center; gap: var(--chip-inset); flex: 0 0 auto; }
+.scene-views { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; } /* the two icons 12 apart (Shoro, 2026-09-16: more spaced out) */
 .scene-views[data-vertical="true"] { flex-direction: column; }
 .scene-pill.scene-views-pill { padding: 0 12px; } /* the horizontal pill's side padding: the phone pill's 12, so the icons sit in a bar that reads as one control (2026-09-16) */
 /* Above the phone width the pill stands at the left edge of the page, centred on the band, absolutely placed in the scaffold so the band keeps its full width. */
-.scene-pill.scene-views-side { position: absolute; left: calc(50% - var(--section-w) / 2 - var(--pill-room)); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: var(--chip-inset) 0; flex-direction: column; justify-content: center; z-index: 1; } /* 16 px off the section's left edge; inside the band, so its centre is the section's (2026-09-16) */
+.scene-pill.scene-views-side { position: absolute; left: calc(50% - var(--section-w) / 2 - var(--pill-room)); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: 8px 0; flex-direction: column; justify-content: center; z-index: 1; } /* 8 + 32 + 12 + 32 + 8 = 92 tall */ /* 16 px off the section's left edge; inside the band, so its centre is the section's (2026-09-16) */
 .scene-view-btn { transition: color var(--state-ms, 120ms) ease; }
 .scene-view-btn:not([aria-selected="true"]):hover { color: rgba(255, 255, 255, 0.9) !important; }
 
@@ -1603,7 +1605,8 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 }
 /* Short laptops (1280×720, 2026-09-16): the monitor's grid at its laptop sizes is 512 tall and the band there is 498; the cards, the routing diagram and the gaps step down so the grid sits inside the frame. */
 @media (min-width: 1024px) and (max-height: 760px) {
-  .scene-monitor { --card-pad: 16px; --routing-h: 72px; gap: 12px; }
+  .scene-monitor { --card-pad: 16px; --routing-h: 64px; gap: 12px; }
+  .scene-card { gap: 8px; } /* 16·2 + 20 + 8 + 40 + 8 + 4 + 8 + 17 = 137 in the 146 row */
 }
 .scene-pill { height: var(--ctl-pill); padding: 0 16px; display: flex; align-items: center; max-width: 100%; min-width: 0; box-sizing: border-box; flex: 0 0 auto; border-radius: calc(var(--ctl-pill) / 2); }
 
@@ -1641,10 +1644,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-mid { --clip-pad: 24px; pointer-events: auto; touch-action: pan-y; } /* the bars are 16 apart here; the clip's reach stays under the gap plus the bar's own inset. The pages sit side by side below laptop and the swipe is read on the band itself, between the panels too */
   .scene-ui { --pill-room: 0px; } /* the page pill is in the transport row below laptop; the section takes the band */
   /* Below laptop the hero is exactly as tall as the monitor's first row (Shoro, 2026-09-16): on tablets both take --row-h; on phones both take a quarter of the band (the grid's 1fr rows, below). */
-  .scene-ui { --row-h: 136px; }
+  .scene-ui { --row-h: 144px; } /* holds a value card at the 12 px gaps: 16·2 + 20 + 12 + 32 + 12 + 4 + 12 + 17 = 141 */
   .scene-page-inner { --card-pad: 16px; }
   .scene-monitor { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--row-h); }
-  .scene-card { min-height: 0; justify-content: space-between; } /* 16·2 + 24 + 32 + 4 + 17 + 8·3 = 133 in the 136 row */
+  .scene-card { min-height: 0; }
   .scene-hero-pair { height: var(--row-h); }
   .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
   .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */

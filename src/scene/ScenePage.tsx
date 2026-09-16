@@ -100,6 +100,14 @@ export default function ScenePage() {
     window.history.replaceState(null, "", `?${p}`);
   }, [tab, page]);
   const vertical = laptop;
+  // A resize, and above all a change of breakpoint between the vertical and horizontal stacks, must not be animated: the pages' transitions would carry them from their old axis positions to the new and paint a slide that means nothing (Shoro, 2026-09-16). While a resize is in progress the band suppresses every page transition, and a drag's leftover inline transform is cleared.
+  const [resizing, setResizing] = useState(false);
+  useEffect(() => {
+    let t = 0;
+    const onResize = () => { setResizing(true); if (trackRef.current) trackRef.current.style.transform = ""; window.clearTimeout(t); t = window.setTimeout(() => setResizing(false), 200); };
+    window.addEventListener("resize", onResize);
+    return () => { window.removeEventListener("resize", onResize); window.clearTimeout(t); };
+  }, []);
   // In the vertical stack the two sections share one height and so one place (Shoro, 2026-09-16): the scene section's rendered height (hero pair, gap, graph) is watched and given to the monitor section, whose grid fills it. Both pages centre their content in the band, so equal heights put both at the same y.
   const sceneInnerRef = useRef<HTMLDivElement>(null);
   const [sectionH, setSectionH] = useState<number | null>(null);
@@ -346,7 +354,7 @@ export default function ScenePage() {
           </div>
 
           {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame is padded outward by the panels' shadow so the clip never cuts a shadow. */}
-          <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} style={{ "--page-ms": `${PAGE_MS}ms`, "--fade-ms": `${FADE_MS}ms` } as React.CSSProperties} onPointerDown={onBandDown} onPointerMove={onBandMove} onPointerUp={onBandUp} onPointerCancel={onBandUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
+          <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} style={{ "--page-ms": `${PAGE_MS}ms`, "--fade-ms": `${FADE_MS}ms` } as React.CSSProperties} onPointerDown={onBandDown} onPointerMove={onBandMove} onPointerUp={onBandUp} onPointerCancel={onBandUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
             // Below laptop the band takes pointer events for the swipe, so it stands between the sky and a tap on the empty space around the panels; that tap is still the sky's play/pause (tablets), and the cursor there is the sky's.
             data-cursor={phone || laptop ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"}
             onClick={phone || laptop ? undefined : (e) => { if ((e.target as HTMLElement).closest(".glass")) return; if (consumeSuppressedClick()) return; s.togglePlay(); }}>

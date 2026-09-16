@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-16 — One spacing system for the cards; no ghosting at a breakpoint flip; a roomier page pill
+
+Shoro's pass on the rows. Every card now spaces the same way: 12 from title to value and between a gauge and its unit line, and the gauge block anchored at the bottom padding, so a ladder card's bar and a value card's unit line both sit 20 above the edge on laptop and a row's spare height goes between the value and the gauge. The routing diagram gives up 16 px so the value rows hold that; short laptops step the card gap to 8 with a shallower diagram; tablets take a 144 row. When the viewport crossed the laptop line the pages' transitions carried them from their old axis positions to the new and painted a slide that meant nothing; during a resize every page transition is off and a drag's leftover transform is cleared, so a breakpoint flip lands in one frame. The vertical page pill's icons sit 12 apart in a 92 px pill.
+
 ## 2026-09-16 — The gauges as one family; the missing meters; the detune band to a semitone
 
 Shoro's pass on the monitor. The beats lane was 8 px squares at its own shades beside 4 px ladders; it is now the ladder's shape and shades, a fired step a shade brighter, and every gauge in a row shares one top edge (the beats value's unit span had grown its line by 7 px). The three meters had vanished on laptop: the shared section height gives a value card 148 px against 157 of content, and the meter, the one child with no intrinsic height, was what the column shrank to nothing. Gauges no longer shrink and the card's inner gap is 8 at every breakpoint, so the content fits its row; cards whose gauge sits straight under the value get 16 between them. The detune band is drawn to the 100-cent ceiling the anchors reach, not the old 60.

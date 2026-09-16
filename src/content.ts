@@ -12,7 +12,8 @@ export const TIER_NAMES = ["Easy", "Shallow", "Short", "Tight", "Ragged", "Suffo
 export const SOURCE_LINE_LIVE = "Live data from AirNow"; // Shoro, 2026-09-16
 export const SOURCE_LINE_ARCHIVE = "Archive data from EPA"; // Shoro, 2026-09-16
 // The credit (Shoro, 2026-09-16): a small pill beside the source line, the name a link to the portfolio.
-export const CREDIT_LINE = "Designed for fun by {name}";
+export const CREDIT_LINE = "Made by {name}"; // Shoro, 2026-09-16 (was "Designed for fun by {name}")
+export const ABOUT_LABEL = "About this"; // the About button's label (Shoro, 2026-09-16); the page it opens is still to come
 export const CREDIT_NAME = "Shoro Roy";
 export const CREDIT_URL = "https://shoro.framer.website/";
 export const SOURCE_URL_AIRNOW = "https://www.airnow.gov/";

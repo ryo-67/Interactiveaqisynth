@@ -1,8 +1,8 @@
 // Transport controls (§5.3): a play/pause icon button and a volume slider, each its own glass pill in the page, both 28 tall inside 40-tall pills. Lucide glyphs (icons.tsx), tokens only. The gesture that starts audio must be the button's own click (Tone.start inside the call stack), so the toggle is wired straight to the session's togglePlay.
 import React, { useState } from "react";
 import { useTheme, themeColors, CONTROL } from "../utils/theme";
-import { TRANSPORT_PLAY, TRANSPORT_PAUSE, TRANSPORT_VOLUME } from "../content";
-import { PlayIcon, PauseIcon } from "./icons";
+import { TRANSPORT_PLAY, TRANSPORT_PAUSE, TRANSPORT_VOLUME, ABOUT_LABEL } from "../content";
+import { PlayIcon, PauseIcon, InfoIcon } from "./icons";
 
 // MAPPING (slider 0..1 → engine dB): the fader is perceptual — 1 is unity, 0.5 is −6 dB, 0.1 is −20 dB, 0 is silence — because a linear-gain fader spends most of its travel in the top few dB.
 function sliderToDb(v: number): number {
@@ -40,5 +40,17 @@ export function VolumeSlider({ onVolume }: { onVolume: (db: number) => void }) {
       // The filled share goes to CSS as --vol; index.css draws the track (the played share light, the rest darker) and the thumb as a small glass element, the same vocabulary as the chips.
       style={{ width: `var(--slider-width, ${CONTROL.sliderWidth}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, margin: 0, display: "block", "--vol": `${(vol * 100).toFixed(1)}%` } as React.CSSProperties}
     />
+  );
+}
+
+// The About button (Shoro, 2026-09-16): a glass pill where the transport stood on laptop, Lucide's info ring with the label "About this", behaving as the play button does (the same hover fill and the cursor's press). A placeholder for now: the page it opens is the next round's.
+export function AboutButton({ onOpen }: { onOpen?: () => void }) {
+  const c = themeColors(useTheme());
+  const s = `var(--ctl-inner, ${CONTROL.inner}px)`;
+  return (
+    <button className="scene-play scene-about-btn" onClick={onOpen} style={{ height: s, padding: "0 12px 0 10px", display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "none", borderRadius: `calc(${s} / 2)`, color: c.textPrimary }}>
+      <InfoIcon size={16} />
+      <span>{ABOUT_LABEL}</span>
+    </button>
   );
 }

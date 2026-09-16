@@ -18,7 +18,7 @@ import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
 import { Cursor } from "../components/Cursor";
 import { usePopoverOpen, consumeSuppressedClick } from "../components/popoverStore";
-import { PlayButton, VolumeSlider } from "../components/Transport";
+import { PlayButton, VolumeSlider, AboutButton } from "../components/Transport";
 import { BoroughToggle } from "../components/BoroughToggle";
 import { AQICard, BreathCard } from "../components/HeroCards";
 import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
@@ -409,32 +409,58 @@ export default function ScenePage() {
                 <PageIndicator view={page} onView={switchView} vertical />
               </Glass>
             )}
+            {/* On laptop the transport stands in the whitespace left of the section, stacked, its top on the page pill's top, the page pill mirrored to the right (Shoro, 2026-09-16); the volume slider is vertical there (index.css .scene-transport-side). Below laptop both live in the bottom bar. */}
+            {laptop && (
+              <div className="scene-transport scene-transport-side">
+                <Glass material="glass" className="scene-pill scene-icon-pill">
+                  <PlayButton playing={playing} onToggle={s.togglePlay} />
+                </Glass>
+                <Glass material="glass" className="scene-pill scene-volume-pill">
+                  <VolumeSlider onVolume={s.setVolume} />
+                </Glass>
+              </div>
+            )}
           </div>
 
+          {/* The bottom bar (Shoro, 2026-09-16): on laptop the About button at the left, the source line centred on the bar, the credit at the right, the transport having moved into the band; below laptop the transport row (play, volume, the page pill), then the About button and the credit side by side and centred, and no source line at all. */}
           <div className="scene-bottom">
-            <div className="scene-transport">
-              <Glass material="glass" className="scene-pill scene-icon-pill">
-                <PlayButton playing={playing} onToggle={s.togglePlay} />
-              </Glass>
-              <Glass material="glass" className="scene-pill">
-                <VolumeSlider onVolume={s.setVolume} />
-              </Glass>
-              {/* Below laptop the page pill is part of the transport group, beside the volume (Shoro, 2026-09-16). */}
-              {!laptop && (
+            {!laptop && (
+              <div className="scene-transport">
+                <Glass material="glass" className="scene-pill scene-icon-pill">
+                  <PlayButton playing={playing} onToggle={s.togglePlay} />
+                </Glass>
+                <Glass material="glass" className="scene-pill">
+                  <VolumeSlider onVolume={s.setVolume} />
+                </Glass>
                 <Glass material="glass" className="scene-pill scene-views-pill">
                   <PageIndicator view={page} onView={switchView} vertical={false} />
                 </Glass>
-              )}
-            </div>
-            {/* The bottom bar (Shoro, 2026-09-16): the transport at the left, the source line centred on the bar, the credit at the right; below laptop the three stack, the credit its own row under the source line (index.css). */}
-            {day && day.length > 0 && (
-              <Glass material="frosted" className="scene-source">
-                <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} live={s.live} />
-              </Glass>
+              </div>
             )}
-            <Glass material="frosted" className="scene-credit">
-              <Credit />
-            </Glass>
+            {laptop ? (
+              <>
+                <Glass material="glass" className="scene-pill scene-about-pill">
+                  <AboutButton />
+                </Glass>
+                {day && day.length > 0 && (
+                  <Glass material="frosted" className="scene-source">
+                    <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} live={s.live} />
+                  </Glass>
+                )}
+                <Glass material="frosted" className="scene-credit">
+                  <Credit />
+                </Glass>
+              </>
+            ) : (
+              <div className="scene-bottom-row">
+                <Glass material="glass" className="scene-pill scene-about-pill">
+                  <AboutButton />
+                </Glass>
+                <Glass material="frosted" className="scene-credit">
+                  <Credit />
+                </Glass>
+              </div>
+            )}
           </div>
 
           {DEV && (

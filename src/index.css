@@ -1596,7 +1596,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-views[data-vertical="true"] { flex-direction: column; }
 .scene-pill.scene-views-pill { padding: 0 12px; } /* the horizontal pill's side padding: the phone pill's 12, so the icons sit in a bar that reads as one control (2026-09-16) */
 /* Above the phone width the pill stands at the left edge of the page, centred on the band, absolutely placed in the scaffold so the band keeps its full width. */
-.scene-pill.scene-views-side { position: absolute; left: clamp(var(--ui-pad), calc((50% - var(--section-w) / 2 - var(--ctl-pill)) / 2), calc(50% - var(--section-w) / 2 - var(--ctl-pill) - 16px)); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: 8px 0; flex-direction: column; justify-content: center; z-index: 1; } /* Centred in the whitespace between the browser's edge and the section's left edge (Shoro, 2026-09-16), whatever the width: the band spans the viewport, so 50% less half the section is that edge, and the pill sits halfway to it. Clamped to the page padding on the outside and to 16 px from the section on the inside, the room --pill-room reserves, which the laptop breakpoint never reaches; a fixed 96 px off the section had looked centred at one width only. Vertically centred on the band; 8 + 32 + 12 + 32 + 8 = 92 tall */
+.scene-pill.scene-views-side { position: absolute; right: clamp(var(--ui-pad), calc((50% - var(--section-w) / 2 - var(--ctl-pill)) / 2), calc(50% - var(--section-w) / 2 - var(--ctl-pill) - 16px)); top: 50%; transform: translateY(-50%); height: auto; width: var(--ctl-pill); padding: 8px 0; flex-direction: column; justify-content: center; z-index: 1; } /* Centred in the whitespace between the section's RIGHT edge and the browser's edge (Shoro, 2026-09-16: mirrored from the left, where the transport now stands), whatever the width: the band spans the viewport, so 50% less half the section is that edge, and the pill sits halfway to it. Clamped to the page padding on the outside and to 16 px from the section on the inside, the room --pill-room reserves, which the laptop breakpoint never reaches; a fixed 96 px off the section had looked centred at one width only. Vertically centred on the band; 8 + 32 + 12 + 32 + 8 = 92 tall */
 .scene-view-btn { transition: color var(--state-ms, 120ms) ease; }
 .scene-view-btn:not([aria-selected="true"]):hover { color: rgba(255, 255, 255, 0.9) !important; }
 
@@ -1627,6 +1627,14 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-pill.scene-pins { height: auto; min-height: var(--ctl-pill); padding: var(--chip-inset); flex: 0 0 auto; width: fit-content; } /* never shrinks: its chips are one row, and the day group wraps the pill instead (2026-09-15) */
 .scene-pill.scene-icon-pill { padding: 0; width: var(--ctl-pill); justify-content: center; flex: 0 0 auto; }
 .scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+/* Laptop: the transport stands in the whitespace left of the section, where the page pill stood, stacked with the play button on top and its top on the page pill's top (Shoro, 2026-09-16). The page pill is 8 + 32 + 12 + 32 + 8 tall and centred on the band, so its top is half that above the band's middle. The volume slider turns vertical: the same input, rotated a quarter turn in a pill the play pill's width, so its track, its thumb and its fill are the ones tuned for the row, the fill rising from the bottom. */
+.scene-transport-side { --page-pill-h: calc(2 * var(--ctl-inner) + 12px + 16px); position: absolute; left: clamp(var(--ui-pad), calc((50% - var(--section-w) / 2 - var(--ctl-pill)) / 2), calc(50% - var(--section-w) / 2 - var(--ctl-pill) - 16px)); top: calc(50% - var(--page-pill-h) / 2); flex-direction: column; align-items: center; z-index: 1; }
+.scene-transport-side .scene-volume-pill { width: var(--ctl-pill); height: calc(var(--slider-width) + 32px); padding: 0; display: grid; place-items: center; }
+.scene-transport-side .scene-volume { transform: rotate(-90deg); }
+/* The About button's pill (Shoro, 2026-09-16): the chips' inset around the button, so its hover fill sits inside the pill as a chip's does. */
+.scene-pill.scene-about-pill { padding: 0 var(--chip-inset, 4px); }
+.scene-about-btn { font-family: inherit; font-size: var(--body-size, 15px); letter-spacing: 0.01em; white-space: nowrap; }
+.scene-bottom-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .scene-panel { flex: 0 1 680px; min-width: 0; min-height: 0; overflow: hidden; }
 /* The hero (2026-09-15): fits its content with one padding on every side; the number at the left, the tier word over the two-line sentence at the right; both columns measured to fixed widths (MoodLine.tsx), so the panel never changes size. It never stretches to the graph. */
 /* The hero pair (2026-09-16): two cards across the section, the number card at its content width and the breath card taking the rest. The card variables (padding, inner sizes) live on the page inner so both pages' cards share them per breakpoint. */
@@ -1652,7 +1660,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* Laptop: the bottom bar is three columns, the transport at the left, the source line centred on the bar itself (not on the room the transport leaves), the credit at the right; the side columns share the rest equally so the middle sits on the page's centre line. */
 @media (min-width: 1024px) {
   .scene-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
-  .scene-bottom > .scene-transport { grid-column: 1; justify-self: start; }
+  .scene-bottom > .scene-about-pill { grid-column: 1; justify-self: start; }
   .scene-bottom > .scene-source { grid-column: 2; justify-self: center; }
   .scene-bottom > .scene-credit { grid-column: 3; justify-self: end; }
 }

@@ -1387,8 +1387,12 @@ html {
 /* ——— Glass material (STRATEGY §5.3, D-25, D-35): a tinted frost keyed to the sky, parameters from theme.ts GLASS via custom properties set at the scene root. Two materials: glass (controls) and frosted (content). Fallbacks per §5.4 below are part of the material. ——— */
 /* --glass-on (2026-09-16): how much of the material there is, 1 the material and 0 nothing — fill, lift, edge, shadow, dither and the contents all scale by it here, and the sky reads it for the blur it draws behind the panel (frost.ts). Registered so it animates; inherited so a page can dissolve every panel in it by animating one value on itself. No ancestor carries an opacity for a fade: the sky must see the panel's own value, and an ancestor's opacity would hide the dissolve from it. */
 @property --glass-on { syntax: "<number>"; inherits: true; initial-value: 1; }
-/* No backdrop-filter on a glass (D-50, 2026-09-16): the blur behind every panel is drawn by the sky itself, inside the panel's rectangle (scene/FrostEffect.ts, registered by Glass.tsx), and scales with --glass-on there. The browser's filter is computed in the compositor's tiles, and both Chromium and Firefox painted bands across it that no rule here could reach. The calendar popover, which floats over cards, keeps the filter below. */
+/* ONE material for everything that floats, control and panel alike (D-59, 2026-09-16, reversing D-50): the browser's own backdrop-filter, one blur and one saturation and one fill, both filters scaled by --glass-on so a panel losing its material loses its blur with it. The sky drew this blur for a day (D-50) because Firefox banded under a moving cursor; it is the browser's again, with the three things that keep the bands away — each glass on its own render surface, the sky composited as one group, and each glass its own picture (the opacity below, Firefox bug 1178765). Nothing here may carry an opacity below 1 other than that: an ancestor flattened into a layer leaves the filter with no sky to sample, which is why a page's fade is --glass-on and never opacity, and why no mask or clip-path is used on the band. */
 .glass {
+  opacity: var(--glass-promote, 0.999);
+  backdrop-filter: blur(calc(var(--glass-blur, 20px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 20px) * var(--glass-on, 1))) saturate(calc(1 + (var(--glass-saturate, 1.6) - 1) * var(--glass-on, 1)));
+  will-change: transform;
   background-color: rgba(var(--glass-fill, 8, 14, 40), calc(var(--glass-fill-alpha, 0.62) * var(--glass-on, 1)));
   background-image: linear-gradient(rgba(255, 255, 255, calc(var(--glass-lift, 0) * var(--glass-on, 1))), rgba(255, 255, 255, calc(var(--glass-lift, 0) * var(--glass-on, 1)))); /* the night's white lift over the tinted fill (D-35) */
   position: relative; /* for the dither layer below */
@@ -1404,23 +1408,21 @@ html {
 .glass::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: calc(var(--glass-dither, 0.04) * var(--glass-on, 1)); }
 .glass > * { position: relative; opacity: var(--glass-on, 1); } /* the contents go with the material */
 .scene-sky > * { will-change: opacity; } /* each overlay on its own layer: an opacity change is then compositor-only, never a re-raster. The sky box was also an isolated, promoted group and every glass its own render surface, against Chromium's tile bands under a backdrop blur; with the blur drawn by the sky (D-50) there is no backdrop to protect, and both are gone. */
-.scene-sky { touch-action: none; } /* the page drag (D-45) reads the sky's touches itself; nothing scrolls, so the browser has no pan to take */
+.scene-sky { touch-action: none; isolation: isolate; will-change: transform; } /* the sky as one composited group (2026-09-16): its canvas, the night and golden overlays, the smoke's two blend layers and the dither composite once before the glass above samples them, so a backdrop blur never reads a mix of freshly and stalely rastered tiles from separate layers */
+/* the page drag (D-45) reads the sky's touches itself; nothing scrolls, so the browser has no pan to take */
 .scene-sky-dither { position: absolute; inset: 0; pointer-events: none; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: var(--sky-dither, 0.05); mix-blend-mode: overlay; }
-.glass.frosted {
-  background-color: rgba(var(--glass-fill, 8, 14, 40), calc(var(--frosted-fill-alpha, 0.7) * var(--glass-on, 1)));
-  border-radius: var(--panel-radius, 20px);
-}
+.glass.frosted { border-radius: var(--panel-radius, 20px); } /* the content material differs from the control material in one thing only now: its corner */
 /* The calendar popover hangs over the top bar and the cards, and the playhead's readout over the plot: glass over things the sky's frost cannot blur (it sees only the sky), so these two keep the browser's filter (Shoro, 2026-09-16). */
 .scene-popover, .scene-playhead-chip {
-  backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
-  -webkit-backdrop-filter: blur(var(--frosted-blur, 28px)) saturate(var(--glass-saturate, 1.6));
+  backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6));
 }
 /* The playhead's readout (2026-09-16): a small frosted pill in the DOM over the graph's canvas, placed by the graph each frame, in the popover's material rather than the flat dark chip the canvas drew, which was the one element on the page in no material (Shoro). It is kept inside the plot: to the right of the playhead where there is room, to the left otherwise, and never past either edge, where the canvas chip was cut on a phone. */
 .glass.scene-playhead-chip { position: absolute; left: 0; top: 0; height: 24px; padding: 0 8px; border-radius: var(--chip-radius, 8px); display: flex; align-items: center; white-space: nowrap; pointer-events: none; visibility: hidden; will-change: transform; z-index: 1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-edge-alpha, 0.35) * var(--glass-on, 1))), 0 4px 16px rgba(0, 0, 0, calc(0.18 * var(--glass-on, 1))); }
 
 /* prefers-reduced-transparency: the material goes frosted-opaque enough to read without the scene */
 @media (prefers-reduced-transparency: reduce) {
-  .glass, .glass.frosted { background-color: rgba(30, 30, 40, var(--glass-fill-alpha-opaque, 0.9)); }
+  .glass, .glass.frosted { background-color: rgba(30, 30, 40, var(--glass-fill-alpha-opaque, 0.9)); backdrop-filter: blur(var(--glass-blur-opaque, 36px)); -webkit-backdrop-filter: blur(var(--glass-blur-opaque, 36px)); }
 }
 
 /* prefers-contrast: near-solid panel with a contrasting border */
@@ -1442,6 +1444,7 @@ html {
 
 /* ——— Scene layout (D-26): Shoro's scaffold, on a 4 px grid, at three breakpoints — laptop (≥1024), tablet (768–1023), phone (<768). The whole scaffold fits the viewport at every one: NOTHING SCROLLS. Sizes step down per breakpoint through the custom properties below (all multiples of 4), which every control reads; the middle band takes the remaining height and its panels are allowed to shrink. ——— */
 .scene-ui {
+  --section-h: 672px; /* MONITOR.sectionHeight: the section's ceiling on laptop, and so the band's (both pages are one section, D-52); below laptop the breakpoints set their own */
   --ctl-pill: 40px; --ctl-inner: 32px; --ctl-gap-wide: 16px; --slider-width: 96px;
   /* The section (2026-09-16): both pages' content is one column of this width, centred in the band — the hero-and-graph row fills it, the monitor's grid fills it — so the two pages are exactly as wide as each other at every breakpoint. Above the phone width the page pill stands in --pill-room to its left (the pill's 40 plus a 16 gap), and the section leaves that room on both sides so it stays centred. */
   --pill-room: 56px;
@@ -1499,7 +1502,11 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .source-link:hover, .source-link:focus-visible { text-decoration: underline; }
 .scene-strip { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
 .scene-strip::-webkit-scrollbar { display: none; height: 0; }
-.scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-gap); flex: 0 0 auto; min-width: 0; }
+.scene-top, .scene-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-gap); flex: 0 0 auto; min-width: 0; position: relative; }
+/* The footer sits above the About overlay as well as above the band (Shoro, 2026-09-16): the Patch notes pill is the way out of the overlay and has to be reachable and visible over the scrim. Giving the bars a stacking context of their own scoped the pill's own z-index inside the footer, so the overlay covered it; the footer's own index is what has to clear the overlay now. Everything else in the footer dissolves with the page (--glass-on 0) and is inert, so the pill is all that shows. */
+/* Both bars stand above the band, so a page pushing through passes UNDER the header and the footer rather than across them; the frame keeps its full reach besides, so a resting panel's shadow is whole, and what keeps a page off the bars is the material, which falls away as the panel underlaps one (ScenePage stepPanels). The header needs an index of its own for that, since it comes before the band in the document; the footer comes after and is above it already.
+   Only the Patch notes pill rises over the About overlay, never the footer around it (Shoro, 2026-09-16: lifting the whole footer took the source line and the credit up with it and they showed over the scrim). That is why the footer is left at z-index auto: with no stacking context of its own, the pill's own index (.scene-patch, 31) counts against the overlay's 30 instead of being scoped inside the footer, and everything else in the footer stays under the scrim. */
+.scene-top { z-index: 1; }
 /* The header has exactly four states, chosen by width (D-30, amending D-28). Each is a rule; nothing wraps on its own. Thresholds come from the measured pills on the widest date label (Ozone Spike, "Jul 12, 2023"): borough 535 with full names at laptop chip spacing (487 at tablet spacing, 237 with the codes), day nav 272, presets 494, 20 between pills, page padding 32 (laptop) or 24 (below); each threshold is the need rounded up to a multiple of 8.
    A (≥1408): one row — borough at the left, day nav and presets at the right (needs 1405).
    B (840–1407): two rows — borough centred; day nav and presets side by side, centred as a pair (row two needs 834 at tablet padding).
@@ -1517,14 +1524,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-pill.scene-pins { flex: 0 0 auto; width: fit-content; } /* its own row because it is wider than the room left beside the other two; never fill it, never shrink it */
   .scene-borough .borough-long { display: none; }
   .scene-borough .borough-short { display: block; }
-  .scene-source .source-sep { display: inline; }
-  .scene-source .source-detail { display: inline; }
 }
 @media (max-width: 575px) {
   .scene-top { flex-direction: column; flex-wrap: nowrap; gap: 12px; } /* 12 between the two phone pills (2026-09-15) */
   .scene-day { display: flex; flex-direction: column; align-items: center; margin-left: 0; }
-  .scene-source .source-sep { display: none; }
-  .scene-source .source-detail { display: block; }
 }
 /* Phones from 408 wide (state C1, 2026-09-15): the borough codes (208) and the day chip (up to 136 without its glyph) plus the 12 gap fit one row inside 408 − 48 of padding, so they share it. Below 408 they stack. Any one phone always gets the same layout. */
 @media (max-width: 575px) and (min-width: 408px) {
@@ -1533,32 +1536,29 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 }
 
 /* The hero keeps its content height above the graph; the graph has a floor at its token plot height and takes the section's width. */
-/* ——— The two pages (D-43, reworked 2026-09-15): the band is a frame that never changes size — it takes the height the bars leave — and both pages live in it, absolutely placed. Above the phone width they stack vertically, the monitor a gap below the scene; on phones they sit side by side. A switch translates both pages along that axis over --page-ms, ease-in-out (the graph's easing), the outgoing page fading as it leaves and the incoming one as it arrives. The frame is clipped, so it is padded outward by --clip-pad (the panels' 32 px shadow) with the same negative margin, and the pages are inset by it: layout unchanged, shadows never cut. Under reduced motion the pages do not move; they cross-fade in place. ——— */
-.scene-mid { --clip-pad: 32px; --clip-pad-y: 40px; --page-gap: var(--ui-gap); --drift: 12px; flex: 1 1 auto; position: relative; overflow: hidden; min-height: 0; min-width: 0; margin: calc(-1 * var(--clip-pad-y)) calc(-1 * var(--clip-pad)); padding: var(--clip-pad-y) var(--clip-pad); }
-/* The frame's reach above and below is the shadow's, 40 px (D-48, Shoro, 2026-09-16): the panel shadow is 0 8px 32px, so it runs 40 px below a panel and 24 above, and a panel flush with the band's edge keeps all of it. The earlier reach of one gap (20) cut that shadow in a hard line on every short viewport, on a 13" laptop above all, where the graph sits on the band's edge. The bars are one gap from the band, so the frame now reaches under their pills; what keeps a page off a pill is the drift below, not the clip. Sideways the reach stays the clip pad, the shadow's 32. The pages themselves still extend the full clip pad on every side (below), so Chromium's compositing room is unchanged. */
+/* ——— The two pages (D-43, reworked 2026-09-15; the push, Shoro, 2026-09-16): the band is a frame that never changes size — it takes the height the bars leave — and both pages live in it, absolutely placed. Above the phone width they stack vertically, the monitor a gap below the scene; on phones they sit side by side. A switch is one motion: the track carrying both pages PUSHES along that axis over --page-ms, eased in and out, at full material throughout (no fade, no drift: the two-motion switch with its dissolve was replaced 2026-09-16), driven frame by frame by the page so the sky's blur and the panels leave in one commit (ScenePage.tsx startPush). What keeps a page mid-push off the bars' pills on the vertical axis is the MATERIAL, not a clip: the bars paint above the band, so a page passes under them, and a panel's --glass-on falls away sharply the moment it underlaps a bar (ScenePage stepPanels), so it is gone within a few pixels of crossing rather than being cut at a hard line. Neither a mask nor a clip-path can be used for this: both make the band a backdrop root and every panel inside loses the sky its blur samples, measured in both engines. The frame's vertical bleed, --clip-pad-y, is 140 rather than the shadow's 40: it does not move the track, whose height is the band's less the bleed on each side either way, and it is what gives the fade somewhere to happen. A panel needs to be gone before the overflow cuts it, the cut being the pop; 140 leaves 120 px of underlap past the bar, which with the 20 of clearance on the near side is the 140 px the fade runs over — long enough to read as a fade at the speed the push starts at, where an eased-out travel covers ground fastest. A resting panel's shadow is whole besides. The horizontal axis needs neither: the pages leave by the viewport's edge. Sideways the frame still reaches --clip-pad, the shadow's 32. Under reduced motion the pages do not move; they cross-fade in place. ——— */
+.scene-mid { --clip-pad: 32px; --clip-pad-y: 140px; --page-gap: var(--ui-gap); --page-ease: cubic-bezier(0.65, 0, 0.35, 1); flex: 1 1 auto; position: relative; z-index: 0; overflow: hidden; min-height: 0; min-width: 0; margin: calc(-1 * var(--clip-pad-y)) calc(-1 * var(--clip-pad)); padding: var(--clip-pad-y) var(--clip-pad); }
+/* The band's edges (Shoro, 2026-09-16, the last cut): NO MASK. A gradient mask on the band was the graceful way to stop a page short of the bars, but a mask makes its element a backdrop root, so every panel inside the band stopped being able to sample the sky and the browser's blur died on all of them at once — which is exactly why the bars, which sit outside the band, kept their material while the panels lost theirs. A mask and a backdrop-filter cannot both own the same content. So the edge is drawn on the MATERIAL: each panel's --glass-on is its own overlap with the band's opaque middle (ScenePage stepPanels), so a panel thins out as it leaves and fills in as it arrives, the blur, the fill, the edge, the shadow and the contents going together, and the sky's frost reading the same number. Nothing is clipped, nothing is masked, and the two builds behave alike. */
+.scene-mid[data-moving="true"] .scene-playhead-chip { backdrop-filter: none; -webkit-backdrop-filter: none; }
 .scene-track { position: absolute; inset: var(--clip-pad-y) var(--clip-pad); }
-/* A switch is two motions on each page (D-48, Shoro, 2026-09-16: the visible drift bound to the gap). The TRAVEL, a whole band and a gap, is the `translate` property, and it runs only while the page is invisible, in the window between the two fades. The DRIFT, `transform`, is what the eye sees: the leaving page moves one gap toward the bar it leaves by while its glass dissolves (--glass-on to 0) over --fade-ms, three tenths of the switch, and the arriving page comes in from one gap beyond the other bar over the last --fade-ms while its glass materializes. A panel flush with the band's edge therefore never crosses a pill: at the furthest it touches the pill's edge, with no glass left. Before this the visible drift was the first and last 80 to 160 px of the full travel, so a page still carried a third of its glass past the bar's edge, which the frame's hard clip at the gap was hiding. The transition is declared on the state the page is going TO: the base rule is the leaving state, the active rules the arriving one. */
-/* Each page reaches --clip-pad beyond the section on every side (its padding), so the layer Chromium composites a translated page into holds that much sky around the cards: a backdrop blur at a card's edge samples real sky rather than the layer's clamped edge, which painted a dark band down cards flush with the page (Chrome only; Firefox samples the whole page, 2026-09-16). */
-.scene-page { position: absolute; inset: calc(-1 * var(--clip-pad)); padding: var(--clip-pad); box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; min-height: 0; --glass-on: 0; transition: transform var(--fade-ms, 300ms) ease-out, translate calc(var(--page-ms, 1000ms) - 2 * var(--fade-ms, 300ms)) linear var(--fade-ms, 300ms), --glass-on var(--fade-ms, 300ms) ease-out; }
+/* Each page reaches --clip-pad beyond the section on every side (its padding), so the layer Chromium composites a translated page into holds that much sky around the cards. The pages rest where the axis puts them; the TRACK carries the push (ScenePage.tsx drives it frame by frame, no transition here: see startPush), and rests at the stylesheet's offset for the current page. */
+.scene-page { position: absolute; inset: calc(-1 * var(--clip-pad)); padding: var(--clip-pad); box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; min-height: 0; --glass-on: 1; }
 .scene-page-inner { display: flex; align-items: stretch; justify-content: center; gap: var(--ui-gap); min-height: 0; flex: 0 1 auto; width: var(--section-w); max-width: 100%; }
-.scene-mid[data-page="scene"] .scene-page-scene, .scene-mid[data-page="monitor"] .scene-page-monitor { --glass-on: 1; transition: transform var(--fade-ms, 300ms) ease-out calc(var(--page-ms, 1000ms) - var(--fade-ms, 300ms)), translate calc(var(--page-ms, 1000ms) - 2 * var(--fade-ms, 300ms)) linear var(--fade-ms, 300ms), --glass-on var(--fade-ms, 300ms) ease-in calc(var(--page-ms, 1000ms) - var(--fade-ms, 300ms)); }
-/* Vertical (laptop): the monitor rests a band and a gap below (its travel) and one drift further; the scene leaves upward the same way. */
-.scene-mid[data-axis="y"] .scene-page-scene { translate: 0 0; transform: translateY(0); }
-.scene-mid[data-axis="y"] .scene-page-monitor { translate: 0 calc(100% + var(--page-gap)); transform: translateY(var(--drift)); }
-.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-scene { translate: 0 calc(-100% - var(--page-gap)); transform: translateY(calc(-1 * var(--drift))); }
-.scene-mid[data-axis="y"][data-page="monitor"] .scene-page-monitor { translate: 0 0; transform: translateY(0); }
-/* Horizontal (below laptop): the pages sit side by side with the gap between them, and the track itself is what a finger drags (ScenePage.tsx), so the track carries the switch. No fade here (Shoro, 2026-09-16): both pages stay fully opaque and simply slide. */
+/* Vertical (laptop): the monitor rests a band and the frame's reach below the scene, so at rest it lies wholly beyond the frame's clip and is painted nowhere; the track moves up by that much. */
+.scene-mid[data-axis="y"] .scene-page-monitor { top: calc(100% + var(--clip-pad-y) - var(--clip-pad)); bottom: auto; height: calc(100% + 2 * var(--clip-pad)); }
+.scene-mid[data-axis="y"] .scene-page[aria-hidden="true"] { --glass-on: 0; } /* the off page rests with no material at all (Shoro, 2026-09-16: its shadows reached into the band's fade zone from beyond the frame). The fade is --glass-on, never an ancestor's opacity: an ancestor below 1 is flattened into a layer and a backdrop-filter inside it has no sky left to sample, which showed as the panels flashing grey through a page slide before D-50. --glass-on takes the fill, the blur, the edge, the shadow, the dither and the contents together, and the sky's own frost reads it too (frost.ts). The push sets it inline while it runs and hands back to this at the end. */
+.scene-mid[data-axis="y"][data-page="monitor"] .scene-track { transform: translateY(calc(-100% - var(--clip-pad-y))); }
+/* Horizontal (below laptop): the pages sit side by side with the gap between them, and the track itself is what a finger drags (ScenePage.tsx). */
 .scene-mid[data-axis="x"] { --page-gap: calc(var(--clip-pad) + var(--ui-gap)); } /* the frame is clipped --clip-pad outside the section (for shadows), so the pages sit that much further apart: the neighbour rests beyond the clip and never shows a sliver */
-.scene-mid[data-axis="x"] .scene-track { transition: transform var(--page-ms, 1000ms) cubic-bezier(0.45, 0, 0.55, 1); }
 .scene-mid[data-axis="x"][data-page="monitor"] .scene-track { transform: translateX(calc(-100% - var(--page-gap))); }
-.scene-mid[data-axis="x"]:not([data-fade="true"]) .scene-page { --glass-on: 1; transition: none; }
 .scene-mid[data-axis="x"] .scene-page-monitor { left: calc(100% + var(--page-gap) - var(--clip-pad)); right: auto; width: calc(100% + 2 * var(--clip-pad)); }
-.scene-mid[data-axis="x"] .scene-track[data-dragging="true"] { transition: none; }
 /* A resize in progress: nothing on the pages animates, so a change of breakpoint lands its layout in one frame (ScenePage.tsx data-resizing). */
 .scene-mid[data-resizing="true"] .scene-track, .scene-mid[data-resizing="true"] .scene-page, .scene-mid[data-resizing="true"] .glass { transition: none !important; }
 /* Reduced motion: no travel, a cross-fade in place. */
-.scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; translate: none !important; transition: --glass-on var(--page-ms, 1000ms) ease !important; }
+.scene-mid[data-fade="true"] .scene-page, .scene-mid[data-fade="true"] .scene-track { transform: none !important; --glass-on: 0; transition: --glass-on var(--page-ms, 1000ms) ease, opacity var(--page-ms, 1000ms) ease !important; }
+.scene-mid[data-fade="true"][data-page="scene"] .scene-page-scene, .scene-mid[data-fade="true"][data-page="monitor"] .scene-page-monitor { --glass-on: 1; }
 .scene-mid[data-fade="true"][data-axis="x"] .scene-page-monitor { left: calc(-1 * var(--clip-pad)); }
+.scene-mid[data-fade="true"][data-axis="y"] .scene-page-monitor { top: calc(-1 * var(--clip-pad)); }
 /* The monitor's grid: three columns on laptop, the routing card across the top; two on phones with routing and beats full width. Cards are frosted panels at the graph's padding steps; rows share a height by the grid's own rule. */
 .scene-monitor { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--grid-gap); width: 100%; align-self: center; }
 .scene-monitor .scene-card-routing { grid-column: 1 / -1; }
@@ -1591,7 +1591,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-routing { position: relative; display: flex; flex-direction: column; justify-content: space-between; }
 .scene-routing-row { display: flex; justify-content: space-around; align-items: center; position: relative; z-index: 1; }
 .scene-routing-cables { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
-.scene-routing-cables path { stroke: rgba(255, 255, 255, 0.18); stroke-width: 1; }
+.scene-routing-cables path { stroke: rgba(255, 255, 255, 0.18); stroke-width: var(--cable-width, 1.5); }
 /* The page icons: bottom centre on laptop, where the bottom bar is a three-column grid; below that the bar is two rows and the icons take the right end of the transport row. */
 .scene-views { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; } /* the two icons 12 apart (Shoro, 2026-09-16: more spaced out) */
 .scene-views[data-vertical="true"] { flex-direction: column; }
@@ -1606,7 +1606,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   /* The scene page is a column at every breakpoint (Shoro, 2026-09-16): the hero centred above, the graph across the section's full width. Side by side, the graph was squeezed beside the hero; stacked, the plot gets the whole 1040. */
   .scene-page-scene .scene-page-inner { flex-direction: column; align-items: stretch; }
   /* One section height for both pages (Shoro, 2026-09-16): the band's height up to MONITOR.sectionHeight. The monitor's rows split it 2-1-1, so the routing card has real room for its cables to hang; the scene's graph grows into what the hero pair leaves. Both pages centre the section in the band, so it sits at one y. */
-  .scene-page-inner { height: min(100%, 672px); } /* MONITOR.sectionHeight: four equal units of 158 with the two 20 px gaps, a value card's height at the 12 px gaps */
+  .scene-page-inner { height: min(100%, var(--section-h)); } /* MONITOR.sectionHeight: four equal units of 158 with the two 20 px gaps, a value card's height at the 12 px gaps */
   .scene-page-monitor .scene-page-inner { align-items: stretch; }
   .scene-monitor { height: 100%; grid-template-rows: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); } /* the patch bay takes two of the four units (Shoro, 2026-09-16), the card rows one each */
   .scene-monitor .scene-card { min-height: 0; }
@@ -1629,7 +1629,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-pill.scene-icon-pill { padding: 0; width: var(--ctl-pill); justify-content: center; flex: 0 0 auto; }
 .scene-transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 /* Laptop: the transport stands in the whitespace left of the section, where the page pill stood, stacked with the play button on top and its top on the page pill's top (Shoro, 2026-09-16). The page pill is 8 + 32 + 12 + 32 + 8 tall and centred on the band, so its top is half that above the band's middle. The volume slider turns vertical: the same input, rotated a quarter turn in a pill the play pill's width, so its track, its thumb and its fill are the ones tuned for the row, the fill rising from the bottom. */
-.scene-transport-side { --page-pill-h: calc(2 * var(--ctl-inner) + 12px + 16px); position: absolute; left: clamp(var(--ui-pad), calc((50% - var(--section-w) / 2 - var(--ctl-pill)) / 2), calc(50% - var(--section-w) / 2 - var(--ctl-pill) - 16px)); top: calc(50% - var(--page-pill-h) / 2); flex-direction: column; align-items: center; z-index: 1; }
+.scene-transport-side { position: absolute; left: clamp(var(--ui-pad), calc((50% - var(--section-w) / 2 - var(--ctl-pill)) / 2), calc(50% - var(--section-w) / 2 - var(--ctl-pill) - 16px)); top: 50%; transform: translateY(-50%); flex-direction: column; align-items: center; z-index: 1; } /* the stack centred on the band, as the page pill is on the right (Shoro, 2026-09-16; its top had sat on the pill's top) */
 .scene-transport-side .scene-volume-pill { width: var(--ctl-pill); height: calc(var(--slider-width) + 32px); padding: 0; position: relative; }
 .scene-transport-side .scene-volume { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); }
 /* The vertical slider's light still falls from the top of the screen (Shoro, 2026-09-16): the quarter turn maps the input's x to screen-up and its y to screen-right, so a shadow that must fall down on screen is declared from the LEFT edge in the input's own frame, and the knob's highlight and its lit-from-above gradient are turned the same way. The fill's "to right" already reads as "to top", low at the bottom. */
@@ -1662,15 +1662,15 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-panel.scene-graph { --graph-pad: 20px; --graph-pad-x: 16px; padding: var(--graph-pad) var(--graph-pad-x); display: flex; flex-direction: column; overflow: hidden; } /* --graph-pad (vertical) and --graph-pad-x (sides, one step tighter, 2026-09-15): read by the tab band, which spans the panel edge to edge */
 .scene-panel.scene-graph > div { flex: 1 1 auto; min-height: 0; }
 .scene-source { padding: 8px 16px; border-radius: 999px; min-width: 0; min-height: var(--ctl-pill); display: flex; align-items: center; }
+.scene-source p, .scene-source div { white-space: normal; }
 .scene-credit { padding: 0; min-height: var(--ctl-pill); display: flex; align-items: center; flex: 0 0 auto; } /* the credit's pill (Shoro, 2026-09-16): the Patch notes button's shape, the link filling it as that button does */
-/* Laptop: the bottom bar is three columns, the transport at the left, the source line centred on the bar itself (not on the room the transport leaves), the credit at the right; the side columns share the rest equally so the middle sits on the page's centre line. */
+/* Laptop: the bottom bar is three columns, the Patch notes button at the left, the source line centred on the bar itself, the credit at the right; the side columns share the rest equally so the middle sits on the page's centre line. */
 @media (min-width: 1024px) {
   .scene-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
-  .scene-bottom > .scene-about-pill { grid-column: 1; justify-self: start; }
+  .scene-bottom > .scene-patch-slot { grid-column: 1; justify-self: start; }
   .scene-bottom > .scene-source { grid-column: 2; justify-self: center; }
   .scene-bottom > .scene-credit { grid-column: 3; justify-self: end; }
 }
-.scene-source p, .scene-source div { white-space: normal; }
 .scene-dev { align-self: flex-start; height: var(--ctl-inner); }
 
 /* Tablet: one column for the middle band; the top bar wraps its three pills onto two rows. */
@@ -1696,7 +1696,8 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-card .scene-meter, .scene-card .scene-ladder, .scene-card .scene-lane { margin-top: 0; }
   .scene-page-inner { --card-pad: 16px; }
   /* The section fills the band below laptop (D-49, Shoro, 2026-09-16: the grid never clips, at any breakpoint). Both pages take the band's height up to four rows of --row-h and their gaps, centred in a taller band like the laptop's 672; the monitor's four rows split it equally, so in a short band (a tablet in landscape) the cards shrink into their rows instead of the grid running past the bars, which fixed rows of --row-h had done; the hero pair is exactly the first row and the graph grows into the rest. Phones take the whole band (below). */
-  .scene-page-inner { height: min(100%, calc(4 * var(--row-h) + 3 * var(--grid-gap))); flex: 0 1 auto; }
+  .scene-ui { --section-h: calc(4 * var(--row-h) + 3 * var(--grid-gap)); }
+  .scene-page-inner { height: min(100%, var(--section-h)); flex: 0 1 auto; }
   .scene-page-monitor .scene-page-inner { align-items: stretch; }
   .scene-monitor { height: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); align-self: stretch; }
   .scene-card { min-height: 0; }
@@ -1705,17 +1706,14 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-panel.scene-graph { flex: 1 1 auto; min-height: 0; --graph-fill: 1; } /* the graph grows into what the hero leaves (more specific than the panel rule below, which keeps the hero at its content) */
   .scene-monitor .scene-card-beats { grid-column: 1 / -1; }
   .scene-monitor .scene-card-routing { display: none; } /* the routing trial (D-43) is laptop-only: at two columns its seven crossing lines read as a tangle and the source pills already carry the routing */
-  /* Below laptop the bottom bar is three rows: the transport (with the page pill at its right end on phones), the source line across, then the credit. */
+  /* Below laptop the bottom bar is two rows: the transport (with the page pill at its right end), then the Patch notes button and the credit side by side. */
   .scene-bottom { flex-direction: column; align-items: stretch; gap: 12px; }
   .scene-transport > .scene-pill:nth-child(2) { flex: 1 1 auto; max-width: 320px; } /* the volume grows; the page pill after it keeps its size */
   .scene-monitor .scene-card-reverb { grid-column: 1 / -1; } /* six cards in two columns with beats across: reverb takes the last row rather than half of it */
   .scene-panel { flex: 0 0 auto; width: 100%; max-width: 100%; } /* content height; never squeezed */
-  /* Below laptop width (tablet and phone alike): the play and volume pills centred on their own row — the volume pill taking most of it — and the source line full width beneath them, its text centred, breaking between the sources and the coverage sentence. */
+  /* Below laptop width (tablet and phone alike): the play and volume pills centred on their own row, the volume pill taking most of it. */
   .scene-ui { --slider-width: 100%; }
   .scene-transport { flex: 0 0 auto; align-self: center; width: 100%; justify-content: center; }
-  .scene-credit { align-self: center; } /* its own row under the source line, centred like it */
-  .scene-source { width: fit-content; max-width: 100%; align-self: center; padding: 8px 16px; justify-content: center; }
-  .scene-source p, .scene-source div { text-align: center; }
   .scene-panel.scene-graph { --graph-pad: 16px; --graph-pad-x: 12px; }
 }
 
@@ -1766,3 +1764,33 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-ui { --graph-tab-h: 88px; --ui-gap: 8px; } /* 72 made the graph panel 4 px shorter than the hero; 88 keeps it the taller one and still fits 640 */
   .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; padding-bottom: 4px; }
 }
+
+/* ——— The About overlay (D-56, 2026-09-16; About.tsx). The scrim is a backdrop blur of the whole page under a tint (theme.ts ABOUT): its --glass-on is its material, and the blur's radius, the saturation and the tint all rise with it over one beat, so the page recedes rather than cross-fades. The reading rises --about-rise as it dissolves in, and leaves the same way; the twin of the Patch notes button eases between its two rectangles over the same beat. Below laptop a mask band across the scroll surface's bottom, the button's row, keeps the reading from showing behind it; on laptop the button is at the left, off the column, and there is no band. The transition is declared on the state each is going TO. ——— */
+.scene-ui[data-about="true"] .glass:not(.scene-patch) { pointer-events: none; }
+.scene-about { position: absolute; inset: 0; z-index: 30; pointer-events: auto; --about-pad: 32px; --about-inline: 32px; --about-link-size: 32px; }
+/* The Patch notes control (Transport.tsx AboutButton): a slot the resting pill's size keeps the bar's layout, and the pill itself sits on it, absolutely, above the overlay, morphing in place. */
+.scene-patch-slot { position: relative; display: inline-flex; flex: 0 0 auto; }
+.scene-patch-size { display: inline-flex; }
+.glass.frosted.scene-patch { position: absolute; left: 0; top: 0; height: 100%; z-index: 31; padding: 0; overflow: hidden; border-radius: 999px; display: flex; align-items: center; width: max-content; transition: transform var(--about-ms, 667ms) ease; } /* its width is its content's; the label cell inside eases (Transport.tsx) */
+.scene-about-scrim { position: absolute; inset: 0; --glass-on: 0; background-color: rgba(var(--about-tint, 5, 6, 14), calc(var(--about-alpha, 0.65) * var(--glass-on))); -webkit-backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); transition: --glass-on var(--about-ms) ease; }
+.scene-about[data-visible="true"] .scene-about-scrim { --glass-on: 1; }
+.scene-about-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: calc(var(--about-pad) + 40px) var(--about-inline) calc(var(--about-pad) + 40px); box-sizing: border-box; user-select: text; }
+@media (max-width: 1023px) { .scene-about-scroll { padding-bottom: calc(var(--about-band) + 24px); -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--about-band) - 20px), transparent calc(100% - var(--about-band))); mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--about-band) - 20px), transparent calc(100% - var(--about-band))); } } /* the reading fades out over the dismiss button's row and no further: --about-band is the button's row and the padding under it (About.tsx), the 20 above it the ramp into it (Shoro, 2026-09-17: shorter than it was) */
+.scene-about-scroll::-webkit-scrollbar { display: none; }
+.scene-about-column { opacity: 0; transform: translateY(var(--about-rise, 12px)); transition: opacity var(--about-ms) ease, transform var(--about-ms) ease-out; width: min(var(--about-col, 520px), 100%); margin: 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 24px; }
+.scene-about[data-visible="true"] .scene-about-column { opacity: 1; transform: translateY(0); }
+.scene-about-title { margin: 0; outline: none; user-select: text; }
+.scene-about-section { display: flex; flex-direction: column; gap: 6px; }
+.scene-about-label { margin: 0; user-select: text; }
+.scene-about-body { margin: 0; user-select: text; }
+/* The letter's ending (Shoro, 2026-09-16): the two lines right-aligned to the column, the three links as glyphs alone in a row beneath, right-aligned, a step further from the lines than the lines are from each other. Below laptop the whole ending is centred. */
+.scene-about-credit { align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 6px; margin-top: 32px; }
+.scene-about-links { display: flex; gap: 8px; margin-top: 12px; }
+.scene-about-link:active { background-color: rgba(255, 255, 255, var(--chip-hover-active, 0.22)) !important; } /* the chip's hover comes with its class; the press is the button family's fill, since the page's cursor (whose closing dot is the press elsewhere) is off here */
+@media (max-width: 1023px) {
+  .scene-about { --about-pad: 24px; --about-inline: 32px; --about-link-size: 44px; } /* a thumb's target rather than a pointer's (Shoro, 2026-09-17): these three are the only controls in the reading, and 32 is under what a thumb wants */
+  .scene-about-link svg { width: 18px; height: 18px; }
+  .scene-about-credit { align-self: center; align-items: center; text-align: center; margin-top: 48px; }
+  .scene-about-links { justify-content: center; margin-top: 16px; gap: 12px; }
+}
+@media (max-width: 575px) { .scene-about { --about-pad: 16px; --about-inline: 64px; } } /* the reading's side padding on a phone: Shoro's 64 (2026-09-16; 48 before) */

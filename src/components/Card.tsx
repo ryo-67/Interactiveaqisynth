@@ -6,8 +6,8 @@ import { useTheme, themeColors, families, typeScale } from "../utils/theme";
 import { SOURCE_LABELS, SOURCE_JOIN } from "../content";
 import type { Channel } from "../scene/useListenSession";
 
-// One card: label top-left in the UI face, the source pill top-right (the routing), the readout beneath.
-export function Card({ label, sources, className, children, cardRef }: { label: string; sources?: Channel[]; className: string; children: React.ReactNode; cardRef?: (el: HTMLDivElement | null) => void }) {
+// One card: label top-left in the UI face, the source pill top-right (the routing, with a one-word suffix, citywide or typical, when a driving channel is borrowed: D-56), the readout beneath.
+export function Card({ label, sources, suffixes, className, children, cardRef }: { label: string; sources?: Channel[]; suffixes?: Partial<Record<Channel, string>>; className: string; children: React.ReactNode; cardRef?: (el: HTMLDivElement | null) => void }) {
   const c = themeColors(useTheme());
   return (
     <Glass ref={cardRef} material="frosted" className={`scene-card ${className}`}>
@@ -16,7 +16,7 @@ export function Card({ label, sources, className, children, cardRef }: { label: 
         <div className="scene-card-head">
           <span style={{ fontFamily: families.ui, letterSpacing: "0.04em", fontSize: typeScale.caption.size, lineHeight: 1, color: c.textMuted }}>{label}</span>
           {/* The source pill: the chip style in its inactive state, 20 tall with the micro size (Shoro, 2026-09-16: smaller than the card's label, whatever the breakpoint). Cards without a driving measurement (routing, the hero's two) have none. */}
-          {sources && <span style={chipStyle(c, false, { height: 20, padding: "0 8px", borderRadius: 10, fontSize: typeScale.micro.size })}>{sources.map((s) => SOURCE_LABELS[s]).join(SOURCE_JOIN)}</span>}
+          {sources && <span style={chipStyle(c, false, { height: 20, padding: "0 8px", borderRadius: 10, fontSize: typeScale.micro.size })}>{sources.map((s) => SOURCE_LABELS[s]).join(SOURCE_JOIN)}{sources.map((s) => suffixes?.[s]).filter(Boolean).map((w) => `${SOURCE_JOIN}${w}`).join("")}</span>}
         </div>
         {children}
       </div>

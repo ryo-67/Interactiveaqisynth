@@ -23,6 +23,7 @@ interface Props {
   onTab: (t: TrackKey) => void;
   onSeek: (hour: number) => void; // press or drag on the plot: move the phrase to that hour
   lift?: number; // the ramp lift for this panel (D-36): 0 the dark end, 1 the light end
+  suffixes?: Partial<Record<TrackKey, string>>; // a word beside a borrowed channel on its tab, citywide or typical (D-56)
 }
 
 const MAX_RENDER_PIXELS = 24e6; // the buffer's pixel budget: the render ratio (device ratio × pinch scale) is capped where the buffer would exceed it, so a small plot stays crisp through a deep pinch and a large one cannot allocate hundreds of megabytes
@@ -65,7 +66,7 @@ function lineColour(f: number, max: number, lift: number, isAqi: number, grey: [
   return `rgba(${m[0]},${m[1]},${m[2]},${a.toFixed(3)})`;
 }
 
-export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSeek, lift = 0 }: Props) {
+export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSeek, lift = 0, suffixes }: Props) {
   const theme = useTheme();
   const c = themeColors(theme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -495,7 +496,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           const active = t === tab;
           return (
             <button key={t} className="scene-chip" data-active={active} role="tab" aria-selected={active} onClick={() => onTab(t)} style={chipStyle(c, active)}>
-              {TRACK_QUALIFIERS[t] ? <span className="scene-graph-unit" style={{ marginRight: "0.3em" }}>{TRACK_QUALIFIERS[t]}</span> : null}{TRACK_LABELS[t]}{TRACK_UNITS[t] ? <span className="scene-graph-unit" style={{ marginLeft: "0.3em" }}>{TRACK_UNITS[t]}</span> : null} {/* the qualifier and the unit are their own spans: phones hide them (index.css), the tab is just the pollutant there */}
+              {TRACK_QUALIFIERS[t] ? <span className="scene-graph-unit" style={{ marginRight: "0.3em" }}>{TRACK_QUALIFIERS[t]}</span> : null}{TRACK_LABELS[t]}{TRACK_UNITS[t] ? <span className="scene-graph-unit" style={{ marginLeft: "0.3em" }}>{TRACK_UNITS[t]}</span> : null}{suffixes?.[t] ? <span className="scene-graph-suffix" style={{ marginLeft: "0.3em" }}>· {suffixes[t]}</span> : null} {/* the qualifier and the unit are their own spans: phones hide them (index.css), the tab is just the pollutant there */}
             </button>
           );
         })}

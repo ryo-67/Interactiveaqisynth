@@ -227,6 +227,11 @@ export const MONITOR = {
   meter: 4, // meters, ladders and the detune band are 4 px tracks, the slider's hairline
   lane: 4, // the 16-step lane's step height: the ladder's, so the two read as one control (2026-09-16)
   gap: 4, // between ladder steps and lane steps
+  // The patch bay's pills and cables (Shoro, 2026-09-16: both a step up). The pill is the cards' source chip, one size larger — the caption size in a 24 px pill rather than the micro size in a 20 — so the three measurements and the six parameters read as the labels they are rather than as tags. The cable is a hairline still, just not the thinnest one the screen can draw.
+  pillHeight: 24,
+  pillFontSize: "12px",
+  pillPadding: "0 10px",
+  cableWidth: 1.5,
   cableSag: 8, // a patch cable hangs: the S-curve's control points sit this far below the straight line between the pills
   packetBeats: 1, // a data packet crosses its cable in one beat, ease-in-out
   packetHalo: 5, // the packet: a soft halo of this radius under a bright core
@@ -455,8 +460,21 @@ export const SKY_RANGES = {
 } as const;
 
 // Glass material (§5.3) with the §5.4 accessibility fallbacks. These feed CSS custom properties; index.css holds the .glass rules and the three @media fallbacks.
+// The About overlay (D-56, 2026-09-16): a full-viewport scrim, a backdrop blur of the whole page (the sky, the plume, the panels: everything beneath keeps moving under it, which is what makes the scrim read as material; the sky-drawn frost of D-50 blurs the sky alone and left the panels to be hidden, which read as a gradient, Shoro, 2026-09-16) under a dark tint, the reading laid on it. The page's own cursor is off while it is up: a DOM cursor over a full-screen backdrop blur is the very case that banded in Firefox (D-50), and the native cursor moves nothing. tintAlpha is the least that holds AA (4.5:1) for every text colour on the page (the title at textPrimary, the body at textSecondary, the labels at textMuted) against the brightest pixel the scene makes under the reading: measured 2026-09-16 on Clear Day at 11am, where the blurred sky under the column reaches pure white at the horizon, muted text needs 0.71, secondary 0.64 and primary 0.59; the wildfire sky needs less. The scrim's blur and tint rise over one beat and the reading rises with them (12 px, subtle); the fade is reducedMs under prefers-reduced-motion.
+export const ABOUT = {
+  tint: "5, 6, 14", // near black with the navy's cast
+  tintAlpha: 0.72, // a shade past the measured minimum (Shoro, 2026-09-16: slightly darker); muted text needs 0.71 on that white, so the labels keep their muted colour
+  blur: "20px", // the scrim's backdrop blur at full material (less than the panels' frost: a panel is a small window, the scrim the whole page)
+  saturate: 1.4,
+  fadeBeats: 1,
+  reducedMs: 180,
+  rise: 12, // px the reading rises as it appears
+  column: 520, // the reading width above the phone (Shoro, 2026-09-16: narrower than the 640 first cut)
+} as const;
+
 export const GLASS = {
-  blur: "18px",
+  // ONE material for everything that floats, control and panel alike (D-59, 2026-09-16): one blur, one saturation, one fill. 20 px is Shoro's: at 28 the stars vanish and a panel reads opaque against a clear night, at 48 a 40 px control pill averages to one flat colour and stops reading as material at all. The blur and the saturation are both scaled by --glass-on in index.css, so a panel losing its material loses its blur with it.
+  blur: "20px",
   saturate: "1.6",
   // A tinted frost keyed to the sky (D-35, amending D-25's one neutral surface). The fill's ALPHA follows the light: fillAlphaDay where white text needs the darkening — the worst case is a clear noon sky behind the hero, measured at 0.92 luminance, where 255·(1−0.62)+navy·0.62 ≈ 100 → 4.9:1 against the 0.9-alpha primary — thinning to fillAlphaNight when the sky is dark (dusk, night, smoke, haze: most of the piece), so more of the sky shows through. The fill's HUE follows the sky: navy in clear air, umber under smoke and at golden hour, so the panel never sits as a cold block on an orange sky. At night a faint white lift so the panel reads lighter than the sky, as a frost does.
   fillAlphaDay: 0.56, // 0.50 → 0.56 (2026-09-15): a touch denser across the board so the AQI ramp can be more saturated at 3:1 (a darker panel needs a darker, so more saturated, colour); 0.48 was the 4.5:1 floor for the primary text on the clear-noon hero. The look asks for the night's 0.35 by day too; that reads 3.5:1 there, so this is the floor, not the taste
@@ -470,10 +488,6 @@ export const GLASS = {
   veilFull: 0.9, // …and at which the frost is at its night alpha (a wildfire or summer-haze day sits at 0.92, its sky at 0.05 luminance)
   edgeAlpha: 0.35,
   // Frosted (the content material): heavier blur and a touch more fill than the control material.
-  frostedBlur: "28px", // the calendar popover alone still uses the browser's blur (it floats over cards, which the sky cannot blur); the panels' blur is `frost` below
-  frostedExtraAlpha: 0.08,
-  // The panels' blur is the sky's own (FrostEffect, D-50, 2026-09-16): a mipmap (dual-filter) blur of the rendered frame, shown inside every glass rectangle. `levels` is how many halvings the blur runs over, each roughly doubling its reach, measured in CSS pixels whatever the device pixel ratio; `radius` the upsample's spread. `saturate` is the frost's own, applied in sRGB as the CSS filter was; it is higher than the old 1.6 because the filter saturated the plume and night layers too, which now sit unblurred over the frost, and the fill's tint takes some colour back. One blur for both materials now. Shoro, 2026-09-16: the first pass (6 levels, 1.6 in linear light) read as less blur and less of the sky's colour than the CSS blur; both raised.
-  frost: { levels: 8, radius: 1.0, saturate: 2.0, lightLevels: 3 }, // 7 and 0.85 → 8 and 1.0 (Shoro, 2026-09-16: more blur); 8 is the mipmap pass's ceiling, so from here the radius is the only knob left, and past 1.0 the upsample starts to ring // lightLevels: the small blur a panel passes through as it dissolves (FrostEffect), in place of a mix of sharp and blurred that read as a ghost
   // Dither (2026-09-15): the blur quantizes the sky behind a panel into 8-bit steps that read as bands, more so in Chromium; a fine white noise over the fill at this opacity breaks them. skyDither is the same noise over the sky's gradient layers (night, golden, plume), which band on their own.
   ditherAlpha: 0.04,
   skyDither: 0.05,

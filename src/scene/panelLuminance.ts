@@ -44,7 +44,7 @@ export function predictPanel(i: PanelInputs): { rgb: RGB; luminance: number } {
     const at = smokeStop("attenuation", d, i.smoke.regime, t); c = multiply(c, hslToRgb(at.h, at.s, at.l), at.a);
     const sc = smokeStop("inscatter", d, i.smoke.regime, t); c = screen(c, hslToRgb(sc.h, sc.s, sc.l), sc.a);
   }
-  // The glass: the fill over the backdrop, the night's white lift over that. The saturation the material adds is already in the sample: the sky draws the frost, saturated, inside the panel's rectangle (FrostEffect, D-50, 2026-09-16), so the canvas behind a panel is the frosted sky itself.
+  // The glass: the fill over the backdrop, the night's white lift over that. The material's own saturation is not in the sample: the browser applies it to the backdrop at composite time (D-59), and the sample is the raw sky under the panel.
   const fill = i.glass.fill.split(",").map(Number) as RGB;
   c = mix(c, fill, clamp01(i.glass.alpha));
   c = mix(c, [255, 255, 255], clamp01(i.glass.lift));

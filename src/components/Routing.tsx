@@ -92,7 +92,7 @@ export function Routing({ m }: { m: MonitorState }) {
   };
   useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);
 
-  const pill = chipStyle(c, false, { height: 20, padding: "0 8px", borderRadius: 10, fontSize: "10px" });
+  const pill = chipStyle(c, false, { height: MONITOR.pillHeight, padding: MONITOR.pillPadding, borderRadius: MONITOR.pillHeight / 2, fontSize: MONITOR.pillFontSize });
   return (
     <div ref={box} className="scene-routing">
       <div className="scene-routing-row scene-routing-sources">

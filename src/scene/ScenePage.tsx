@@ -2,10 +2,9 @@
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
 import { SKY_TOGGLE_LABEL } from "../content";
 import { useEased } from "./useEased";
-import { frostBusy } from "./frost";
 import { Monitor } from "../components/Monitor";
 import { PageIndicator, VIEWS, type View } from "../components/PageIndicator";
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SkyView, particleLevel, grainLevel, type CameraFacing } from "./SkyView";
 import { SmokeLayer, smokeRegime } from "./SmokeLayer";
 import { NightLayer } from "./NightLayer";
@@ -23,10 +22,12 @@ import { BoroughToggle } from "../components/BoroughToggle";
 import { AQICard, BreathCard } from "../components/HeroCards";
 import { Graph, TRACK_ORDER, type TrackKey } from "../components/Graph";
 import { DayNav, PinStrip, DayPicker } from "../components/DayNav";
+import { About } from "../components/About";
 import { SourceLine } from "../components/SourceLine";
+import { channelSuffixes } from "../utils/channelSource";
 import { Credit } from "../components/Credit";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
-import { ThemeContext, GLASS, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL } from "../utils/theme";
+import { ThemeContext, GLASS, MONITOR, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL, ABOUT as ABOUT_TOKENS } from "../utils/theme";
 
 // The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
 const qs = new URLSearchParams(window.location.search);
@@ -45,11 +46,17 @@ function viewFromUrl(): View {
   return v && VIEWS.includes(v) ? v : "scene";
 }
 const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-43)
-const FADE_MS = PAGE_MS * 0.3; // the outgoing page is gone within the first three tenths of the travel (a fifth read as a cut, Shoro 2026-09-16), still before its panels can reach the frame's edge; the incoming one appears only in the last three tenths, once it is wholly inside
 const SWIPE_LOCK_PX = 8; // movement before a drag commits to an axis
+// The edge fade (stepPanels): ONE window, the same for every panel, sitting at the bar. A panel is whole until it is LEAD_PX from a bar and gone UNDER_PX past it, so each fades at the same rate and they stagger only by when they get there, which is the leading one first. Anchoring the window to each panel's own resting clearance instead was wrong in both directions: it made a panel that rests far from a bar fade over a long run, so on the arriving page the FIRST panel in was the slowest to appear (Shoro).
+// LEAD_PX cannot exceed the clearance a panel has at rest, or a standing panel would be dimmed, and the tightest breakpoint leaves exactly 20. UNDER_PX is the room on the other side, which is why the band's bleed (index.css --clip-pad-y) is 140: the fade has to be finished before the band's overflow cuts the panel, or the cut is the pop. 20 of clearance plus the room below is what there is to spend, and the bleed is what buys that room.
+const LEAD_PX = 20;
+// The two edges get different room, because what is behind them differs, and the top's is read from the bar itself rather than fixed, since the header WRAPS (Shoro asked, and it does: two rows and 100 px tall below 1408, one row and 40 above, while the footer is 40 throughout). Both bars' rects are measured every frame, so the trigger point already follows the wrap; what was fixed, and wrong, was how far past it the fade ran. At the top the whole underlap stands on screen — the header's own height plus the 32 px above it — so a panel fading over 120 px was watched all the way across the header; it now ends at the header's far edge, so it is gone before it could be seen clear of it, which is 100 px when the header wraps and the floor otherwise. At the bottom the strip runs off the screen after about 70 px, so a longer fade has its tail hidden by the edge and reads better, which is the one Shoro kept.
+const UNDER_TOP_FLOOR_PX = 60; // never shorter than this, or the fade is too few frames to be one
+const UNDER_BOTTOM_PX = 120;
 const SWIPE_PX = 48; // a travel along the pages' axis that counts as a swipe (D-45)
 const WHEEL_PX = 120; // a wheel travel that counts as a page turn above the phone width
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ABOUT_MS = REDUCED_MOTION ? ABOUT_TOKENS.reducedMs : motion.beatMs * ABOUT_TOKENS.fadeBeats; // the About overlay's fade and the Patch notes button's morph, one duration (About.tsx, Transport.tsx)
 
 declare module "react" { interface HTMLAttributes<T> { inert?: "" } } // React 18's typings lack the attribute; "" sets it, undefined removes it
 
@@ -88,31 +95,101 @@ export default function ScenePage() {
   const clock = s.playheadClock; // the same position as time of day: the sun and the stars read it
 
   const [tab, setTab] = useState<TrackKey>(tabFromUrl);
-  // The page (D-43): the scene or the monitor. Both pages are always mounted in a frame that never changes size (the band fills the height the bars leave); a switch translates them, the outgoing page fading as it leaves and the incoming one fading as it arrives (index.css, PAGE_MS). Above the phone width the pages stack vertically, the monitor below the scene, and the wheel, the up and down arrows or the side icons move between them; on phones they sit side by side and a swipe, the left and right arrows or the icons do.
+  // The page (D-43): the scene or the monitor. Both pages are always mounted in a frame that never changes size (the band fills the height the bars leave); a switch pushes them along the axis, eased out, under the band's edge masks (index.css, PAGE_MS; Shoro, 2026-09-16). Above the phone width the pages stack vertically, the monitor below the scene, and the wheel, the up and down arrows or the side icons move between them; on phones they sit side by side and a swipe, the left and right arrows or the icons do.
   const [page, setPage] = useState<View>(viewFromUrl);
+  // The About overlay (D-56): open from the Patch notes button, closed by its twin over the scrim, Escape or a press on the scrim; ?about=1 in the URL while it is up. The scene behind it is inert and its panels dissolve (data-about, index.css); the page's own gestures (the wheel, the arrows, a drag, a switch) are refused while it is open.
+  const [about, setAbout] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("about") === "1");
+  const aboutRef = useRef(false); aboutRef.current = about;
+  const aboutBtnRef = useRef<HTMLButtonElement>(null);
+  const [aboutShown, setAboutShown] = useState(about); // true from open until the overlay has left the DOM: the page's own cursor stands down for exactly that span (a DOM cursor over a full-screen backdrop blur is the case that banded in Firefox, D-50)
+  const aboutTimer = useRef(0);
+  const openAbout = useCallback(() => { window.clearTimeout(aboutTimer.current); setAbout(true); setAboutShown(true); }, []);
+  const closeAbout = useCallback(() => { setAbout(false); window.clearTimeout(aboutTimer.current); aboutTimer.current = window.setTimeout(() => setAboutShown(false), motion.beatMs * ABOUT_TOKENS.fadeBeats + 20); }, []);
   const lockRef = useRef(0); // the time until which a switch is refused: one slide at a time, and the wheel's inertia is not a second gesture
+  // Moving (Shoro, 2026-09-16): true through a switch or a drag, and false at rest; the playhead's readout goes without its backdrop-filter while it is (index.css data-moving).
+  const [moving, setMoving] = useState(false);
+  const movingTimer = useRef(0);
+  const markMoving = (ms: number) => { setMoving(true); window.clearTimeout(movingTimer.current); movingTimer.current = window.setTimeout(() => setMoving(false), ms); };
   const wheelRef = useRef({ acc: 0, at: 0 }); // the wheel's travel within one gesture (a ref: the listener is re-bound each render and must not forget)
-  const switchView = (next: View) => {
-    if (next === page || performance.now() < lockRef.current) return;
+  // The push (Shoro, 2026-09-16): the track carries both pages from one rest position to the other over PAGE_MS, eased out, and the page drives it frame by frame rather than handing it to a CSS transition. Why: the panels' material is set per frame from where each panel is (stepPanels), which a CSS transition cannot be asked for. The rest positions are the stylesheet's (index.css .scene-track); the inline transform holds only while a push runs, then hands back. A drag that lets go pushes from where the finger left it.
+  const push = useRef<{ from: number; to: number; start: number; ms: number; landed: number } | null>(null);
+  // Each panel's own material, by where it is (Shoro, 2026-09-16): full material until the panel underlaps the header or the footer, then away sharply, within UNDERLAP_PX of crossing that edge. The bars paint above the band, so through those few pixels the panel is passing behind them. This replaces three things. The band's gradient mask, and a clip-path in its place, both of which make the band a BACKDROP ROOT so every panel inside loses the sky its blur samples (measured in both engines), while the bars keep theirs by sitting outside. A hard overflow clip at the bar's edge, which costs no sampling but cuts a resting panel's shadow at the frame and reads as a hard boundary (Shoro). And the page-level fade on a timer, which was a fraction of the travel and so meant something different at every viewport. Position, not time, and per panel rather than per page: the same at any height, and the leaving and the arriving page need no rules of their own.
+  const stepPanels = () => {
+    const track = trackRef.current, mid = track?.parentElement, ui = mid?.parentElement;
+    if (!track || !mid || !ui || !vertical) return;
+    const topBar = ui.querySelector(".scene-top")?.getBoundingClientRect();
+    const botBar = ui.querySelector(".scene-bottom")?.getBoundingClientRect();
+    if (!topBar || !botBar) return;
+    const underTop = Math.max(UNDER_TOP_FLOOR_PX, topBar.height); // the header's live height, so a wrap to two rows moves this with it
+    for (const el of track.querySelectorAll<HTMLElement>(".glass")) {
+      const r = el.getBoundingClientRect();
+      if (r.height <= 0) continue;
+      const fTop = (r.top - topBar.bottom + underTop) / (LEAD_PX + underTop);
+      const fBottom = (botBar.top - r.bottom + UNDER_BOTTOM_PX) / (LEAD_PX + UNDER_BOTTOM_PX);
+      const f = Math.max(0, Math.min(1, Math.min(fTop, fBottom)));
+      el.style.setProperty("--glass-on", f.toFixed(3));
+    }
+  };
+  const clearPanels = () => {
+    const track = trackRef.current;
+    if (!track) return;
+    for (const el of track.querySelectorAll<HTMLElement>(".glass")) el.style.removeProperty("--glass-on");
+  };
+  const restOffset = (p: View): number => {
+    const track = trackRef.current;
+    if (!track || p === "scene") return 0;
+    const cs = getComputedStyle(track.parentElement!);
+    // Vertical: the monitor rests a band and the frame's whole shadow reach below, so at rest it lies beyond the frame and is never painted under the bars; horizontal: a band and the side gap (index.css .scene-track rest rules).
+    const beyond = vertical ? parseFloat(cs.getPropertyValue("--clip-pad-y")) || 0 : parseFloat(cs.getPropertyValue("--page-gap")) || 0;
+    return -((vertical ? track.clientHeight : track.clientWidth) + beyond);
+  };
+  // The push, frame by frame (the panels' own fade is stepPanels above).
+  const stepPush = (now: number) => {
+    const a = push.current, track = trackRef.current;
+    if (!a || !track) return;
+    const t = Math.min(1, (now - a.start) / a.ms);
+    // Eased in AND out (Shoro, 2026-09-16: the fade out was choppy while the fade in read well). The two fades are one curve; what differed was the speed where each of them happens. An eased-out push spends two thirds of its distance in the first third of its time, so a panel leaving crossed its whole fade in two or three frames while a panel arriving, by then nearly stopped, had thirty. Symmetric easing gives both ends the same speed, and so the same number of frames.
+    const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    if (!a.landed) {
+      const v = a.from + (a.to - a.from) * e;
+      track.style.transform = vertical ? `translateY(${v.toFixed(2)}px)` : `translateX(${v.toFixed(2)}px)`;
+      stepPanels();
+      if (t >= 1) { a.landed = now; track.style.transform = ""; clearPanels(); } // landed: the stylesheet's rest rules take over
+    }
+    if (a.landed) { push.current = null; setMoving(false); }
+  };
+  const stepRef = useRef(stepPush); stepRef.current = stepPush;
+  const startPush = (from: number, to: number) => {
+    push.current = { from, to, start: performance.now(), ms: PAGE_MS, landed: 0 };
+    stepRef.current(performance.now());
+    const loop = (now: number) => { if (!push.current) return; stepRef.current(now); if (push.current) requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  };
+  const switchView = (next: View, fromPx?: number) => {
+    if (performance.now() < lockRef.current || aboutRef.current) return;
+    if (next === page && fromPx == null) return;
     lockRef.current = performance.now() + PAGE_MS;
-    frostBusy(PAGE_MS + 400); // the panels move and dissolve for the whole switch: the sky reads their rectangles every frame until it has settled (frost.ts)
-    setPage(next);
+    
+    markMoving(REDUCED_MOTION ? PAGE_MS + 50 : PAGE_MS + 3000); // the push itself ends the movement (stepPush); the timer is the fallback
+    if (!REDUCED_MOTION) startPush(fromPx ?? restOffset(page), restOffset(next));
+    if (next !== page) setPage(next);
   };
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     p.set("tab", tab);
     if (page === "scene") p.delete("view"); else p.set("view", page);
+    if (about) p.set("about", "1"); else p.delete("about");
     window.history.replaceState(null, "", `?${p}`);
-  }, [tab, page]);
+  }, [tab, page, about]);
   const vertical = laptop;
+  const suffixes = useMemo(() => (day ? channelSuffixes(day) : {}), [day]); // which channels this day borrows (D-16, D-18): the word beside them on the graph's tabs and the cards' source pills (D-56)
   // A resize, and above all a change of breakpoint between the vertical and horizontal stacks, must not be animated: the pages' transitions would carry them from their old axis positions to the new and paint a slide that means nothing (Shoro, 2026-09-16). While a resize is in progress the band suppresses every page transition, and a drag's leftover inline transform is cleared.
   const [resizing, setResizing] = useState(false);
   useEffect(() => {
     let t = 0;
-    const onResize = () => { setResizing(true); frostBusy(600); if (trackRef.current) trackRef.current.style.transform = ""; window.clearTimeout(t); t = window.setTimeout(() => setResizing(false), 200); };
+    const onResize = () => { setResizing(true); if (trackRef.current) trackRef.current.style.transform = ""; window.clearTimeout(t); t = window.setTimeout(() => setResizing(false), 200); };
     window.addEventListener("resize", onResize);
-    document.fonts?.ready.then(() => frostBusy(600)); // the fonts arriving re-flow the bars, which moves the band and every panel in it
-    frostBusy(1500); // the first layout settles over the first frames: the hero cards measure their widths, the graph its gutter
+    
     return () => { window.removeEventListener("resize", onResize); window.clearTimeout(t); };
   }, []);
   // The arrows along the pages' axis switch pages (only Space and Escape were bound); not while a control that uses them (the volume slider) has focus. Above the phone width the wheel does too: a scroll of more than WHEEL_PX in one direction, then nothing more until the slide is over, so a trackpad's inertia does not carry the page back.
@@ -120,12 +197,14 @@ export default function ScenePage() {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target;
       if (t instanceof HTMLInputElement || t instanceof HTMLSelectElement || t instanceof HTMLTextAreaElement) return;
+      if (aboutRef.current) return; // the overlay's own keys (Escape) are its; the pages do not turn beneath it
       const fwd = vertical ? "ArrowDown" : "ArrowRight", back = vertical ? "ArrowUp" : "ArrowLeft";
       if (e.key === fwd) switchView("monitor");
       if (e.key === back) switchView("scene");
     };
     // The wheel along the pages' axis: vertical travel on laptop, horizontal travel where the pages sit side by side (Shoro, 2026-09-16: a narrow laptop window is the horizontal layout too, and a trackpad's two-finger swipe sideways should turn the page there, not only a drag). A page's own horizontal scroll strips (the pins, the graph's tabs) get the gesture first: a wheel over one that can still scroll is theirs.
     const onWheel = (e: WheelEvent) => {
+      if (aboutRef.current) return; // the overlay scrolls; the pages do not turn beneath it
       const w = wheelRef.current, now = performance.now();
       if (now - w.at > 400) w.acc = 0; // a fresh gesture
       w.at = now;
@@ -154,10 +233,12 @@ export default function ScenePage() {
   const setDragGlyph = (g: string | null) => { if (g) document.body.dataset.drag = g; else delete document.body.dataset.drag; };
   const onDragDown = (e: React.PointerEvent) => {
     const t = e.target as HTMLElement, touch = e.pointerType === "touch";
+    if (aboutRef.current) return;
     if (t.closest(".scene-graph canvas, input, select, a, button")) return; // only what takes its own gesture refuses a drag (Shoro, 2026-09-16): the plot's canvas (the seek; the sky's canvases are the sky), the slider, links, chips and buttons. Every card and the sky are swipeable, whatever the pointer; excluding whole panels left too little to grab, above all on a phone
     if (!touch) e.currentTarget.setPointerCapture(e.pointerId);
     const track = trackRef.current;
-    const base = track && !vertical ? new DOMMatrix(getComputedStyle(track).transform).m41 : 0; // where the track rests now (0, or one page and a gap to the left), read rather than recomputed
+    const base = track && !vertical ? new DOMMatrix(getComputedStyle(track).transform).m41 : 0; // where the track is now (at rest 0, or one page and a gap to the left; mid-push, wherever the push has it), read rather than recomputed
+    if (push.current) { push.current = null; clearPanels(); } // the finger takes over from a push in flight
     swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, base };
   };
   const onDragMove = (e: React.PointerEvent) => {
@@ -170,7 +251,9 @@ export default function ScenePage() {
     if (vertical) return;
     const bounded = page === "scene" ? Math.min(0, dx) : Math.max(0, dx); // no pull past the first or last page
     track.dataset.dragging = "true";
-    frostBusy(300); // the pages follow the finger: their blur must too
+    
+    if (!moving) markMoving(PAGE_MS + 400);
+    else { window.clearTimeout(movingTimer.current); movingTimer.current = window.setTimeout(() => setMoving(false), PAGE_MS + 400); }
     track.style.transform = `translateX(${s.base + bounded}px)`;
   };
   const onDragUp = (e: React.PointerEvent) => {
@@ -183,10 +266,10 @@ export default function ScenePage() {
       const d = vertical ? e.clientY - s.y : e.clientX - s.x;
       const next: View = page === "scene" ? (d <= -SWIPE_PX ? "monitor" : "scene") : (d >= SWIPE_PX ? "scene" : "monitor");
       lockRef.current = 0; // the pointer's own release is never refused
-      if (next !== page) switchView(next);
-    }
-    // Hand the track back to the stylesheet: from the dragged position the transition runs to the page's own.
-    if (!vertical) { frostBusy(PAGE_MS + 400); requestAnimationFrame(() => { delete track.dataset.dragging; track.style.transform = ""; }); }
+      delete track.dataset.dragging;
+      if (vertical) { if (next !== page) switchView(next); }
+      else switchView(next, s.base + (page === "scene" ? Math.min(0, d) : Math.max(0, d))); // from where the finger left the track, to the nearer page's rest
+    } else if (!vertical) { delete track.dataset.dragging; track.style.transform = ""; }
   };
   // Every input that steps with the data is eased in the space where it is USED, so in and out take the same curve: the particulate LEVELS (0..1), not the raw µg/m³ — eased in µg/m³ the field appeared at once on the way up (the value rushed through the 35–150 band) and receded slowly on the way down (it lingered there on the exponential tail). The sky's own channels ease too, so the dome, the plume and the type move together instead of the dome cutting while the plume fades. Time constant: half a beat (~330 ms), settled within about a second.
   const tau = motion.beatMs * 0.5;
@@ -249,7 +332,7 @@ export default function ScenePage() {
       if (!el || !tctx) return null;
       const hr = el.getBoundingClientRect();
       if (hr.bottom <= cr.top || hr.top >= cr.bottom || hr.right <= cr.left || hr.left >= cr.right) return null; // the panel is on the page that is off screen (D-43): it keeps its last sample; sampling the sky's edge for it eased its ramp toward nothing and, on the graph, redrew the plot every frame while nobody could see it (2026-09-16)
-      const sx = gl.width / cr.width, sy = gl.height / cr.height, pad = parseFloat(GLASS.frostedBlur);
+      const sx = gl.width / cr.width, sy = gl.height / cr.height, pad = parseFloat(GLASS.blur);
       const x = Math.max(0, (hr.left - cr.left - pad) * sx), y = Math.max(0, (hr.top - cr.top - pad) * sy);
       const w = Math.min(gl.width - x, (hr.width + 2 * pad) * sx), h = Math.min(gl.height - y, (hr.height + 2 * pad) * sy);
       if (w <= 0 || h <= 0) return null;
@@ -281,7 +364,7 @@ export default function ScenePage() {
     tick();
     return () => clearInterval(id);
   }, []);
-  const predict = (sm: Sample) => predictPanel({ sky: sm.rgb, t: sm.t, smoke: { density: view.smoke, regime: view.regime }, night: nightEased, golden: goldenEased, glass: { alpha: view.glass.alpha + GLASS.frostedExtraAlpha, fill: view.glass.fill, lift: view.glass.lift } });
+  const predict = (sm: Sample) => predictPanel({ sky: sm.rgb, t: sm.t, smoke: { density: view.smoke, regime: view.regime }, night: nightEased, golden: goldenEased, glass: { alpha: view.glass.alpha, fill: view.glass.fill, lift: view.glass.lift } });
   const panels = useMemo(() => ({ hero: predict(skySamples.hero), aqi: predict(skySamples.aqi), graph: predict(skySamples.graph), scale: predict(skySamples.scale), tone: predict(skySamples.tone) }), [skySamples, view.smoke, view.regime, view.glass, nightEased, goldenEased]); // eslint-disable-line react-hooks/exhaustive-deps
   const heroLift = useEased(rampLiftFor(panels.hero.luminance), tau, "hero ramp lift");
   const aqiLift = useEased(rampLiftFor(panels.aqi.luminance), tau, "aqi card ramp lift");
@@ -322,17 +405,17 @@ export default function ScenePage() {
   const glassVars = {
     "--glass-blur": FX_OFF.has("noblur") ? "0px" : GLASS.blur, "--glass-saturate": GLASS.saturate, "--glass-fill-alpha": view.glass.alpha.toFixed(3), "--glass-fill": view.glass.fill, "--glass-lift": view.glass.lift.toFixed(3),
     "--glass-edge-alpha": String(GLASS.edgeAlpha), "--glass-fill-alpha-opaque": String(GLASS.fillAlphaOpaque), "--glass-blur-opaque": GLASS.blurOpaque,
-    "--frosted-blur": FX_OFF.has("noblur") ? "0px" : GLASS.frostedBlur, "--frosted-fill-alpha": (view.glass.alpha + GLASS.frostedExtraAlpha).toFixed(3), "--glass-dither": String(GLASS.ditherAlpha), "--sky-dither": String(GLASS.skyDither),
+    "--glass-dither": String(GLASS.ditherAlpha), "--sky-dither": String(GLASS.skyDither), "--cable-width": `${MONITOR.cableWidth}px`,
   } as React.CSSProperties;
 
   return (
     <ThemeContext.Provider value="dark">
       <div className="scene-root" style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms` } as React.CSSProperties}>
         {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
-        {!FX_OFF.has("nocursor") && <Cursor />}
+        {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}
         {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (Cursor.tsx reads data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
-        <div ref={skyBoxRef} className="scene-sky" data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClick={phone ? undefined : () => { if (consumeSuppressedClick() || performance.now() - swipedAt.current < 400) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
-          <SkyView params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} frost={!FX_OFF.has("noblur")} style={{ width: "100%", height: "100%" }} />
+        <div ref={skyBoxRef} className="scene-sky" inert={about ? "" : undefined} data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClick={phone ? undefined : () => { if (consumeSuppressedClick() || performance.now() - swipedAt.current < 400) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
+          <SkyView params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={{ width: "100%", height: "100%" }} />
           {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
           <canvas ref={dissolveCanvasRef} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />
           {!FX_OFF.has("nonight") && <NightLayer blend={nightEased} density={view.smoke} />}
@@ -343,8 +426,8 @@ export default function ScenePage() {
         </div>
 
         {/* The scaffold (D-26): see .scene-ui in index.css. */}
-        <div className="scene-ui">
-          <div className="scene-top">
+        <div className="scene-ui" data-about={about} style={{ "--about-ms": `${ABOUT_MS}ms` } as React.CSSProperties}>
+          <div className="scene-top" inert={about ? "" : undefined}>
             <Glass material="glass" className="scene-pill scene-borough">
               <BoroughToggle selected={s.borough} onSelect={s.setBorough} />
             </Glass>
@@ -369,7 +452,7 @@ export default function ScenePage() {
           </div>
 
           {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame reaches the panels' shadow room on every side (index.css --clip-pad, --clip-pad-y), and what keeps a page mid-switch off the bars' pills is the drift: on laptop the visible motion is one gap, the travel between the fades runs unseen (D-48, Shoro, 2026-09-16). */}
-          <div className="scene-mid" data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} style={{ "--page-ms": `${PAGE_MS}ms`, "--fade-ms": `${FADE_MS}ms` } as React.CSSProperties} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
+          <div className="scene-mid" inert={about ? "" : undefined} data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} data-moving={moving} style={{ "--page-ms": `${PAGE_MS}ms` } as React.CSSProperties} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
             // Below laptop the band takes pointer events for the swipe, so it stands between the sky and a tap on the empty space around the panels; that tap is still the sky's play/pause (tablets), and the cursor there is the sky's.
             data-cursor={phone || laptop ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"}
             onClick={phone || laptop ? undefined : (e) => { if ((e.target as HTMLElement).closest(".glass")) return; if (consumeSuppressedClick()) return; s.togglePlay(); }}>
@@ -393,6 +476,7 @@ export default function ScenePage() {
                         tab={tab}
                         onTab={setTab}
                         onSeek={s.seek}
+                        suffixes={suffixes}
                       />
                     </Glass>
                   )}
@@ -400,7 +484,7 @@ export default function ScenePage() {
               </div>
               <div className="scene-page scene-page-monitor" data-page="monitor" aria-hidden={page !== "monitor"} inert={page !== "monitor" ? "" : undefined}>
                 <div className="scene-page-inner">
-                  <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} routing />
+                  <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} routing suffixes={suffixes} />
                 </div>
               </div>
             </div>
@@ -423,10 +507,10 @@ export default function ScenePage() {
             )}
           </div>
 
-          {/* The bottom bar (Shoro, 2026-09-16): on laptop the About button at the left, the source line centred on the bar, the credit at the right, the transport having moved into the band; below laptop the transport row (play, volume, the page pill), then the About button and the credit side by side and centred, and no source line at all. */}
+          {/* The bottom bar (Shoro, 2026-09-16): on laptop the Patch notes button at the left, the source line centred on the bar, the credit at the right, the transport having moved into the band; below laptop the transport row (play, volume, the page pill), then the Patch notes button and the credit side by side and centred, and no source line. A borrowed channel is named where it is shown too, on the graph's tab and the card's source pill (D-56), and the About overlay carries the account. */}
           <div className="scene-bottom">
             {!laptop && (
-              <div className="scene-transport">
+              <div className="scene-transport" inert={about ? "" : undefined}>
                 <Glass material="glass" className="scene-pill scene-icon-pill">
                   <PlayButton playing={playing} onToggle={s.togglePlay} />
                 </Glass>
@@ -440,24 +524,20 @@ export default function ScenePage() {
             )}
             {laptop ? (
               <>
-                <Glass material="frosted" className="scene-about-pill">
-                  <AboutButton />
-                </Glass>
+                <AboutButton ref={aboutBtnRef} onPress={about ? closeAbout : openAbout} open={about} form="exhale" />
                 {day && day.length > 0 && (
-                  <Glass material="frosted" className="scene-source">
+                  <Glass material="frosted" className="scene-source" inert={about ? "" : undefined}>
                     <SourceLine borough={s.borough} hours={day} fallback={s.snapshot?.fallback ?? null} live={s.live} />
                   </Glass>
                 )}
-                <Glass material="frosted" className="scene-credit">
+                <Glass material="frosted" className="scene-credit" inert={about ? "" : undefined}>
                   <Credit />
                 </Glass>
               </>
             ) : (
               <div className="scene-bottom-row">
-                <Glass material="frosted" className="scene-about-pill">
-                  <AboutButton />
-                </Glass>
-                <Glass material="frosted" className="scene-credit">
+                <AboutButton ref={aboutBtnRef} onPress={about ? closeAbout : openAbout} open={about} form="dismiss" />
+                <Glass material="frosted" className="scene-credit" inert={about ? "" : undefined}>
                   <Credit />
                 </Glass>
               </div>
@@ -465,13 +545,15 @@ export default function ScenePage() {
           </div>
 
           {DEV && (
-            <select className="scene-dev" value={s.devDayKey} onChange={(e) => s.setDevDayKey(e.target.value)}>
+            <select className="scene-dev" inert={about ? "" : undefined} value={s.devDayKey} onChange={(e) => s.setDevDayKey(e.target.value)}>
               <option value="live">Live: NYC (last 24 h)</option>
               {PHASE0_DAYS.map((d) => (
                 <option key={d.key} value={d.key}>{d.label} (fixture)</option>
               ))}
             </select>
           )}
+          {/* The About overlay (D-56), inside the scaffold so the Patch notes button can stand above it (z-index; a portal could not be stacked under a child of this tree). */}
+          <About open={about} onClose={closeAbout} anchorRef={aboutBtnRef} latestDate={s.latestDate} />
         </div>
       </div>
     </ThemeContext.Provider>

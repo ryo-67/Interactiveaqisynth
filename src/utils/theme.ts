@@ -325,6 +325,7 @@ export const motion = {
   popoverMs: 180, // the calendar popover in and out: opacity with a 4 px settle (2026-09-15)
   pageBeats: 1.5, // the middle band slides between the scene and the monitor over this many beats (D-43): the same span as the sun's glide, the dissolve and the graph morph
   driftPxPerSec: 4, // haze grain drift speed — continuous
+  pageRestScale: 0.9, // how small a page is while it is not the one showing (Shoro, 2026-09-17): the section that is leaving shrinks to this as it goes and the one arriving grows from it, so the two read as faces of one thing turning rather than two flat cards sliding past each other
 } as const;
 
 // ——— Scene tokens (D-19, §5.2/§5.6) — everything the scene draws is data; these are the only constants the drawing code may use ———

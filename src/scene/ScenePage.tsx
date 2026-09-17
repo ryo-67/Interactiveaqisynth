@@ -49,12 +49,6 @@ function viewFromUrl(): View {
 }
 const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-43)
 const SWIPE_LOCK_PX = 8; // movement before a drag commits to an axis
-// The edge fade (stepPanels): ONE window, the same for every panel, sitting at the bar. A panel is whole until it is LEAD_PX from a bar and gone UNDER_PX past it, so each fades at the same rate and they stagger only by when they get there, which is the leading one first. Anchoring the window to each panel's own resting clearance instead was wrong in both directions: it made a panel that rests far from a bar fade over a long run, so on the arriving page the FIRST panel in was the slowest to appear (Shoro).
-// LEAD_PX cannot exceed the clearance a panel has at rest, or a standing panel would be dimmed, and the tightest breakpoint leaves exactly 20. UNDER_PX is the room on the other side, which is why the band's bleed (index.css --clip-pad-y) is 140: the fade has to be finished before the band's overflow cuts the panel, or the cut is the pop. 20 of clearance plus the room below is what there is to spend, and the bleed is what buys that room.
-const LEAD_PX = 20;
-// The two edges get different room, because what is behind them differs, and the top's is read from the bar itself rather than fixed, since the header WRAPS (Shoro asked, and it does: two rows and 100 px tall below 1408, one row and 40 above, while the footer is 40 throughout). Both bars' rects are measured every frame, so the trigger point already follows the wrap; what was fixed, and wrong, was how far past it the fade ran. At the top the whole underlap stands on screen — the header's own height plus the 32 px above it — so a panel fading over 120 px was watched all the way across the header; it now ends at the header's far edge, so it is gone before it could be seen clear of it, which is 100 px when the header wraps and the floor otherwise. At the bottom the strip runs off the screen after about 70 px, so a longer fade has its tail hidden by the edge and reads better, which is the one Shoro kept.
-const UNDER_TOP_FLOOR_PX = 60; // never shorter than this, or the fade is too few frames to be one
-const UNDER_BOTTOM_PX = 120;
 const SWIPE_PX = 48; // a travel along the pages' axis that counts as a swipe (D-45)
 const WHEEL_PX = 120; // a wheel travel that counts as a page turn above the phone width
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -118,55 +112,69 @@ export default function ScenePage() {
   const markMoving = (ms: number) => { setMoving(true); window.clearTimeout(movingTimer.current); movingTimer.current = window.setTimeout(() => setMoving(false), ms); };
   const wheelRef = useRef({ acc: 0, at: 0 }); // the wheel's travel within one gesture (a ref: the listener is re-bound each render and must not forget)
   // The push (Shoro, 2026-09-16): the track carries both pages from one rest position to the other over PAGE_MS, eased out, and the page drives it frame by frame rather than handing it to a CSS transition. Why: the panels' material is set per frame from where each panel is (stepPanels), which a CSS transition cannot be asked for. The rest positions are the stylesheet's (index.css .scene-track); the inline transform holds only while a push runs, then hands back. A drag that lets go pushes from where the finger left it.
-  const push = useRef<{ from: number; to: number; start: number; ms: number; landed: number } | null>(null);
-  // Each panel's own material, by where it is (Shoro, 2026-09-16): full material until the panel underlaps the header or the footer, then away sharply, within UNDERLAP_PX of crossing that edge. The bars paint above the band, so through those few pixels the panel is passing behind them. This replaces three things. The band's gradient mask, and a clip-path in its place, both of which make the band a BACKDROP ROOT so every panel inside loses the sky its blur samples (measured in both engines), while the bars keep theirs by sitting outside. A hard overflow clip at the bar's edge, which costs no sampling but cuts a resting panel's shadow at the frame and reads as a hard boundary (Shoro). And the page-level fade on a timer, which was a fraction of the travel and so meant something different at every viewport. Position, not time, and per panel rather than per page: the same at any height, and the leaving and the arriving page need no rules of their own.
-  const stepPanels = () => {
-    const track = trackRef.current, mid = track?.parentElement, ui = mid?.parentElement;
-    if (!track || !mid || !ui || !vertical) return;
-    const topBar = ui.querySelector(".scene-top")?.getBoundingClientRect();
-    const botBar = ui.querySelector(".scene-bottom")?.getBoundingClientRect();
-    if (!topBar || !botBar) return;
-    const underTop = Math.max(UNDER_TOP_FLOOR_PX, topBar.height); // the header's live height, so a wrap to two rows moves this with it
-    for (const el of track.querySelectorAll<HTMLElement>(".glass")) {
-      const r = el.getBoundingClientRect();
-      if (r.height <= 0) continue;
-      const fTop = (r.top - topBar.bottom + underTop) / (LEAD_PX + underTop);
-      const fBottom = (botBar.top - r.bottom + UNDER_BOTTOM_PX) / (LEAD_PX + UNDER_BOTTOM_PX);
-      const f = Math.max(0, Math.min(1, Math.min(fTop, fBottom)));
-      el.style.setProperty("--glass-on", f.toFixed(3));
-    }
-  };
-  const clearPanels = () => {
+  const push = useRef<{ origin: number; to: number; view: View; t0: number; start: number; ms: number; landed: number } | null>(null);
+  // The two pages are faces of one thing turning, not two cards sliding past each other (Shoro, 2026-09-17): the page leaving shrinks to motion.pageRestScale as it goes and the page arriving grows from it, on the same eased progress as the push. Scale only — no perspective and no rotation: a transform is one of the few properties that leaves a descendant's backdrop-filter alone, which the track has been relying on all along, where perspective would make this a stacking context and a containing block, the class of property that has taken the glass out three times before.
+  // This REPLACES the per-panel edge fade (Shoro, 2026-09-17: remove the top and bottom edge clips). That fade existed so a panel crossing a bar was gone before it cleared it; without it a passing page shows in the page padding above the header and below the footer, roughly 24 to 32 px, and the shrink pulls it inward on the way. Shoro's call, having been told: let it show.
+  const pagesEl = () => {
     const track = trackRef.current;
-    if (!track) return;
-    for (const el of track.querySelectorAll<HTMLElement>(".glass")) el.style.removeProperty("--glass-on");
+    if (!track) return null;
+    const scene = track.querySelector<HTMLElement>(".scene-page-scene");
+    const monitor = track.querySelector<HTMLElement>(".scene-page-monitor");
+    return scene && monitor ? { scene, monitor } : null;
   };
+  // e is the eased progress of the move toward `arriving`, 0 at the start and 1 landed.
+  const stepPages = (arriving: View, e: number) => {
+    const els = pagesEl();
+    if (!els) return;
+    const rest = motion.pageRestScale;
+    const grow = (rest + (1 - rest) * e).toFixed(4);
+    const shrink = (rest + (1 - rest) * (1 - e)).toFixed(4);
+    els[arriving].style.setProperty("--page-scale", grow);
+    els[arriving === "scene" ? "monitor" : "scene"].style.setProperty("--page-scale", shrink);
+    // Both pages keep their full material for the whole move. The off page RESTS with none (index.css, aria-hidden: from beyond the frame its shadows reached back into the band), and with the per-panel edge fade gone that rest value was being transitioned to on its own — a whole-page dissolve, which is the thing this replaces. The transition is suppressed rather than ridden: the value has to be there on the first frame, not a beat later.
+    for (const el of [els.scene, els.monitor]) { el.style.transition = "none"; el.style.setProperty("--glass-on", "1"); }
+  };
+  // Hand back to the stylesheet: the showing page at 1 and the other at motion.pageRestScale with no material. The material is dropped with the transition still suppressed, so the off page goes to nothing in one frame rather than easing there over a beat — by then it is a band and the frame's bleed away, so the change is off screen either way, but easing would leave its shadows reaching into the band for that beat, which is what the rest rule exists to prevent. The transition comes back the frame after, with nothing left to animate.
+  const clearPages = () => {
+    const els = pagesEl();
+    if (!els) return;
+    for (const el of [els.scene, els.monitor]) {
+      el.style.removeProperty("--page-scale");
+      el.style.removeProperty("--glass-on");
+    }
+    requestAnimationFrame(() => { for (const el of [els.scene, els.monitor]) el.style.removeProperty("transition"); });
+  };
+  // Where the off page rests, measured from the LAYOUT rather than read out of a custom property (Shoro, 2026-09-17). The two pages' own offsets within the track already say it: the scene sits at minus the frame's side room and the monitor a track and a gap beyond, so the distance between them is the whole travel, on either axis, whatever those values happen to be.
+  // It used to parse --page-gap with parseFloat, which works only while the value is a plain length. On a phone it is calc(24px + 16px): parseFloat returns NaN, the fallback made it 0, and the push therefore ended 40 px short of where the stylesheet rests the page — so the track snapped that 40 px the instant the inline transform was handed back. The vertical axis was unaffected only because --clip-pad-y happens to be a bare 140px.
+  // offsetLeft and offsetTop are layout positions and ignore transforms, which matters now that each page carries a scale of its own; getBoundingClientRect would fold that in.
   const restOffset = (p: View): number => {
     const track = trackRef.current;
     if (!track || p === "scene") return 0;
-    const cs = getComputedStyle(track.parentElement!);
-    // Vertical: the monitor rests a band and the frame's whole shadow reach below, so at rest it lies beyond the frame and is never painted under the bars; horizontal: a band and the side gap (index.css .scene-track rest rules).
-    const beyond = vertical ? parseFloat(cs.getPropertyValue("--clip-pad-y")) || 0 : parseFloat(cs.getPropertyValue("--page-gap")) || 0;
-    return -((vertical ? track.clientHeight : track.clientWidth) + beyond);
+    const scene = track.querySelector<HTMLElement>(".scene-page-scene");
+    const monitor = track.querySelector<HTMLElement>(".scene-page-monitor");
+    if (!scene || !monitor) return 0;
+    return -(vertical ? monitor.offsetTop - scene.offsetTop : monitor.offsetLeft - scene.offsetLeft);
   };
-  // The push, frame by frame (the panels' own fade is stepPanels above).
+  // The push, frame by frame (the pages' own scale is stepPages above).
   const stepPush = (now: number) => {
     const a = push.current, track = trackRef.current;
     if (!a || !track) return;
-    const t = Math.min(1, (now - a.start) / a.ms);
-    // Eased in AND out (Shoro, 2026-09-16: the fade out was choppy while the fade in read well). The two fades are one curve; what differed was the speed where each of them happens. An eased-out push spends two thirds of its distance in the first third of its time, so a panel leaving crossed its whole fade in two or three frames while a panel arriving, by then nearly stopped, had thirty. Symmetric easing gives both ends the same speed, and so the same number of frames.
+    // ONE animation, and a drag is a scrub of it (Shoro, 2026-09-17). The push always runs the same curve from the same origin to the same rest; a finger that lets go part way does not start a new movement from where it stopped, it hands the same animation back at the point it had scrubbed it to. So t begins at t0, the time on the curve matching the distance already covered, and the run that is left takes exactly the time that was left — no second curve, no restart from rest, nothing to reverse.
+    const t = a.t0 + (1 - a.t0) * Math.min(1, (now - a.start) / a.ms);
     const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     if (!a.landed) {
-      const v = a.from + (a.to - a.from) * e;
+      const v = a.origin + (a.to - a.origin) * e;
       track.style.transform = vertical ? `translateY(${v.toFixed(2)}px)` : `translateX(${v.toFixed(2)}px)`;
-      stepPanels();
-      if (t >= 1) { a.landed = now; track.style.transform = ""; clearPanels(); } // landed: the stylesheet's rest rules take over
+      stepPages(a.view, e);
+      if (t >= 1 - 1e-6) { a.landed = now; track.style.transform = ""; clearPages(); } // landed: the stylesheet's rest rules take over
     }
     if (a.landed) { push.current = null; setMoving(false); }
   };
   const stepRef = useRef(stepPush); stepRef.current = stepPush;
-  const startPush = (from: number, to: number) => {
-    push.current = { from, to, start: performance.now(), ms: PAGE_MS, landed: 0 };
+  // The curve's inverse: where on it a page already at `p` of its travel would be. Scrubbing gives a position; the animation is driven by time, so one has to be turned into the other.
+  const easeAt = (p: number): number => (p <= 0 ? 0 : p >= 1 ? 1 : p < 0.5 ? Math.cbrt(p / 4) : 1 - Math.cbrt(2 * (1 - p)) / 2);
+  const startPush = (origin: number, to: number, view: View, t0 = 0) => {
+    push.current = { origin, to, view, t0, start: performance.now(), ms: PAGE_MS * (1 - t0), landed: 0 };
     stepRef.current(performance.now());
     const loop = (now: number) => { if (!push.current) return; stepRef.current(now); if (push.current) requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
@@ -177,7 +185,13 @@ export default function ScenePage() {
     lockRef.current = performance.now() + PAGE_MS;
     
     markMoving(REDUCED_MOTION ? PAGE_MS + 50 : PAGE_MS + 3000); // the push itself ends the movement (stepPush); the timer is the fallback
-    if (!REDUCED_MOTION) startPush(fromPx ?? restOffset(page), restOffset(next));
+    if (!REDUCED_MOTION) {
+      // The animation is always the same one: from the rest of the page being left to the rest of the page arriving. A drag does not change it, it only says how far through it the finger got — so a release resumes it there rather than starting something of its own.
+      const to = restOffset(next);
+      const origin = restOffset(next === "scene" ? "monitor" : "scene");
+      const t0 = fromPx == null || to === origin ? 0 : easeAt((fromPx - origin) / (to - origin));
+      startPush(origin, to, next, t0);
+    }
     if (next !== page) setPage(next);
   };
   // The address bar is never written (Shoro, 2026-09-17). Which graph track is open, which of the two pages is showing and whether the reading is up are all moment-to-moment state, not somewhere a visitor meant to be, and writing them left the address changing under every tab press, page turn and press of Patch notes. All three are still READ at load, so a link that carries them still opens on them and the harness can still ask for one; none of them is written back.
@@ -238,7 +252,7 @@ export default function ScenePage() {
     if (!touch) e.currentTarget.setPointerCapture(e.pointerId);
     const track = trackRef.current;
     const base = track && !vertical ? new DOMMatrix(getComputedStyle(track).transform).m41 : 0; // where the track is now (at rest 0, or one page and a gap to the left; mid-push, wherever the push has it), read rather than recomputed
-    if (push.current) { push.current = null; clearPanels(); } // the finger takes over from a push in flight
+    if (push.current) { push.current = null; clearPages(); } // the finger takes over from a push in flight
     swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, base };
   };
   const onDragMove = (e: React.PointerEvent) => {
@@ -255,6 +269,9 @@ export default function ScenePage() {
     if (!moving) markMoving(PAGE_MS + 400);
     else { window.clearTimeout(movingTimer.current); movingTimer.current = window.setTimeout(() => setMoving(false), PAGE_MS + 400); }
     track.style.transform = `translateX(${s.base + bounded}px)`;
+    // The scale follows the finger too, or it would jump the moment the drag becomes a push.
+    const span = Math.abs(restOffset("monitor"));
+    if (span > 0) stepPages(page === "scene" ? "monitor" : "scene", Math.min(1, Math.abs(bounded) / span));
   };
   const onDragUp = (e: React.PointerEvent) => {
     const s = swipe.current, track = trackRef.current;
@@ -452,7 +469,7 @@ export default function ScenePage() {
           </div>
 
           {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame reaches the panels' shadow room on every side (index.css --clip-pad, --clip-pad-y), and what keeps a page mid-switch off the bars' pills is the drift: on laptop the visible motion is one gap, the travel between the fades runs unseen (D-48, Shoro, 2026-09-16). */}
-          <div className="scene-mid" inert={about ? "" : undefined} data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} data-moving={moving} style={{ "--page-ms": `${PAGE_MS}ms` } as React.CSSProperties} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
+          <div className="scene-mid" inert={about ? "" : undefined} data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} data-moving={moving} style={{ "--page-ms": `${PAGE_MS}ms`, "--page-rest-scale": String(motion.pageRestScale) } as React.CSSProperties} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
             // Below laptop the band takes pointer events for the swipe, so it stands between the sky and a tap on the empty space around the panels; that tap is still the sky's play/pause (tablets), and the cursor there is the sky's.
             data-cursor={phone || laptop ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"}
             onClick={phone || laptop ? undefined : (e) => { if ((e.target as HTMLElement).closest(".glass")) return; if (consumeSuppressedClick()) return; s.togglePlay(); }}>

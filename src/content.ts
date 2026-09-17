@@ -74,7 +74,7 @@ export const SOURCE_JOIN = " · "; // between two sources on one pill: "PM2.5 ·
 export const TONE_WORDS = ["Clean", "Smooth", "Warm", "Edged", "Metallic", "Harsh"] as const; // six (D-44); the first two are Shoro's of 2026-09-16 (were Pure, Clean)
 // The scale names as the card shows them, keyed by the engine's own names (scales.ts).
 export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pentatonic", Major: "Major", Dorian: "Dorian", Phrygian: "Phrygian", Locrian: "Locrian", Chromatic: "Chromatic" };
-export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", o3: "ppb", pm25: "µg/m³" } as const;
+export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", detuneShort: "st", o3: "ppb", pm25: "µg/m³" } as const; // detuneShort is the same unit for the narrowest phones, where "semitones" runs past the card (Shoro, 2026-09-17); index.css picks between them
 export const MONITOR_REST = "—"; // a value the held hour lacks
 
 // The hero's two cards (2026-09-16): the number under "AQI · now" on Live or "AQI · Oct 29" on an archive day, the word and sentence under "Breath". PLACEHOLDERS — Shoro's.

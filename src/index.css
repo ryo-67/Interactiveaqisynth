@@ -1793,4 +1793,4 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-about-credit { align-self: center; align-items: center; text-align: center; margin-top: 48px; }
   .scene-about-links { justify-content: center; margin-top: 16px; gap: 12px; }
 }
-@media (max-width: 575px) { .scene-about { --about-pad: 16px; --about-inline: 64px; } } /* the reading's side padding on a phone: Shoro's 64 (2026-09-16; 48 before) */
+@media (max-width: 575px) { .scene-about { --about-pad: 16px; --about-inline: 48px; } } /* the reading's side padding on a phone: Shoro's 48 (2026-09-17; 64 for a day, 24 before that) */

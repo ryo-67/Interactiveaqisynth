@@ -8,7 +8,6 @@
     "@react-three/postprocessing": "^2.19.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "lucide-react": "^0.487.0",
     "motion": "*",
     "postprocessing": "^6.39.4",
     "react": "^18.3.1",

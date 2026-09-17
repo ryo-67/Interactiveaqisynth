@@ -18,6 +18,14 @@ Shoro: "citywide" and "typical" don't fit on mobile and look bad. The tab row al
 
 The pills had the same problem and keep the words instead. Below laptop the card head wraps, so a pill carrying a borrowed word drops under its label, and there it sets its own words rather than running off the card — Tone is the worst case, the only card with two sources and a borrowed one, and "PM2.5 · NO₂ · typical" is wider than a half-width card below about 375. Three things were in the way, each an inline chip style: nowrap, flex 0 0 auto and a fixed height of 20. And at 320 the equal tab shares were no longer enough on their own — a quarter of the band is 59 px and PM2.5 wants 61 — so below 360 the tabs size to content with the spare still shared out. Measured at 430, 414, 390, 375, 360 and 320: no tab cut and no pill past its card at any of them. The pills were measured with the words injected, since a local run without an API key cannot fetch a day that borrows a channel; the tab row was checked with real data.
 
+## 2026-09-17 — 40 MB of icons nobody imported (BUG-54)
+
+Shoro: lucide-react is in package.json and imported nowhere. It held on every check — no import in src, api, scripts or any config, zero occurrences in the built bundle, and it sat in `dependencies` rather than devDependencies, so 40 MB and 3,576 files were installed on every production install and every Vercel build for nothing.
+
+The cause is written down in CLN-03, which cleared 33 unused dependencies in August and listed lucide-react under "Keep". That was wrong at the time it was written: icons.tsx already drew the glyphs as inline paths, and its own header says why — "no icon dependency is added for five glyphs". The package was kept on the assumption it was used by the thing that had been built specifically to avoid it.
+
+Removed. The glyphs are Lucide's own paths and are unaffected; the attribution to lucide.dev and the ISC licence lives in the source comments and stays there whether the package is installed or not. Build, typecheck, lint and all 54 tests unchanged, 19 glyphs still draw, no console errors. Same class as BUG-52, and larger than everything BUG-52 cleared put together.
+
 ## 2026-09-17 — The page scale broke the patch bay (BUG-53)
 
 Shoro: the routing diagram has broken. It had, on every load, and by my hand the same day. D-62 rests the page that is not showing at a scale of 0.9, and `getBoundingClientRect` returns drawn pixels rather than layout ones, so every measurement Routing takes came back a tenth small. Its SVG is sized from those numbers and has no CSS size of its own, so the whole patch bay was drawn a tenth small and anchored at the top left: the cables left their sources correctly and then stopped in mid-air above the pills, short and increasingly leftward. It broke every time rather than now and then because the monitor page is the off page at load, which is exactly when its ResizeObserver first fires.

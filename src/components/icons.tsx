@@ -66,6 +66,10 @@ export const GithubIcon = ({ size = 16, strokeWidth = 2, style }: IconProps) => 
 export const MinimizeIcon = ({ size = 16, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" /><path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" /></svg>
 );
+// Lucide's refresh-cw: asking the live feed again when it did not answer (D-60).
+export const RefreshIcon = ({ size = 16, strokeWidth = 2, style }: IconProps) => (
+  <svg {...base(size, strokeWidth, style)}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg>
+);
 export const CloudSunIcon = ({ size = 20, strokeWidth = 2, style }: IconProps) => (
   <svg {...base(size, strokeWidth, style)}><path d="M12 2v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="M20 12h2" /><path d="m19.07 4.93-1.41 1.41" /><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" /><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" /></svg>
 );

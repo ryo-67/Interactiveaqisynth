@@ -143,6 +143,13 @@ export const AQI_CATEGORIES = CATEGORY_MAX.map((max, i) => ({ max, dark: oklchTo
 
 export const RAMP = { panelDark: 0.058, panelBright: 0.12 } as const;
 
+// The live line's error colour (D-60, 2026-09-17): the ramp's own Unhealthy hue, the red the piece already uses for air that is bad, drawn as a RING around the pill rather than a tint through it (Shoro, 2026-09-17). A tint had to be carried to 0.82 alpha to read as red at all over a bright noon sky, by which point the pill was a solid slab and no longer the page's material; an edge reads at any brightness and leaves the glass alone.
+// The ring, and a near-black hairline just outside it (Shoro, 2026-09-17). The outer line is what makes the red hold: a light red sits at almost exactly the luminance of a mid-grey sky, around 145, so against the sky alone it measured 1.01:1 and no single colour could avoid that. Given a dark neighbour of its own the red clears 3:1 whatever the day is doing behind it, and the look barely changes, since the line is one pixel at the pill's very edge.
+// The live line's bezel (D-60). One rim, two colours: the ramp's red when the feed is down, a neutral white rim while it is being asked again, so a retry morphs rather than cuts (Shoro, 2026-09-17). Both faces carry the SAME shadow stack, which is what lets the browser interpolate the colour between them; the contact shadow is the tight one under the rim, over the panel's usual drop shadow.
+export const LIVE_EDGE = { error: "rgba(232, 108, 92, 0.85)", quiet: "rgba(255, 255, 255, 0.20)", width: 2, contact: "0 1px 4px rgba(0, 0, 0, 0.45)" } as const;
+// And a little of that red through the fill as well (Shoro, 2026-09-17), in place of the panel's navy: the SAME alpha the line already carries, so only the tint changes and it stays glass. The cast is deliberately faint — measured over the brightest sky it leaves the surface about 11 points redder than it is blue, against the 55 of the solid version that was rejected and the 19 of the first pass, which Shoro still read as too much. The ring is what says error; this only keeps the surface from arguing with it.
+export const LIVE_FILL = { error: "48, 16, 34", quiet: "8, 14, 40" } as const; // quiet is GLASS.fill, written out because GLASS is declared below this
+
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
 type Stops = Array<{ at: number; c: OKLCH }>;
 const stopsFor = (end: { L: number; C: number }): Stops => {

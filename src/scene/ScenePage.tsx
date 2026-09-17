@@ -26,6 +26,8 @@ import { About } from "../components/About";
 import { SourceLine } from "../components/SourceLine";
 import { channelSuffixes } from "../utils/channelSource";
 import { Credit } from "../components/Credit";
+import { LiveStatus } from "../components/LiveStatus";
+import { Entry } from "../components/Entry";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
 import { ThemeContext, GLASS, MONITOR, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL, ABOUT as ABOUT_TOKENS } from "../utils/theme";
 
@@ -101,6 +103,10 @@ export default function ScenePage() {
   const [about, setAbout] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("about") === "1");
   const aboutRef = useRef(false); aboutRef.current = about;
   const aboutBtnRef = useRef<HTMLButtonElement>(null);
+  const [entryGone, setEntryGone] = useState(false); // the entry screen has left the DOM: the live line may show
+  const [entryLifting, setEntryLifting] = useState(false); // and has begun to lift: the scene blends up with it rather than being revealed at full strength behind it
+  const onEntryLift = useCallback(() => setEntryLifting(true), []);
+  const onEntryGone = useCallback(() => setEntryGone(true), []);
   const [aboutShown, setAboutShown] = useState(about); // true from open until the overlay has left the DOM: the page's own cursor stands down for exactly that span (a DOM cursor over a full-screen backdrop blur is the case that banded in Firefox, D-50)
   const aboutTimer = useRef(0);
   const openAbout = useCallback(() => { window.clearTimeout(aboutTimer.current); setAbout(true); setAboutShown(true); }, []);
@@ -404,7 +410,7 @@ export default function ScenePage() {
 
   return (
     <ThemeContext.Provider value="dark">
-      <div className="scene-root" style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms` } as React.CSSProperties}>
+      <div className="scene-root" data-entered={entryLifting} style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint } as React.CSSProperties}>
         {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
         {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}
         {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (Cursor.tsx reads data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
@@ -503,6 +509,8 @@ export default function ScenePage() {
 
           {/* The bottom bar (Shoro, 2026-09-16): on laptop the Patch notes button at the left, the source line centred on the bar, the credit at the right, the transport having moved into the band; below laptop the transport row (play, volume, the page pill), then the Patch notes button and the credit side by side and centred, and no source line. A borrowed channel is named where it is shown too, on the graph's tab and the card's source pill (D-56), and the About overlay carries the account. */}
           <div className="scene-bottom">
+            {/* What the live feed is doing, while Live is the chosen day and it has not answered (D-60). It rides the footer's top edge, so it sits above the whole bar at every breakpoint — above the Patch notes row on laptop, above the transport row as well below it — and takes no room in the column, so nothing moves when it appears or goes. Held back until the entry screen has gone (Shoro, 2026-09-17), or it would be waiting behind it. */}
+            {s.live && entryGone && <LiveStatus status={s.liveStatus} archiveReady={s.latestDate != null} onArchive={() => s.latestDate && s.setDate(s.latestDate)} onRetry={s.retryLive} />}
             {!laptop && (
               <div className="scene-transport" inert={about ? "" : undefined}>
                 <Glass material="glass" className="scene-pill scene-icon-pill">
@@ -549,6 +557,8 @@ export default function ScenePage() {
           {/* The About overlay (D-56), inside the scaffold so the Patch notes button can stand above it (z-index; a portal could not be stacked under a child of this tree). */}
           <About open={about} onClose={closeAbout} anchorRef={aboutBtnRef} latestDate={s.latestDate} />
         </div>
+        {/* The one screen before the tool (D-61): held until the live air has been read, whether it arrived or did not, and never less than its floor. Inside the root so it takes the glass tokens; the scene is mounted and running behind it the whole time. */}
+        <Entry ready={s.liveStatus !== "loading"} onLift={onEntryLift} onGone={onEntryGone} />
       </div>
     </ThemeContext.Provider>
   );

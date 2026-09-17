@@ -79,7 +79,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
 | UX-01 | P0 | DONE 2026-08-27 | Load sequence: Listen needs only the last 24 h | Remove health warmup and five sequential historical fetches from first paint. Historical loads when the timeline opens. Fixes BUG-20 |
-| UX-02 | P0 | TODO | Entry moment | Framing copy, first-listen, Tone.start() gesture. Covers any live-fetch latency |
+| UX-02 | P0 | PARTIAL 2026-09-17 (D-61) | Entry moment | The loading screen before the tool is in (components/Entry.tsx), which covers the live-fetch latency. Framing copy, first-listen and the Tone.start() gesture are still open; ENTRY.title and ENTRY.line in content.ts are placeholders awaiting Shoro |
 | UX-03 | P0 | PARTIAL 2026-09-15 (DayNav: pagination, pins, calendar; ribbon and drawn lag gap still to do) | Timeline with pins and lag gap | Dashed gap from last EPA day to today, label with weeks computed at load. Pins from §2.2. Replaces stitched timeline. Fixes BUG-02, BUG-03 |
 | UX-04 | P0 | TODO | Counterfactual selector | WHO, Delhi, Lockdown. Visually distinct from pins. §2.3 |
 | UX-05 | P0 | TODO | Pollutant sliders with real-value anchors | PM2.5, O3, NO2. Anchor = current hour's reading. No PM10 slider |

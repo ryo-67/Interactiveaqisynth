@@ -23,6 +23,20 @@ export const SOURCE_LINE_TYPICAL_NO2 = "NO₂ is typical, not live."; // D-18 di
 // Where a channel is borrowed (D-16, D-18; amended 2026-09-16, D-56): disclosed where the channel is shown, as a one-word suffix on the graph's tab and the monitor cards' source pills, the full account in the About overlay.
 export const SOURCE_SUFFIX_CITYWIDE = "citywide"; // the borough has no monitor for this channel and carries the citywide value (D-16)
 export const SOURCE_SUFFIX_TYPICAL = "typical"; // live NO₂ is a typical profile from the archive (D-18)
+// The entry (D-61, 2026-09-17): the one screen before the tool, held while the live air is being read. PLACEHOLDERS — Shoro's to write.
+export const ENTRY = {
+  title: "New York AQI Synth",
+  line: "Reading the air…",
+} as const;
+
+// The live feed's own state (D-60, 2026-09-17), shown as one line above the scene while Live is selected and AirNow has not answered. PLACEHOLDERS — Shoro's to write.
+export const LIVE_STATUS = {
+  loading: "Reading the air…", // while AirNow is in flight; shown only if it takes longer than a moment
+  unavailable: "Can't reach AirNow for live data.", // Shoro, 2026-09-17: the failure is the feed being unreachable, so the line names the feed and says it cannot be reached, rather than saying the air is quiet
+  toArchive: "Play a past day", // moves to the last day the archive holds
+  retry: "Try again",
+} as const;
+
 // Transport (the first glass control, §5.3). PLACEHOLDERS — Shoro's to write.
 export const TRANSPORT_PLAY = "Play";
 export const TRANSPORT_PAUSE = "Pause";

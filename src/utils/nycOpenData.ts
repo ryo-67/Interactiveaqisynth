@@ -80,6 +80,10 @@ export function getCurrentAll(): Promise<CurrentSnapshot> {
   })();
   return currentPromise;
 }
+// A failed live fetch is cached like a good one (the promise is the cache), so a retry has to drop it first (D-60, 2026-09-17).
+export function forgetCurrent(): void {
+  currentPromise = null;
+}
 
 // Live route: last 24 local hours for one borough.
 export async function getLast24h(borough: Borough): Promise<DaySeries> {

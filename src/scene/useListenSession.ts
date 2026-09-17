@@ -13,7 +13,7 @@ import { tierIndexOf } from "../engine/scales";
 import { seriesAQI } from "../engine/aqi";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
 import { PINS } from "../content";
-import { getCurrentAll, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
+import { getCurrentAll, forgetCurrent, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
 
 // Dev-only fixture select (?dev=1): never renders for a visitor.
 export const DEV = new URLSearchParams(window.location.search).has("dev");
@@ -56,6 +56,9 @@ export interface ListenSession {
   // Move the phrase to an hour (fractional), playing or not — the graph's scrub.
   seek: (hour: number) => void;
   snapshot: CurrentSnapshot | null;
+  // What the live fetch is doing (D-60, 2026-09-17): "loading" until AirNow answers, "ready" once it has, "unavailable" when it could not be reached. It used to fail into a console warning and an empty page that never said why.
+  liveStatus: "loading" | "ready" | "unavailable";
+  retryLive: () => void;
   anchors: PollutantAnchors; // the engine's anchors (falls back to Queens 2023 until the borough's land)
   day: Day | null;
   live: boolean;
@@ -82,6 +85,8 @@ export interface ListenSession {
 export function useListenSession(): ListenSession {
   const [borough, setBorough] = useState<Borough>("Citywide");
   const [snapshot, setSnapshot] = useState<CurrentSnapshot | null>(null);
+  const [liveStatus, setLiveStatus] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [liveAttempt, setLiveAttempt] = useState(0); // bumped by retryLive, which re-runs the fetch below
   const [anchors, setAnchors] = useState<PollutantAnchors | null>(null);
   // The last day the archive can play (UX-03): the static archive's last day at once, then the last day EPA has published this year when the route answers. Nothing past it is offered anywhere.
   const [latestDate, setLatestDate] = useState<string | null>(null);
@@ -105,23 +110,27 @@ export function useListenSession(): ListenSession {
   const prevBoroughRef = useRef<Borough>(borough);
   const prevDateRef = useRef<string | null>(null);
 
-  // First paint loads only the last 24 hours (UX-01); the page renders immediately and fills when it lands.
+  // First paint loads only the last 24 hours (UX-01); the page renders immediately and fills when it lands. The outcome is reported as liveStatus (D-60): AirNow is down often enough, and missing entirely in a local checkout without the keys, that a silent failure left the page looking simply empty.
   useEffect(() => {
     let cancelled = false;
+    setLiveStatus((s) => (s === "ready" ? s : "loading"));
     (async () => {
       try {
         const [snap, a] = await Promise.all([getCurrentAll(), getAnchors("Citywide")]);
         if (cancelled) return;
         setSnapshot(snap);
         setAnchors(a);
+        setLiveStatus("ready");
       } catch (err) {
         console.warn("[App] Live fetch failed:", err);
+        if (!cancelled) setLiveStatus("unavailable");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [liveAttempt]);
+  const retryLive = useCallback(() => { forgetCurrent(); setLiveAttempt((n) => n + 1); }, []);
 
   // A chosen day loads on demand, for this borough; nothing is fetched until asked (BUG-20).
   useEffect(() => {
@@ -325,7 +334,7 @@ export function useListenSession(): ListenSession {
 
   return {
     borough, setBorough, date, setDate, latestDate, dayLoading, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
-    snapshot, anchors: a, day, live, playing, beat, togglePlay, setVolume,
+    snapshot, liveStatus, retryLive, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, aqiHours, latest, rest, moodTier, moodAqi, monitor, pulse, channels, skyChannels, devDayKey, setDevDayKey,
   };
 }

@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-09-17 — Two typographic rules on the About reading (D-56)
+
+Shoro: no paragraph should end on a word by itself, at any breakpoint, and "by Shoro Roy" should travel to the next line whole. Both are rules, so both are written as rules rather than tuned per width. The credit names the phrase it holds together in content.ts (ABOUT.creditKeep, a substring of the credit line) and About.tsx renders that run nowrap, falling back to ordinary wrapping if the phrase stops matching the copy. The paragraphs get text-wrap: pretty, which asks the browser to even out the last lines, and — because that is a preference it may decline, and because it can do nothing at a width where the last line can only hold one word — the last space of every body paragraph is made non-breaking, so the final pair goes over together. Measured with a detector that reads each word's line box and reports any paragraph whose last line holds one word: clean across 1440, 1200, 1024, 900, 768, 600, 500, 430, 390, 360 and 320. The same detector run against the plain spaces, which is the control that proves it is not blind, finds one orphan at 1440, one at 390 and four at 320.
+
 ## 2026-09-17 — The wait before the piece, and what the page says when AirNow is silent (D-60, D-61)
 
 Shoro could not see the live fetch happen at all: the scene assembled around whatever data had arrived, and if AirNow was unreachable the page played the archive without a word about it. Two things now cover that stretch.

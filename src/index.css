@@ -1829,6 +1829,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-about-label { margin: 0; user-select: text; }
 .scene-about-body { margin: 0; user-select: text; }
 /* The letter's ending (Shoro, 2026-09-16): the two lines right-aligned to the column, the three links as glyphs alone in a row beneath, right-aligned, a step further from the lines than the lines are from each other. Below laptop the whole ending is centred. */
+.scene-about-body { text-wrap: pretty; } /* the browser's own preference for evening out a paragraph's last lines; the guarantee that none of them is a single word is the non-breaking space About.tsx ties the last two with, since this property is a hint and does nothing at a width where the last line can hold one word only */
 .scene-about-credit { align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 6px; margin-top: 32px; }
 .scene-about-links { display: flex; gap: 8px; margin-top: 12px; }
 .scene-about-link:active { background-color: rgba(255, 255, 255, var(--chip-hover-active, 0.22)) !important; } /* the chip's hover comes with its class; the press is the button family's fill, since the page's cursor (whose closing dot is the press elsewhere) is off here */

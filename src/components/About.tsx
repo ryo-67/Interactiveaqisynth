@@ -17,6 +17,19 @@ const REDUCED = typeof window !== "undefined" && window.matchMedia?.("(prefers-r
 const FADE_MS = REDUCED ? T.reducedMs : motion.beatMs * T.fadeBeats;
 
 // How far the archive runs behind today, in whole weeks, from its last available day: "about {weeks} weeks behind".
+// No paragraph ends on a word by itself, at any width (Shoro, 2026-09-17). The last space in a run of prose becomes a non-breaking one, which is the only way to say it that a wrap cannot ignore: text-wrap: pretty below asks the browser to even out the last lines, but it is a preference, not a rule, and it says nothing at a width where the last line can only hold one word. Tying the last two words means the pair goes over together instead.
+function noOrphan(text: string): string {
+  const i = text.lastIndexOf(" ");
+  return i < 0 ? text : `${text.slice(0, i)}\u00a0${text.slice(i + 1)}`;
+}
+
+// A line with one phrase held together: the phrase goes in a nowrap run, so a wrap puts it on the next line whole rather than breaking it up (content.ts ABOUT.creditKeep). If the phrase is not in the line, the line is returned untouched.
+function keepTogether(line: string, phrase: string): React.ReactNode {
+  const i = phrase ? line.indexOf(phrase) : -1;
+  if (i < 0) return line;
+  return (<>{line.slice(0, i)}<span style={{ whiteSpace: "nowrap" }}>{phrase}</span>{line.slice(i + phrase.length)}</>);
+}
+
 export function weeksBehind(latestDate: string | null, now = Date.now()): number | null {
   if (!latestDate) return null;
   const t = Date.parse(`${latestDate}T12:00:00`);
@@ -102,15 +115,15 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
       <div className="scene-about-scroll" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
         <article className="scene-about-column" role="dialog" aria-modal="true" aria-labelledby="scene-about-title">
           <h1 id="scene-about-title" ref={titleRef} tabIndex={-1} className="scene-about-title" style={{ fontFamily: families.serifItalic, fontStyle: "italic", fontWeight: 400, fontSize: `var(--heading-size, ${typeScale.heading.size})`, lineHeight: `var(--heading-line, 40px)`, color: c.textPrimary }}>{ABOUT.title}</h1>
-          <p className="scene-about-body" style={bodyStyle}>{ABOUT.intro}</p>
+          <p className="scene-about-body" style={bodyStyle}>{noOrphan(ABOUT.intro)}</p>
           {ABOUT.groups.map((group) => group.map((sec) => (
             <section key={sec.label} className="scene-about-section">
               <h2 className="scene-about-label" style={labelStyle}>{sec.label}</h2>
-              <p className="scene-about-body" style={bodyStyle}>{fill(sec.body)}</p>
+              <p className="scene-about-body" style={bodyStyle}>{noOrphan(fill(sec.body))}</p>
             </section>
           )))}
           <footer className="scene-about-credit">
-            <p className="scene-about-body" style={creditStyle}>{ABOUT.credit}</p>
+            <p className="scene-about-body" style={creditStyle}>{keepTogether(ABOUT.credit, ABOUT.creditKeep)}</p>
             <p className="scene-about-body" style={{ ...creditStyle, color: c.textMuted }}>{ABOUT.credit2}</p>
             <div className="scene-about-links">
               <a className="scene-chip scene-about-link" href={CREDIT_URL} target="_blank" rel="noreferrer" aria-label={ABOUT.links.website} title={ABOUT.links.website} style={linkStyle}><CircleUserRoundIcon size={16} /></a>

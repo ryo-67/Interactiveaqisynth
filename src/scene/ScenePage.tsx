@@ -174,13 +174,7 @@ export default function ScenePage() {
     if (!REDUCED_MOTION) startPush(fromPx ?? restOffset(page), restOffset(next));
     if (next !== page) setPage(next);
   };
-  useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
-    p.set("tab", tab);
-    if (page === "scene") p.delete("view"); else p.set("view", page);
-    if (about) p.set("about", "1"); else p.delete("about");
-    window.history.replaceState(null, "", `?${p}`);
-  }, [tab, page, about]);
+  // The address bar is never written (Shoro, 2026-09-17). Which graph track is open, which of the two pages is showing and whether the reading is up are all moment-to-moment state, not somewhere a visitor meant to be, and writing them left the address changing under every tab press, page turn and press of Patch notes. All three are still READ at load, so a link that carries them still opens on them and the harness can still ask for one; none of them is written back.
   const vertical = laptop;
   const suffixes = useMemo(() => (day ? channelSuffixes(day) : {}), [day]); // which channels this day borrows (D-16, D-18): the word beside them on the graph's tabs and the cards' source pills (D-56)
   // A resize, and above all a change of breakpoint between the vertical and horizontal stacks, must not be animated: the pages' transitions would carry them from their old axis positions to the new and paint a slide that means nothing (Shoro, 2026-09-16). While a resize is in progress the band suppresses every page transition, and a drag's leftover inline transform is cleared.

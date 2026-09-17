@@ -275,6 +275,8 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
         dpr={[1, 1.75]}
         frameloop={live ? "always" : "demand"}
         style={{ width: "100%", height: "100%", display: "block" }}
+        // The sky is scenery, and says so (BUG-49, 2026-09-17). An empty canvas has no fallback children to expose, so nothing was being announced either way, but the element that carries the whole sky should not be left for a browser to guess at. It cannot go on .scene-sky, which is the page's own play and pause target and carries a role and a label of its own; fiber does not forward arbitrary attributes to the canvas, so it is set on the element once it exists.
+        onCreated={({ gl }) => { gl.domElement.setAttribute("aria-hidden", "true"); }}
       >
         <CameraRig pitch={cameraRotationX} yaw={yaw} />
         <Exposure value={params.exposure} />

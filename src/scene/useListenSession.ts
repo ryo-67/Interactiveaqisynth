@@ -265,18 +265,22 @@ export function useListenSession(): ListenSession {
   const aqiHours = aqi?.hourly ?? EMPTY_HOURS;
 
   // Latest non-null hour of the loaded day — the resting state before playback.
-  const latest = (() => {
+  // Memoised, along with `rest` below, because both feed the monitor's useMemo and both used to be rebuilt on every render: a fresh object each time meant that memo never held and everything reading it re-ran with it (BUG-51, 2026-09-17; the same shape as BUG-31, where a colour object rebuilt per call cost about a thousand canvas redraws a second).
+  const latest = useMemo(() => {
     if (!day) return null;
     for (let i = day.length - 1; i >= 0; i--) {
       if (day[i].pm25 != null || day[i].o3 != null || day[i].no2 != null) return { reading: day[i], index: i, hour: hourOfTs(day[i].ts) };
     }
     return null;
-  })();
+  }, [day]);
 
   // The beat report describes the hour being heard; a seek made after it (paused or at rest) supersedes it, so the page reads the seeked hour, not the hour the report described.
   const report = beat && !(seekAt && seekAt.t > beatAtRef.current) ? beat : null;
   // At rest the page reads one hour of the loaded day: the paused or seeked hour if there is one and the day has it, else the latest reporting hour.
-  const rest = pausedHour != null && day && day[pausedHour] ? { reading: day[pausedHour], index: pausedHour, hour: hourOfTs(day[pausedHour].ts) } : latest;
+  const rest = useMemo(
+    () => (pausedHour != null && day && day[pausedHour] ? { reading: day[pausedHour], index: pausedHour, hour: hourOfTs(day[pausedHour].ts) } : latest),
+    [pausedHour, day, latest],
+  );
   // Index → clock hour of that reading; identity on an archive day, the window's own hours on the live path. Fractions carry across so the eased position stays smooth.
   const clockOf = (i: number): number => {
     if (!day || day.length === 0) return i;

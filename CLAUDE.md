@@ -20,15 +20,14 @@ Shipped and working:
 - `src/content.ts` holds the prose (DSN-01). `src/utils/theme.ts` holds the tokens (DSN-02).
 - The engine is the Phase 0 engine, not the Figma one: `src/engine/SynthEngine.ts` with `contour.ts`, `euclid.ts`, `scales.ts`, `aqi.ts`. FM voices, Euclidean pulse, six tiers, fixed 90 BPM (SON-01 to SON-03, SON-05, SON-06 done).
 - The static archive is built and committed: `public/data/{borough}-{year}.json` for 2020 to the current-year snapshot, plus `anchors.json` — 44 files. `ARCHIVE_LAST_DATE` in `nycOpenData.ts` is 2026-07-20, which is genuinely the last day with complete PM2.5; the snapshot files run to 2026-08-01 with PM2.5 falling away after the 20th.
-- Tests exist: vitest, `npm test`, 8 files and 54 tests covering the AQI tables, the Euclidean pulse, the monitor mapping, the graph series, solar position and time helpers.
+- Tests exist: vitest, `npm test`, 8 files and 54 tests covering the AQI tables, the Euclidean pulse, the monitor mapping, the graph series, solar position and time helpers. ESLint runs the two react-hooks rules and nothing else (`npm run lint`, CLN-09): correctness, not style.
 - The dead code is gone: `src/components/ui/`, `src/imports/`, `src/components/figma/`, `src/assets/`, `src/guidelines/` and the unused dependencies were all deleted (CLN-01 to CLN-05, CLN-07, CLN-08).
 
 Not yet done (see BACKLOG.md):
 - Imagine is not built: no virtual-AQI wiring (SON-04), no counterfactual selector (UX-04), no pollutant sliders (UX-05), no speculative indicator (UX-06).
 - The bed is still the Phase 0 placeholder; the real one is Shoro's to write (SON-10).
 - The timeline's drawn lag gap (UX-03, BUG-02). The lag IS stated in prose in the About overlay.
-- No linter, and ten `eslint-disable react-hooks/exhaustive-deps` directives that nothing enforces (CLN-09, BUG-51).
-- No landmarks and no `h1` on the page (A11Y-01, BUG-48).
+- No landmarks and no `h1` on the page (A11Y-01, BUG-48), parked: what the page's structure should be is a design question.
 - Copy placeholders awaiting Shoro: `ENTRY.title`, `ENTRY.line`, `LIVE_STATUS.*`, `ABOUT.close`, `ABOUT.dismiss`.
 
 ## Commands
@@ -39,6 +38,7 @@ npm run dev       # Vite dev server on port 55128, frontend only; without API ke
 vercel dev        # frontend + serverless functions with real APIs (needs .env with the three keys)
 npm run build     # production build to build/
 npm test          # vitest, 54 tests
+npm run lint      # eslint: react-hooks rules only, correctness not style. Zero problems is the expected state.
 
 # npx tsc --noEmit  # vite build does NOT typecheck; run this too before calling a change done
 ```

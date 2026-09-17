@@ -122,7 +122,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       gridValues: tab === "aqi" ? AQI_CATEGORIES.map((k) => k.max).filter((v) => v <= max) : [Math.round(max / 1.08), Math.round(max / 2.16)],
       isAqi: tab === "aqi" ? 1 : 0,
     };
-  }, [series, tab, dayId, narrow]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [series, tab, dayId, narrow]);
   // The lift and the theme are read at draw time (below), not baked into the frame: they colour the ramp, they do not move the line.
   const liftRef = useRef(lift); liftRef.current = lift;
   const transitionRef = useRef<{ from: Frame | null; to: Frame; start: number; ms: number }>({ from: null, to: target, start: 0, ms: 0 });
@@ -486,7 +486,9 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     return () => { drawRef.current = null; cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); window.visualViewport?.removeEventListener("resize", onResize); };
   }, [day, playing, live]); // eslint-disable-line react-hooks/exhaustive-deps
   // What is drawn changed (a new target frame: a tab, a lift, a theme; or, when held, the held playhead): one redraw. While playing the loop already redraws every frame and needs no nudge.
-  useEffect(() => { if (!playing) drawRef.current?.(); }, [target, c, lift, playing, running ? 0 : playheadHour]);
+  // The held playhead is a dependency only while stopped; running, the loop already redraws every frame. Named rather than written into the array, so the rule can check the array statically (BUG-51).
+  const heldPlayhead = running ? 0 : playheadHour;
+  useEffect(() => { if (!playing) drawRef.current?.(); }, [target, c, lift, playing, heldPlayhead]);
 
   return (
     <div ref={wrapRef} style={{ position: "relative", width: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>

@@ -8,32 +8,42 @@ NYC AQI Synth: a single-page web app that plays New York's air as music. Live ai
 
 The sonification model (STRATEGY §3) is the intellectual core. Ozone's hourly contour is the melody, NO2's hourly contour drives a Euclidean pulse, PM2.5 sets dissonance (scale tier, FM harmonicity, detune, reverb). Every parameter change needs a rationale linking a measurement to a sound, in a code comment.
 
-## Current state of the repo (August 26, 2026)
+## Current state of the repo (September 17, 2026)
 
-Be precise about what exists. Most of STRATEGY.md is target state, not shipped state.
+Be precise about what exists. Much of STRATEGY.md is still target state, but far less than it was: the sections below were last reconciled against the working tree on 2026-09-17.
 
 Shipped and working:
-- React 18 + TypeScript + Vite (SWC), Tailwind v4, Tone.js, motion/react, Canvas API.
-- Vercel serverless routes under `api/`: `aqi/current.ts` (AirNow proxy), `aqi/historical.ts` (EPA AQS proxy), `health.ts`, `aqi/diagnostic.ts`. Shared logic in `api/_lib/aqi.ts`. CDN caching via `Cache-Control: s-maxage` (current 1800, historical 86400 with swr 604800). No storage layer.
-- Deployed at interactive-aqi-synth.vercel.app from GitHub main. Env vars on Vercel: `AIRNOW_API_KEY`, `EPA_AQS_EMAIL`, `EPA_AQS_API_KEY`.
-- `/` is the scene (`src/scene/ScenePage.tsx`, D-40, 2026-09-15); `/scene` is kept as an alias and `/scene-test` is the tuning harness. The earlier typographic page (`App.tsx`) is deleted. Utilities: `utils/theme.ts`, `utils/nycOpenData.ts`.
+- React 18 + TypeScript + Vite (SWC), Tailwind v4, Tone.js, three.js via @react-three/fiber and postprocessing for the sky, Canvas 2D for the graph.
+- Vercel serverless routes under `api/`: `aqi/current.ts` (AirNow data endpoint, NYC bbox, per site), `aqi/historical.ts` (EPA AQS, current year only), `health.ts`, `aqi/diagnostic.ts`. Shared logic in `api/_lib/aqi.ts`. CDN caching via `Cache-Control: s-maxage`; `vercel.json` sets `maxDuration: 300` on the historical route.
+- Deployed at aqi-synth.vercel.app from GitHub main. Env vars on Vercel: `AIRNOW_API_KEY`, `EPA_AQS_EMAIL`, `EPA_AQS_API_KEY`.
+- `/` is the scene (`src/scene/ScenePage.tsx`, D-40); `/scene` is an alias and `/scene-test` is the tuning harness. The earlier typographic page (`App.tsx`) is deleted.
+- `src/content.ts` holds the prose (DSN-01). `src/utils/theme.ts` holds the tokens (DSN-02).
+- The engine is the Phase 0 engine, not the Figma one: `src/engine/SynthEngine.ts` with `contour.ts`, `euclid.ts`, `scales.ts`, `aqi.ts`. FM voices, Euclidean pulse, six tiers, fixed 90 BPM (SON-01 to SON-03, SON-05, SON-06 done).
+- The static archive is built and committed: `public/data/{borough}-{year}.json` for 2020 to the current-year snapshot, plus `anchors.json` — 44 files. `ARCHIVE_LAST_DATE` in `nycOpenData.ts` is 2026-07-20, which is genuinely the last day with complete PM2.5; the snapshot files run to 2026-08-01 with PM2.5 falling away after the 20th.
+- Tests exist: vitest, `npm test`, 8 files and 54 tests covering the AQI tables, the Euclidean pulse, the monitor mapping, the graph series, solar position and time helpers.
+- The dead code is gone: `src/components/ui/`, `src/imports/`, `src/components/figma/`, `src/assets/`, `src/guidelines/` and the unused dependencies were all deleted (CLN-01 to CLN-05, CLN-07, CLN-08).
 
 Not yet done (see BACKLOG.md):
-- The engine in `SynthEngine.tsx` is the Figma Make PolySynth random-walk engine. It does not implement STRATEGY §3. Do not extend it; it is replaced wholesale by the Phase 0 engine (BACKLOG PH0-02, SON-01).
-- Live data uses AirNow's zip-code endpoint, which returns no NO2 and the same reading for all boroughs (BUG-11, BUG-12). Historical uses PM2.5 parameter 88101 only, window `currentYear − 2` (BUG-15, BUG-16). PM10 is synthesized when missing (BUG-13). These are fixed by DAT-01 to DAT-05.
-- Dead code is still present: `src/components/ui/` (48 files), `src/imports/`, `src/components/figma/`, `src/assets/*.png`, 33 unused dependencies. None of it is imported. Do not import from it. Deleting it is CLN-01 to CLN-05.
-- No `content.ts`, no static archive under `public/data/`, no tests, no linter.
+- Imagine is not built: no virtual-AQI wiring (SON-04), no counterfactual selector (UX-04), no pollutant sliders (UX-05), no speculative indicator (UX-06).
+- The bed is still the Phase 0 placeholder; the real one is Shoro's to write (SON-10).
+- The timeline's drawn lag gap (UX-03, BUG-02). The lag IS stated in prose in the About overlay.
+- No linter, and ten `eslint-disable react-hooks/exhaustive-deps` directives that nothing enforces (CLN-09, BUG-51).
+- No landmarks and no `h1` on the page (A11Y-01, BUG-48).
+- Copy placeholders awaiting Shoro: `ENTRY.title`, `ENTRY.line`, `LIVE_STATUS.*`, `ABOUT.close`, `ABOUT.dismiss`.
 
 ## Commands
 
 ```bash
-npm install       # uses .npmrc for the JSR registry (can be removed after CLN-03)
-npm run dev       # Vite dev server on port 55128, frontend only, mock data
+npm install
+npm run dev       # Vite dev server on port 55128, frontend only; without API keys the live feed fails and the page says so
 vercel dev        # frontend + serverless functions with real APIs (needs .env with the three keys)
 npm run build     # production build to build/
+npm test          # vitest, 54 tests
+
+# npx tsc --noEmit  # vite build does NOT typecheck; run this too before calling a change done
 ```
 
-`vercel.json`: `{ "framework": "vite", "outputDirectory": "build" }`. Add `functions.maxDuration` for the historical route once INF-03 verifies the plan limit.
+`vercel.json` sets the framework and `outputDirectory: build`, `functions["api/aqi/historical.ts"].maxDuration: 300` (INF-03, done), and rewrites `/scene` and `/scene-test` to the SPA.
 
 ## Target architecture (STRATEGY §4 to §6)
 

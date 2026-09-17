@@ -2,7 +2,7 @@
 
 Known issues for NYC AQI Synth. Severity: S0 (broken, blocks usage), S1 (visible, misleading, or wrong data), S2 (minor or cosmetic), S3 (tech debt). Status: OPEN, IN PROGRESS, FIXED (date, commit), WONTFIX (rationale), SUPERSEDED (which BACKLOG item replaces the fix).
 
-Version 2, August 26, 2026. BUG-01 to BUG-10 are the March list with statuses updated against the repo at commit 6e5bb35. BUG-11 onward were found in the August 26 code review and data audit.
+Version 2, August 26, 2026, reviewed against the working tree 2026-09-17. BUG-01 to BUG-10 are the March list with statuses updated against the repo at commit 6e5bb35. BUG-11 onward were found in the August 26 code review and data audit; BUG-46 onward in the September 17 audit. Two different bugs carried the ID BUG-25; the engine one, which nothing references, is now BUG-45.
 
 ---
 
@@ -11,15 +11,15 @@ Version 2, August 26, 2026. BUG-01 to BUG-10 are the March list with statuses up
 | ID | Severity | Status | Description | Notes |
 |---|---|---|---|---|
 | BUG-01 | S0 | FIXED 2026-05, 6e5bb35 | Supabase paused after a week of inactivity | Supabase removed; Vercel serverless with CDN cache |
-| BUG-02 | S1 | OPEN | EPA lag not communicated to the user | Lag is ~5 weeks as of audit. Fix: dashed gap with computed label, UX-03 |
-| BUG-03 | S1 | OPEN | Live reading appended directly after last EPA day | `App.tsx` `timelineData` memo does `[...historical, current]`. TimelineScrubber has no gap rendering. Architectural: two sources, one array. Fix: UX-03. Do not patch the scrubber |
+| BUG-02 | S1 | PARTLY FIXED 2026-09-17 | EPA lag not communicated to the user | The lag is stated in prose now: the About overlay says the archive "runs about {weeks} weeks behind", computed from its last available day (D-56), and DayNav's range ends there so the gap cannot be scrubbed into. What is still missing is the DRAWN gap on the timeline with its label, which is the rest of UX-03 |
+| BUG-03 | S1 | SUPERSEDED 2026-09-17 | Live reading appended directly after last EPA day | The architecture it describes is gone: App.tsx was deleted with D-40, there is no stitched `[...historical, current]` array and no TimelineScrubber. Live is its own mode and the archive is paged a day at a time (DayNav), so the two sources are never one array. The remaining work is the drawn gap, tracked on BUG-02 and UX-03 |
 | BUG-04 | S2 | FIXED 2026-08-27, 52bf7f3 | Tone.js "scheduled callbacks" and "polyphony" warnings suppressed by monkey-patching `console.warn` | Root cause is the PolySynth engine. Goes away with SON-01; remove the patch in CLN-07 |
 | BUG-05 | S2 | FIXED 2026-08-27, e5e2d2c | 48 shadcn/Radix wrappers shipped with zero imports | Count corrected from 60+. CLN-01 |
 | BUG-06 | S2 | FIXED 2026-08-27, 0c9a731 | Map on desktop, pills on mobile, no continuity | UX-09 |
 | BUG-07 | S3 | FIXED 2026-08-27, e5e2d2c | Make export `src/imports/InteractiveAqiSynth.tsx` (2,277 lines) + `svg-1l4tu5jyx0.ts` dead | Zero imports. CLN-02 |
 | BUG-08 | S3 | FIXED 2026-08-27, e5e2d2c | ~40 versioned aliases in vite.config.ts | CLN-04 |
-| BUG-09 | S2 | OPEN | Theme doesn't persist across refresh | POL-03 |
-| BUG-10 | S2 | OPEN | Orb trails visible on dark→light switch | Fade-rect alpha tuned for dark. VIZ-02 |
+| BUG-09 | S2 | WONTFIX 2026-09-17 | Theme doesn't persist across refresh | There is no theme to persist: the scene sets ThemeContext to "dark" as a constant (ScenePage) and nothing switches it. The page's light is the sky's, which follows the hour of the day being played. A real light/dark split is DSN-06, Phase 2; POL-03 goes with this |
+| BUG-10 | S2 | SUPERSEDED 2026-09-17 by D-19 | Orb trails visible on dark→light switch | The orbs were deleted with D-19 and there is no theme switch to trail across (BUG-09). VIZ-02 was already marked superseded; this is the matching close |
 
 ## Bugs found August 26, 2026
 
@@ -40,14 +40,14 @@ Version 2, August 26, 2026. BUG-01 to BUG-10 are the March list with statuses up
 | BUG-21 | S2 | FIXED 2026-08-27, 8d4573f | Loading copy says "Waking up the server..." | Supabase-era. Fix: UX-10 |
 | BUG-22 | S3 | FIXED 2026-08-27, e5e2d2c | `hono` still in dependencies | Leftover from the Deno server. Fix: INF-04, CLN-03 |
 | BUG-23 | S2 | FIXED 2026-08-27, 6473a4a | `fetchHistorical` assumes a 90 s deadline; `vercel.json` sets no `maxDuration` | A 16 s cold fetch has succeeded, so the budget is above 10 s, but the actual limit is unverified. Fix: INF-03 |
-| BUG-24 | S3 | OPEN | README is Figma Make boilerplate with a link to the Figma file | Fix: CLN-06 |
+| BUG-24 | S3 | FIXED 2026-09-17 | README is Figma Make boilerplate with a link to the Figma file | Rewritten: what the piece is, how to run it, where the docs are, what is and is not built. CLN-06 |
 | BUG-25 | S1 | FIXED 2026-08-27, see sprint 2 D-18 commit | AirNow real-time feed carries no New York NO2 | Verified empirically 2026-08-27: 7-day /aq/data/ pull over the NYC bbox returned 638 NO2 rows, all state 34 (New Jersey); zero NY sites. NYSDEC pushes O3 and PM2.5 to AirNow but not NO2, so the live pulse voice rests (per §4.4) even though Bronx/Queens NO2 exists in EPA AQS at ~5 weeks lag. Ruled D-18: live absence filled from the archive typical profile per borough/month/day-type, source 'typical', disclosed. DAT-12 researches a real live source |
 
 ### Engine (superseded wholesale by SON-01, recorded for the case study)
 
 | ID | Severity | Status | Description | Notes |
 |---|---|---|---|---|
-| BUG-25 | S1 | SUPERSEDED | Every musical decision derives from one scalar, `tension = aqi/180` | Pollutant values touch only effects. "Melody encodes pollutant profile," "arp reflects volatility," "bass carries PM residue" do not exist in code. SON-01 |
+| BUG-45 | S1 | SUPERSEDED | Every musical decision derives from one scalar, `tension = aqi/180` | Pollutant values touch only effects. "Melody encodes pollutant profile," "arp reflects volatility," "bass carries PM residue" do not exist in code. SON-01 |
 | BUG-26 | S2 | SUPERSEDED | Bass and pad read the same hardcoded `PROG` array | Bass is a root doubler. SON-01 |
 | BUG-27 | S2 | SUPERSEDED | All triggers except pad and bass root are probabilistic | No metrical commitment; the "no hook" critique in code form. SON-01 |
 | BUG-28 | S2 | SUPERSEDED | Displayed BPM range 72 to 110 does not match the v1 spec's 60 to 140 | Moot under D-12 (fixed 90). SON-01 |
@@ -67,6 +67,18 @@ Version 2, August 26, 2026. BUG-01 to BUG-10 are the March list with statuses up
 | BUG-31 | S2 | FIXED 2026-09-16 | The graph redrew the whole plot and rebuilt its observers on every render of the page | `themeColors()` returned a new object per call and the graph's draw effect listed it (and the target frame) as dependencies, so every page render tore the effect down: about a thousand full canvas redraws and 150 ResizeObserver rebuilds a second while anything eased, and the scene page arriving from the monitor stuttered while its ramp lift eased (Shoro: the swipe up was smooth, the inverse choppy; the monitor has no canvas). Fix: one colour object per theme; the draw effect owns only the canvas, observers and loop, a second effect asks for one redraw when the frame changes; the sampler skips panels on the off-screen page and every panel while a switch is in flight; the hidden graph gets no moving playhead. At rest and through paused switches the plot now draws zero times a second in either direction. |
 | BUG-30 | S1 | FIXED 2026-09-15 | AQI is PM2.5 alone on the 2012 breakpoints | Every AQI on the page (number, word, graph line, daily) ran the hour's PM2.5 through the pre-2024 table; O3 and NO2 sub-indices existed in api/_lib/aqi.ts unused. EPA reports the highest sub-index, daily from daily statistics, real time from the NowCast, PM2.5 Good ending at 9.0 since May 2024. Fix: engine/aqi.ts, D-42 |
 | BUG-29 | S2 | SUPERSEDED | `getMusicMapping` in `mockData.ts` still uses v1 mood words (Serene, Dreamy, Pensive, Uneasy, Turbulent) | Replaced by Easy / Shallow / Tight / Ragged / Suffocating in content.ts. DSN-01 |
+
+## Found in the 2026-09-17 audit
+
+| ID | Severity | Status | Description | Notes |
+|---|---|---|---|---|
+| BUG-46 | S2 | FIXED 2026-09-17 | A failed anchors fetch could never be retried: "Try again" was permanently stuck | `getAnchors` caches its promise with `anchorsPromise ??= fetchJson(...)`, and a rejected promise caches exactly like a resolved one. The first paint awaits the live snapshot and the anchors together, but the retry cleared only the live one, so one transient failure on /data/anchors.json left the error toast up for the life of the page however many times Try again was pressed. The same class as the live-fetch cache D-60 already fixed, missed on the sibling. Fix: `forgetCurrent` becomes `forgetLive` and clears both. Verified by blocking the anchors file, then unblocking: the retry re-requests it (1 → 2) where before it resolved the cached rejection |
+| BUG-47 | S2 | FIXED 2026-09-17 | After a fast swipe the next page switch was refused for most of a beat | Introduced the same day with the variable-duration release (D-62): `switchView` set `lockRef` to a fixed PAGE_MS while the push itself now runs for PAGE_MS × (1 − t0), so a swipe released near the end landed in about a third of a beat and then ignored input for the other two thirds. Fix: the lock and the movement fallback both take the move's own duration |
+| BUG-48 | S2 | OPEN | The page has no landmarks and no heading | Measured on the live page: zero `main`, `nav`, `header`, `footer` or `role="main"` elements, and no `h1` anywhere (the About overlay has one, but only while open). A screen reader gets 26 correctly named controls with no structure to move between them and no page heading. Everything else in the sweep was clean: lang is set, every interactive element has a name, no image lacks alt, no positive tabindex, the volume slider and the graph canvas are labelled. Fix: a landmark around the scaffold and a heading for the page, visually hidden if the design does not want one drawn |
+| BUG-49 | S3 | OPEN | The sky's WebGL canvas is not hidden from assistive tech | Three canvases are on the page: the graph's is labelled, one is `aria-hidden="true"`, and the sky's own is neither. It is decorative and should say so |
+| BUG-50 | S3 | OPEN | The engine is never torn down, and a release ramp outlives it | `SynthEngine` has no dispose: its Tone nodes, callbacks and the `releaseTimer` interval live as long as the module. The timer is cleared when it completes or restarts, but not on teardown, so a ramp in flight keeps writing to an envelope for up to a beat after the page is done with it. Harmless in a single-page app, visible under dev HMR, and the kind of thing that bites when a second engine is ever constructed |
+| BUG-52 | S3 | OPEN | Two dead modules survived the CLN-01 to CLN-05 sweep | `src/components/RecordButton.tsx` (199 lines) and `src/utils/mockData.ts` (73 lines) have zero references anywhere in src, api, scripts or the tests. RecordButton still ships MediaRecorder wiring nothing mounts; mockData is the pre-archive fixture whose `getMusicMapping` BUG-29 already recorded as superseded. 272 lines compiled into nothing. Fix: CLN-11 |
+| BUG-51 | S3 | OPEN | Ten `eslint-disable react-hooks/exhaustive-deps` directives, and no ESLint | There is no ESLint config in the repo, so the rule those lines suppress has never run. They read as deliberate decisions but nothing checks them, and any genuine stale-closure bug they cover is invisible. Either the linter goes in and they start meaning something, or they are decoration |
 
 ---
 

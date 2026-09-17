@@ -80,9 +80,10 @@ export function getCurrentAll(): Promise<CurrentSnapshot> {
   })();
   return currentPromise;
 }
-// A failed live fetch is cached like a good one (the promise is the cache), so a retry has to drop it first (D-60, 2026-09-17).
-export function forgetCurrent(): void {
+// A failed fetch is cached like a good one (the promise IS the cache), so a retry has to drop it first (D-60, 2026-09-17). Both of them: the first paint awaits the live snapshot AND the anchors together, and clearing only the live one left a single failed anchors fetch cached for the life of the page, so Try again could never recover from it however many times it was pressed (found in the 2026-09-17 audit).
+export function forgetLive(): void {
   currentPromise = null;
+  anchorsPromise = null;
 }
 
 // Live route: last 24 local hours for one borough.

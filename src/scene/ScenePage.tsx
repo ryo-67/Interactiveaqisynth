@@ -182,16 +182,15 @@ export default function ScenePage() {
   const switchView = (next: View, fromPx?: number) => {
     if (performance.now() < lockRef.current || aboutRef.current) return;
     if (next === page && fromPx == null) return;
-    lockRef.current = performance.now() + PAGE_MS;
-    
-    markMoving(REDUCED_MOTION ? PAGE_MS + 50 : PAGE_MS + 3000); // the push itself ends the movement (stepPush); the timer is the fallback
-    if (!REDUCED_MOTION) {
-      // The animation is always the same one: from the rest of the page being left to the rest of the page arriving. A drag does not change it, it only says how far through it the finger got — so a release resumes it there rather than starting something of its own.
-      const to = restOffset(next);
-      const origin = restOffset(next === "scene" ? "monitor" : "scene");
-      const t0 = fromPx == null || to === origin ? 0 : easeAt((fromPx - origin) / (to - origin));
-      startPush(origin, to, next, t0);
-    }
+    // The animation is always the same one: from the rest of the page being left to the rest of the page arriving. A drag does not change it, it only says how far through it the finger got — so a release resumes it there rather than starting something of its own.
+    const to = restOffset(next);
+    const origin = restOffset(next === "scene" ? "monitor" : "scene");
+    const t0 = fromPx == null || to === origin ? 0 : easeAt((fromPx - origin) / (to - origin));
+    const ms = PAGE_MS * (1 - t0);
+    // The lock lasts the MOVE, not a fixed beat (2026-09-17). It was PAGE_MS whatever t0 was, so a swipe released near the end landed in a third of a beat and then refused the next switch for the other two thirds.
+    lockRef.current = performance.now() + ms;
+    markMoving(REDUCED_MOTION ? PAGE_MS + 50 : ms + 3000); // the push itself ends the movement (stepPush); the timer is the fallback
+    if (!REDUCED_MOTION) startPush(origin, to, next, t0);
     if (next !== page) setPage(next);
   };
   // The address bar is never written (Shoro, 2026-09-17). Which graph track is open, which of the two pages is showing and whether the reading is up are all moment-to-moment state, not somewhere a visitor meant to be, and writing them left the address changing under every tab press, page turn and press of Patch notes. All three are still READ at load, so a link that carries them still opens on them and the harness can still ask for one; none of them is written back.

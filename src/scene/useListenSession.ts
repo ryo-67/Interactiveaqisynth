@@ -13,7 +13,7 @@ import { tierIndexOf } from "../engine/scales";
 import { seriesAQI } from "../engine/aqi";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
 import { PINS } from "../content";
-import { getCurrentAll, forgetCurrent, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
+import { getCurrentAll, forgetLive, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
 
 // Dev-only fixture select (?dev=1): never renders for a visitor.
 export const DEV = new URLSearchParams(window.location.search).has("dev");
@@ -130,7 +130,7 @@ export function useListenSession(): ListenSession {
       cancelled = true;
     };
   }, [liveAttempt]);
-  const retryLive = useCallback(() => { forgetCurrent(); setLiveAttempt((n) => n + 1); }, []);
+  const retryLive = useCallback(() => { forgetLive(); setLiveAttempt((n) => n + 1); }, []);
 
   // A chosen day loads on demand, for this borough; nothing is fetched until asked (BUG-20).
   useEffect(() => {

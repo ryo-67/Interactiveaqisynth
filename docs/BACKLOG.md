@@ -2,7 +2,7 @@
 
 Prioritized task backlog for NYC AQI Synth. Keyed to STRATEGY.md v2 section anchors. Priority: P0 (must ship for the phase named), P1 (should), P2 (stretch), P3 (later). Status: TODO, IN PROGRESS, DONE (with date), BLOCKED (with blocker), PARKED (logged, not committed), WONTFIX (with rationale).
 
-Version 2, August 26, 2026. Supersedes the March 12 backlog. Every v1 item is accounted for in §Disposition at the bottom.
+Version 2, August 26, 2026, statuses reviewed against the working tree 2026-09-17. Supersedes the March 12 backlog. Every v1 item is accounted for in §Disposition at the bottom.
 
 Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 
@@ -41,7 +41,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
 | INF-01 | P0 | DONE 2026-05 | Migrate off Supabase to Vercel serverless | Commit 6e5bb35. Four routes under `api/`, shared `_lib/aqi.ts`, CDN caching |
-| INF-02 | P0 | DONE 2026-05 | GitHub repo and Vercel project | ryo-67/Interactiveaqisynth → interactive-aqi-synth.vercel.app, env vars set |
+| INF-02 | P0 | DONE 2026-05 | GitHub repo and Vercel project | ryo-67/Interactiveaqisynth → aqi-synth.vercel.app (primary as of 2026-09-17; the original interactive-aqi-synth.vercel.app redirects), env vars set |
 | INF-03 | P0 | DONE 2026-08-27 | Verify/set `maxDuration` for historical route | `_lib/aqi.ts` assumes a 90 s deadline; vercel.json sets none. Check plan limits, set explicitly. O-06, BUG-23 |
 | INF-04 | P1 | DONE 2026-08-27 | Remove `hono` and other server leftovers from package.json | Leftover from the Deno server. BUG-22 |
 | INF-05 | P2 | TODO | Cron or on-deploy warm of the historical route | Only if cold EPA fetch is still visible after UX-01 defers historical load |
@@ -55,9 +55,9 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | CLN-03 | P0 | DONE 2026-08-27 | Remove 33 unused dependencies | All @radix-ui/*, class-variance-authority, cmdk, embla-carousel-react, hono, input-otp, next-themes, react-day-picker, react-hook-form, react-resizable-panels, recharts, sonner, vaul, tailwind-merge (verify), clsx (verify). Keep: react, react-dom, tone, motion, lucide-react |
 | CLN-04 | P0 | DONE 2026-08-27 | Clean vite.config.ts aliases | Remove versioned package aliases and `figma:asset` alias once assets are gone. BUG-08 |
 | CLN-05 | P1 | DONE 2026-08-27 | Delete `src/assets/*.png`, `src/Attributions.md`, `src/guidelines/` | Make scaffold |
-| CLN-06 | P1 | TODO | Replace README | Currently Make boilerplate. One paragraph, link to STRATEGY.md. BUG-24 |
+| CLN-06 | P1 | DONE 2026-09-17 | Replace README | What the piece is, how to run it, where the docs are, and an honest note on what is and is not built. BUG-24 |
 | CLN-07 | P1 | DONE 2026-08-27 | Remove `console.warn` monkey-patch in SynthEngine | Address polyphony/scheduling at root once the engine is replaced. BUG-04 |
-| CLN-08 | P2 | TODO | Remove `warmupEdgeFunction`, `runDiagnostic` from load path | Diagnostic route can stay; it should not run on first paint |
+| CLN-08 | P2 | DONE (verified 2026-09-17) | Remove `warmupEdgeFunction`, `runDiagnostic` from load path | Neither exists in src/ any more; they went with App.tsx and the UX-01 load rewrite. The diagnostic ROUTE is still there, which is what was wanted, and nothing calls it on first paint |
 
 ## Sonification (STRATEGY §3)
 
@@ -80,7 +80,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 |---|---|---|---|---|
 | UX-01 | P0 | DONE 2026-08-27 | Load sequence: Listen needs only the last 24 h | Remove health warmup and five sequential historical fetches from first paint. Historical loads when the timeline opens. Fixes BUG-20 |
 | UX-02 | P0 | PARTIAL 2026-09-17 (D-61) | Entry moment | The loading screen before the tool is in (components/Entry.tsx), which covers the live-fetch latency. Framing copy, first-listen and the Tone.start() gesture are still open; ENTRY.title and ENTRY.line in content.ts are placeholders awaiting Shoro |
-| UX-03 | P0 | PARTIAL 2026-09-15 (DayNav: pagination, pins, calendar; ribbon and drawn lag gap still to do) | Timeline with pins and lag gap | Dashed gap from last EPA day to today, label with weeks computed at load. Pins from §2.2. Replaces stitched timeline. Fixes BUG-02, BUG-03 |
+| UX-03 | P0 | PARTIAL 2026-09-17 (DayNav: pagination, pins, calendar; the lag is stated in prose; the ribbon and the DRAWN gap still to do) | Timeline with pins and lag gap | Dashed gap from last EPA day to today, label with weeks computed at load. Pins from §2.2. Replaces stitched timeline. BUG-03 is closed by the architecture change (no stitched array exists); BUG-02 is partly closed by the About overlay stating the lag in weeks, and what remains of it is the drawn gap |
 | UX-04 | P0 | TODO | Counterfactual selector | WHO, Delhi, Lockdown. Visually distinct from pins. §2.3 |
 | UX-05 | P0 | TODO | Pollutant sliders with real-value anchors | PM2.5, O3, NO2. Anchor = current hour's reading. No PM10 slider |
 | UX-06 | P0 | TODO | Speculative state indicator | On AQI number and orbs |
@@ -124,9 +124,20 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
-| POL-01 | P1 | TODO | Recording filename with borough, date, AQI | |
+| POL-01 | P1 | TODO | Recording filename with borough, date, AQI | Note (2026-09-17 audit): there is no recording in the app. `RecordButton.tsx` exists but nothing mounts it (BUG-52, CLN-11), so this item is really "build recording", not "name its file" |
 | POL-02 | P1 | TODO | Share modal shows real vs virtual in Imagine | |
-| POL-03 | P2 | TODO | Theme persists across refresh | BUG-09. localStorage is fine in the deployed app |
+| POL-03 | P2 | WONTFIX 2026-09-17 | Theme persists across refresh | There is no theme to persist: ThemeContext is the constant "dark" and nothing switches it (BUG-09). The page's light is the sky's. A real light/dark split is DSN-06 |
+
+## Found in the 2026-09-17 audit
+
+| ID | Priority | Status | Task | Notes |
+|---|---|---|---|---|
+| A11Y-01 | P1 | TODO | Landmarks and a page heading | The page has no `main`, `nav`, `header` or `footer` element and no `h1`, so a screen reader gets 26 correctly named controls and no structure to move between them. Everything else in the sweep was clean. BUG-48; the sky canvas wants `aria-hidden` with it, BUG-49 |
+| CLN-09 | P2 | TODO | A linter, or drop the directives that pretend there is one | Ten `eslint-disable react-hooks/exhaustive-deps` lines and no ESLint config, so the rule has never run and nothing checks what they suppress. BUG-51 |
+| CLN-11 | P2 | TODO | Delete `src/components/RecordButton.tsx` and `src/utils/mockData.ts` | 272 lines with zero references, missed by the CLN-01 to CLN-05 sweep. Recording is on the backlog as POL-01, so the component is either wired up or deleted and rewritten when it is; keeping an unmounted one is the worst of both. BUG-52 |
+| CLN-10 | P3 | TODO | Give SynthEngine a teardown | No dispose: Tone nodes, callbacks and the release-ramp interval live as long as the module, and a ramp in flight outlives the page. BUG-50 |
+| DAT-14 | P1 | TODO | Rebuild the current-year archive snapshot | `public/data/*-2026.json` ends 2026-08-01 and `ARCHIVE_LAST_DATE` is 2026-07-20, the last day with complete PM2.5 — both correct as written, but the snapshot is about seven weeks behind today. Re-run `scripts/build-current-year.ts`, commit, and move the constant (CLAUDE.md) |
+| DOC-04 | P2 | DONE 2026-09-17 | GitHub project description and topics | Drafted in docs/GITHUB.md and applied by Shoro the same day: description, homepage moved to aqi-synth.vercel.app, seventeen topics. The repository had none of the three |
 
 ## Docs
 

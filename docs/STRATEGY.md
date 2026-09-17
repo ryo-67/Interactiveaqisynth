@@ -322,7 +322,7 @@ Scene (SkyView: the two sky models, stars, bloom, the sun disc; SmokeLayer, Nigh
 
 ### §6.1 Current state (repo, August 2026)
 
-- GitHub: ryo-67/Interactiveaqisynth, main. Vercel project interactive-aqi-synth, auto-deploy on push. Live at interactive-aqi-synth.vercel.app.
+- GitHub: ryo-67/Interactiveaqisynth, main. Vercel project auto-deploys on push. Live at aqi-synth.vercel.app (2026-09-17: this is the primary domain now; the older interactive-aqi-synth.vercel.app 307-redirects to it).
 - Supabase fully removed. Four Vercel serverless routes under api/ with shared api/_lib/aqi.ts. CDN caching via Cache-Control.
 - Environment variables: AIRNOW_API_KEY, EPA_AQS_EMAIL, EPA_AQS_API_KEY.
 - Dead code still present: 48 shadcn/Radix wrappers, the 2,277-line Figma Make export, 33 unused dependencies including hono. No tests, no linter.

@@ -5,7 +5,7 @@
 // It is only ever the FIRST moment. A later fetch — the retry on the live line — never brings it back; by then the visitor is inside and the page should not be taken away from them.
 import React, { useEffect, useRef, useState } from "react";
 import { Glass } from "./Glass";
-import { useTheme, themeColors, families, typeScale, motion } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, motion, GLASS } from "../utils/theme";
 import { ENTRY } from "../content";
 
 const FADE_MS = motion.beatMs; // one beat to lift
@@ -35,7 +35,8 @@ export function Entry({ ready, onLift, onGone }: { ready: boolean; onLift: () =>
   if (done) return null;
   return (
     <div className="scene-entry" data-lifting={lifting} role="status" aria-live="polite" style={{ "--entry-ms": `${FADE_MS}ms` } as React.CSSProperties}>
-      <Glass material="frosted" className="scene-entry-panel">
+      {/* The calendar popover's material, pinned (Shoro, 2026-09-17). Every other surface keys its fill to the sky — denser under a bright noon, thinner at night, warm under smoke — and at load that sky is still arriving: the day lands, the sun's elevation is recomputed, the veil settles, and the panel walked through a tint per step while the visitor watched. Here there is nothing to key to yet, so the fill is the popover's own numbers held still: the navy at GLASS.fillAlphaFixed, no night lift. The popover gets those numbers by being portalled out of the scene and landing on the .glass fallback; this asks for them by name. Like the popover, it sits on an already-tinted surface — the scrim below — rather than on open sky, so it needs nothing added to read as dense. */}
+      <Glass material="frosted" className="scene-entry-panel" style={{ "--glass-fill": GLASS.fill, "--glass-fill-alpha": String(GLASS.fillAlphaFixed), "--glass-lift": "0", "--glass-on": "1" } as React.CSSProperties}>
         {/* A step under the heading size (Shoro, 2026-09-17: too big for the panel it sits in), still stepping with the breakpoint. */}
         <h1 style={{ margin: 0, fontFamily: families.serifItalic, fontStyle: "italic", fontWeight: 400, fontSize: `calc(var(--heading-size, ${typeScale.heading.size}) * 0.7)`, lineHeight: 1.2, color: c.textPrimary }}>{ENTRY.title}</h1>
         <p style={{ margin: 0, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, color: c.textMuted }}>{ENTRY.line}</p>

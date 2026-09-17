@@ -494,6 +494,8 @@ export const GLASS = {
   veilFrom: 0.4, // veil density from which smoke starts thinning the frost (a clear day carries 0.23 and its sky is bright, so nothing below this counts)…
   veilFull: 0.9, // …and at which the frost is at its night alpha (a wildfire or summer-haze day sits at 0.92, its sky at 0.05 luminance)
   edgeAlpha: 0.35,
+  // The one fill that is NOT keyed to the sky (2026-09-17). The calendar popover is portalled to document.body, so it inherits none of the scene's properties and lands on the .glass rule's own fallback: this alpha, the navy, no night lift, whatever the day is doing. That is what makes it read denser and steadier than the panels around it, and it is the material for any surface that must hold still — the entry screen, where the sky it would key to has not arrived yet. Keep it equal to the fallback in index.css .glass.
+  fillAlphaFixed: 0.62,
   // Frosted (the content material): heavier blur and a touch more fill than the control material.
   // Dither (2026-09-15): the blur quantizes the sky behind a panel into 8-bit steps that read as bands, more so in Chromium; a fine white noise over the fill at this opacity breaks them. skyDither is the same noise over the sky's gradient layers (night, golden, plume), which band on their own.
   ditherAlpha: 0.04,

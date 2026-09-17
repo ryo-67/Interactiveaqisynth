@@ -30,7 +30,13 @@ export function Routing({ m }: { m: MonitorState }) {
     if (!el) return;
     const measure = () => {
       const r = el.getBoundingClientRect();
-      const at = (key: string) => { const p = pillRefs.current[key]; if (!p) return null; const b = p.getBoundingClientRect(); return { x: b.left - r.left + b.width / 2, top: b.top - r.top, bottom: b.bottom - r.top }; };
+      // Rectangles are what is DRAWN, and since D-62 a page that is not showing carries a scale, so every rect
+      // here comes back at 0.9 while the SVG is sized in CSS pixels — the whole patch bay was drawn a tenth
+      // small and anchored top-left, so no cable reached its pill (2026-09-17). The pills sit inside a
+      // positioned row, so offsetLeft alone would be relative to the wrong box; instead the scale is divided
+      // back out, which is right for any ancestor transform rather than just this one.
+      const k = r.width > 0 ? el.offsetWidth / r.width : 1;
+      const at = (key: string) => { const p = pillRefs.current[key]; if (!p) return null; const b = p.getBoundingClientRect(); return { x: (b.left - r.left + b.width / 2) * k, top: (b.top - r.top) * k, bottom: (b.bottom - r.top) * k }; };
       const next: Cable[] = [];
       for (const [s, d] of CABLES) {
         const a = at(`s:${s}`), b = at(`d:${d}`);
@@ -39,7 +45,7 @@ export function Routing({ m }: { m: MonitorState }) {
         next.push({ s, d, path: `M ${a.x} ${y1} C ${a.x} ${y1 + (y2 - y1) * 0.5 + sag}, ${b.x} ${y2 - (y2 - y1) * 0.5 + sag}, ${b.x} ${y2}` });
       }
       setCables(next);
-      setSize({ w: r.width, h: r.height });
+      setSize({ w: el.offsetWidth, h: el.offsetHeight }); // layout size, not the drawn one
     };
     measure();
     const ro = new ResizeObserver(measure);

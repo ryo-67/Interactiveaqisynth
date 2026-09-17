@@ -143,7 +143,15 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     let raf = 0;
 
     const draw = () => {
-      const cssW = wrap.getBoundingClientRect().width; // the real, fractional width: clientWidth rounds, and a buffer sized from the rounded width was stretched across the real box by a fraction of a pixel, blurring every line
+      // Rectangles are what is DRAWN, and since D-62 a page that is not showing carries a scale, so a measurement
+      // taken while this page is the off one comes back a tenth small and the buffer is sized for the wrong box.
+      // The observer only fires on LAYOUT changes, which a transform is not, so this bites on a window resize made
+      // while the other page is showing rather than on every load — which is how it went unseen where the routing
+      // diagram's did not (2026-09-17). The scale is divided back out from the page's own --page-scale, which is a
+      // plain number rather than a rounded ratio, so the fractional width below stays fractional.
+      const pageScale = Number(getComputedStyle(wrap).getPropertyValue("--page-scale")) || 1;
+      const unscale = 1 / pageScale;
+      const cssW = wrap.getBoundingClientRect().width * unscale; // the real, fractional width: clientWidth rounds, and a buffer sized from the rounded width was stretched across the real box by a fraction of a pixel, blurring every line
       // Breakpoint from the panel's own width: the panel is ~640 on laptop, ~700 on a portrait tablet, ~320 on a phone.
       const bp: "laptop" | "tablet" | "phone" = cssW < 480 ? "phone" : cssW < 760 ? "tablet" : "laptop";
       if ((bp === "phone") !== narrowRef.current) { narrowRef.current = bp === "phone"; setNarrow(narrowRef.current); } // a state change, so the frame re-derives its ceiling and morphs to it
@@ -155,7 +163,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       const fill = getComputedStyle(wrap).getPropertyValue("--graph-fill").trim() === "1";
       const tabs = wrap.querySelector<HTMLElement>("[role=\"tablist\"]"); // by role, not by position (2026-09-16): the playhead's pill was put first in the wrap and was measured as the tab band, so the plot's height came out wrong and changed as the pill moved
       // The band is pulled up into the panel's padding, so the space it takes inside the wrap is from the wrap's top to the band's bottom, plus the gap below it.
-      const tabsH = tabs ? tabs.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top + parseFloat(getComputedStyle(tabs).marginBottom || "0") : 0;
+      const tabsH = tabs ? (tabs.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top) * unscale + parseFloat(getComputedStyle(tabs).marginBottom || "0") : 0; // the rect difference is drawn pixels, the margin is CSS: unscale the first before adding
       const available = wrap.clientHeight - tabsH - GRAPH.labelGutter - axisH;
       // Filling its panel, the plot takes the space the panel gives, down to GRAPH.plotFloor and no further: the breakpoint's tab height had been a floor here too, and on a short laptop it was taller than the space, so the plot ran past the panel's edge and the axis was cut off (Shoro, 2026-09-16). At its content's height the panel is as tall as the breakpoint's plot.
       const tabH = fill ? Math.max(GRAPH.plotFloor, Math.floor(available / 4) * 4) : minTab;

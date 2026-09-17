@@ -18,6 +18,18 @@ Shoro: "citywide" and "typical" don't fit on mobile and look bad. The tab row al
 
 The pills had the same problem and keep the words instead. Below laptop the card head wraps, so a pill carrying a borrowed word drops under its label, and there it sets its own words rather than running off the card — Tone is the worst case, the only card with two sources and a borrowed one, and "PM2.5 · NO₂ · typical" is wider than a half-width card below about 375. Three things were in the way, each an inline chip style: nowrap, flex 0 0 auto and a fixed height of 20. And at 320 the equal tab shares were no longer enough on their own — a quarter of the band is 59 px and PM2.5 wants 61 — so below 360 the tabs size to content with the spare still shared out. Measured at 430, 414, 390, 375, 360 and 320: no tab cut and no pill past its card at any of them. The pills were measured with the words injected, since a local run without an API key cannot fetch a day that borrows a channel; the tab row was checked with real data.
 
+## 2026-09-17 — Sweeping the rest of the dependencies
+
+lucide-react was not alone. Every declared package was checked against every file the repo owns, and two things came out.
+
+`motion` is a second production dependency nothing imports (BUG-55). It hides well: every `motion` in the source is the LOCAL token object exported from utils/theme.ts — beat lengths, popover timings — imported from there, so a careless grep says it is everywhere. Not one file imports the package. 772 KB, in `dependencies`, and named in the same CLN-03 "Keep" list that got lucide-react wrong. The animation it was kept for has been hand-driven since the D-40 rebuild: requestAnimationFrame and CSS transitions, no library.
+
+And TypeScript was never declared at all (BUG-56). `npx tsc --noEmit` — which CLAUDE.md now tells everyone to run, and which caught a function deleted by a careless range replacement that `vite build` waved straight through — was resolving tsc transitively out of @vercel/node and typescript-eslint. It worked by accident of hoisting: whichever of those two won set the compiler version the entire project typechecks against, and either could change it or drop it in a patch release without anyone noticing. Declared at ^5.9.3, the version already in use, so nothing moves today.
+
+Everything else is genuinely used, including the four `@types/*` packages and `tsx`, which runs the archive builders. One loose end left logged rather than fixed: `tsx` is invoked only from a comment in scripts/build-archive.ts, so the builders have no npm script and cannot be found from package.json.
+
+Production dependencies are down to ten, from twelve this morning and some forty-five before CLN-03.
+
 ## 2026-09-17 — 40 MB of icons nobody imported (BUG-54)
 
 Shoro: lucide-react is in package.json and imported nowhere. It held on every check — no import in src, api, scripts or any config, zero occurrences in the built bundle, and it sat in `dependencies` rather than devDependencies, so 40 MB and 3,576 files were installed on every production install and every Vercel build for nothing.

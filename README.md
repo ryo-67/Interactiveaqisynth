@@ -118,6 +118,8 @@ Every control here is bounded by real measurements at both ends. No referent was
 
 Concept, sonification model, data architecture, interaction design and visual language by Shoro Roy. Figma Make generated the first prototype and Claude Code was the instrument for the rebuild. Neither is a co-designer.
 
+Licensing: the software is MIT ([LICENSE](LICENSE)), the documents and the work itself are CC BY-NC 4.0 ([LICENSE-CONTENT.md](LICENSE-CONTENT.md)), and third-party material keeps its own terms ([NOTICE.md](NOTICE.md)).
+
 Third-party work in the build:
 
 - **Sky models.** Hosek-Wilkie and Preetham, credited in full under [Sky model credits](#sky-model-credits) above.

@@ -127,7 +127,7 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
         <span style={{ color: c.textPrimary }}>{monthLabel}</span>
         <button className="scene-chip" style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label="next month"><ChevronRightIcon /></button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs, fontFamily: families.data, letterSpacing: 0 }}>
+      <div className="scene-cal-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs, fontFamily: families.data, letterSpacing: 0 }}>
         {["S", "M", "T", "W", "T", "F", "S"].map((dd, i) => (
           <span key={i} style={{ textAlign: "center", color: c.textFaint }}>{dd}</span>
         ))}

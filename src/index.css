@@ -1782,7 +1782,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* ——— Phone portrait, layout A (D-64, 2026-10-05; spec docs/superpowers/specs/2026-10-05-phone-layout-design.md). One screen, nothing scrolls, every control 44 at least: the 24 px targets were the complaint. Top to bottom inside the window between Safari's bars (--win-*, BUG-57): the borough as six equal segments; the day pill with the Patch notes notebook beside it; the band (the hero pair and the graph, or the synth's six cards); the transport (play 56, the volume, the page icons). Keyed on data-layout (utils/layout.ts), whose specificity beats the width media queries that still serve the tablet and laptop. ——— */
 .scene-root[data-layout="phone"] .scene-ui {
   --ctl-pill: 44px; --ctl-inner: 44px; --ctl-gap-wide: 0px;
-  --ui-pad: 16px; --ui-gap: 12px; --grid-gap: var(--ui-gap); /* ONE gap on a phone (V2, Shoro, 2026-10-05: the spacing looked off): between the bars and the band, the hero cards, the hero and the graph, the synth cards, the top grid and the transport; it steps to 8 with the height steps below, and every one of them follows */
+  --ui-pad: 16px; --ui-gap: 12px; --grid-gap: var(--ui-gap); /* ONE gap on a phone, 12 at every height and in landscape (Shoro, 2026-10-05: the spacing looked off, then 8 on short screens read as cramped): between the bars and the band, the hero cards, the hero and the graph, the synth cards, the top grid and the transport */
   --display-size: 48px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
   --panel-radius: 16px; --chip-radius: 10px;
   --graph-faint-alpha: 0;
@@ -1826,7 +1826,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout^="phone"] .scene-live-actions-row > button { justify-content: center; height: 44px; border: 1px solid rgba(255, 255, 255, 0.22) !important; background: rgba(255, 255, 255, 0.06) !important; border-radius: 22px !important; }
 /* Height steps on the phone (spec §2), measured on the viewport: standard 700 and up; short 600–699 drops the hero cards' bars and steps the type; shortest under 600 (an SE in Safari is about 560) tightens the cards again. The graph is what gives up the rest. */
 @media (max-height: 699px) {
-  .scene-root[data-layout="phone"] .scene-ui { --display-size: 40px; --ui-gap: 8px; }
+  .scene-root[data-layout="phone"] .scene-ui { --display-size: 40px; }
   .scene-root[data-layout="phone"] .scene-hero-pair .scene-meter, .scene-root[data-layout="phone"] .scene-hero-pair .scene-ladder { display: none; }
   .scene-root[data-layout="phone"] .scene-page-inner { --card-pad: 12px; }
 }
@@ -1838,13 +1838,13 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* ——— Phone landscape, layout L1 (D-64, 2026-10-05). A phone on its side leaves about 780 × 283 between Safari's bars. One row of controls (the borough at a fixed width, the day pill filling the rest, the notebook); the middle with the hero cards stacked in a left column beside the graph, or the synth's six cards 3 × 2; the transport along the bottom with play at 48, still over the 44 floor, so the plot keeps another 8. The sides keep clear of the island: the larger of 16 and the safe-area inset. ——— */
 .scene-root[data-layout="phone-landscape"] .scene-ui {
   --ctl-pill: 44px; --ctl-inner: 44px; --ctl-gap-wide: 0px;
-  --ui-pad: 12px; --ui-gap: 8px; --grid-gap: 8px;
+  --ui-pad: 12px; --ui-gap: 12px; --grid-gap: var(--ui-gap);
   --display-size: 34px; --heading-size: 22px; --heading-line: 26px; --body-size: 13px; --body-line: 18px;
   --panel-radius: 14px; --chip-radius: 10px;
   --graph-faint-alpha: 0;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.scene-root[data-layout="phone-landscape"] .scene-top { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(220px, 280px) auto; grid-template-areas: "borough day patch"; gap: 8px; align-items: stretch; z-index: auto; }
+.scene-root[data-layout="phone-landscape"] .scene-top { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(220px, 280px) auto; grid-template-areas: "borough day patch"; gap: var(--ui-gap); align-items: stretch; z-index: auto; }
 .scene-root[data-layout="phone-landscape"] .scene-top > :not(.scene-patch-slot) { position: relative; z-index: 1; }
 .scene-root[data-layout="phone-landscape"] .scene-top .scene-borough { grid-area: borough; width: auto; padding: 0; container: borough / inline-size; } /* the borough takes what the day pill (capped at 280: "Sep 30, 2026" with its glyph and caret) leaves, and spells the names out when that is enough (V2, Shoro, 2026-10-05: on a wide phone on its side the day pill had grown absurdly long beside six codes) */
 .scene-root[data-layout="phone-landscape"] .scene-top .scene-day { grid-area: day; display: flex; min-width: 0; margin: 0; }
@@ -1872,7 +1872,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone-landscape"] .scene-monitor .scene-card-routing { display: none; }
 .scene-root[data-layout="phone-landscape"] .scene-ui { --slider-width: 100%; --pill-room: 0px; }
 .scene-root[data-layout="phone-landscape"] .scene-about { --about-link-size: 44px; }
-.scene-root[data-layout="phone-landscape"] .scene-transport { gap: 8px; width: 100%; align-self: stretch; } /* the full row at any width: a short laptop window is landscape too, and the tablet rule that stretched it ends at 1023 */
+.scene-root[data-layout="phone-landscape"] .scene-transport { gap: var(--ui-gap); width: 100%; align-self: stretch; } /* the full row at any width: a short laptop window is landscape too, and the tablet rule that stretched it ends at 1023 */
 .scene-root[data-layout="phone-landscape"] .scene-transport > .scene-icon-pill { width: 48px; height: 48px; border-radius: 24px; }
 .scene-root[data-layout="phone-landscape"] .scene-transport > .scene-icon-pill .scene-play { width: 100% !important; height: 100% !important; border-radius: inherit !important; }
 .scene-root[data-layout="phone-landscape"] .scene-transport > .scene-pill:nth-child(2) { flex: 1 1 auto; max-width: none; padding: 0 12px; }
@@ -1882,7 +1882,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone-landscape"] .scene-views .scene-view-btn:first-child { justify-content: flex-start !important; padding-left: 19px !important; } /* 96 less two 20 glyphs is 56, a third each: 19 from the outer edges */
 .scene-root[data-layout="phone-landscape"] .scene-views .scene-view-btn:last-child { justify-content: flex-end !important; padding-right: 19px !important; }
 .scene-root[data-layout="phone-landscape"] .scene-views { gap: 0; }
-.scene-root[data-layout="phone-landscape"] .scene-bottom { gap: 8px; display: flex; flex-direction: column; } /* over the laptop's three-column grid, which still matches a short laptop window by width */
+.scene-root[data-layout="phone-landscape"] .scene-bottom { gap: var(--ui-gap); display: flex; flex-direction: column; } /* over the laptop's three-column grid, which still matches a short laptop window by width */
 
 /* ——— Tablet targets (D-64, 2026-10-05). The tablet keeps its layout; every control grows to 44 inside a 52 pill, the touch floor on a screen that is almost always touched. ——— */
 .scene-root[data-layout="tablet"] .scene-ui { --ctl-pill: 52px; --ctl-inner: 44px; }

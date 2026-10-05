@@ -1855,6 +1855,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone-landscape"] .scene-panel.scene-graph [role="tablist"] > button { flex: 1 1 0 !important; min-width: 0; }
 .scene-root[data-layout="phone-landscape"] .scene-monitor { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
 .scene-root[data-layout="phone-landscape"] .scene-monitor .scene-card-beats, .scene-root[data-layout="phone-landscape"] .scene-monitor .scene-card-reverb { grid-column: auto; }
+/* A short laptop window is landscape too (D-63), and the rules that strip the laptop's extras live in max-width 1023, which it is wider than: the routing card (it took a row and squeezed three cards to nothing at 1280 × 480), the fixed 96 slider, the page pill's side room and the About links' 32. Said here for every width. */
+.scene-root[data-layout="phone-landscape"] .scene-monitor .scene-card-routing { display: none; }
+.scene-root[data-layout="phone-landscape"] .scene-ui { --slider-width: 100%; --pill-room: 0px; }
+.scene-root[data-layout="phone-landscape"] .scene-about { --about-link-size: 44px; }
 .scene-root[data-layout="phone-landscape"] .scene-transport { gap: 8px; width: 100%; align-self: stretch; } /* the full row at any width: a short laptop window is landscape too, and the tablet rule that stretched it ends at 1023 */
 .scene-root[data-layout="phone-landscape"] .scene-transport > .scene-icon-pill { width: 48px; height: 48px; border-radius: 24px; }
 .scene-root[data-layout="phone-landscape"] .scene-transport > .scene-icon-pill .scene-play { width: 100% !important; height: 100% !important; border-radius: inherit !important; }
@@ -1912,14 +1916,16 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-sheet-layer[data-reduced="true"][data-visible="true"] .scene-sheet { opacity: 1; }
 .scene-sheet-grab { height: 28px; display: flex; align-items: center; justify-content: center; touch-action: none; cursor: grab; flex: 0 0 auto; }
 .scene-sheet-grab > span { width: 40px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.4); }
+.scene-sheet-close { position: absolute; top: 4px; right: 8px; width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: none; border: none; border-radius: 22px; color: rgba(255, 255, 255, 0.78); z-index: 1; }
+.scene-sheet-body { margin-top: 20px; } /* clear of the close, which sits over the grab's row at the right */
 .scene-sheet-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
 .scene-sheet-days { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
 .scene-sheet-days > button { width: 100%; height: 44px; }
 /* Seven 44 columns are 308 wide: on the narrowest phone (320) the sheet's sides give way down to 6 and the month's columns close their gaps, so a Saturday is never cut off (it overflowed by 28 at 320 with the 16 padding). */
 .scene-root[data-layout="phone"] .scene-sheet { padding-left: clamp(6px, calc((100% - 308px) / 2), 16px); padding-right: clamp(6px, calc((100% - 308px) / 2), 16px); }
-.scene-sheet-cal .scene-cal-grid { column-gap: 0 !important; }
-.scene-root[data-layout^="phone"] .scene-sheet .scene-chip, .scene-root[data-layout="tablet"] .scene-popover .scene-chip { min-width: var(--ctl-inner, 44px); } /* the month's arrows are a 16 glyph in 12 padding, 40 wide: square them to the touch floor */
-.scene-root[data-layout="phone-landscape"] .scene-sheet { left: auto; width: min(640px, 100%); right: 0; top: 0; bottom: 0; max-height: none; padding-bottom: 12px; border-radius: 24px 0 0 24px; transform: translateX(100%); }
+.scene-sheet-cal .scene-cal-grid, .scene-popover[data-touch="true"] .scene-cal-grid { column-gap: 0 !important; }
+.scene-root[data-layout^="phone"] .scene-sheet .scene-chip, .scene-popover[data-touch="true"] .scene-chip { min-width: var(--ctl-inner, 44px); } /* the month's arrows are a 16 glyph in 12 padding, 40 wide: square them to the touch floor */
+.scene-root[data-layout="phone-landscape"] .scene-sheet { left: auto; width: min(640px, 100%); right: 0; top: 0; bottom: 0; max-height: none; padding-bottom: 12px; padding-right: max(16px, env(safe-area-inset-right, 0px)); /* clear of the island when it is on the right (spec §3) */ border-radius: 24px 0 0 24px; transform: translateX(100%); }
 .scene-root[data-layout="phone-landscape"] .scene-sheet-layer[data-visible="true"] .scene-sheet { transform: translateX(0); }
 .scene-root[data-layout="phone-landscape"] .scene-sheet-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 12px; align-items: start; }
 .scene-root[data-layout="phone-landscape"] .scene-sheet-days { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 0; }

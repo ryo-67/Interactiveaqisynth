@@ -14,10 +14,11 @@ interface Props {
   loading?: boolean;
   latestDate: string | null; // the last day the archive can play; null until known
   sheetHost?: HTMLElement | null; // on a phone, where the day sheet mounts (D-65; ScenePage); without it the picker is a popover
-  onOpenChange?: (open: boolean) => void; // the page keeps the sheet and About exclusive
+  touch?: boolean; // a touch layout with a popover (the tablet, D-64): the popover carries the 44 sizes itself, since it is portaled outside the scaffold that sets them
 }
 
 const POPOVER_WIDTH = 288; // 4 px grid; seven 36 px columns plus the panel padding
+const TOUCH_POPOVER_WIDTH = 340; // on a tablet (D-64): seven 44 columns (308) with no gaps between them (index.css .scene-cal-grid), the 12 padding each side and the border, on the 4 px grid
 const MIN_DATE = "2020-01-01";
 
 function addDays(iso: string, n: number): string {
@@ -54,8 +55,9 @@ function usePopoverPosition(open: boolean, anchorRef: React.RefObject<HTMLDivEle
   return pos;
 }
 // The panel's own strings (month, hints, the menu) are on the UI face like the chips; the calendar grid inside sets the data face for itself.
-const popoverStyle = (c: ReturnType<typeof themeColors>, visible: boolean): React.CSSProperties => ({
-  position: "fixed", padding: space.sm, zIndex: 20, fontFamily: families.ui, letterSpacing: CONTROL.chipTracking, fontSize: typeScale.caption.size, color: c.textSecondary, width: `min(${POPOVER_WIDTH}px, calc(100vw - ${parseInt(space.sm) * 2}px))`, whiteSpace: "normal",
+const popoverStyle = (c: ReturnType<typeof themeColors>, visible: boolean, touch = false): React.CSSProperties => ({
+  ...(touch ? { "--ctl-inner": `${CONTROL.touch}px` } : {}),
+  position: "fixed", padding: space.sm, zIndex: 20, fontFamily: families.ui, letterSpacing: CONTROL.chipTracking, fontSize: typeScale.caption.size, color: c.textSecondary, width: `min(${touch ? TOUCH_POPOVER_WIDTH : POPOVER_WIDTH}px, calc(100vw - ${parseInt(space.sm) * 2}px))`, whiteSpace: "normal",
   // In and out (2026-09-15): opacity with a 4 px settle from above, motion.popoverMs, origin at the top where it hangs from the bar; .scene-popover in index.css drops the transition under prefers-reduced-motion.
   opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(-4px) scale(0.98)", transformOrigin: "top center", transition: `opacity ${motion.popoverMs}ms ease, transform ${motion.popoverMs}ms cubic-bezier(0.2, 0.8, 0.2, 1)`, pointerEvents: visible ? "auto" : "none",
 });
@@ -167,12 +169,12 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
 // The labels that size the phone chip: Last 24h, the presets, and the longest date the calendar can produce.
 const WIDEST_DATE_LABEL = "Sep 30, 2026"; // the longest label a date chip can show in the monospaced data face: a two-digit day and the year
 const WIDTH_LABELS = [NAV_LAST_24H, ...PINS.map((p) => p.name), WIDEST_DATE_LABEL];
-export function DayPicker({ date, onChange, loading, latestDate, sheetHost, onOpenChange }: Props) {
+export function DayPicker({ date, onChange, loading, latestDate, sheetHost }: Props) {
   const c = themeColors(useTheme());
   const chip = (active: boolean) => chipStyle(c, active);
   const [open, setOpen] = useState(false);
-  useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
   const anchorRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null); // where the sheet hands focus back (Sheet returnTo)
   const presence = usePresence(open);
   const pos = usePopoverPosition(presence.mounted, anchorRef, POPOVER_WIDTH);
   const close = useCallback(() => setOpen(false), []);
@@ -185,6 +187,7 @@ export function DayPicker({ date, onChange, loading, latestDate, sheetHost, onOp
     <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
       {/* The trigger is the pill (Shoro, 2026-09-16): the Patch notes button's shape, padding, colour and hover fill, in place of a chip nested in a glass pill; the label keeps the data face (it is a reading, and the widest-label cell relies on its fixed pitch) and the caret its style. */}
       <button
+        ref={triggerRef}
         className="scene-play scene-about-btn"
         style={{ padding: "8px 14px 8px 16px", minHeight: `var(--ctl-pill, ${CONTROL.pillHeight}px)`, boxSizing: "border-box", display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center", background: "none", border: "none", borderRadius: 999, color: c.textSecondary, fontSize: typeScale.caption.size, lineHeight: 1.5, opacity: loading ? 0.5 : 1 }}
         onClick={() => setOpen((o) => !o)}
@@ -219,7 +222,7 @@ export function DayPicker({ date, onChange, loading, latestDate, sheetHost, onOp
       )}
       {/* On a phone the day comes up from the bottom (D-65): the six days as 44 chips, three across, and the month beneath at 44 (its cells are --ctl-inner, 44 on a phone). Picking either closes the sheet, as the popover did. */}
       {sheetHost && (
-        <Sheet open={open} onClose={close} label={DAY_SHEET.label} host={sheetHost}>
+        <Sheet open={open} onClose={close} label={DAY_SHEET.label} host={sheetHost} returnTo={triggerRef}>
           <div className="scene-sheet-days" role="listbox" aria-label="Day">
             {options.map((o) => {
               const active = o.date === date;
@@ -239,12 +242,12 @@ export function DayPicker({ date, onChange, loading, latestDate, sheetHost, onOp
   );
 }
 
-export function DayNav({ date, onChange, loading, latestDate }: Props) {
+export function DayNav({ date, onChange, loading, latestDate, touch = false }: Props) {
   const c = themeColors(useTheme());
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
   const presence = usePresence(open);
-  const pos = usePopoverPosition(presence.mounted, anchorRef, POPOVER_WIDTH);
+  const pos = usePopoverPosition(presence.mounted, anchorRef, touch ? TOUCH_POPOVER_WIDTH : POPOVER_WIDTH);
   const close = useCallback(() => setOpen(false), []);
   useDismiss(open, close, anchorRef);
   // Any choice of day closes the calendar — a date in it, a preset chip (PinStrip, a sibling), or Live — because each one lands as a new `date`.
@@ -289,7 +292,7 @@ export function DayNav({ date, onChange, loading, latestDate }: Props) {
       <button className="scene-chip" data-active={date === null} style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
 
       {presence.mounted && createPortal(
-        <div className="glass frosted scene-popover" role="dialog" aria-label={NAV_CALENDAR} style={{ ...popoverStyle(c, presence.visible), left: pos.left, top: pos.top }}>
+        <div className="glass frosted scene-popover" role="dialog" aria-label={NAV_CALENDAR} data-touch={touch} style={{ ...popoverStyle(c, presence.visible, touch), left: pos.left, top: pos.top } as React.CSSProperties}>
           <CalendarGrid date={date} latestDate={latestDate} onPick={(iso) => { onChange(iso); setOpen(false); }} />
         </div>,
         document.body,

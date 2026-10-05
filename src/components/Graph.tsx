@@ -6,7 +6,7 @@ import { readingLabel } from "../utils/time";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS, TRACK_QUALIFIERS } from "../content";
-import { monotoneCurve } from "./graphSeries";
+import { monotoneCurve, fitTicks } from "./graphSeries";
 import { chipStyle } from "./chip";
 import type { Day } from "../engine/SynthEngine";
 
@@ -262,7 +262,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         const labelSets: Array<[number[], number]> = fromFrame ? [[fromFrame.gridValues, 1 - e], [toFrame.gridValues, e]] : [[toFrame.gridValues, 1]];
         for (const [values, a] of labelSets) {
           ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = c.textMuted;
-          for (const gv of values) { const f = gv / max; if (f > 1.001) continue; const lab = String(gv); ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, yOf(f) + labelPx * 0.36); }
+          // Only the labels that fit this plot's height, a line and three quarters apart at least (fitTicks); the gridlines above keep every value.
+          for (const gv of fitTicks(values, max, inner, labelPx * 1.75)) { const f = gv / max; const lab = String(gv); ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, yOf(f) + labelPx * 0.36); }
           ctx.restore();
         }
 

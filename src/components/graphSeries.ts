@@ -36,3 +36,15 @@ export function monotoneCurve(vals: ReadonlyArray<number | null>): (index: numbe
     return (2 * t3 - 3 * t2 + 1) * va + (t3 - 2 * t2 + t) * m[k] + (-2 * t3 + 3 * t2) * vb + (t3 - t2) * m[k + 1];
   };
 }
+
+// fitTicks — which y-axis labels fit the plot (Shoro, 2026-10-05: a short phone or landscape plot does not need every label). The ticks are the values the gridlines mark; a label is kept only if it sits at least minGapPx below the last label kept, walking down from the highest tick on the scale, so the top of the scale is always named and the rest thin out evenly as the plot gets shorter. innerPx is the height the scale spans; the gridlines themselves all stay. Returned in ascending order, like the input.
+export function fitTicks(ticks: readonly number[], max: number, innerPx: number, minGapPx: number): number[] {
+  const onScale = ticks.filter((v) => v / max <= 1.001).sort((a, b) => b - a);
+  const kept: number[] = [];
+  let lastY = -Infinity;
+  for (const v of onScale) {
+    const y = (1 - v / max) * innerPx; // px below the top of the scale
+    if (kept.length === 0 || y - lastY >= minGapPx) { kept.push(v); lastY = y; }
+  }
+  return kept.reverse();
+}

@@ -1134,9 +1134,12 @@
 
 html {
   font-size: var(--font-size);
+  background-color: #05050a; /* the night ground, for whatever Safari still paints from the page's background: an overscroll, the instant before the runway's scroll lands (.scene-root). Body carries it too: a transparent root falls back to white, which is what V1 showed on the phone (BUG-57) */
+  touch-action: pinch-zoom; /* the document moves by the runway and never by a hand (BUG-57, ScenePage useSafariWindow); a pinch still zooms, which the graph is drawn for, and the About reading and the chip strips are scroll containers of their own, so their pans are untouched */
   user-select: none; -webkit-user-select: none; /* nothing on the page is selectable text (Shoro, 2026-09-16): every word is a control, a readout or a label, and a drag on the sky or a card is a page turn, which a selection highlight fought */
   overscroll-behavior: none; /* the page owns its overscroll (Shoro, 2026-09-16): nothing here scrolls, so a trackpad's sideways swipe, which turns the page below laptop (ScenePage.tsx onWheel), would otherwise fall through to the browser's swipe-to-go-back on a Mac. Chromium and Firefox honour this on the root; Safari from 16 */
 }
+body { background-color: #05050a; }
 
 @property --tw-translate-x {
   syntax: "*";
@@ -1442,6 +1445,15 @@ html {
   .scene-lane-step[data-lit="true"] { background: rgba(255, 255, 255, 0.95); }
 }
 
+/* ——— Under Safari's bars (BUG-57, 2026-10-05; V3). Both safe areas show the sky itself, to the glass's edge. How Safari 26 decides (Shoro's portfolio, decision file-canvas-and-safe-areas, verified on an iPhone; SnackSage's toast fixes; 1ar.io): it lays every position: fixed box out BETWEEN its bars and clips it there, it paints a bar solid when a fixed box spans that edge, and it draws only page content under its bars; and at scroll 0 it never draws page content under the status bar at all, only a solid from the page's background. The scene was one fixed box, so the bars were black. V1 moved layers inside that box (clipped); V2 made the sky page content but left the controls in a fixed box, which could not hold the About scrim above them and under the bars at once, painted the status bar from a sampled solid that read as a strip, and sized the scene with 100lvh, which on iOS 26 is a status bar short of the screen.
+   So: the whole scene is page content, one stacking context as before. Its height is the screen's own (--screen-h, the physical screen in this orientation, written by ScenePage useSafariWindow) plus a RUNWAY above it, and the page is scrolled down by the runway on load and held there, so Safari is never at scroll 0 and draws the sky under the status bar too. The window Safari leaves between its bars is MEASURED from a fixed probe (empty and hidden, so it paints nothing and Safari's bar test passes over it) and written as --win-t/r/b/l, the gap on each side between that window and the root: the scaffold sits in the window, the scrims and the sky fill the root. The runway is iOS only (-webkit-touch-callout is WebKit-on-iOS's alone); everywhere else it is 0, the probe is the viewport, every --win is 0 and the root is the viewport, so nothing moves. ——— */
+:root { --runway: 0px; }
+@supports (-webkit-touch-callout: none) { :root { --runway: 120px; } } /* more than the status bar in portrait (about 46 pt) and Safari's top bar in landscape (about 86 pt): sky out of sight above the screen, for the band to show */
+.scene-root { position: absolute; top: 0; left: 0; right: 0; height: calc(var(--runway) + var(--screen-h, 100lvh)); }
+.scene-window-probe { position: fixed; inset: 0; visibility: hidden; pointer-events: none; }
+/* The window's edge is the only clip a travelling page should meet (the frame note below), and the window's edge is the screen's: this box is the root, and holds that clip. No pointer events: it lies over the sky. */
+.scene-ui-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+
 /* ——— Scene layout (D-26): Shoro's scaffold, on a 4 px grid, at three breakpoints — laptop (≥1024), tablet (768–1023), phone (<768). The whole scaffold fits the viewport at every one: NOTHING SCROLLS. Sizes step down per breakpoint through the custom properties below (all multiples of 4), which every control reads; the middle band takes the remaining height and its panels are allowed to shrink. ——— */
 .scene-ui {
   --section-h: 672px; /* MONITOR.sectionHeight: the section's ceiling on laptop, and so the band's (both pages are one section, D-52); below laptop the breakpoints set their own */
@@ -1454,7 +1466,7 @@ html {
   --panel-radius: 20px; --chip-radius: 8px; /* the frosted surfaces' corner and the small readouts' corner (Shoro, 2026-09-16): they step with the breakpoint like the padding, so a phone's 12 px-padded card does not carry a desktop corner; the pills are round at every size on their own */
   --grid-gap: var(--ui-gap); /* the monitor grid's gap, which the hero pair shares so it is exactly one row tall; phones step it to 12 and 8 */
   --chip-inset: 4px; /* the inset around chips inside a pill AND the gap between them — one value, on the grid, so chips and pill edges align */
-  position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--ui-gap); padding: var(--ui-pad); pointer-events: none; overflow: hidden;
+  position: absolute; top: var(--win-t, 0px); right: var(--win-r, 0px); bottom: var(--win-b, 0px); left: var(--win-l, 0px); display: flex; flex-direction: column; gap: var(--ui-gap); padding: var(--ui-pad); pointer-events: none; /* the window between Safari's bars (BUG-57); the clip is the root's, .scene-ui-clip */
 }
 .scene-ui .glass, .scene-ui select { pointer-events: auto; }
 
@@ -1516,7 +1528,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-entered="true"] .scene-ui { --glass-on: 1; }
 
 /* The entry (D-61, 2026-09-17): the page's own material at the one moment there is nothing else in it. The sky is already rendering underneath, so this is the About overlay's treatment — a blur of what is there under the navy tint — with one frosted panel on it; it lifts over a beat and leaves. Above everything, including the overlay and the Patch notes pill, since nothing behind it is meant to be reached yet. */
-.scene-entry { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: var(--ui-pad, 32px); background-color: rgba(var(--about-tint, 5, 6, 14), 0.72); -webkit-backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6)); backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6)); opacity: 1; transition: opacity var(--entry-ms, 667ms) ease; }
+.scene-entry { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: calc(var(--ui-pad, 32px) + var(--win-t, 0px)) calc(var(--ui-pad, 32px) + var(--win-r, 0px)) calc(var(--ui-pad, 32px) + var(--win-b, 0px)) calc(var(--ui-pad, 32px) + var(--win-l, 0px)); /* the whole root, so its blur and tint run under both of Safari's bars, with the window's gaps added back as padding so the panel is centred where it was, in the window (BUG-57) */ background-color: rgba(var(--about-tint, 5, 6, 14), 0.72); -webkit-backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6)); backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6)); opacity: 1; transition: opacity var(--entry-ms, 667ms) ease; }
 .scene-entry[data-lifting="true"] { opacity: 0; pointer-events: none; }
 .glass.frosted.scene-entry-panel { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 40px 24px; max-width: 100%; text-align: center; }
 .scene-entry-lane { width: 180px; margin-top: 10px; }
@@ -1836,7 +1848,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-patch-slot { position: relative; display: inline-flex; flex: 0 0 auto; }
 .scene-patch-size { display: inline-flex; }
 .glass.frosted.scene-patch { position: absolute; left: 0; top: 0; height: 100%; z-index: 31; padding: 0; overflow: hidden; border-radius: 999px; display: flex; align-items: center; width: max-content; transition: transform var(--about-ms, 667ms) ease; } /* its width is its content's; the label cell inside eases (Transport.tsx) */
-.scene-about-scrim { position: absolute; inset: 0; --glass-on: 0; background-color: rgba(var(--about-tint, 5, 6, 14), calc(var(--about-alpha, 0.65) * var(--glass-on))); -webkit-backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); transition: --glass-on var(--about-ms) ease; }
+.scene-about-scrim { position: absolute; top: calc(-1 * var(--win-t, 0px)); right: calc(-1 * var(--win-r, 0px)); bottom: calc(-1 * var(--win-b, 0px)); left: calc(-1 * var(--win-l, 0px)); /* out of the window to the root's edges, under both of Safari's bars (BUG-57); the reading stays in the window */ --glass-on: 0; background-color: rgba(var(--about-tint, 5, 6, 14), calc(var(--about-alpha, 0.65) * var(--glass-on))); -webkit-backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); transition: --glass-on var(--about-ms) ease; }
 .scene-about[data-visible="true"] .scene-about-scrim { --glass-on: 1; }
 .scene-about-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: calc(var(--about-pad) + 40px) var(--about-inline) calc(var(--about-pad) + 40px); box-sizing: border-box; user-select: text; }
 @media (max-width: 1023px) { .scene-about-scroll { padding-bottom: calc(var(--about-band) + 24px); -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--about-band) - 20px), transparent calc(100% - var(--about-band))); mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--about-band) - 20px), transparent calc(100% - var(--about-band))); } } /* the reading fades out over the dismiss button's row and no further: --about-band is the button's row and the padding under it (About.tsx), the 20 above it the ramp into it (Shoro, 2026-09-17: shorter than it was) */

@@ -12,6 +12,7 @@ import { GoldenLayer } from "./GoldenLayer";
 import { warnOnce } from "../utils/time";
 import { skyParamsFor, starOpacity, nightBlend, goldenBlend, veilDensity } from "./skyParams";
 import { predictPanel, rampLiftFor, type RGB } from "./panelLuminance";
+import { useSafariWindow } from "./useSafariWindow";
 import { sunAnglesAt, sunPositionVector } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
@@ -362,7 +363,7 @@ export default function ScenePage() {
     const changed = (a: Sample, b: Sample) => Math.abs(a.rgb[0] - b.rgb[0]) + Math.abs(a.rgb[1] - b.rgb[1]) + Math.abs(a.rgb[2] - b.rgb[2]) > 3 || Math.abs(a.t - b.t) > 0.01;
     const tick = () => {
       if (performance.now() < lockRef.current) return; // a page switch in flight (D-43): the panels are passing over sky they will not rest on, and a sample there would ease the ramps toward a colour that is gone by the time they arrive; the first tick after the slide samples where they settled (2026-09-16)
-      const gl = skyBoxRef.current?.querySelector("canvas:not([aria-hidden])") as HTMLCanvasElement | null;
+      const gl = skyBoxRef.current?.querySelector("canvas:not([data-dissolve])") as HTMLCanvasElement | null; // the sky's canvas is the one that is not the dissolve's; both are aria-hidden since BUG-49, which is why this cannot ask for the one that is not (BUG-58)
       if (!gl || gl.width === 0) return;
       const cr = gl.getBoundingClientRect();
       if (cr.width === 0 || cr.height === 0) return;
@@ -391,12 +392,15 @@ export default function ScenePage() {
 
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
   const skyBoxRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const windowProbeRef = useRef<HTMLDivElement>(null);
+  const skyFrameTop = useSafariWindow(rootRef, windowProbeRef); // the scene under Safari's bars: the screen's height, the window between the bars and the runway (BUG-57)
   const dissolveCanvasRef = useRef<HTMLCanvasElement>(null);
   const dissolveSeen = useRef(0);
   useLayoutEffect(() => {
     if (s.dissolve === dissolveSeen.current) return;
     dissolveSeen.current = s.dissolve;
-    const gl = skyBoxRef.current?.querySelector("canvas:not([aria-hidden])") as HTMLCanvasElement | null;
+    const gl = skyBoxRef.current?.querySelector("canvas:not([data-dissolve])") as HTMLCanvasElement | null; // the sky's canvas is the one that is not the dissolve's; both are aria-hidden since BUG-49, which is why this cannot ask for the one that is not (BUG-58)
     const overlay = dissolveCanvasRef.current;
     if (!gl || !overlay) return;
     overlay.width = gl.width; overlay.height = gl.height;
@@ -426,14 +430,15 @@ export default function ScenePage() {
 
   return (
     <ThemeContext.Provider value="dark">
-      <div className="scene-root" data-entered={entryLifting} style={{ position: "fixed", inset: 0, background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint } as React.CSSProperties}>
-        {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. */}
+      <div ref={rootRef} className="scene-root" data-entered={entryLifting} style={{ background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint } as React.CSSProperties}>
+        <div ref={windowProbeRef} className="scene-window-probe" aria-hidden /> {/* what Safari leaves between its bars, measured (useSafariWindow); empty and hidden, so it paints nothing and Safari's bar test passes over it */}
+        {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. The root is page content, not fixed (index.css .scene-root, BUG-57), screen-tall with a runway above (useSafariWindow), so this box and every layer in it run on under both of Safari's bars. */}
         {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}
         {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (Cursor.tsx reads data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
         <div ref={skyBoxRef} className="scene-sky" inert={about ? "" : undefined} data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClick={phone ? undefined : () => { if (consumeSuppressedClick() || performance.now() - swipedAt.current < 400) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
-          <SkyView params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView frameTop={skyFrameTop} params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={{ width: "100%", height: "100%" }} />
           {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
-          <canvas ref={dissolveCanvasRef} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />
+          <canvas ref={dissolveCanvasRef} aria-hidden data-dissolve style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />
           {!FX_OFF.has("nonight") && <NightLayer blend={nightEased} density={view.smoke} />}
           {!FX_OFF.has("nonight") && <GoldenLayer blend={goldenEased} density={view.smoke} />}
           {!FX_OFF.has("nosmoke") && <SmokeLayer density={view.smoke} regime={view.regime} />}
@@ -441,7 +446,8 @@ export default function ScenePage() {
           {!FX_OFF.has("nodither") && <div className="scene-sky-dither" aria-hidden />}
         </div>
 
-        {/* The scaffold (D-26): see .scene-ui in index.css. */}
+        {/* The scaffold (D-26): see .scene-ui in index.css. It sits in the window between Safari's bars (--win-*, useSafariWindow) inside a clip that is the whole root, so the About scrim in it can reach under the bars while every control stays where it was (BUG-57). */}
+        <div className="scene-ui-clip">
         <div className="scene-ui" data-about={about} style={{ "--about-ms": `${ABOUT_MS}ms` } as React.CSSProperties}>
           <div className="scene-top" inert={about ? "" : undefined}>
             <Glass material="glass" className="scene-pill scene-borough">
@@ -572,6 +578,7 @@ export default function ScenePage() {
           )}
           {/* The About overlay (D-56), inside the scaffold so the Patch notes button can stand above it (z-index; a portal could not be stacked under a child of this tree). */}
           <About open={about} onClose={closeAbout} anchorRef={aboutBtnRef} latestDate={s.latestDate} />
+        </div>
         </div>
         {/* The one screen before the tool (D-61): held until the live air has been read, whether it arrived or did not, and never less than its floor. Inside the root so it takes the glass tokens; the scene is mounted and running behind it the whole time. */}
         <Entry ready={s.liveStatus !== "loading"} onLift={onEntryLift} onGone={onEntryGone} />

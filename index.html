@@ -3,7 +3,8 @@
   <html lang="en">
     <head>
       <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <!-- viewport-fit=cover: the page runs under Safari's bars, so the sky (page content, index.css .scene-root) can show under the toolbar and the safe-area insets are reported (BUG-57). -->
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
       <title>New York AQI Synth</title>
       <!-- The tab icon is one SVG carrying its own light and dark faces (public/favicon.svg): cloud-sun in the scene's ink, cloud-moon in white. -->
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

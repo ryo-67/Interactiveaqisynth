@@ -2,6 +2,20 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-05 — The sky under both of Safari's bars (BUG-57, BUG-58)
+
+Shoro: on an iPhone the safe areas are black, because the sky and its effects stop at the viewport. It took three passes, and each phone check taught something the code could not.
+
+V1 read it as layers sized to the safe area and extended them past it inside the scene's fixed root; the strips went white. Shoro pointed at the portfolio and SnackSage, which had met the same browser: Safari 26 lays every fixed box out between its bars and clips it there, fills a bar solid when a fixed box spans that edge, draws only page content under them, and at scroll 0 never draws the page under the status bar at all, only a solid from the page's background. V2 took the first half of that: the sky became page content, the controls kept a fixed box, and the status bar was painted a solid matched to the sky's top colour. On the phone the solid read as a strip against the sky's gradient and the sun's glow; the About scrim, living in the fixed box, could not reach under the bars, so the toolbar showed bright sky round a dimmed page; and the sky stopped short of the screen's bottom, because on iOS 26 `100lvh` is a status bar short of the glass, so a second band showed under the toolbar.
+
+V3 changes the cut. The whole scene is page content again, one stacking context, so the Patch notes pill still stands over the About scrim and the scrims can reach anywhere the sky does. It is exactly as tall as the physical screen, read from `screen` rather than from any viewport unit, plus a runway of sky above it; the page is scrolled down by the runway and held there, which is the only known way to get Safari to draw real pixels under the status bar (1ar.io's fix for full-screen media, Shoro's option 2). The window Safari leaves between its bars is not guessed from insets but measured, from an empty fixed box that Safari lays out in exactly that window; the controls sit in it, everything else fills the screen. Off iOS none of it does anything: the runway is zero and the window is the viewport.
+
+Two things the phone showed on V3 itself. The scaffold first landed a runway too high, under the status bar, where Safari takes the touches: the window was measured against the root before the page had been scrolled, and the root scrolls while the probe does not; it is measured now at the scroll the page is held at. And the sun sat under the status bar, because the sky's camera spread its field of view over the whole canvas, which is now the runway plus the screen. The camera is framed on what a visitor sees below the window's top, to the glass's bottom edge so the horizon still sits there, and renders the rest as overscan: the sky going on out of frame rather than the frame stretched to cover it.
+
+Getting V2's band to read the sky turned up a regression (BUG-58): since the sky canvas was marked aria-hidden for BUG-49, the two places that told it apart from the dissolve canvas by that attribute found nothing, so the panels' tint stopped following the sky and the day-change dissolve had nothing to copy. They now find the canvas that is not the dissolve's. The band itself is gone in V3, and `predictSky` stays as the first half of `predictPanel`.
+
+Landscape is not fixed here: the scaffold does not fit a phone on its side, which is the layout work that comes next.
+
 ## 2026-09-17 — The narrowest phones: no source pills on the synth cards, and a short unit
 
 Shoro, on a Pixel 5: below 360 the synth cards should drop their source pills entirely, and "semitones" should shorten, since it overflows. Both are in. The pills go at 359 and below, where a half-width card is about 100 px of content and a wrapped pill still has nowhere to sit; the About overlay keeps the full account of what a borough borrows, so nothing is lost outright. The unit keeps both spellings in content.ts and the breakpoint picks, the same shape as the graph tabs' hidden units.

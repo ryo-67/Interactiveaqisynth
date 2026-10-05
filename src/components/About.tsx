@@ -61,7 +61,8 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
     if (!mounted) return;
     const measure = () => {
       const slot = anchorRef.current?.closest(".scene-patch-slot")?.getBoundingClientRect();
-      setBand(slot ? Math.max(0, window.innerHeight - slot.top) : 0); // the button's own row and the padding under it, nothing more (Shoro, 2026-09-17: the band was taller than it needed to be); the ramp above it is in index.css
+      const bottom = rootRef.current?.getBoundingClientRect().bottom ?? window.innerHeight; // the overlay's own bottom, which is the reading's: the window between Safari's bars, not innerHeight, whose meaning under the bars is Safari's (BUG-57)
+      setBand(slot ? Math.max(0, bottom - slot.top) : 0); // the button's own row and the padding under it, nothing more (Shoro, 2026-09-17: the band was taller than it needed to be); the ramp above it is in index.css
     };
     measure();
     window.addEventListener("resize", measure);

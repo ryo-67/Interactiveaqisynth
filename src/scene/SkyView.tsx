@@ -4,7 +4,7 @@ import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei/core/Sky"; // the one component, from its own module (2026-09-16): drei's index pulls in three-stdlib's WebGL capabilities probe, which makes a throwaway context at load that Firefox later reclaims and reports as "WebGL context was lost"
 import { EffectComposer } from "@react-three/postprocessing";
 import { ToneMappingMode, BlendFunction, BloomEffect, HueSaturationEffect, ChromaticAberrationEffect, NoiseEffect, ToneMappingEffect, EffectPass, type Effect, type Pass, type EffectComposer as EffectComposerImpl } from "postprocessing";
-import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3, type WebGLRenderer, type WebGLRenderTarget } from "three";
+import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3, type PerspectiveCamera, type WebGLRenderer, type WebGLRenderTarget } from "three";
 import { LensFieldEffect } from "./LensFieldEffect";
 import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT, SKY_CAMERA } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
@@ -45,6 +45,8 @@ interface Props {
 
   // Which way the camera looks. The default camera faces north (−Z), which in New York puts the daytime sun behind the viewer — no disc, Preetham's included, was ever in frame. "south" faces the sun's arc so it crosses left to right; "sun" yaws to the sun's azimuth so it is always horizontally centered. UNDER BENCHMARK with the disc.
   facing?: CameraFacing;
+  // How far down the canvas the camera's frame begins, in CSS px (BUG-57). The field of view spans the canvas below it, and what is above renders as overscan: on an iPhone the canvas runs up under the status bar and a runway above the screen, which the framing and the sun's placement must not count (useSafariWindow). 0 off iOS and in the harness: the frame is the canvas.
+  frameTop?: number;
 }
 
 export type CameraFacing = "north" | "south" | "sun";
@@ -56,6 +58,22 @@ function CameraRig({ pitch, yaw }: { pitch: number; yaw: number }) {
     camera.rotation.set(pitch, yaw, 0, "YXZ");
     invalidate();
   }, [camera, pitch, yaw]);
+  return null;
+}
+
+// The frame (BUG-57): the camera's aspect is the frame's, and a view offset renders the canvas around it, the frame's top `top` px down the canvas. three's view offset works in the frame's own units (fullWidth × fullHeight) and draws the window (x, y, width, height) of it, which may start above it, as here. R3F is told the camera is managed (manual), or it would set the aspect back to the canvas's on every resize. With top 0 this is exactly the camera R3F would have made.
+function CameraFrame({ top }: { top: number }) {
+  const camera = useThree((s) => s.camera) as PerspectiveCamera & { manual?: boolean };
+  const size = useThree((s) => s.size);
+  useLayoutEffect(() => {
+    camera.manual = true;
+    const frameH = Math.max(1, size.height - top);
+    camera.aspect = size.width / frameH;
+    if (top > 0) camera.setViewOffset(size.width, frameH, 0, -top, size.width, size.height);
+    else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+    invalidate();
+  }, [camera, size.width, size.height, top]);
   return null;
 }
 
@@ -239,7 +257,7 @@ function Exposure({ value }: { value: number }) {
 // No multisampling (2026-09-16): the composer renders every pass into its own targets, which are never multisampled, and the sky has no geometry edges to smooth (a dome, point stars, a textured sun sprite); the multisampled default buffer only cost memory bandwidth on every frame.
 const GL_CONFIG = { antialias: false, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true } as const;
 
-export function SkyView({ params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0 }: Props) {
+export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0 }: Props) {
   // The grade's effects, once per canvas; the composer's children are one memoized element so its pass chain is never rebuilt (see Fx).
   // ORDER (2026-09-15, measured): lens; tone mapping; bloom; saturation; aberration; noise. This is the order the sky was tuned against. The wrappers re-appended every re-created effect at the end of the list, so after the first eased change the chain settled into this order, with tone mapping BEFORE the bloom and the grade: the bloom's blur is taken from the HDR input of its pass and added onto the mapped image with nothing mapping it again, so the sun's glow goes to white — that is the glow every exposure and bloom value was judged on. The physically ordered chain (bloom and grade before tone mapping) is what showed on a fresh mount before any change, and reads as the dim, washed-out sky. The lens comes first, in its own pass (CONVOLUTION), so the frame it refracts is the raw sky and nothing it re-samples is lost.
   const fx = useMemo(makeFx, []);
@@ -279,6 +297,7 @@ export function SkyView({ params, sunPosition, starOpacity, groundMode = "above"
         onCreated={({ gl }) => { gl.domElement.setAttribute("aria-hidden", "true"); }}
       >
         <CameraRig pitch={cameraRotationX} yaw={yaw} />
+        <CameraFrame top={frameTop} />
         <Exposure value={params.exposure} />
         <Grade fx={fx} bloom={params.bloomIntensity} saturation={saturation} particles={particles} grain={grain} />
         <SkyWatchdog composerRef={composerRef} fx={fx} snapshot={snapshot} />

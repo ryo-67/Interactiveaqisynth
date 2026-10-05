@@ -2,6 +2,7 @@
 import { hourOfTs, warnOnce } from "../utils/time";
 import { sunAnglesAt, tzOffsetFromTs, type SunAngles } from "./solar";
 import { sunAlongPath } from "./sunPath";
+import { skyFrameAspect } from "./useSafariWindow";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { barK, barSteps } from "../engine/euclid";
@@ -383,8 +384,8 @@ function useSunTransition(target: number, sunDay: SunDay | null, playing: boolea
       const t = Math.min(1, (now - g.start) / g.ms);
       const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       const to = sunAnglesAt(sunDay.date, targetRef.current, NYC_LAT, NYC_LON, sunDay.tz); // re-read: the target may be moving
-      // The path is planned in the camera's screen space (sunPath.ts, D-33): straight on screen while visible, angles while unseen. The sky box fills the viewport, so its aspect is the viewport's.
-      const sun = sunAlongPath(g.from, to, e, { facingDeg: CAMERA_FACING === "south" ? 180 : 0, aspect: window.innerWidth / Math.max(1, window.innerHeight) });
+      // The path is planned in the camera's screen space (sunPath.ts, D-33): straight on screen while visible, angles while unseen. In the camera's FRAME, which on an iPhone is the screen below the window's top rather than the whole sky box (useSafariWindow, BUG-57); everywhere else it is the viewport, as it always was.
+      const sun = sunAlongPath(g.from, to, e, { facingDeg: CAMERA_FACING === "south" ? 180 : 0, aspect: skyFrameAspect() });
       const clock = ((g.fromClock + shortest(g.fromClock, targetRef.current, 24) * e) % 24 + 24) % 24;
       clockRef.current = clock;
       sunRef.current = sun;

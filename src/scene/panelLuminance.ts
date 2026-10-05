@@ -31,7 +31,8 @@ export interface PanelInputs {
   glass: { alpha: number; fill: string; lift: number }; // the frosted material as the scene set it
 }
 
-export function predictPanel(i: PanelInputs): { rgb: RGB; luminance: number } {
+// The sky as it is seen at height t, the DOM layers over the canvas sample and no glass: what a panel frosts, and the colour Safari's status bar band is set to (ScenePage, BUG-57).
+export function predictSky(i: Omit<PanelInputs, "glass">): RGB {
   const t = clamp01(i.t), d = clamp01(i.smoke.density);
   let c: RGB = i.sky;
   // The DOM layers, in the order the scene stacks them: night, golden, then the plume's two terms.
@@ -44,6 +45,11 @@ export function predictPanel(i: PanelInputs): { rgb: RGB; luminance: number } {
     const at = smokeStop("attenuation", d, i.smoke.regime, t); c = multiply(c, hslToRgb(at.h, at.s, at.l), at.a);
     const sc = smokeStop("inscatter", d, i.smoke.regime, t); c = screen(c, hslToRgb(sc.h, sc.s, sc.l), sc.a);
   }
+  return c;
+}
+
+export function predictPanel(i: PanelInputs): { rgb: RGB; luminance: number } {
+  let c = predictSky(i);
   // The glass: the fill over the backdrop, the night's white lift over that. The material's own saturation is not in the sample: the browser applies it to the backdrop at composite time (D-59), and the sample is the raw sky under the panel.
   const fill = i.glass.fill.split(",").map(Number) as RGB;
   c = mix(c, fill, clamp01(i.glass.alpha));

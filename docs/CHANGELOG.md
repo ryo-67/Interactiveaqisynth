@@ -2,6 +2,12 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-05 — Phone layout, second pass (D-64 amended)
+
+Shoro reviewed the first build and asked for ten refinements. The spacing looked off because the phone had three gaps in play (8, 12 and an 8 in the top grid), so it now has one, 12, stepping to 8 on short screens, used between every bar, card, graph and control. Play was the only control at 56, which made the transport row look lopsided; the page icons now match it and the volume pill stays at 44 between them. The error toast's two actions were tap targets in name only, bare text in a fit-content pill, so they became full-width bordered chips. On a wide phone on its side the day pill had stretched across the row while the borough showed codes; the day pill is now capped at 280 and the borough spells out the names once its pill reaches 540, which a Pro Max on its side gives it.
+
+The graph labelled every AQI band whatever the plot's height, which crowded short phones and landscape. Labels now keep at least two and a half lines apart, from the top of the scale down; the gridlines all stay. The About reading had a hard cut at the bottom and now fades at both edges. The day sheet could only be dragged by its handle; now any part of it drags it closed, and a drag that starts on a date swallows the click it ends with, so it closes without picking that date while a tap still picks it. In landscape the sheet stands at the right, so its handle moved to the left edge and it closes to the right. On a tablet the About close had been a 34 by 52 capsule, its width set by padding while its height came from the 52 pill; it is a circle now. Not yet seen on a phone.
+
 ## 2026-10-05 — The phone, rebuilt for a thumb (UX-14, D-63 to D-65)
 
 Shoro: the whole UI is cramped on a phone and not touch friendly, and landscape is broken. Measured, nearly every phone target was 24 px: the borough codes, the graph tabs, the page icons, the play button inside a 32 px pill, and from 576 to 767 the day arrows, pins and calendar days. Landscape phones fell into the tablet layout, because no rule looked at height, and their bars and cards overlapped. And the page disagreed with itself about what a phone was: 575 wide in the JS, 767 in the CSS.

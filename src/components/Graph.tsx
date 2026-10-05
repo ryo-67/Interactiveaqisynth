@@ -262,8 +262,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         const labelSets: Array<[number[], number]> = fromFrame ? [[fromFrame.gridValues, 1 - e], [toFrame.gridValues, e]] : [[toFrame.gridValues, 1]];
         for (const [values, a] of labelSets) {
           ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = c.textMuted;
-          // Only the labels that fit this plot's height, a line and three quarters apart at least (fitTicks); the gridlines above keep every value.
-          for (const gv of fitTicks(values, max, inner, labelPx * 1.75)) { const f = gv / max; const lab = String(gv); ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, yOf(f) + labelPx * 0.36); }
+          // Only the labels that fit this plot's height, two and a half lines apart at least (fitTicks): at 1.75 a landscape plot of about 90 px still showed four labels stacked 23 apart; the gridlines above keep every value.
+          for (const gv of fitTicks(values, max, inner, labelPx * 2.5)) { const f = gv / max; const lab = String(gv); ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, yOf(f) + labelPx * 0.36); }
           ctx.restore();
         }
 

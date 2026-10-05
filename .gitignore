@@ -6,3 +6,4 @@ build/
 scripts/.cache/
 .shots/
 .playwright-mcp/
+.superpowers/

@@ -91,6 +91,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | UX-11 | P1 | TODO | Progressive disclosure | Mood + AQI + play first; timeline, counterfactuals, sliders discoverable |
 | UX-12 | P2 | TODO | Keyboard accessibility audit | Sliders, timeline, focus order |
 | UX-13 | P3 | TODO | Scrollytelling wrapper | Only if wanted after Phase 1 ships |
+| UX-14 | P0 | DONE 2026-10-05 | Phone layout A, landscape L1, the day sheet, 44 pt targets | Spec docs/superpowers/specs/2026-10-05-phone-layout-design.md, plan docs/superpowers/plans/2026-10-05-phone-layout.md; D-63 to D-65. Shoro's device check outstanding |
 
 ## Design system and content
 

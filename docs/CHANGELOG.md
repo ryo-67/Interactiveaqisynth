@@ -2,6 +2,14 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-05 — The phone, rebuilt for a thumb (UX-14, D-63 to D-65)
+
+Shoro: the whole UI is cramped on a phone and not touch friendly, and landscape is broken. Measured, nearly every phone target was 24 px: the borough codes, the graph tabs, the page icons, the play button inside a 32 px pill, and from 576 to 767 the day arrows, pins and calendar days. Landscape phones fell into the tablet layout, because no rule looked at height, and their bars and cards overlapped. And the page disagreed with itself about what a phone was: 575 wide in the JS, 767 in the CSS.
+
+Shoro chose the direction from mockups. A scrolling column and three versions of a sky-first bottom sheet were looked at and set aside: the sheet was too far a departure from the piece. What stayed is the one composed screen (D-26), made touch-sized. The borough is six equal segments, the day is one pill with the Patch notes notebook beside it, the hero pair and the graph fill the band, and the transport is play at 56, the volume and the two page icons. The credit moves into the About overlay on phones, where it already lived with the links, because a visible footer row cost the graph 52 pt. The page icons beat a labelled switch and swipe-only: they are visible, one tap, and the laptop's own control. In landscape the same pieces fold into one control row, the hero cards beside the graph. The day picker becomes a bottom sheet, because the list and the month at 44 pt come to about 680, taller than any popover a phone can hold. Tablets keep their layout with every control at 44.
+
+One rule now decides the layout (layout.ts), and the root carries it as an attribute that the phone and tablet CSS keys on; the phone's old width steps are gone. An audit script checks the 44 pt floor in the page: zero offenders at every phone and tablet size, scene, synth, sheet and About. It caught one thing the mockups had not: seven 44 pt days are 308 wide, so on a 320 phone the sheet's sides give way to 6 and the month closes its gaps. Not yet seen on a real phone.
+
 ## 2026-10-05 — The sky under both of Safari's bars (BUG-57, BUG-58)
 
 Shoro: on an iPhone the safe areas are black, because the sky and its effects stop at the viewport. It took three passes, and each phone check taught something the code could not.

@@ -106,7 +106,7 @@ Code
 - api/ has its own CommonJS tsconfig; the root tsconfig scopes to src/. Vercel's function builder uses the nearest tsconfig.
 - vercel dev does not reproduce the production function build; after every push that touches api/, hit /api/health and /api/aqi/current on the deployed URL before calling it done.
 - Archive data comes from public/data/, including a snapshot of the current year so far (`scripts/build-current-year.ts`, D-41; re-run and commit when EPA publishes more). The EPA API is only ever asked about current-year days after the snapshot's last day. The last day offered is held by `ARCHIVE_LAST_DATE` in `nycOpenData.ts` (2026-07-20, the last day with complete PM2.5); move it when the snapshot is rebuilt.
-- Mobile-first layout, two breakpoints (laptop 1024+, phone <768).
+- Four layouts by width and height, one rule in `src/utils/layout.ts` (D-63): laptop, tablet, phone, phone-landscape, written to `.scene-root[data-layout]`. Touch layouts keep every control at 44 pt or more (D-64); `scripts/touch-audit.js` checks it in the page.
 
 Docs
 - Change a decision → add a row to STRATEGY §8 with the date and reason.

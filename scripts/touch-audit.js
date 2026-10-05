@@ -6,7 +6,7 @@
   for (const el of document.querySelectorAll(sel)) {
     if (el.closest("[inert]") || el.closest("[aria-hidden='true']")) continue;
     const r = el.getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) continue;
+    if (r.width <= 1 || r.height <= 1) continue; // nothing to touch, or visually hidden for screen readers only (the day sheet's close)
     const cs = getComputedStyle(el);
     if (cs.visibility === "hidden" || cs.display === "none" || cs.pointerEvents === "none") continue;
     if (r.width < MIN - 0.5 || r.height < MIN - 0.5) offenders.push({ el: (el.getAttribute("aria-label") || el.textContent || el.className || el.tagName).trim().slice(0, 40), w: Math.round(r.width), h: Math.round(r.height) });

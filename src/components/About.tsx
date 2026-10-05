@@ -42,8 +42,8 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
   const [visible, setVisible] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const [band, setBand] = useState(0);
-  const [top, setTop] = useState(0); // the top bar's bottom edge within the overlay, when the close is the phone's notebook up there (D-64) // the mask band's height below laptop: from the button's row to the bottom edge
+  const [top, setTop] = useState(0); // where the phone's close sits in the overlay (D-64): the reading's title is set on its row
+  const [band, setBand] = useState(0); // the mask band's height below laptop: from the button's row to the bottom edge
   // Mount, then a frame later declare visible so the transitions run from the base state; on close, leave the DOM once the fade is over.
   useEffect(() => {
     if (open) {
@@ -63,10 +63,10 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
     const measure = () => {
       const slot = anchorRef.current?.closest(".scene-patch-slot")?.getBoundingClientRect();
       const bottom = rootRef.current?.getBoundingClientRect().bottom ?? window.innerHeight; // the overlay's own bottom, which is the reading's: the window between Safari's bars, not innerHeight, whose meaning under the bars is Safari's (BUG-57)
-      // A slot in the upper half of the overlay is the phone's notebook in the top bar (D-64): the reading starts below the bar and fades under it, and nothing sits at the bottom to fade under. A slot in the lower half is the footer's pill, as before.
+      // A slot in the upper half of the overlay is the phone's notebook in the top bar (D-64): the title is set on its row and the reading runs on below it, and nothing sits at the bottom to fade under, so there is no band. A slot in the lower half is the footer's pill, as before.
       const rootTop = rootRef.current?.getBoundingClientRect().top ?? 0;
       const upper = !!slot && slot.top - rootTop < (bottom - rootTop) / 2;
-      setTop(upper && slot ? Math.max(0, slot.bottom - rootTop) : 0);
+      setTop(upper && slot ? Math.max(0, slot.top - rootTop) : 0);
       setBand(slot && !upper ? Math.max(0, bottom - slot.top) : 0);
     };
     measure();

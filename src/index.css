@@ -1786,7 +1786,6 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   --display-size: 48px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
   --panel-radius: 16px; --chip-radius: 10px;
   --graph-faint-alpha: 0;
-  --hero-h: 110px;
 }
 .scene-root[data-layout="phone"] .scene-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "borough borough" "day patch"; gap: var(--ui-gap); align-items: stretch; z-index: auto; } /* a grid of three DIRECT children, so the notebook's slot is one of them: the bar has no stacking context of its own on a phone and the notebook's pill (z 31) stands above the About scrim (z 30), as the footer's did */
 .scene-root[data-layout="phone"] .scene-top > :not(.scene-patch-slot) { position: relative; z-index: 1; } /* the borough and the day keep the bar's old lift over the band, each for itself */
@@ -1800,7 +1799,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone"] .scene-borough .borough-short { display: block; }
 .scene-root[data-layout="phone"] .scene-page-inner { height: 100%; flex: 1 1 auto; --card-pad: 16px; --card-value-size: 20px; --card-value-line: 24px; }
 .scene-root[data-layout="phone"] .scene-page-scene .scene-page-inner { justify-content: flex-start; }
-.scene-root[data-layout="phone"] .scene-hero-pair { flex: 0 0 var(--hero-h); grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: var(--ui-gap); } /* both cards, side by side, the breath card the wider (spec §2) */
+.scene-root[data-layout="phone"] .scene-hero-pair { flex: 0 0 auto; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: var(--ui-gap); } /* both cards side by side, the breath card the wider; the row is as tall as its cards, so the gap below it is the one gap and nothing else (Shoro's phone, V2: a fixed row height left dead space under cards that had dropped their bars, about 23 pt against the 8 between the cards) */
 .scene-root[data-layout="phone"] .scene-panel.scene-graph { --graph-pad: 12px; --graph-pad-x: 8px; flex: 1 1 auto; min-height: 0; --graph-fill: 1; }
 .scene-root[data-layout="phone"] .scene-graph-unit, .scene-root[data-layout="phone"] .scene-graph-suffix { display: none; }
 .scene-root[data-layout="phone"] .scene-panel.scene-graph [role="tablist"] > button { flex: 1 1 0 !important; min-width: 0; }
@@ -1814,6 +1813,9 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone"] .scene-pill.scene-views-pill { padding: 0; height: 56px; border-radius: 28px; } /* the page icons at play's size (V2, Shoro, 2026-10-05: play alone at 56 made the row look off); the volume stays 44 between them */
 .scene-root[data-layout="phone"] .scene-views .scene-view-btn { width: 56px !important; height: 56px !important; border-radius: 28px !important; }
 .scene-root[data-layout="phone"] .scene-views .scene-view-btn svg { width: 22px; height: 22px; }
+/* The two glyphs evenly spaced in their pill (Shoro, V2): centred each in its own 56 they sat 34 apart and 17 from the ends. The hit areas stay 56; the glyphs move in, so the three spaces are equal: 112 less two 22 glyphs is 68, a third each, so each glyph sits 23 from its outer edge and 11 from the middle. */
+.scene-root[data-layout="phone"] .scene-views .scene-view-btn:first-child { justify-content: flex-start !important; padding-left: 23px !important; }
+.scene-root[data-layout="phone"] .scene-views .scene-view-btn:last-child { justify-content: flex-end !important; padding-right: 23px !important; }
 .scene-root[data-layout="phone"] .scene-views { gap: 0; }
 .scene-root[data-layout="phone"] .scene-bottom { gap: var(--ui-gap); }
 /* The live toast on a touch layout (V2, Shoro, 2026-10-05: its two links were hard to tap). The section's width, the message centred on a line, and the actions as a row of bordered chips, 44 tall and sharing the width (one alone takes all of it), so they read as buttons and take a thumb; the red ring and fill stay (D-60). */
@@ -1824,12 +1826,12 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout^="phone"] .scene-live-actions-row > button { justify-content: center; height: 44px; border: 1px solid rgba(255, 255, 255, 0.22) !important; background: rgba(255, 255, 255, 0.06) !important; border-radius: 22px !important; }
 /* Height steps on the phone (spec §2), measured on the viewport: standard 700 and up; short 600–699 drops the hero cards' bars and steps the type; shortest under 600 (an SE in Safari is about 560) tightens the cards again. The graph is what gives up the rest. */
 @media (max-height: 699px) {
-  .scene-root[data-layout="phone"] .scene-ui { --hero-h: 92px; --display-size: 40px; --ui-gap: 8px; }
+  .scene-root[data-layout="phone"] .scene-ui { --display-size: 40px; --ui-gap: 8px; }
   .scene-root[data-layout="phone"] .scene-hero-pair .scene-meter, .scene-root[data-layout="phone"] .scene-hero-pair .scene-ladder { display: none; }
   .scene-root[data-layout="phone"] .scene-page-inner { --card-pad: 12px; }
 }
 @media (max-height: 599px) {
-  .scene-root[data-layout="phone"] .scene-ui { --hero-h: 80px; --display-size: 34px; }
+  .scene-root[data-layout="phone"] .scene-ui { --display-size: 34px; }
   .scene-root[data-layout="phone"] .scene-page-inner { --card-pad: 10px; }
 }
 
@@ -1877,6 +1879,8 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone-landscape"] .scene-pill.scene-views-pill { padding: 0; height: 48px; border-radius: 24px; }
 .scene-root[data-layout="phone-landscape"] .scene-views .scene-view-btn { width: 48px !important; height: 48px !important; border-radius: 24px !important; }
 .scene-root[data-layout="phone-landscape"] .scene-views .scene-view-btn svg { width: 20px; height: 20px; }
+.scene-root[data-layout="phone-landscape"] .scene-views .scene-view-btn:first-child { justify-content: flex-start !important; padding-left: 19px !important; } /* 96 less two 20 glyphs is 56, a third each: 19 from the outer edges */
+.scene-root[data-layout="phone-landscape"] .scene-views .scene-view-btn:last-child { justify-content: flex-end !important; padding-right: 19px !important; }
 .scene-root[data-layout="phone-landscape"] .scene-views { gap: 0; }
 .scene-root[data-layout="phone-landscape"] .scene-bottom { gap: 8px; display: flex; flex-direction: column; } /* over the laptop's three-column grid, which still matches a short laptop window by width */
 
@@ -1917,7 +1921,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 }
 .scene-root[data-layout^="phone"] .scene-about { --about-pad: 16px; --about-inline: 48px; } /* the reading's side padding on a phone (keyed on the layout since D-63; it was max-width 575): Shoro's 48 (2026-09-17; 64 for a day, 24 before that) */
 /* The phone's About (D-64): the close is the notebook in the top bar, so the reading starts under the bar and fades out beneath it, and the bottom keeps only its padding. */
-.scene-root[data-layout^="phone"] .scene-about-scroll { padding-top: calc(var(--about-top, 0px) + 24px); padding-bottom: 64px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent calc(var(--about-top, 0px) - 8px), #000 calc(var(--about-top, 0px) + 32px), #000 calc(100% - 48px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, transparent calc(var(--about-top, 0px) - 8px), #000 calc(var(--about-top, 0px) + 32px), #000 calc(100% - 48px), transparent 100%); } /* soft at both ends (V2, Shoro, 2026-10-05: the bottom was a hard cut): the reading fades out under the top bar over 40 and into the window's bottom edge over 48, and the 64 of bottom padding lets the last line scroll clear of the fade */
+.scene-root[data-layout^="phone"] .scene-about-scroll { padding-top: calc(var(--about-top, 0px) + 6px); padding-bottom: 64px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 48px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 48px), transparent 100%); } /* the title on the close's own row, the reading straight under it (Shoro, V2: it had started below that row, leaving a band of empty space); scrolled, it runs up past the close to the window's top and fades over the top 24 and the bottom 48, and the bottom padding lets the last line scroll clear of the fade */
 /* ——— The day sheet (D-65; Sheet.tsx). Hosted in the scaffold above everything but the entry: its scrim reaches past the window to the screen's edges like the About scrim (BUG-57), and the panel rises from the window's bottom edge with its fill carried on under the toolbar. Portrait: the six days as a 3 × 2 grid of chips above the month. Landscape: the window's full height, the days beside the month; a six-week month scrolls inside by about a row. ——— */
 .scene-sheet-host { position: absolute; inset: 0; z-index: 35; pointer-events: none; }
 .scene-sheet-layer { position: absolute; inset: 0; pointer-events: auto; }
@@ -1930,8 +1934,9 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-sheet-grab { height: 28px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; } /* the handle only shows where to pull: the whole panel drags (Sheet.tsx) */
 .scene-sheet { touch-action: none; } /* portrait: the panel's vertical drags are the close gesture, and the sheet fits without scrolling at every tested height */
 .scene-sheet-grab > span { width: 40px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.4); }
-.scene-sheet-close { position: absolute; top: 4px; right: 8px; width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: none; border: none; border-radius: 22px; color: rgba(255, 255, 255, 0.78); z-index: 1; }
-.scene-sheet-body { margin-top: 20px; } /* clear of the close, which sits over the grab's row at the right */
+.scene-sheet-close { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); border: 0; background: none; white-space: nowrap; } /* for screen readers only (Shoro, V2: the sheet needs no visible close, the scrim, a drag and a choice close it): without it a VoiceOver user could leave only by choosing a day */
+.scene-sheet-close:focus-visible { width: 44px; height: 44px; margin: 0; clip-path: none; top: 4px; right: 8px; display: inline-flex; align-items: center; justify-content: center; border-radius: 22px; color: rgba(255, 255, 255, 0.78); z-index: 1; } /* and to a keyboard, where it shows itself when focused */
+.scene-sheet-body { margin-top: 0; }
 .scene-sheet-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
 .scene-sheet-days { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
 .scene-sheet-days > button { width: 100%; height: 44px; }
@@ -1946,4 +1951,3 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone-landscape"] .scene-sheet-grab { position: absolute; left: 0; top: 0; bottom: 0; width: 28px; height: auto; } /* the handle on the edge it is pulled from (V2, Shoro, 2026-10-05): the sheet stands at the right and is dragged right, so its bar stands upright on the left */
 .scene-root[data-layout="phone-landscape"] .scene-sheet-grab > span { width: 4px; height: 40px; }
 .scene-root[data-layout="phone-landscape"] .scene-sheet-body { margin-top: 12px; }
-.scene-root[data-layout="phone-landscape"] .scene-sheet-close { top: auto; right: auto; bottom: 12px; left: 32px; } /* under the day chips, where the left column has room: at the top right it sat on the month's next arrow */

@@ -45,7 +45,7 @@ export function VolumeSlider({ onVolume }: { onVolume: (db: number) => void }) {
 }
 
 // The Patch notes button (Shoro, 2026-09-16): a frosted pill in the credit's exact shape, padding and type, Lucide's notebook-text before the label, behaving as the play button does (the hover and pressed fills, the cursor's press). It opens the About overlay (D-56) and is itself the way out of it: while the overlay is up it becomes "Exhale" on laptop (the glyph dissolving into Lucide's minimize, the label cross-fading into the new one inside a cell whose width carries the pill from one to the other, the labels cut by the pill's own edge) and a round dismiss at the row's centre below laptop (the glyph into a close mark, the label going with the width, the pill sliding over). The one element morphs in place, stacked above the overlay (index.css .scene-patch, z-index 31 in the scaffold the overlay is drawn in): a twin drawn over the overlay on open was mounted and measured in the same frame it had to morph, and now and then it skipped the morph. A slot the pill's resting size holds its place in the bar's layout, so the row does not re-centre as the pill narrows.
-type AboutForm = "exhale" | "dismiss";
+type AboutForm = "exhale" | "dismiss" | "icon";
 export const AboutButton = forwardRef<HTMLButtonElement, { onPress?: () => void; open?: boolean; form?: AboutForm }>(function AboutButton({ onPress, open = false, form = "exhale" }, ref) {
   const c = themeColors(useTheme());
   const glassRef = useRef<HTMLDivElement>(null);
@@ -74,6 +74,22 @@ export const AboutButton = forwardRef<HTMLButtonElement, { onPress?: () => void;
   const base: React.CSSProperties = { padding: "8px 16px 8px 14px", minHeight: `var(--ctl-pill, ${CONTROL.pillHeight}px)`, display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", borderRadius: 999, color: c.textSecondary, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, whiteSpace: "nowrap" };
   const probe: React.CSSProperties = { position: "absolute", left: -9999, top: -9999, visibility: "hidden", pointerEvents: "none", whiteSpace: "nowrap" };
   const cell = (on: boolean): React.CSSProperties => ({ position: "absolute", left: 0, top: 0, bottom: 0, display: "inline-flex", alignItems: "center", whiteSpace: "nowrap", opacity: on ? 1 : 0, transition: "opacity var(--about-ms, 667ms) ease" });
+  // The icon form (D-64, 2026-10-05): on a phone the Patch notes button is the notebook alone, a 44 square beside the day pill, and it turns into the close mark in place while About is open (no slide, no label: the slide to the footer's centre and the label belonged to the footer, which a phone no longer has).
+  if (form === "icon") {
+    const side = `var(--ctl-pill, ${CONTROL.pillHeight}px)`;
+    return (
+      <div className="scene-patch-slot" style={{ width: side, height: side }}>
+        <Glass ref={glassRef} material="frosted" className="scene-about-pill scene-patch" data-open={open} style={{ width: side }}>
+          <button ref={ref} className="scene-play scene-about-btn" onClick={onPress} aria-label={open ? ABOUT.dismiss : ABOUT_LABEL} aria-expanded={open} style={{ width: side, height: side, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 999, color: c.textSecondary }}>
+            <span style={{ position: "relative", width: 18, height: 18, display: "inline-block" }}>
+              <span aria-hidden style={{ position: "absolute", inset: 0, opacity: open ? 0 : 1, transition: "opacity var(--about-ms, 667ms) ease" }}><NotebookTextIcon size={18} /></span>
+              <span aria-hidden style={{ position: "absolute", inset: 0, opacity: open ? 1 : 0, transition: "opacity var(--about-ms, 667ms) ease" }}><XIcon size={18} /></span>
+            </span>
+          </button>
+        </Glass>
+      </div>
+    );
+  }
   return (
     <div className="scene-patch-slot">
       {/* The slot's size: a hidden copy of the resting content, in the flow. */}

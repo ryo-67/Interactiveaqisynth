@@ -42,7 +42,8 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
   const [visible, setVisible] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const [band, setBand] = useState(0); // the mask band's height below laptop: from the button's row to the bottom edge
+  const [band, setBand] = useState(0);
+  const [top, setTop] = useState(0); // the top bar's bottom edge within the overlay, when the close is the phone's notebook up there (D-64) // the mask band's height below laptop: from the button's row to the bottom edge
   // Mount, then a frame later declare visible so the transitions run from the base state; on close, leave the DOM once the fade is over.
   useEffect(() => {
     if (open) {
@@ -62,7 +63,11 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
     const measure = () => {
       const slot = anchorRef.current?.closest(".scene-patch-slot")?.getBoundingClientRect();
       const bottom = rootRef.current?.getBoundingClientRect().bottom ?? window.innerHeight; // the overlay's own bottom, which is the reading's: the window between Safari's bars, not innerHeight, whose meaning under the bars is Safari's (BUG-57)
-      setBand(slot ? Math.max(0, bottom - slot.top) : 0); // the button's own row and the padding under it, nothing more (Shoro, 2026-09-17: the band was taller than it needed to be); the ramp above it is in index.css
+      // A slot in the upper half of the overlay is the phone's notebook in the top bar (D-64): the reading starts below the bar and fades under it, and nothing sits at the bottom to fade under. A slot in the lower half is the footer's pill, as before.
+      const rootTop = rootRef.current?.getBoundingClientRect().top ?? 0;
+      const upper = !!slot && slot.top - rootTop < (bottom - rootTop) / 2;
+      setTop(upper && slot ? Math.max(0, slot.bottom - rootTop) : 0);
+      setBand(slot && !upper ? Math.max(0, bottom - slot.top) : 0);
     };
     measure();
     window.addEventListener("resize", measure);
@@ -99,6 +104,7 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
     "--about-rise": `${T.rise}px`,
     "--about-col": `${T.column}px`,
     "--about-band": `${band}px`,
+    "--about-top": `${top}px`,
     "--chip-hover": String(CONTROL.hoverAlpha),
     "--chip-hover-active": String(CONTROL.hoverActiveAlpha),
     "--state-ms": `${CONTROL.stateMs}ms`,

@@ -427,12 +427,12 @@ export default function ScenePage() {
         {/* The scaffold (D-26): see .scene-ui in index.css. It sits in the window between Safari's bars (--win-*, useSafariWindow) inside a clip that is the whole root, so the About scrim in it can reach under the bars while every control stays where it was (BUG-57). */}
         <div className="scene-ui-clip">
         <div className="scene-ui" data-about={about} style={{ "--about-ms": `${ABOUT_MS}ms` } as React.CSSProperties}>
-          <div className="scene-top" inert={about ? "" : undefined}>
-            <Glass material="glass" className="scene-pill scene-borough">
+          <div className="scene-top">
+            <Glass material="glass" className="scene-pill scene-borough" inert={about ? "" : undefined}>
               <BoroughToggle selected={s.borough} onSelect={s.setBorough} />
             </Glass>
             {/* The day group: picker and presets together, since both choose the day. Right-aligned as a unit on laptop; dissolves into the centred row below that. */}
-            <div className="scene-day">
+            <div className="scene-day" inert={about ? "" : undefined}>
               {phone ? (
                 <Glass material="frosted" className="scene-about-pill scene-daypicker-pill">
                   {/* One button, not a chip in a pill (Shoro, 2026-09-16): the phone's day control is the Patch notes button's twin, the pill itself the button, the caret kept. */}
@@ -449,6 +449,8 @@ export default function ScenePage() {
                 </>
               )}
             </div>
+            {/* On a phone the Patch notes button is the notebook beside the day pill (D-64); it stands above the About scrim from here, so it is not inert while About is open. */}
+            {phone && <AboutButton ref={aboutBtnRef} onPress={about ? closeAbout : openAbout} open={about} form="icon" />}
           </div>
 
           {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame reaches the panels' shadow room on every side (index.css --clip-pad, --clip-pad-y), and what keeps a page mid-switch off the bars' pills is the drift: on laptop the visible motion is one gap, the travel between the fades runs unseen (D-48, Shoro, 2026-09-16). */}
@@ -536,14 +538,14 @@ export default function ScenePage() {
                   <Credit />
                 </Glass>
               </>
-            ) : (
+            ) : !phone ? (
               <div className="scene-bottom-row">
                 <AboutButton ref={aboutBtnRef} onPress={about ? closeAbout : openAbout} open={about} form="dismiss" />
                 <Glass material="frosted" className="scene-credit" inert={about ? "" : undefined}>
                   <Credit />
                 </Glass>
               </div>
-            )}
+            ) : null /* on a phone the credit lives only in the About overlay, which credits Shoro and links the site (D-64) */}
           </div>
 
           {DEV && (

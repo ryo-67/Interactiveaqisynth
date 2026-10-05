@@ -13,6 +13,7 @@ import { warnOnce } from "../utils/time";
 import { skyParamsFor, starOpacity, nightBlend, goldenBlend, veilDensity } from "./skyParams";
 import { predictPanel, rampLiftFor, type RGB } from "./panelLuminance";
 import { useSafariWindow } from "./useSafariWindow";
+import { useLayout, isPhoneLayout } from "../utils/layout";
 import { sunAnglesAt, sunPositionVector } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
@@ -59,34 +60,11 @@ declare module "react" { interface HTMLAttributes<T> { inert?: "" } } // React 1
 
 const DISSOLVE_BEATS = 1.5; // the dissolve's length on a change of day while playing (D-32): the same span as the glide at rest
 
-// Phones (state C, ≤575) get one day control instead of three pills: the width that makes state C is the width that makes a dropdown the better control.
-function usePhone(): boolean {
-  const [phone, setPhone] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 575px)").matches);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 575px)");
-    const on = () => setPhone(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-  return phone;
-}
-
-// Laptop (≥1024): the hero and graph share a row and the pages stack vertically with the page pill beside the section. Below that the panels are full width, so the pages sit side by side like the phone's and the pill joins the transport row (Shoro, 2026-09-16).
-function useLaptop(): boolean {
-  const [laptop, setLaptop] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const on = () => setLaptop(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-  return laptop;
-}
-
 export default function ScenePage() {
   const s = useListenSession();
-  const phone = usePhone();
-  const laptop = useLaptop();
+  const layout = useLayout(); // D-63: one rule for every layout decision on the page (utils/layout.ts)
+  const phone = isPhoneLayout(layout); // the phone's controls: the day sheet, no sky tap-to-play, no page cursor
+  const laptop = layout === "laptop"; // the vertical page axis and the side transport
   const { day, beat, playing, paused, channels, skyChannels, rest } = s;
   const hour = s.playheadHour; // the one transport position: the graph's playhead reads it as an index
   const clock = s.playheadClock; // the same position as time of day: the sun and the stars read it
@@ -430,7 +408,7 @@ export default function ScenePage() {
 
   return (
     <ThemeContext.Provider value="dark">
-      <div ref={rootRef} className="scene-root" data-entered={entryLifting} style={{ background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint } as React.CSSProperties}>
+      <div ref={rootRef} className="scene-root" data-layout={layout} data-entered={entryLifting} style={{ background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint } as React.CSSProperties}>
         <div ref={windowProbeRef} className="scene-window-probe" aria-hidden /> {/* what Safari leaves between its bars, measured (useSafariWindow); empty and hidden, so it paints nothing and Safari's bar test passes over it */}
         {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. The root is page content, not fixed (index.css .scene-root, BUG-57), screen-tall with a runway above (useSafariWindow), so this box and every layer in it run on under both of Safari's bars. */}
         {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}

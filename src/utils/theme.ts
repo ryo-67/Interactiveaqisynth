@@ -292,6 +292,7 @@ export const CONTROL = {
   pillHeight: 40,
   pillPad: "4px 16px",
   inner: 32,          // chips, tabs, icon buttons, slider track box: 32 in a 40 pill leaves a 4 px inset, on the grid
+  touch: 44,          // the least hit area on a touch layout, phone and tablet (D-64, 2026-10-05): Apple's 44 pt; the phone's 24 px targets were the complaint
   chipPad: "0 12px",
   gap: 4,             // between chips inside a pill — the same 4 as the inset, so chips and pill edges align
   groupGap: 8,        // between pills in a group (play · volume)

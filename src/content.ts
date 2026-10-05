@@ -60,6 +60,7 @@ export const PINS = [
 export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhattan: "MN", Brooklyn: "BK", Queens: "QN", Bronx: "BX", "Staten Island": "SI" }; // the official two-letter borough codes (Shoro, 2026-09-15)
 export const NAV_LIVE = "Live";
 export const NAV_CALENDAR = "Calendar"; // the date chip's accessible name and the popover's
+export const DAY_SHEET = { label: NAV_CALENDAR, close: "Close" } as const; // the phone's day sheet (D-65): its accessible name and the scrim's dismiss label. PLACEHOLDERS — Shoro's.
 export const NAV_LAST_24H = "Last 24h";
 export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}";
 export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the presets and the calendar (Shoro, 2026-09-15) // under the calendar (Shoro, 2026-09-15) // the date chip's label when live (Shoro, 2026-09-15)

@@ -3,7 +3,8 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from "react-dom";
 import { useTheme, themeColors, families, typeScale, space, CONTROL, motion } from "../utils/theme";
 import { chipStyle } from "./chip";
-import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, CAL_AVAILABLE_UNTIL, PICK_OR_DATE } from "../content";
+import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, CAL_AVAILABLE_UNTIL, PICK_OR_DATE, DAY_SHEET } from "../content";
+import { Sheet } from "./Sheet";
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from "./icons";
 import { setPopoverOpen, markOutsideDismiss } from "./popoverStore";
 
@@ -12,6 +13,8 @@ interface Props {
   onChange: (date: string | null) => void;
   loading?: boolean;
   latestDate: string | null; // the last day the archive can play; null until known
+  sheetHost?: HTMLElement | null; // on a phone, where the day sheet mounts (D-65; ScenePage); without it the picker is a popover
+  onOpenChange?: (open: boolean) => void; // the page keeps the sheet and About exclusive
 }
 
 const POPOVER_WIDTH = 288; // 4 px grid; seven 36 px columns plus the panel padding
@@ -164,15 +167,16 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
 // The labels that size the phone chip: Last 24h, the presets, and the longest date the calendar can produce.
 const WIDEST_DATE_LABEL = "Sep 30, 2026"; // the longest label a date chip can show in the monospaced data face: a two-digit day and the year
 const WIDTH_LABELS = [NAV_LAST_24H, ...PINS.map((p) => p.name), WIDEST_DATE_LABEL];
-export function DayPicker({ date, onChange, loading, latestDate }: Props) {
+export function DayPicker({ date, onChange, loading, latestDate, sheetHost, onOpenChange }: Props) {
   const c = themeColors(useTheme());
   const chip = (active: boolean) => chipStyle(c, active);
   const [open, setOpen] = useState(false);
+  useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
   const anchorRef = useRef<HTMLDivElement>(null);
   const presence = usePresence(open);
   const pos = usePopoverPosition(presence.mounted, anchorRef, POPOVER_WIDTH);
   const close = useCallback(() => setOpen(false), []);
-  useDismiss(open, close, anchorRef);
+  useDismiss(open && !sheetHost, close, anchorRef); // with the sheet, its scrim and its own Escape do this
   useEffect(() => { setOpen(false); }, [date]);
   const pin = PINS.find((p) => p.date === date);
   const label = date ? (pin ? pin.name : labelOf(date)) : NAV_LAST_24H;
@@ -196,7 +200,7 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
         </span>
         <span aria-hidden style={{ color: c.textMuted, marginLeft: 2, display: "inline-flex" }}>{open ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}</span>
       </button>
-      {presence.mounted && createPortal(
+      {presence.mounted && !sheetHost && createPortal(
         <div className="glass frosted scene-popover" role="dialog" aria-label={NAV_CALENDAR} style={{ ...popoverStyle(c, presence.visible), left: pos.left, top: pos.top }}>
           <div role="listbox" aria-label="Day" style={{ display: "flex", flexDirection: "column", gap: space.xxs, marginBottom: space.sm }}>
             {options.map((o) => {
@@ -212,6 +216,24 @@ export function DayPicker({ date, onChange, loading, latestDate }: Props) {
           <CalendarGrid date={date} latestDate={latestDate} onPick={(iso) => { onChange(iso); setOpen(false); }} />
         </div>,
         document.body,
+      )}
+      {/* On a phone the day comes up from the bottom (D-65): the six days as 44 chips, three across, and the month beneath at 44 (its cells are --ctl-inner, 44 on a phone). Picking either closes the sheet, as the popover did. */}
+      {sheetHost && (
+        <Sheet open={open} onClose={close} label={DAY_SHEET.label} host={sheetHost}>
+          <div className="scene-sheet-days" role="listbox" aria-label="Day">
+            {options.map((o) => {
+              const active = o.date === date;
+              return (
+                <button key={o.name} className="scene-chip" data-active={active} role="option" aria-selected={active} onClick={() => { onChange(o.date); setOpen(false); }} style={{ ...chip(active), width: "100%", height: 44 }}>
+                  {o.name}
+                </button>
+              );
+            })}
+          </div>
+          <div className="scene-sheet-cal">{/* one box for the month: CalendarGrid is a fragment, and the landscape sheet's two columns would otherwise scatter its header, grid and footer across them */}
+            <CalendarGrid date={date} latestDate={latestDate} onPick={(iso) => { onChange(iso); setOpen(false); }} />
+          </div>
+        </Sheet>
       )}
     </div>
   );

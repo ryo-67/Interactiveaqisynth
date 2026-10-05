@@ -62,6 +62,8 @@ const DISSOLVE_BEATS = 1.5; // the dissolve's length on a change of day while pl
 
 export default function ScenePage() {
   const s = useListenSession();
+  const [sheetHost, setSheetHost] = useState<HTMLDivElement | null>(null);
+  const [daySheetOpen, setDaySheetOpen] = useState(false); // the phone's day sheet, kept exclusive with About (D-65)
   const layout = useLayout(); // D-63: one rule for every layout decision on the page (utils/layout.ts)
   const phone = isPhoneLayout(layout); // the phone's controls: the day sheet, no sky tap-to-play, no page cursor
   const laptop = layout === "laptop"; // the vertical page axis and the side transport
@@ -84,6 +86,7 @@ export default function ScenePage() {
   const aboutTimer = useRef(0);
   const openAbout = useCallback(() => { window.clearTimeout(aboutTimer.current); setAbout(true); setAboutShown(true); }, []);
   const closeAbout = useCallback(() => { setAbout(false); window.clearTimeout(aboutTimer.current); aboutTimer.current = window.setTimeout(() => setAboutShown(false), motion.beatMs * ABOUT_TOKENS.fadeBeats + 20); }, []);
+  useEffect(() => { if (daySheetOpen && about) closeAbout(); }, [daySheetOpen, about, closeAbout]); // the sheet and About are never both open (D-65): opening the day sheet closes About; the reverse cannot happen, since the sheet's scrim covers the notebook
   const lockRef = useRef(0); // the time until which a switch is refused: one slide at a time, and the wheel's inertia is not a second gesture
   // Moving (Shoro, 2026-09-16): true through a switch or a drag, and false at rest; the playhead's readout goes without its backdrop-filter while it is (index.css data-moving).
   const [moving, setMoving] = useState(false);
@@ -436,7 +439,7 @@ export default function ScenePage() {
               {phone ? (
                 <Glass material="frosted" className="scene-about-pill scene-daypicker-pill">
                   {/* One button, not a chip in a pill (Shoro, 2026-09-16): the phone's day control is the Patch notes button's twin, the pill itself the button, the caret kept. */}
-                  <DayPicker date={s.date} onChange={s.setDate} loading={s.dayLoading} latestDate={s.latestDate} />
+                  <DayPicker date={s.date} onChange={s.setDate} loading={s.dayLoading} latestDate={s.latestDate} sheetHost={sheetHost} onOpenChange={setDaySheetOpen} />
                 </Glass>
               ) : (
                 <>
@@ -558,6 +561,8 @@ export default function ScenePage() {
           )}
           {/* The About overlay (D-56), inside the scaffold so the Patch notes button can stand above it (z-index; a portal could not be stacked under a child of this tree). */}
           <About open={about} onClose={closeAbout} anchorRef={aboutBtnRef} latestDate={s.latestDate} />
+          {/* Where the phone's day sheet mounts (D-65): inside the scaffold, above About and below the entry, so its scrim reaches under Safari's bars like About's. */}
+          <div ref={setSheetHost} className="scene-sheet-host" />
         </div>
         </div>
         {/* The one screen before the tool (D-61): held until the live air has been read, whether it arrived or did not, and never less than its floor. Inside the root so it takes the glass tokens; the scene is mounted and running behind it the whole time. */}

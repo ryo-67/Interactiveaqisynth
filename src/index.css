@@ -1895,3 +1895,22 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout^="phone"] .scene-about { --about-pad: 16px; --about-inline: 48px; } /* the reading's side padding on a phone (keyed on the layout since D-63; it was max-width 575): Shoro's 48 (2026-09-17; 64 for a day, 24 before that) */
 /* The phone's About (D-64): the close is the notebook in the top bar, so the reading starts under the bar and fades out beneath it, and the bottom keeps only its padding. */
 .scene-root[data-layout^="phone"] .scene-about-scroll { padding-top: calc(var(--about-top, 0px) + 24px); padding-bottom: 32px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent var(--about-top, 0px), #000 calc(var(--about-top, 0px) + 20px)); mask-image: linear-gradient(to bottom, transparent 0, transparent var(--about-top, 0px), #000 calc(var(--about-top, 0px) + 20px)); }
+/* ——— The day sheet (D-65; Sheet.tsx). Hosted in the scaffold above everything but the entry: its scrim reaches past the window to the screen's edges like the About scrim (BUG-57), and the panel rises from the window's bottom edge with its fill carried on under the toolbar. Portrait: the six days as a 3 × 2 grid of chips above the month. Landscape: the window's full height, the days beside the month; a six-week month scrolls inside by about a row. ——— */
+.scene-sheet-host { position: absolute; inset: 0; z-index: 35; pointer-events: none; }
+.scene-sheet-layer { position: absolute; inset: 0; pointer-events: auto; }
+.scene-sheet-scrim { position: absolute; top: calc(-1 * var(--win-t, 0px)); right: calc(-1 * var(--win-r, 0px)); bottom: calc(-1 * var(--win-b, 0px)); left: calc(-1 * var(--win-l, 0px)); border: none; padding: 0; background: rgba(var(--about-tint, 5, 6, 14), 0.45); opacity: 0; transition: opacity 240ms ease; }
+.scene-sheet-layer[data-visible="true"] .scene-sheet-scrim { opacity: 1; }
+.scene-sheet { position: absolute; left: 0; right: 0; bottom: calc(-1 * var(--win-b, 0px)); max-height: calc(100% + var(--win-b, 0px)); padding: 0 16px calc(16px + var(--win-b, 0px)); border-radius: 24px 24px 0 0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1); box-sizing: border-box; }
+.scene-sheet-layer[data-visible="true"] .scene-sheet { transform: translateY(0); }
+.scene-sheet-layer[data-reduced="true"] .scene-sheet { transform: none; opacity: 0; transition: opacity 200ms ease; }
+.scene-sheet-layer[data-reduced="true"][data-visible="true"] .scene-sheet { opacity: 1; }
+.scene-sheet-grab { height: 28px; display: flex; align-items: center; justify-content: center; touch-action: none; cursor: grab; flex: 0 0 auto; }
+.scene-sheet-grab > span { width: 40px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.4); }
+.scene-sheet-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.scene-sheet-days { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.scene-sheet-days > button { width: 100%; height: 44px; }
+.scene-root[data-layout^="phone"] .scene-sheet .scene-chip, .scene-root[data-layout="tablet"] .scene-popover .scene-chip { min-width: var(--ctl-inner, 44px); } /* the month's arrows are a 16 glyph in 12 padding, 40 wide: square them to the touch floor */
+.scene-root[data-layout="phone-landscape"] .scene-sheet { left: auto; width: min(640px, 100%); right: 0; top: 0; bottom: 0; max-height: none; padding-bottom: 12px; border-radius: 24px 0 0 24px; transform: translateX(100%); }
+.scene-root[data-layout="phone-landscape"] .scene-sheet-layer[data-visible="true"] .scene-sheet { transform: translateX(0); }
+.scene-root[data-layout="phone-landscape"] .scene-sheet-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 12px; align-items: start; }
+.scene-root[data-layout="phone-landscape"] .scene-sheet-days { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 0; }

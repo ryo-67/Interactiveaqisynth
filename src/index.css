@@ -1863,6 +1863,12 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone-landscape"] .scene-views { gap: 0; }
 .scene-root[data-layout="phone-landscape"] .scene-bottom { gap: 8px; display: flex; flex-direction: column; } /* over the laptop's three-column grid, which still matches a short laptop window by width */
 
+/* ——— Tablet targets (D-64, 2026-10-05). The tablet keeps its layout; every control grows to 44 inside a 52 pill, the touch floor on a screen that is almost always touched. ——— */
+.scene-root[data-layout="tablet"] .scene-ui { --ctl-pill: 52px; --ctl-inner: 44px; }
+.scene-root[data-layout="tablet"] .scene-pill.scene-views-pill { padding: 0 4px; }
+.scene-root[data-layout="tablet"] .scene-views { gap: 4px; }
+.scene-root[data-layout="tablet"] .scene-borough-btn, .scene-root[data-layout="tablet"] .scene-chip { min-width: var(--ctl-inner, 44px); } /* the height alone was not the floor: the borough codes measured 14–29 wide at 768 and the day arrows 40 */
+
 /* ——— The About overlay (D-56, 2026-09-16; About.tsx). The scrim is a backdrop blur of the whole page under a tint (theme.ts ABOUT): its --glass-on is its material, and the blur's radius, the saturation and the tint all rise with it over one beat, so the page recedes rather than cross-fades. The reading rises --about-rise as it dissolves in, and leaves the same way; the twin of the Patch notes button eases between its two rectangles over the same beat. Below laptop a mask band across the scroll surface's bottom, the button's row, keeps the reading from showing behind it; on laptop the button is at the left, off the column, and there is no band. The transition is declared on the state each is going TO. ——— */
 .scene-ui[data-about="true"] .glass:not(.scene-patch) { pointer-events: none; }
 .scene-about { position: absolute; inset: 0; z-index: 30; pointer-events: auto; --about-pad: 32px; --about-inline: 32px; --about-link-size: 32px; }

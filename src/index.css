@@ -1827,6 +1827,42 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-root[data-layout="phone"] .scene-page-inner { --card-pad: 10px; }
 }
 
+/* ——— Phone landscape, layout L1 (D-64, 2026-10-05). A phone on its side leaves about 780 × 283 between Safari's bars. One row of controls (the borough at a fixed width, the day pill filling the rest, the notebook); the middle with the hero cards stacked in a left column beside the graph, or the synth's six cards 3 × 2; the transport along the bottom with play at 48, still over the 44 floor, so the plot keeps another 8. The sides keep clear of the island: the larger of 16 and the safe-area inset. ——— */
+.scene-root[data-layout="phone-landscape"] .scene-ui {
+  --ctl-pill: 44px; --ctl-inner: 44px; --ctl-gap-wide: 0px;
+  --ui-pad: 12px; --ui-gap: 8px; --grid-gap: 8px;
+  --display-size: 34px; --heading-size: 22px; --heading-line: 26px; --body-size: 13px; --body-line: 18px;
+  --panel-radius: 14px; --chip-radius: 10px;
+  --graph-faint-alpha: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.scene-root[data-layout="phone-landscape"] .scene-top { display: grid; grid-template-columns: 340px minmax(0, 1fr) auto; grid-template-areas: "borough day patch"; gap: 8px; align-items: stretch; z-index: auto; }
+.scene-root[data-layout="phone-landscape"] .scene-top > :not(.scene-patch-slot) { position: relative; z-index: 1; }
+.scene-root[data-layout="phone-landscape"] .scene-top .scene-borough { grid-area: borough; width: auto; padding: 0; }
+.scene-root[data-layout="phone-landscape"] .scene-top .scene-day { grid-area: day; display: flex; min-width: 0; margin: 0; }
+.scene-root[data-layout="phone-landscape"] .scene-top .scene-day > .glass { flex: 1 1 auto; width: auto; }
+.scene-root[data-layout="phone-landscape"] .scene-top > .scene-patch-slot { grid-area: patch; }
+.scene-root[data-layout="phone-landscape"] .scene-borough .scene-strip { width: 100%; --strip-gap: 0px; }
+.scene-root[data-layout="phone-landscape"] .scene-borough-btn { flex: 1 1 0 !important; }
+.scene-root[data-layout="phone-landscape"] .scene-borough .borough-long { display: none; }
+.scene-root[data-layout="phone-landscape"] .scene-borough .borough-short { display: block; }
+.scene-root[data-layout="phone-landscape"] .scene-page-inner { height: 100%; flex: 1 1 auto; --card-pad: 10px; --card-value-size: 18px; --card-value-line: 22px; }
+.scene-root[data-layout="phone-landscape"] .scene-page-scene .scene-page-inner { flex-direction: row; align-items: stretch; justify-content: flex-start; }
+.scene-root[data-layout="phone-landscape"] .scene-hero-pair { flex: 0 0 210px; width: 210px; height: auto; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); align-self: stretch; }
+.scene-root[data-layout="phone-landscape"] .scene-hero-pair .scene-meter, .scene-root[data-layout="phone-landscape"] .scene-hero-pair .scene-ladder { display: none; }
+.scene-root[data-layout="phone-landscape"] .scene-panel.scene-graph { --graph-pad: 8px; --graph-pad-x: 8px; flex: 1 1 auto; min-height: 0; min-width: 0; width: auto; --graph-fill: 1; }
+.scene-root[data-layout="phone-landscape"] .scene-graph-unit, .scene-root[data-layout="phone-landscape"] .scene-graph-suffix { display: none; }
+.scene-root[data-layout="phone-landscape"] .scene-panel.scene-graph [role="tablist"] > button { flex: 1 1 0 !important; min-width: 0; }
+.scene-root[data-layout="phone-landscape"] .scene-monitor { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.scene-root[data-layout="phone-landscape"] .scene-monitor .scene-card-beats, .scene-root[data-layout="phone-landscape"] .scene-monitor .scene-card-reverb { grid-column: auto; }
+.scene-root[data-layout="phone-landscape"] .scene-transport { gap: 8px; width: 100%; align-self: stretch; } /* the full row at any width: a short laptop window is landscape too, and the tablet rule that stretched it ends at 1023 */
+.scene-root[data-layout="phone-landscape"] .scene-transport > .scene-icon-pill { width: 48px; height: 48px; border-radius: 24px; }
+.scene-root[data-layout="phone-landscape"] .scene-transport > .scene-icon-pill .scene-play { width: 100% !important; height: 100% !important; border-radius: inherit !important; }
+.scene-root[data-layout="phone-landscape"] .scene-transport > .scene-pill:nth-child(2) { flex: 1 1 auto; max-width: none; padding: 0 12px; }
+.scene-root[data-layout="phone-landscape"] .scene-pill.scene-views-pill { padding: 0; }
+.scene-root[data-layout="phone-landscape"] .scene-views { gap: 0; }
+.scene-root[data-layout="phone-landscape"] .scene-bottom { gap: 8px; display: flex; flex-direction: column; } /* over the laptop's three-column grid, which still matches a short laptop window by width */
+
 /* ——— The About overlay (D-56, 2026-09-16; About.tsx). The scrim is a backdrop blur of the whole page under a tint (theme.ts ABOUT): its --glass-on is its material, and the blur's radius, the saturation and the tint all rise with it over one beat, so the page recedes rather than cross-fades. The reading rises --about-rise as it dissolves in, and leaves the same way; the twin of the Patch notes button eases between its two rectangles over the same beat. Below laptop a mask band across the scroll surface's bottom, the button's row, keeps the reading from showing behind it; on laptop the button is at the left, off the column, and there is no band. The transition is declared on the state each is going TO. ——— */
 .scene-ui[data-about="true"] .glass:not(.scene-patch) { pointer-events: none; }
 .scene-about { position: absolute; inset: 0; z-index: 30; pointer-events: auto; --about-pad: 32px; --about-inline: 32px; --about-link-size: 32px; }

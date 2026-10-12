@@ -18,7 +18,7 @@ function seoPlugin(): Plugin {
       this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robotsTxt() });
       this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemapXml(today) });
       this.emitFile({ type: 'asset', fileName: 'llms.txt', source: llmsTxt() });
-      // IndexNow's key file, and the commit this build came from: the IndexNow workflow waits until build.txt names its push (or a later one) before pinging, since Vercel does not report its deploys back to GitHub (D-66).
+      // IndexNow's key file, and the commit this build came from: the IndexNow workflow waits until build.txt names its push (or a later one) before pinging, which does not depend on Vercel reporting its deploys to GitHub (D-66a).
       this.emitFile({ type: 'asset', fileName: `${INDEXNOW_KEY}.txt`, source: INDEXNOW_KEY });
       this.emitFile({ type: 'asset', fileName: 'build.txt', source: `${process.env.VERCEL_GIT_COMMIT_SHA || 'local'}\n` });
     },

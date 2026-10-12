@@ -6,7 +6,7 @@ Why, not just what. Newest first.
 
 Search Console caps how often a page can be put forward by hand, and Bing's index is the one ChatGPT search and Copilot draw on. IndexNow lets the site tell Bing the moment the page changes instead of waiting for a recrawl. A GitHub Action does it after each push to main that can change the page.
 
-The Action has to know when the push is live. Vercel builds from GitHub but stopped reporting its deploys back after 83f9297, so there is no deploy event to wait on, and a ping from inside the build would come before the page changed. The build now writes the commit it came from to `/build.txt`, and the Action polls that until it reaches its push, then pings. A test ties the Action's key lookup to `src/seo.ts`, so renaming the key fails a test rather than a ping.
+The Action has to know when the push is live. Vercel normally posts a deploy event to GitHub, but during Vercel's and GitHub's incident of 2026-10-12 every deploy went out without one, so the Action cannot rely on it, and a ping from inside the build would come before the page changed. The build now writes the commit it came from to `/build.txt`, and the Action polls that until it reaches its push, then pings. A test ties the Action's key lookup to `src/seo.ts`, so renaming the key fails a test rather than a ping.
 
 ## 2026-10-12 — Readable without JavaScript (D-66, INF-06)
 

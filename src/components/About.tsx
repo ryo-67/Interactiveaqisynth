@@ -4,6 +4,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme, themeColors, families, typeScale, motion, CONTROL, ABOUT as T } from "../utils/theme";
 import { ABOUT, CREDIT_URL, LINKEDIN_URL, GITHUB_URL } from "../content";
 import { chipStyle } from "./chip";
+import { weeksBehind } from "../utils/time";
 import { CircleUserRoundIcon, LinkedinIcon, GithubIcon } from "./icons";
 
 interface Props {
@@ -16,7 +17,6 @@ interface Props {
 const REDUCED = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const FADE_MS = REDUCED ? T.reducedMs : motion.beatMs * T.fadeBeats;
 
-// How far the archive runs behind today, in whole weeks, from its last available day: "about {weeks} weeks behind".
 // No paragraph ends on a word by itself, at any width (Shoro, 2026-09-17). The last space in a run of prose becomes a non-breaking one, which is the only way to say it that a wrap cannot ignore: text-wrap: pretty below asks the browser to even out the last lines, but it is a preference, not a rule, and it says nothing at a width where the last line can only hold one word. Tying the last two words means the pair goes over together instead.
 function noOrphan(text: string): string {
   const i = text.lastIndexOf(" ");
@@ -28,12 +28,6 @@ function keepTogether(line: string, phrase: string): React.ReactNode {
   const i = phrase ? line.indexOf(phrase) : -1;
   if (i < 0) return line;
   return (<>{line.slice(0, i)}<span style={{ whiteSpace: "nowrap" }}>{phrase}</span>{line.slice(i + phrase.length)}</>);
-}
-
-export function weeksBehind(latestDate: string | null, now = Date.now()): number | null {
-  if (!latestDate) return null;
-  const t = Date.parse(`${latestDate}T12:00:00`);
-  return Number.isFinite(t) ? Math.max(1, Math.round((now - t) / (7 * 86400e3))) : null;
 }
 
 export function About({ open, onClose, anchorRef, latestDate }: Props) {

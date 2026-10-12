@@ -34,3 +34,10 @@ export function warnOnce(name: string): void {
   warned.add(name);
   console.warn(`[scene] non-finite value for ${name}; holding the last value`);
 }
+
+// How far the archive runs behind today, in whole weeks, from its last available day: "about {weeks} weeks behind". The About overlay fills it from the calendar's last day; the build fills the crawler copy from ARCHIVE_LAST_DATE (src/seo.ts).
+export function weeksBehind(latestDate: string | null, now = Date.now()): number | null {
+  if (!latestDate) return null;
+  const t = Date.parse(`${latestDate}T12:00:00`);
+  return Number.isFinite(t) ? Math.max(1, Math.round((now - t) / (7 * 86400e3))) : null;
+}

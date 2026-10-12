@@ -95,7 +95,7 @@ export const ABOUT = {
       { label: "Scale", body: "The six scale steps match the EPA's six AQI categories: Major, Pentatonic, Dorian, Phrygian, Locrian, Chromatic. The chord progression underneath is fixed." },
       { label: "The sky", body: "The sky is rendered from physical models of the atmosphere, with the sun calculated and rendered where it was over New York at that hour. One model handles daytime, another handles night. Golden and blue hours at dusk/dawn are added on top." },
       { label: "The air", body: "Particulate matter is drawn over the sky as noise and visual aberrations. At low levels it just bends the view a little. At high levels it tints everything amber. At really high levels, it turns into plumes of smoke you can see the sun through." },
-      // {weeks} renders as the number Shoro wrote, 8, and keeps saying the truth as the archive moves (About.tsx weeksBehind, from the calendar's own last available day).
+      // {weeks} renders as the number Shoro wrote, 8, and keeps saying the truth as the archive moves (utils/time.ts weeksBehind, from the calendar's own last available day).
       { label: "Data", body: "Live readings come from AirNow every hour. The archive is EPA monitoring data from 2020 onward, and it runs about {weeks} weeks behind. New York doesn't publish live NO\u2082, so live views use a typical NO\u2082 profile for the current month and weekday, built from the archive. Some boroughs don't monitor every pollutant. Where there's no reading, that borough uses the citywide value." },
     ],
   ],
@@ -108,3 +108,21 @@ export const ABOUT = {
 } as const;
 export const LINKEDIN_URL = "https://www.linkedin.com/in/royshoro/";
 export const GITHUB_URL = "https://github.com/ryo-67/Interactiveaqisynth";
+
+// Search and share copy (D-66, 2026-10-12): what search results, link previews and AI engines read about the page. Drafted by Claude from the About overlay and the README; approved by Shoro as written, 2026-10-12. The description holds to 100–160 characters (LinkedIn's floor, search truncation; seo.test.ts), the portfolio's rule (its decision share-description-floor). SEO.title is the tab's title too (Shoro, 2026-10-12), written in by the build; the entry and the About overlay keep ENTRY.title and ABOUT.title.
+export const SITE_URL = "https://aqi-synth.vercel.app"; // the canonical origin (Shoro, 2026-10-12): canonical link, sitemap, share tags and structured data all point here
+export const PORTFOLIO_URL = "https://shoro.space"; // the portfolio's origin; its home publishes the schema.org Person this page's author points at
+export const PORTFOLIO_RECORD_URL = "https://shoro.space/records/aqi-synth"; // the portfolio's own page for this piece
+export const SEO = {
+  title: "New York AQI Synth: the city's air quality, played as music",
+  description: "New York City's air quality played as music. Live AirNow readings and EPA data back to 2020 drive a synthesizer and a sky, borough by borough.",
+  image: { path: "/og.png", width: 1200, height: 630 },
+  imageAlt: "The New York AQI Synth scene on June 7, 2023, the wildfire smoke day: an amber, smoke-filled sky, an AQI of 241 and the day's hourly AQI graph.", // describes public/og.png (captured 2026-10-12 in the dev server at 1200 × 630, from an 800 × 420 render upscaled)
+  keywords: ["air quality", "AQI", "New York City", "sonification", "PM2.5", "ozone", "nitrogen dioxide", "Tone.js", "data sonification"],
+  llmsHow: "How the air becomes sound", // llms.txt section headings
+  llmsSources: "Data sources",
+  llmsMaker: "About the maker",
+  sourceAirNow: "AirNow, live hourly readings", // the two sources as llms.txt and the crawler copy name them
+  sourceEpa: "EPA outdoor air quality data, the archive since 2020",
+  portfolioRecord: "AQI Synth in Shoro Roy's portfolio",
+} as const;

@@ -2,6 +2,14 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — Readable without JavaScript (D-66, INF-06)
+
+The page is a scene drawn by JavaScript, and until it runs `#root` is empty. A no-JS fetch of the live site returned a title and nothing else, and robots.txt, sitemap.xml and llms.txt were all 404s. Google renders JavaScript and saw the app; the AI engines' crawlers (GPTBot, ClaudeBot, PerplexityBot) and every link-preview fetcher do not, so to them the site said nothing and a shared link had no picture or description.
+
+The build now writes the page's meaning into its HTML, all of it from content.ts so it cannot drift from the overlay: a description, canonical and share tags, a share image of the Wildfire day, schema.org data that names Shoro by the same identifier the portfolio publishes, so engines join the two sites into one maker, and the About text as a hidden reading the app replaces on mount. Beside the page: a robots.txt that welcomes the AI crawlers by name and keeps the API and the harness out, a sitemap, and an llms.txt. It follows how the portfolio did it, including its rule that a description is 100 to 160 characters, now held by a test. The tab now carries the longer search title too, since Google usually shows the tab's title in results (Shoro's call). The search title, description and image text were drafted by Claude and approved by Shoro as written.
+
+The share image is the scene captured at 1200 × 630 in the browser pane, which renders at 800 × 420, so it is upscaled 1.5 times; a sharper capture can replace the file without touching anything else. `weeksBehind` moved from the About component to `utils/time.ts` so the build could use it.
+
 ## 2026-10-05 — Phone layout, second pass (D-64 amended)
 
 Shoro reviewed the first build and asked for ten refinements. The spacing looked off because the phone had three gaps in play (8, 12 and an 8 in the top grid), so it now has one, 12, stepping to 8 on short screens, used between every bar, card, graph and control. Play was the only control at 56, which made the transport row look lopsided; the page icons now match it and the volume pill stays at 44 between them. The error toast's two actions were tap targets in name only, bare text in a fit-content pill, so they became full-width bordered chips. On a wide phone on its side the day pill had stretched across the row while the borough showed codes; the day pill is now capped at 280 and the borough spells out the names once its pill reaches 540, which a Pro Max on its side gives it.

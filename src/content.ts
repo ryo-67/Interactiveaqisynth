@@ -11,7 +11,7 @@ export const TIER_NAMES = ["Easy", "Shallow", "Short", "Tight", "Ragged", "Suffo
 export const CREDIT_LINE = "by {name}"; // Shoro, 2026-09-16 (was "Designed for fun by {name}", then "Made by {name}")
 export const ABOUT_LABEL = "Patch notes"; // the footer button's label (Shoro, 2026-09-16; was "About this", then "About"); it opens the About overlay (D-56)
 export const CREDIT_NAME = "Shoro Roy";
-export const CREDIT_URL = "https://shoro.framer.website/";
+export const CREDIT_URL = "https://shoro.space/";
 // Source line (§5.3 panel 6). The source in use, as fact (Shoro, 2026-09-16); on laptop only.
 export const SOURCE_LINE_LIVE = "Live data from AirNow"; // Shoro, 2026-09-16
 export const SOURCE_LINE_ARCHIVE = "Archive data from EPA"; // Shoro, 2026-09-16

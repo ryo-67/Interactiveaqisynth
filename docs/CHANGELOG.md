@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — aqi.shoro.space (D-67)
+
+The site moves from aqi-synth.vercel.app to aqi.shoro.space, under the portfolio's own domain. Every absolute URL the build writes (canonical, Open Graph and Twitter tags, the share image, JSON-LD, robots.txt, sitemap.xml) already came from `SITE_URL` in content.ts, so moving the origin is that one line plus the two tests that pin it. API calls were already relative. The IndexNow workflow now waits on and pings for the new host. Both vercel.app names 308-redirect straight to the new one with paths kept: permanent, so search engines move the old URL's standing across, and direct, so the older interactive-aqi-synth.vercel.app no longer chains through aqi-synth.vercel.app. The Search Console tag for the old property stays in the head.
+
 ## 2026-10-12 — IndexNow for Bing (D-66a)
 
 Search Console caps how often a page can be put forward by hand, and Bing's index is the one ChatGPT search and Copilot draw on. IndexNow lets the site tell Bing the moment the page changes instead of waiting for a recrawl. A GitHub Action does it after each push to main that can change the page.

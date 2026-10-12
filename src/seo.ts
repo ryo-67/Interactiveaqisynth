@@ -10,7 +10,7 @@ export const AI_CRAWLERS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBo
 /** Kept out of search: the serverless routes and the tuning harness. vercel.json sends X-Robots-Tag: noindex on the same paths. */
 export const DISALLOW = ["/api/", "/scene-test"] as const;
 
-/** Google Search Console's ownership check for the URL-prefix property https://aqi-synth.vercel.app/ (Shoro, 2026-10-12). Public by design; removing it un-verifies the property. */
+/** Google Search Console's ownership check for the URL-prefix property https://aqi-synth.vercel.app/ (Shoro, 2026-10-12). Public by design; removing it un-verifies the property. Kept after the move to aqi.shoro.space (D-67): the new origin is its own property in Search Console. */
 export const GOOGLE_SITE_VERIFICATION = "8S-yy-_ddlDaj8iCDD1U03aDoysf7FRxppI_p2_H994";
 
 /** IndexNow's key (D-66, 2026-10-12): served at /<key>.txt (vite.config.ts) and sent with each ping by .github/workflows/indexnow.yml, which reads it from this line. Public by design: it only proves the pinger controls the host. IndexNow tells Bing, Yandex, Seznam and Naver a URL changed; Google does not take part. */

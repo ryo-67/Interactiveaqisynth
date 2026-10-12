@@ -110,7 +110,7 @@ export const LINKEDIN_URL = "https://www.linkedin.com/in/royshoro/";
 export const GITHUB_URL = "https://github.com/ryo-67/Interactiveaqisynth";
 
 // Search and share copy (D-66, 2026-10-12): what search results, link previews and AI engines read about the page. Drafted by Claude from the About overlay and the README; approved by Shoro as written, 2026-10-12. The description holds to 100–160 characters (LinkedIn's floor, search truncation; seo.test.ts), the portfolio's rule (its decision share-description-floor). SEO.title is the tab's title too (Shoro, 2026-10-12), written in by the build; the entry and the About overlay keep ENTRY.title and ABOUT.title.
-export const SITE_URL = "https://aqi-synth.vercel.app"; // the canonical origin (Shoro, 2026-10-12): canonical link, sitemap, share tags and structured data all point here
+export const SITE_URL = "https://aqi.shoro.space"; // the canonical origin (Shoro, 2026-10-12; moved from aqi-synth.vercel.app the same day, D-67): canonical link, sitemap, share tags and structured data all point here
 export const PORTFOLIO_URL = "https://shoro.space"; // the portfolio's origin; its home publishes the schema.org Person this page's author points at
 export const PORTFOLIO_RECORD_URL = "https://shoro.space/records/aqi-synth"; // the portfolio's own page for this piece
 export const SEO = {

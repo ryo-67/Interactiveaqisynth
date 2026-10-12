@@ -41,7 +41,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | ID | Priority | Status | Task | Notes |
 |---|---|---|---|---|
 | INF-01 | P0 | DONE 2026-05 | Migrate off Supabase to Vercel serverless | Commit 6e5bb35. Four routes under `api/`, shared `_lib/aqi.ts`, CDN caching |
-| INF-02 | P0 | DONE 2026-05 | GitHub repo and Vercel project | ryo-67/Interactiveaqisynth → aqi-synth.vercel.app (primary as of 2026-09-17; the original interactive-aqi-synth.vercel.app redirects), env vars set |
+| INF-02 | P0 | DONE 2026-05 | GitHub repo and Vercel project | ryo-67/Interactiveaqisynth → aqi.shoro.space (primary as of 2026-10-12, D-67; aqi-synth.vercel.app and the original interactive-aqi-synth.vercel.app 308-redirect to it), env vars set |
 | INF-03 | P0 | DONE 2026-08-27 | Verify/set `maxDuration` for historical route | `_lib/aqi.ts` assumes a 90 s deadline; vercel.json sets none. Check plan limits, set explicitly. O-06, BUG-23 |
 | INF-04 | P1 | DONE 2026-08-27 | Remove `hono` and other server leftovers from package.json | Leftover from the Deno server. BUG-22 |
 | INF-05 | P2 | TODO | Cron or on-deploy warm of the historical route | Only if cold EPA fetch is still visible after UX-01 defers historical load |

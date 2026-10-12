@@ -15,7 +15,7 @@ Be precise about what exists. Much of STRATEGY.md is still target state, but far
 Shipped and working:
 - React 18 + TypeScript + Vite (SWC), Tailwind v4, Tone.js, three.js via @react-three/fiber and postprocessing for the sky, Canvas 2D for the graph.
 - Vercel serverless routes under `api/`: `aqi/current.ts` (AirNow data endpoint, NYC bbox, per site), `aqi/historical.ts` (EPA AQS, current year only), `health.ts`, `aqi/diagnostic.ts`. Shared logic in `api/_lib/aqi.ts`. CDN caching via `Cache-Control: s-maxage`; `vercel.json` sets `maxDuration: 300` on the historical route.
-- Deployed at aqi-synth.vercel.app from GitHub main. Env vars on Vercel: `AIRNOW_API_KEY`, `EPA_AQS_EMAIL`, `EPA_AQS_API_KEY`.
+- Deployed at aqi.shoro.space from GitHub main (D-67; aqi-synth.vercel.app and interactive-aqi-synth.vercel.app 308-redirect to it). Env vars on Vercel: `AIRNOW_API_KEY`, `EPA_AQS_EMAIL`, `EPA_AQS_API_KEY`.
 - `/` is the scene (`src/scene/ScenePage.tsx`, D-40); `/scene` is an alias and `/scene-test` is the tuning harness. The earlier typographic page (`App.tsx`) is deleted.
 - `src/content.ts` holds the prose (DSN-01). `src/utils/theme.ts` holds the tokens (DSN-02).
 - Search and AI-engine discoverability (D-66): `src/seo.ts` builds head tags, JSON-LD, a hidden crawler reading of the About text, robots.txt, sitemap.xml and llms.txt from `content.ts`; the Vite plugin in `vite.config.ts` writes them at build. The share image is `public/og.png`. `.github/workflows/indexnow.yml` pings IndexNow (Bing) once a push that can change the page is live, polling the live `/build.txt` for its commit (D-66a). The `SEO` block in `content.ts` is copy Shoro approved on 2026-10-12. When the About copy changes, the crawler text follows on the next build.

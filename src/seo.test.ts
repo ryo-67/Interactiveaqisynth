@@ -56,10 +56,10 @@ describe("robots and sitemap", () => {
   it("names every AI crawler and keeps the API and the harness out", () => {
     for (const a of AI_CRAWLERS) expect(r).toContain(`User-agent: ${a}`);
     for (const d of DISALLOW) expect(r).toContain(`Disallow: ${d}`);
-    expect(r).toContain("Sitemap: https://aqi-synth.vercel.app/sitemap.xml");
+    expect(r).toContain("Sitemap: https://aqi.shoro.space/sitemap.xml");
   });
   it("sitemap lists the page with its date", () => {
-    expect(sitemapXml("2026-10-12")).toContain("<loc>https://aqi-synth.vercel.app/</loc><lastmod>2026-10-12</lastmod>");
+    expect(sitemapXml("2026-10-12")).toContain("<loc>https://aqi.shoro.space/</loc><lastmod>2026-10-12</lastmod>");
   });
 });
 

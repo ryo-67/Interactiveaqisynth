@@ -2,7 +2,7 @@
 
 A web instrument that plays New York's air as music.
 
-Live at **[aqi-synth.vercel.app](https://aqi-synth.vercel.app)**.
+Live at **[aqi.shoro.space](https://aqi.shoro.space)**.
 
 Pick a borough and a day. Today's live readings, or any day back to 2020. The hour-by-hour pollutant record drives a synthesizer and a physically based sky that moves with it. Twenty-four hours is twenty-four beats, sixteen seconds at 90 BPM, and it loops.
 

@@ -13,6 +13,9 @@ export const DISALLOW = ["/api/", "/scene-test"] as const;
 /** Google Search Console's ownership check for the URL-prefix property https://aqi-synth.vercel.app/ (Shoro, 2026-10-12). Public by design; removing it un-verifies the property. */
 export const GOOGLE_SITE_VERIFICATION = "8S-yy-_ddlDaj8iCDD1U03aDoysf7FRxppI_p2_H994";
 
+/** IndexNow's key (D-66, 2026-10-12): served at /<key>.txt (vite.config.ts) and sent with each ping by .github/workflows/indexnow.yml, which reads it from this line. Public by design: it only proves the pinger controls the host. IndexNow tells Bing, Yandex, Seznam and Naver a URL changed; Google does not take part. */
+export const INDEXNOW_KEY = "cea79ff0bca111e51309393aedb6a67a";
+
 /** The portfolio home's Person, by the same @id it publishes, so engines join the two sites into one maker. */
 export const PERSON_ID = `${PORTFOLIO_URL}/#person`;
 

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ABOUT, SEO } from "./content";
-import { AI_CRAWLERS, DISALLOW, PERSON_ID, headTags, jsonLd, jsonLdScript, llmsTxt, robotsTxt, sitemapXml, staticReading, titleTag } from "./seo";
+import { AI_CRAWLERS, DISALLOW, INDEXNOW_KEY, PERSON_ID, headTags, jsonLd, jsonLdScript, llmsTxt, robotsTxt, sitemapXml, staticReading, titleTag } from "./seo";
 import { weeksBehind } from "./utils/time";
+import seoSource from "./seo.ts?raw";
+import workflowSource from "../.github/workflows/indexnow.yml?raw";
 
 // The portfolio's share-description-floor rule, held here by a test so a copy change cannot break it unseen (D-66).
 describe("search copy", () => {
@@ -78,5 +80,14 @@ describe("weeksBehind", () => {
 describe("tab title", () => {
   it("is the search title, escaped", () => {
     expect(titleTag()).toBe(`<title>${SEO.title}</title>`);
+  });
+});
+
+// The IndexNow workflow reads the key out of src/seo.ts with a sed pattern; the same pattern here, so renaming the constant fails a test instead of a ping (D-66). Read as raw text through Vite, so the browser code's types stay free of Node's.
+describe("IndexNow key", () => {
+  it("is 32 hex characters and the workflow's pattern finds it", () => {
+    expect(INDEXNOW_KEY).toMatch(/^[0-9a-f]{32}$/);
+    expect(workflowSource).toContain(String.raw`s/.*INDEXNOW_KEY = "\([0-9a-f]\{32\}\)".*/\1/p`);
+    expect(/INDEXNOW_KEY = "([0-9a-f]{32})"/.exec(seoSource)?.[1]).toBe(INDEXNOW_KEY);
   });
 });

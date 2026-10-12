@@ -1,0 +1,50 @@
+# IndexNow (D-66): tell Bing, Yandex, Seznam and Naver the page changed, once the change is live. Google does not take part; it reads sitemap.xml.
+# Vercel builds every push to main but does not report its deploys back to GitHub, so this cannot wait on a deployment event. It polls the live build.txt (written by vite.config.ts from VERCEL_GIT_COMMIT_SHA) until the deployed commit is this push or a later one, then pings. Docs-only pushes do not run it: IndexNow asks for changed URLs only.
+name: IndexNow
+
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "index.html", "public/**", "vite.config.ts"]
+  workflow_dispatch:
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: true # a newer push pings for itself
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SITE: https://aqi-synth.vercel.app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wait for this commit to be live
+        run: |
+          for i in $(seq 1 40); do
+            live=$(curl -fsS "$SITE/build.txt" 2>/dev/null | tr -d '[:space:]' || true)
+            git fetch -q origin main || true
+            if [ -n "$live" ] && git cat-file -e "$live^{commit}" 2>/dev/null && git merge-base --is-ancestor "$GITHUB_SHA" "$live"; then
+              echo "Live at $live, which includes $GITHUB_SHA"; exit 0
+            fi
+            echo "Live is '${live:-nothing}', waiting for $GITHUB_SHA ($i/40)"; sleep 15
+          done
+          echo "::error::$GITHUB_SHA was not live after 10 minutes"; exit 1
+
+      - name: Ping IndexNow
+        run: |
+          key=$(sed -n 's/.*INDEXNOW_KEY = "\([0-9a-f]\{32\}\)".*/\1/p' src/seo.ts)
+          [ -n "$key" ] || { echo "::error::No INDEXNOW_KEY in src/seo.ts"; exit 1; }
+          served=$(curl -fsS "$SITE/$key.txt" | tr -d '[:space:]')
+          [ "$served" = "$key" ] || { echo "::error::$SITE/$key.txt does not serve the key"; exit 1; }
+          body=$(printf '{"host":"%s","key":"%s","keyLocation":"%s/%s.txt","urlList":["%s/"]}' "${SITE#https://}" "$key" "$SITE" "$key" "$SITE")
+          code=$(curl -sS -o response.txt -w '%{http_code}' -X POST https://api.indexnow.org/indexnow -H 'Content-Type: application/json; charset=utf-8' -d "$body")
+          echo "IndexNow answered $code"; cat response.txt; echo
+          case "$code" in 200|202) ;; *) echo "::error::IndexNow refused the ping ($code)"; exit 1 ;; esac

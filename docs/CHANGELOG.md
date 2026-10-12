@@ -2,6 +2,12 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — IndexNow for Bing (D-66a)
+
+Search Console caps how often a page can be put forward by hand, and Bing's index is the one ChatGPT search and Copilot draw on. IndexNow lets the site tell Bing the moment the page changes instead of waiting for a recrawl. A GitHub Action does it after each push to main that can change the page.
+
+The Action has to know when the push is live. Vercel builds from GitHub but stopped reporting its deploys back after 83f9297, so there is no deploy event to wait on, and a ping from inside the build would come before the page changed. The build now writes the commit it came from to `/build.txt`, and the Action polls that until it reaches its push, then pings. A test ties the Action's key lookup to `src/seo.ts`, so renaming the key fails a test rather than a ping.
+
 ## 2026-10-12 — Readable without JavaScript (D-66, INF-06)
 
 The page is a scene drawn by JavaScript, and until it runs `#root` is empty. A no-JS fetch of the live site returned a title and nothing else, and robots.txt, sitemap.xml and llms.txt were all 404s. Google renders JavaScript and saw the app; the AI engines' crawlers (GPTBot, ClaudeBot, PerplexityBot) and every link-preview fetcher do not, so to them the site said nothing and a shared link had no picture or description.

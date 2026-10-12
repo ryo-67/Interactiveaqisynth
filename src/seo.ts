@@ -113,7 +113,7 @@ export function staticReading(now = Date.now()): string {
     `<p>${esc(ABOUT.intro)}</p>`,
     ...sections(now).map((s) => `<section><h2>${esc(s.label)}</h2><p>${esc(s.body)}</p></section>`),
     `<section><h2>${esc(SEO.llmsSources)}</h2><ul><li>${link(SOURCE_URL_AIRNOW, SEO.sourceAirNow)}</li><li>${link(SOURCE_URL_EPA, SEO.sourceEpa)}</li></ul></section>`,
-    `<footer><p>${esc(ABOUT.credit)}. ${esc(ABOUT.credit2)}</p><p>${link(CREDIT_URL, ABOUT.links.website)} · ${link(LINKEDIN_URL, ABOUT.links.linkedin)} · ${link(GITHUB_URL, ABOUT.links.github)} · ${link(PORTFOLIO_RECORD_URL, SEO.portfolioRecord)}</p></footer>`,
+    `<footer><p>${esc(ABOUT.credit)}. ${esc(ABOUT.credit2)}</p><p>${link(CREDIT_URL, ABOUT.links.website)} · ${link(LINKEDIN_URL, ABOUT.links.linkedin)} · ${link(GITHUB_URL, ABOUT.links.github)} · ${link(PORTFOLIO_RECORD_URL, SEO.portfolioRecord)}</p><p>${esc(ABOUT.made)}</p></footer>`, // the AI disclosure last, as the overlay has it
     `</main>`,
   ].join("");
 }
@@ -145,6 +145,8 @@ ${ABOUT.credit}. ${ABOUT.credit2}
 - [${SEO.portfolioRecord}](${PORTFOLIO_RECORD_URL})
 - [${ABOUT.links.linkedin}](${LINKEDIN_URL})
 - [${ABOUT.links.github}](${GITHUB_URL})
+
+${ABOUT.made}
 `;
 }
 

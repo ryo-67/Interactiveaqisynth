@@ -131,6 +131,7 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
               <a className="scene-chip scene-about-link" href={LINKEDIN_URL} target="_blank" rel="noreferrer" aria-label={ABOUT.links.linkedin} title={ABOUT.links.linkedin} style={linkStyle}><LinkedinIcon size={16} /></a>
               <a className="scene-chip scene-about-link" href={GITHUB_URL} target="_blank" rel="noreferrer" aria-label={ABOUT.links.github} title={ABOUT.links.github} style={linkStyle}><GithubIcon size={16} /></a>
             </div>
+            <p className="scene-about-body scene-about-made" style={{ ...creditStyle, color: c.textMuted }}>{ABOUT.made}</p>
           </footer>
         </article>
       </div>

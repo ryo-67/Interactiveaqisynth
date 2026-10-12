@@ -1915,12 +1915,14 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-about-body { text-wrap: pretty; } /* the browser's own preference for evening out a paragraph's last lines; the guarantee that none of them is a single word is the non-breaking space About.tsx ties the last two with, since this property is a hint and does nothing at a width where the last line can hold one word only */
 .scene-about-credit { align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 6px; margin-top: 32px; }
 .scene-about-links { display: flex; gap: 8px; margin-top: 12px; }
+.scene-about-made { margin-top: 12px; } /* the AI disclosure (content.ts ABOUT.made): under the links, set off from them by the links' own gap above, so it reads as a footnote to the credit rather than part of it */
 .scene-about-link:active { background-color: rgba(255, 255, 255, var(--chip-hover-active, 0.22)) !important; } /* the chip's hover comes with its class; the press is the button family's fill, since the page's cursor (whose closing dot is the press elsewhere) is off here */
 @media (max-width: 1023px) {
   .scene-about { --about-pad: 24px; --about-inline: 32px; --about-link-size: 44px; } /* a thumb's target rather than a pointer's (Shoro, 2026-09-17): these three are the only controls in the reading, and 32 is under what a thumb wants */
   .scene-about-link svg { width: 18px; height: 18px; }
   .scene-about-credit { align-self: center; align-items: center; text-align: center; margin-top: 48px; }
   .scene-about-links { justify-content: center; margin-top: 16px; gap: 12px; }
+  .scene-about-made { margin-top: 16px; }
 }
 .scene-root[data-layout^="phone"] .scene-about { --about-pad: 16px; --about-inline: 48px; } /* the reading's side padding on a phone (keyed on the layout since D-63; it was max-width 575): Shoro's 48 (2026-09-17; 64 for a day, 24 before that) */
 /* The phone's About (D-64): the close is the notebook in the top bar, so the reading starts under the bar and fades out beneath it, and the bottom keeps only its padding. */

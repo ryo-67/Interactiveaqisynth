@@ -102,6 +102,7 @@ export const ABOUT = {
   credit: "Made in all seriousness to have fun, by Shoro Roy",
   creditKeep: "by Shoro Roy", // the one phrase in the credit that never breaks across lines: when the line wraps, this goes to the next one whole (Shoro, 2026-09-17). A substring of credit above; change it with the copy, and if it stops matching the line simply wraps wherever it likes.
   credit2: "Design, sound, data, code.",
+  made: "First prototype made with Figma Make in March\u00a02026. Claude Code for the rest.", // the AI disclosure (Shoro, 2026-10-12, in the wording of Shoro's case study): the overlay's last line, under the links, the least intrusive place on the page (Shoro's call). A no-break space keeps "March 2026" whole when the line wraps on a phone
   links: { website: "Website", linkedin: "LinkedIn", github: "GitHub" }, // Shoro, 2026-09-16: Website with the circle-user-round glyph, LinkedIn with its mark, GitHub with its mark
   close: "Exhale", // the button that leaves the overlay on laptop (Shoro, 2026-09-16): the Patch notes button becomes it, Lucide's minimize before the label
   dismiss: "Close", // the same control below laptop, a round pill with a close mark and no label: its accessible name. PLACEHOLDER \u2014 Shoro's.

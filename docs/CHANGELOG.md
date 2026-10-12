@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — The AI disclosure on the page
+
+The README's credits already said Figma Make made the first prototype and Claude Code did the rebuild; the page said nothing. Now it says so in one line, in Shoro's case-study wording: "First prototype made with Figma Make in March 2026. Claude Code for the rest." Shoro asked for the least intrusive place, so it is the About overlay's last line, under the links, at the credit's caption size and in the muted colour of "Design, sound, data, code." Only someone who has opened the notes and read to the end meets it. The crawler reading and llms.txt carry it too, so AI engines read the same disclosure a visitor does. A no-break space keeps "March 2026" whole where the line wraps on a phone. The README's credit gains the date, and the repository's GitHub homepage now points at aqi.shoro.space (docs/GITHUB.md).
+
 ## 2026-10-12 — aqi.shoro.space (D-67)
 
 The site moves from aqi-synth.vercel.app to aqi.shoro.space, under the portfolio's own domain. Every absolute URL the build writes (canonical, Open Graph and Twitter tags, the share image, JSON-LD, robots.txt, sitemap.xml) already came from `SITE_URL` in content.ts, so moving the origin is that one line plus the two tests that pin it. API calls were already relative. The IndexNow workflow now waits on and pings for the new host. Both vercel.app names 308-redirect straight to the new one with paths kept: permanent, so search engines move the old URL's standing across, and direct, so the older interactive-aqi-synth.vercel.app no longer chains through aqi-synth.vercel.app. The Search Console tag for the old property stays in the head.

@@ -1,6 +1,6 @@
 # GitHub project metadata
 
-What the repository says about itself on its own page. Written 2026-09-17, when the repository had an empty description, no topics and a homepage pointing at the superseded domain. Shoro applied it the same day; what is recorded below is what is LIVE, with the drafts kept underneath.
+What the repository says about itself on its own page. Written 2026-09-17 (homepage updated 2026-10-12, D-67), when the repository had an empty description, no topics and a homepage pointing at the superseded domain. Shoro applied it the same day; what is recorded below is what is LIVE, with the drafts kept underneath.
 
 ## Description — live
 
@@ -14,7 +14,7 @@ Shoro's pick of the three drafted. The two not taken:
 
 ## Homepage — live
 
-`https://aqi-synth.vercel.app`, the current primary domain. It had pointed at `https://interactive-aqi-synth.vercel.app`, which 307-redirects.
+`https://aqi.shoro.space`, the primary domain since 2026-10-12 (D-67), set by Claude on Shoro's instruction the same day. Before that it was `https://aqi-synth.vercel.app` (2026-09-17), and before that `https://interactive-aqi-synth.vercel.app`; both now 308-redirect to the new domain.
 
 ## Topics — live
 
@@ -42,10 +42,10 @@ webgl
 
 ## Applied
 
-Set by Shoro on 2026-09-17, not by a script in this repo. If any of it needs changing again:
+Set by Shoro on 2026-09-17, not by a script in this repo; the homepage was changed with `gh repo edit` on 2026-10-12. If any of it needs changing again:
 
 ```bash
-gh repo edit --description "..." --homepage "https://aqi-synth.vercel.app"
+gh repo edit --description "..." --homepage "https://aqi.shoro.space"
 gh repo edit --add-topic <comma,separated>
 ```
 

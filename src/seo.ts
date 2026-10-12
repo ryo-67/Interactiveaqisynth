@@ -10,6 +10,9 @@ export const AI_CRAWLERS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBo
 /** Kept out of search: the serverless routes and the tuning harness. vercel.json sends X-Robots-Tag: noindex on the same paths. */
 export const DISALLOW = ["/api/", "/scene-test"] as const;
 
+/** Google Search Console's ownership check for the URL-prefix property https://aqi-synth.vercel.app/ (Shoro, 2026-10-12). Public by design; removing it un-verifies the property. */
+export const GOOGLE_SITE_VERIFICATION = "8S-yy-_ddlDaj8iCDD1U03aDoysf7FRxppI_p2_H994";
+
 /** The portfolio home's Person, by the same @id it publishes, so engines join the two sites into one maker. */
 export const PERSON_ID = `${PORTFOLIO_URL}/#person`;
 
@@ -38,6 +41,7 @@ export function headTags(): string {
     meta("name", "robots", "index, follow, max-image-preview:large"),
     meta("name", "author", CREDIT_NAME),
     meta("name", "theme-color", "#05050a"), // the night ground (index.css html)
+    meta("name", "google-site-verification", GOOGLE_SITE_VERIFICATION),
     meta("property", "og:type", "website"),
     meta("property", "og:site_name", ABOUT.title),
     meta("property", "og:locale", "en_US"),

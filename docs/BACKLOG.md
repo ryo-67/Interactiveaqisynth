@@ -45,7 +45,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | INF-03 | P0 | DONE 2026-08-27 | Verify/set `maxDuration` for historical route | `_lib/aqi.ts` assumes a 90 s deadline; vercel.json sets none. Check plan limits, set explicitly. O-06, BUG-23 |
 | INF-04 | P1 | DONE 2026-08-27 | Remove `hono` and other server leftovers from package.json | Leftover from the Deno server. BUG-22 |
 | INF-05 | P2 | TODO | Cron or on-deploy warm of the historical route | Only if cold EPA fetch is still visible after UX-01 defers historical load |
-| INF-06 | P1 | DONE 2026-10-12 | Search and AI-engine discoverability | D-66. Head tags, share image, JSON-LD, a hidden crawler reading of the About text, robots.txt, sitemap.xml and llms.txt, all built from content.ts. Copy drafted by Claude, approved by Shoro 2026-10-12. Not done: Search Console and Bing Webmaster verification and sitemap submission (Shoro's accounts) |
+| INF-06 | P1 | DONE 2026-10-12 | Search and AI-engine discoverability | D-66. Head tags, share image, JSON-LD, a hidden crawler reading of the About text, robots.txt, sitemap.xml and llms.txt, all built from content.ts. Copy drafted by Claude, approved by Shoro 2026-10-12. Search Console verification tag added 2026-10-12 (`src/seo.ts`). Not done: Bing Webmaster and sitemap submission in both (Shoro's accounts) |
 
 ## Code cleanup
 

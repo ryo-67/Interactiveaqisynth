@@ -21,6 +21,7 @@ describe("head and structured data", () => {
     expect(h).toContain('rel="canonical"');
     expect(h).toContain('property="og:image"');
     expect(h).toContain('name="twitter:card" content="summary_large_image"');
+    expect(h).toContain('<meta name="google-site-verification" content="8S-yy-_ddlDaj8iCDD1U03aDoysf7FRxppI_p2_H994" />');
   });
   it("JSON-LD parses and names the portfolio's Person", () => {
     const script = jsonLdScript();

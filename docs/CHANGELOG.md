@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-13 — The piece links to its record (D-71)
+
+The portfolio files AQI Synth as record 0023, but nothing a visitor could click here reached it: the About overlay's website glyph went to the portfolio's home, and the footer pill goes to LinkedIn. A text scrape had suggested otherwise because the record's URL sat in the hidden reading written for crawlers. The About credit now carries one quiet line, "Filed as record 0023 ↗", in the portfolio's deadpan register and this site's own type, with the record number in the data face. It opens a new tab, so whatever is playing keeps playing. Checked at phone, tablet, laptop and phone-landscape sizes, by keyboard, and clicked while playing and while stopped; shown to Shoro on a preview deployment before it shipped.
+
 ## 2026-10-13 — The sources are credited, not offered as datasets (BUG-67)
 
 Search Console reported the page's structured data as broken Datasets: no description, no creator, no license. The page names AirNow and the EPA as what it is built on, and those two references had been typed as Datasets, which Google reads as an offer to list the page in Dataset Search. Filling the fields in would have meant describing and licensing someone else's data. They are now plain creative works with the same names and links, still credited, with nothing for Dataset Search to pick up.

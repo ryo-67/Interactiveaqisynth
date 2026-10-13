@@ -71,6 +71,8 @@ export const PINS = [
   { date: "2023-06-07", name: "Wildfire" },
 ] as const; // order and names: Shoro, 2026-09-15 — clean to severe, left to right
 // Borough names on phones, where the full row cannot fit at the caption size (445 px of labels for 303 px of room).
+// A borough tab's accessible name (Shoro, 2026-10-12): the full name with the code a phone shows, so a screen reader says the borough rather than two letters and a voice-control user can still say the code they see (WCAG 2.5.3, the name contains the visible label). Where name and code are the same (NYC), the name alone.
+export const BOROUGH_TAB_NAME = "{name} ({code})";
 export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhattan: "MN", Brooklyn: "BK", Queens: "QN", Bronx: "BX", "Staten Island": "SI" }; // the official two-letter borough codes (Shoro, 2026-09-15)
 export const NAV_LIVE = "Live";
 export const NAV_CALENDAR = "Calendar"; // the date chip's accessible name and the popover's

@@ -1,5 +1,5 @@
 // BoroughToggle — one row of words (§5.2 item 1), always one line, centred. No chrome: every word is set in caps with the same tracking; the selected borough changes to the same face's bold italic, not case or size, so both states share one baseline. When the row is wider than its pill it scrolls horizontally rather than wrapping.
-import { BOROUGH_SHORT } from "../content";
+import { BOROUGH_SHORT, BOROUGH_TAB_NAME } from "../content";
 import React from "react";
 import { useTheme, themeColors, families, typeScale, space, CONTROL } from "../utils/theme";
 import type { Borough } from "../utils/nycOpenData";
@@ -58,6 +58,8 @@ export function BoroughToggle({ selected, onSelect }: Props) {
             className="scene-borough-btn"
             role="tab"
             aria-selected={isSel}
+            // One name at every width (content.ts BOROUGH_TAB_NAME): below 840, and on a narrow phone-landscape row, the visible word is the code, and a name taken from it was read as letters, "M N".
+            aria-label={LABELS[b] === BOROUGH_SHORT[b] ? LABELS[b] : BOROUGH_TAB_NAME.replace("{name}", LABELS[b]).replace("{code}", BOROUGH_SHORT[b])}
             onClick={() => onSelect(b)}
             style={{
               background: "none",

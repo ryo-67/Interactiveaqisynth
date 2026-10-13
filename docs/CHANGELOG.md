@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — A graph with no width no longer blanks the page (BUG-59)
+
+If the page was laid out at zero size when the graph mounted, the graph's first draw threw, and because it threw from a React effect with no error boundary the whole page unmounted and stayed blank until a reload. It surfaced in the desktop app's hidden browser pane; for a visitor it needs a page mounted at zero size (a hidden or zero-size frame, a preview renderer), so it is rare, but when it happens nothing on the page survives. The draw now waits when there is nothing to draw, a buffer or a plot under one pixel, and the panel's ResizeObserver draws it once it has a size. Guarding the condition rather than catching the error keeps the next variant from being hidden. An error boundary around the scene would contain any future crash of this kind, but what the page shows when something fails is a design question, so it is not in this change.
+
 ## 2026-10-12 — The AI disclosure on the page
 
 The README's credits already said Figma Make made the first prototype and Claude Code did the rebuild; the page said nothing. Now it says so in one line, in Shoro's case-study wording: "First prototype made with Figma Make in March 2026. Claude Code for the rest." Shoro asked for the least intrusive place, so it is the About overlay's last line, under the links, at the credit's caption size and in the muted colour of "Design, sound, data, code." Only someone who has opened the notes and read to the end meets it. The crawler reading and llms.txt carry it too, so AI engines read the same disclosure a visitor does. A no-break space keeps "March 2026" whole where the line wraps on a phone. The README's credit gains the date, and the repository's GitHub homepage now points at aqi.shoro.space (docs/GITHUB.md).

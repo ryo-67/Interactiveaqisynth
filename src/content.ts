@@ -23,7 +23,7 @@ export const SOURCE_LINE_TYPICAL_NO2 = "NO₂ is typical, not live."; // D-18 di
 // Where a channel is borrowed (D-16, D-18; amended 2026-09-16, D-56): disclosed where the channel is shown, as a one-word suffix on the graph's tab and the monitor cards' source pills, the full account in the About overlay.
 export const SOURCE_SUFFIX_CITYWIDE = "citywide"; // the borough has no monitor for this channel and carries the citywide value (D-16)
 export const SOURCE_SUFFIX_TYPICAL = "typical"; // live NO₂ is a typical profile from the archive (D-18)
-// The entry (D-61, 2026-09-17): the one screen before the tool, held while the live air is being read. The title is also the Fallback screens' (approved by Shoro, 2026-10-12); the line is a PLACEHOLDER — Shoro's to write.
+// The entry (D-61, 2026-09-17): the one screen before the tool, held while the live air is being read. The title is also the Fallback screens'. Both approved by Shoro as written, 2026-10-12.
 export const ENTRY = {
   title: "New York AQI Synth",
   line: "Reading the air…",

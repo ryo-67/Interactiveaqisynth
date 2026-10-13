@@ -101,7 +101,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | DSN-01 | P0 | DONE 2026-08-27 | Create `src/content.ts` | All prose, mood words, pin labels and blurbs, counterfactual definitions with sources, UI labels |
 | DSN-02 | P0 | DONE 2026-08-27 | Expand `theme.ts` tokens | Type scale, spacing, motion, opacity per STRATEGY §5 |
 | DSN-03 | P1 | IN PROGRESS (Listen components done; Timeline, Imagine, actions are 3b/3c) | Hand-style all components | No shadcn remnants, tokens only |
-| DSN-04 | P1 | TODO | Mood word copy pass | O-02. Shoro writes |
+| DSN-04 | P1 | DONE 2026-10-12 (approved by Shoro as written, with all of content.ts; O-02 closed) | Mood word copy pass | O-02. Shoro writes |
 | DSN-05 | P2 | TODO | Figma variables matching tokens | For MCP sync. Not blocking |
 | DSN-06 | P3 | TODO | Differentiated dark/light | Phase 2 |
 
@@ -139,7 +139,7 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | CLN-13 | P2 | DONE 2026-09-17 | Sweep the remaining dependencies | After lucide-react, every declared package was checked against every file the repo owns. One more dead: `motion`, 772 KB in `dependencies`, where every `motion` in the source is the local token object from theme.ts (BUG-55). One missing: `typescript`, never declared and resolving transitively (BUG-56). The rest are all genuinely used, including the four `@types/*` and `tsx`, which runs the archive builders. Note for later: `tsx` is only invoked from a comment in scripts/build-archive.ts, so the builders have no npm script and are not discoverable from package.json |
 | CLN-12 | P2 | DONE 2026-09-17 | Remove `lucide-react` | A production dependency nothing imports: 40 MB and 3,576 files on every install and every Vercel build, absent from the bundle entirely. CLN-03 kept it by mistake while icons.tsx had already inlined the paths and said so. BUG-54 |
 | CLN-11 | P2 | DONE 2026-09-17 | Delete `src/components/RecordButton.tsx` and `src/utils/mockData.ts` | 272 lines with zero references, missed by the CLN-01 to CLN-05 sweep. Recording is on the backlog as POL-01, so the component is either wired up or deleted and rewritten when it is; keeping an unmounted one is the worst of both. BUG-52 |
-| CLN-10 | P3 | TODO (accepted as harmless 2026-09-17) | Give SynthEngine a teardown | No dispose: Tone nodes, callbacks and the release-ramp interval live as long as the module, and a ramp in flight outlives the page. Harmless while the app is one page that never unmounts the engine; it becomes real the day a second engine is constructed. BUG-50 |
+| CLN-10 | P3 | DONE 2026-10-12 (33aabcf, BUG-50) | Give SynthEngine a teardown | No dispose: Tone nodes, callbacks and the release-ramp interval live as long as the module, and a ramp in flight outlives the page. Harmless while the app is one page that never unmounts the engine; it becomes real the day a second engine is constructed. BUG-50 |
 | DAT-14 | P1 | TODO | Rebuild the current-year archive snapshot | `public/data/*-2026.json` ends 2026-08-01 and `ARCHIVE_LAST_DATE` is 2026-07-20, the last day with complete PM2.5 — both correct as written, but the snapshot is about seven weeks behind today. Re-run `scripts/build-current-year.ts`, commit, and move the constant (CLAUDE.md) |
 | DOC-04 | P2 | DONE 2026-09-17 | GitHub project description and topics | Drafted in docs/GITHUB.md and applied by Shoro the same day: description, homepage moved to aqi-synth.vercel.app, seventeen topics. The repository had none of the three |
 

@@ -113,6 +113,15 @@ export function useListenSession(): ListenSession {
 
   const engineRef = useRef<SynthEngine | null>(null);
   if (engineRef.current === null) engineRef.current = new SynthEngine(QUEENS_2023_ANCHORS);
+  // Torn down with the page (BUG-50, 2026-10-12): an unmount disposes the engine, which silences it and frees its nodes and its repeats on Tone's global transport. That covers the crash screen replacing the page mid-phrase, and development's hot reload, which re-runs this effect and so gets a fresh engine rather than a second one playing over the first. Declared before the effects that register on the engine, so on a remount they register on the new one.
+  useEffect(() => {
+    if (engineRef.current === null) engineRef.current = new SynthEngine(QUEENS_2023_ANCHORS);
+    const engine = engineRef.current;
+    return () => {
+      engine.dispose();
+      engineRef.current = null;
+    };
+  }, []);
   const prevBoroughRef = useRef<Borough>(borough);
   const prevDateRef = useRef<string | null>(null);
 

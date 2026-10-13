@@ -72,6 +72,10 @@ export class SynthEngine {
   private beatCallback: ((info: BeatInfo) => void) | null = null;
   private pulseCallback: ((info: PulseInfo) => void) | null = null;
   private initPromise: Promise<void> | null = null;
+  // What a teardown has to release (BUG-50, 2026-10-12): every Tone node this engine made, and its two repeats on the transport, which is Tone's one global and outlives any engine.
+  private nodes: Array<{ dispose(): unknown }> = [];
+  private repeats: number[] = [];
+  private disposed = false;
 
   // Loop-wrap dedup: each callback drops a second firing closer than half its own interval; reset on every (re)start so a day switch never swallows its first events.
   private lastBeatTime = -1;
@@ -102,21 +106,43 @@ export class SynthEngine {
     return Tone.getContext().state === "running";
   }
 
+  private own<T extends { dispose(): unknown }>(node: T): T {
+    this.nodes.push(node);
+    return node;
+  }
+
+  // The engine lives as long as the page that made it (BUG-50, 2026-10-12). It had no teardown: its nodes, its repeats on the global transport and the release ramp's interval outlived the page, so a hot reload in development left a second engine playing over the first, and a ramp in flight kept writing to an envelope for up to a beat. Called when the session unmounts (useListenSession), which includes the crash screen replacing the page while it plays. Idempotent; a disposed engine plays nothing.
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.beatCallback = null; // reports already deferred to their audible moment (deferToAudible) land on nothing
+    this.pulseCallback = null;
+    if (this.releaseTimer) { clearInterval(this.releaseTimer); this.releaseTimer = null; }
+    const transport = Tone.getTransport();
+    for (const id of this.repeats) transport.clear(id);
+    this.repeats = [];
+    transport.stop();
+    for (const n of this.nodes) n.dispose();
+    this.nodes = [];
+  }
+
   private async buildAudio(): Promise<void> {
     await Tone.start();
+    if (this.disposed) return; // torn down while the browser was asked for audio: build nothing
 
     // Shared effects chain, uniform across voices (§3.6): every voice → lowpass → reverb → destination.
     // MAPPING (O3 → lowpass ceiling): cutoff = 2500 Hz at normalized O3 = 0 up to 12000 Hz at 1. Metaphor: visibility — O3 peaks with sunlight; overnight titrated O3 near zero holds the piece dark, which is NO titration rendered as arrangement (§3.6).
-    this.filter = new Tone.Filter(2500, "lowpass");
+    this.filter = this.own(new Tone.Filter(2500, "lowpass"));
     // MAPPING (PM2.5 → reverb, §3.6): wet = 0.15 + 0.6·pm25n (clamp 0.9); "decay" 1.5 s → 7.5 s is a crossfade between two static reverbs because Tone.Reverb cannot ramp decay. Metaphor: fog — particulates scatter the sound field.
-    this.dryGain = new Tone.Gain(0.85);
-    this.revShortGain = new Tone.Gain(0.15);
-    this.revLongGain = new Tone.Gain(0);
-    const revShort = new Tone.Reverb({ decay: 1.5, wet: 1 });
-    const revLong = new Tone.Reverb({ decay: 7.5, wet: 1 });
+    this.dryGain = this.own(new Tone.Gain(0.85));
+    this.revShortGain = this.own(new Tone.Gain(0.15));
+    this.revLongGain = this.own(new Tone.Gain(0));
+    const revShort = this.own(new Tone.Reverb({ decay: 1.5, wet: 1 }));
+    const revLong = this.own(new Tone.Reverb({ decay: 7.5, wet: 1 }));
     await Promise.all([revShort.ready, revLong.ready]);
+    if (this.disposed) return; // torn down while the reverbs were rendered: dispose() has already released them
     // Everything sums into one master gain before the destination, so a pause can silence the whole mix — reverb tails included — in one ramp.
-    this.master = new Tone.Gain(1).toDestination();
+    this.master = this.own(new Tone.Gain(1)).toDestination();
     this.filter.connect(this.dryGain);
     this.dryGain.connect(this.master);
     this.filter.connect(this.revShortGain);
@@ -127,16 +153,16 @@ export class SynthEngine {
     revLong.connect(this.master);
 
     // Four FM voices (§3.5), all through the shared chain. Envelope and volume values are mix choices from Phase 0, not data mappings.
-    this.melody = new Tone.FMSynth({ volume: -8, envelope: { attack: 0.02, decay: 0.1, sustain: 0.7, release: 0.3 } }).connect(this.filter);
+    this.melody = this.own(new Tone.FMSynth({ volume: -8, envelope: { attack: 0.02, decay: 0.1, sustain: 0.7, release: 0.3 } })).connect(this.filter);
     // Pulse identity (locked V3): fixed harmonicity 7 so it reads as click/mallet, not a tone; 1 ms attack, 80 ms decay, no sustain. A one-octave-down pitch envelope over the first 30 ms is applied per hit. Soft tick at Easy, hammer at Suffocating via the tier's full modulation index.
-    this.pulse = new Tone.FMSynth({ volume: -12, harmonicity: 7, envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.05 }, modulationEnvelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.05 } }).connect(this.filter);
+    this.pulse = this.own(new Tone.FMSynth({ volume: -12, harmonicity: 7, envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.05 }, modulationEnvelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.05 } })).connect(this.filter);
     // Bass identity (locked V3): a sub that never goes metallic — 40 ms attack, 0.8 s release, private 400 Hz lowpass before the shared chain so it stays a floor.
-    this.bass = new Tone.FMSynth({ volume: -10, envelope: { attack: 0.04, decay: 0.2, sustain: 0.6, release: 0.8 } });
-    const bassFloor = new Tone.Filter(400, "lowpass");
+    this.bass = this.own(new Tone.FMSynth({ volume: -10, envelope: { attack: 0.04, decay: 0.2, sustain: 0.6, release: 0.8 } }));
+    const bassFloor = this.own(new Tone.Filter(400, "lowpass"));
     this.bass.connect(bassFloor);
     bassFloor.connect(this.filter);
     // Bed pad is three mono FMSynths (one per chord note) instead of PolySynth so harmonicity/modulationIndex can ramp, not jump.
-    this.bedVoices = [0, 1, 2].map(() => new Tone.FMSynth({ volume: -16, envelope: { attack: 0.4, decay: 0.3, sustain: 0.8, release: 1.2 } }).connect(this.filter));
+    this.bedVoices = [0, 1, 2].map(() => this.own(new Tone.FMSynth({ volume: -16, envelope: { attack: 0.4, decay: 0.3, sustain: 0.8, release: 1.2 } })).connect(this.filter));
 
     const transport = Tone.getTransport();
     transport.bpm.value = 90;
@@ -145,8 +171,10 @@ export class SynthEngine {
     transport.loopStart = 0;
     transport.loopEnd = "6m";
     // A tick that throws is named in the console with its time, once per message, rather than dying as an uncaught exception in Tone's clock (2026-09-16): a refused voice start had been silent to read and silent to hear, the voices after it in that tick skipped.
-    transport.scheduleRepeat((t) => this.guarded("beat", t, () => this.onBeatTick(t)), "4n", 0);
-    transport.scheduleRepeat((t) => this.guarded("step", t, () => this.onStep16(t)), "16n", 0);
+    this.repeats.push(
+      transport.scheduleRepeat((t) => this.guarded("beat", t, () => this.onBeatTick(t)), "4n", 0),
+      transport.scheduleRepeat((t) => this.guarded("step", t, () => this.onStep16(t)), "16n", 0),
+    );
   }
 
   // Precompute per-bar Euclidean state from the day's NO2. Rotation = bar-start hour mod 16 (§3.5).
@@ -194,6 +222,7 @@ export class SynthEngine {
   }
 
   async play(): Promise<void> {
+    if (this.disposed) return;
     // Every press asks the browser to run the audio, inside its own gesture (2026-10-12). A browser that held the first request back leaves it pending rather than refusing it, and the build below awaits that first request, so a second press that only awaited the build never asked again and a Try again could not recover. Tone.start() is idempotent; once the context runs, the pending first request resolves with it.
     void Tone.start();
     await this.init();

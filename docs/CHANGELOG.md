@@ -4,7 +4,7 @@ Why, not just what. Newest first.
 
 ## 2026-10-13 — The record link loses its number (D-72)
 
-The record line printed the portfolio's number for this piece, but the portfolio numbers its records by date and renumbers them whenever an older one is filed, so any number printed here would go stale and point at the wrong entry in the reader's mind. The link already used the record's URL, which does not change; now the words carry no number either, and the site's name takes its place: "On file at shoro.space ↗", pending Shoro's approval. The rule is general: no page outside shoro.space prints a record number.
+The record line printed the portfolio's number for this piece, but the portfolio numbers its records by date and renumbers them whenever an older one is filed, so any number printed here would go stale and point at the wrong entry in the reader's mind. The link already used the record's URL, which does not change; now the words carry no number either, and the site's name takes its place: "On file at shoro.space ↗", which Shoro approved as written. The rule is general: no page outside shoro.space prints a record number.
 
 ## 2026-10-13 — The piece links to its record (D-71)
 

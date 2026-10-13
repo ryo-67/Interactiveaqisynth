@@ -73,6 +73,9 @@ export const PINS = [
 // Borough names on phones, where the full row cannot fit at the caption size (445 px of labels for 303 px of room).
 // A borough tab's accessible name (Shoro, 2026-10-12): the full name with the code a phone shows, so a screen reader says the borough rather than two letters and a voice-control user can still say the code they see (WCAG 2.5.3, the name contains the visible label). Where name and code are the same (NYC), the name alone.
 export const BOROUGH_TAB_NAME = "{name} ({code})";
+// The borough row (moved here unchanged from BoroughToggle, 2026-10-12): its accessible name, and each borough's word from tablet up (the citywide entry reads NYC at every width).
+export const BOROUGH_ROW_LABEL = "Borough";
+export const BOROUGH_LONG: Record<string, string> = { Citywide: "NYC", Manhattan: "Manhattan", Brooklyn: "Brooklyn", Queens: "Queens", Bronx: "Bronx", "Staten Island": "Staten Island" };
 export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhattan: "MN", Brooklyn: "BK", Queens: "QN", Bronx: "BX", "Staten Island": "SI" }; // the official two-letter borough codes (Shoro, 2026-09-15)
 export const NAV_LIVE = "Live";
 export const NAV_CALENDAR = "Calendar"; // the date chip's accessible name and the popover's
@@ -83,6 +86,7 @@ export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the
 
 // The monitor page (D-43, 2026-09-15): card labels, source-pill labels, the tone words and the scale names as shown. Approved by Shoro as written, 2026-10-12. The source pill is the routing: which measurement drives the card.
 export const VIEW_LABELS = { scene: "Scene", monitor: "Monitor" } as const; // the two page icons' accessible names
+export const VIEW_ROW_LABEL = "Page"; // the page icons' row, its accessible name (moved here unchanged from PageIndicator, 2026-10-12)
 export const MONITOR_LABELS = { routing: "Routing", scale: "Scale", tone: "Tone", beats: "Beats", brightness: "Brightness", detune: "Detune", reverb: "Reverb" } as const;
 export const SOURCE_LABELS = { pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // the same subscripts as the graph tabs
 export const SOURCE_JOIN = " · "; // between two sources on one pill: "PM2.5 · NO₂"

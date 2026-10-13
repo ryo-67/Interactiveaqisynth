@@ -1,6 +1,6 @@
-// content.ts — all prose and labels live here (CLAUDE.md, DSN-01). Copy is Shoro's; placeholders are flagged.
+// content.ts — all prose and labels live here (CLAUDE.md, DSN-01). Copy is Shoro's: every string here was written or approved by Shoro (the last placeholders approved 2026-10-12). New copy goes in flagged PLACEHOLDER until Shoro approves it.
 
-// Tier names for the scale ladder (STRATEGY §3.4). Order matches engine/scales.ts TIERS. Mood words are provisional copy; prose pass pending (STRATEGY §9).
+// Tier names for the scale ladder (STRATEGY §3.4). Order matches engine/scales.ts TIERS. Mood words approved by Shoro as written, 2026-10-12.
 export const TIER_NAMES = ["Easy", "Shallow", "Short", "Tight", "Ragged", "Suffocating"] as const; // six, one per EPA grade (D-44, 2026-09-16)
 
 // Score legend, one micro line under the canvas (§5.2).
@@ -17,9 +17,9 @@ export const SOURCE_LINE_LIVE = "Live data from AirNow"; // Shoro, 2026-09-16
 export const SOURCE_LINE_ARCHIVE = "Archive data from EPA"; // Shoro, 2026-09-16
 export const SOURCE_URL_AIRNOW = "https://www.airnow.gov/";
 export const SOURCE_URL_EPA = "https://www.epa.gov/outdoor-air-quality-data";
-export const SOURCE_BORROWED = "{borough}'s {list} {isAre} citywide."; // D-16 disclosure, only when a borough has no monitor for a channel (Brooklyn's O3). PLACEHOLDER — Shoro's.
+export const SOURCE_BORROWED = "{borough}'s {list} {isAre} citywide."; // D-16 disclosure, only when a borough has no monitor for a channel (Brooklyn's O3). Approved by Shoro as written, 2026-10-12.
 export const SOURCE_AREA_READING = "AirNow area reading; no borough detail."; // zip-code fallback (BUG-12): no borough can honestly be named
-export const SOURCE_LINE_TYPICAL_NO2 = "NO₂ is typical, not live."; // D-18 disclosure; Shoro's to revise
+export const SOURCE_LINE_TYPICAL_NO2 = "NO₂ is typical, not live."; // D-18 disclosure. Approved by Shoro as written, 2026-10-12.
 // Where a channel is borrowed (D-16, D-18; amended 2026-09-16, D-56): disclosed where the channel is shown, as a one-word suffix on the graph's tab and the monitor cards' source pills, the full account in the About overlay.
 export const SOURCE_SUFFIX_CITYWIDE = "citywide"; // the borough has no monitor for this channel and carries the citywide value (D-16)
 export const SOURCE_SUFFIX_TYPICAL = "typical"; // live NO₂ is a typical profile from the archive (D-18)
@@ -29,7 +29,7 @@ export const ENTRY = {
   line: "Reading the air…",
 } as const;
 
-// The live feed's own state (D-60, 2026-09-17), shown as one line above the scene while Live is selected and AirNow has not answered. PLACEHOLDERS — Shoro's to write.
+// The live feed's own state (D-60, 2026-09-17), shown as one line above the scene while Live is selected and AirNow has not answered. Approved by Shoro as written, 2026-10-12.
 export const LIVE_STATUS = {
   loading: "Reading the air…", // while AirNow is in flight; shown only if it takes longer than a moment
   unavailable: "Can't reach AirNow for live data.", // Shoro, 2026-09-17: the failure is the feed being unreachable, so the line names the feed and says it cannot be reached, rather than saying the air is quiet
@@ -51,18 +51,18 @@ export const FALLBACK = {
   reload: "Reload",
 } as const;
 
-// Transport (the first glass control, §5.3). PLACEHOLDERS — Shoro's to write.
+// Transport (the first glass control, §5.3). Approved by Shoro as written, 2026-10-12.
 export const TRANSPORT_PLAY = "Play";
 export const TRANSPORT_PAUSE = "Pause";
 export const TRANSPORT_VOLUME = "Volume";
-export const SKY_TOGGLE_LABEL = "Play or pause"; // the sky itself as a play/pause target, for screen readers. PLACEHOLDER — Shoro's.
+export const SKY_TOGGLE_LABEL = "Play or pause"; // the sky itself as a play/pause target, for screen readers. Approved by Shoro as written, 2026-10-12.
 
-// Graph track labels and units. Units are the measurements'; the labels are PLACEHOLDERS — Shoro's.
+// Graph track labels and units. Units are the measurements'; the labels approved by Shoro as written, 2026-10-12.
 export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // chemical subscripts (U+2083, U+2082): the data font carries them (Shoro, 2026-09-15) // the pulse row's numbers are hits per bar
 export const TRACK_QUALIFIERS: Partial<Record<keyof typeof TRACK_LABELS, string>> = { aqi: "Hourly" }; // a word before the label on the graph's tab, where there is room (Shoro, 2026-09-16: "Hourly AQI", since the number is the hour's NowCast, not the day's); phones show the label alone, like the units
 export const TRACK_UNITS = { aqi: "", pm25: "µg/m³", o3: "ppb", no2: "ppb" } as const;
 
-// Day navigation. Pin names are Shoro's (from the Figma scaffold, 2026-09-15); the rest are PLACEHOLDERS — Shoro's.
+// Day navigation. Pin names are Shoro's (from the Figma scaffold, 2026-09-15); the rest approved by Shoro as written, 2026-10-12.
 export const PINS = [
   { date: "2023-10-29", name: "Clear Day" },
   { date: "2023-02-09", name: "Rush Hour" },
@@ -74,13 +74,13 @@ export const PINS = [
 export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhattan: "MN", Brooklyn: "BK", Queens: "QN", Bronx: "BX", "Staten Island": "SI" }; // the official two-letter borough codes (Shoro, 2026-09-15)
 export const NAV_LIVE = "Live";
 export const NAV_CALENDAR = "Calendar"; // the date chip's accessible name and the popover's
-export const DAY_SHEET = { label: NAV_CALENDAR, close: "Close" } as const; // the phone's day sheet (D-65): its accessible name and the scrim's dismiss label. PLACEHOLDERS — Shoro's.
+export const DAY_SHEET = { label: NAV_CALENDAR, close: "Close" } as const; // the phone's day sheet (D-65): its accessible name and the scrim's dismiss label. Approved by Shoro as written, 2026-10-12.
 export const NAV_LAST_24H = "Last 24h";
 export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}";
 export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the presets and the calendar (Shoro, 2026-09-15) // under the calendar (Shoro, 2026-09-15) // the date chip's label when live (Shoro, 2026-09-15)
 export const NAV_UNAVAILABLE = "Not yet reported."; // a day past the archive and the EPA feed
 
-// The monitor page (D-43, 2026-09-15): card labels, source-pill labels, the tone words and the scale names as shown. PLACEHOLDERS — Shoro's. The source pill is the routing: which measurement drives the card.
+// The monitor page (D-43, 2026-09-15): card labels, source-pill labels, the tone words and the scale names as shown. Approved by Shoro as written, 2026-10-12. The source pill is the routing: which measurement drives the card.
 export const VIEW_LABELS = { scene: "Scene", monitor: "Monitor" } as const; // the two page icons' accessible names
 export const MONITOR_LABELS = { routing: "Routing", scale: "Scale", tone: "Tone", beats: "Beats", brightness: "Brightness", detune: "Detune", reverb: "Reverb" } as const;
 export const SOURCE_LABELS = { pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // the same subscripts as the graph tabs
@@ -92,7 +92,7 @@ export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pent
 export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", detuneShort: "st", o3: "ppb", pm25: "µg/m³" } as const; // detuneShort is the same unit for the narrowest phones, where "semitones" runs past the card (Shoro, 2026-09-17); index.css picks between them
 export const MONITOR_REST = "—"; // a value the held hour lacks
 
-// The hero's two cards (2026-09-16): the number under "AQI · now" on Live or "AQI · Oct 29" on an archive day, the word and sentence under "Breath". PLACEHOLDERS — Shoro's.
+// The hero's two cards (2026-09-16): the number under "AQI · now" on Live or "AQI · Oct 29" on an archive day, the word and sentence under "Breath". Approved by Shoro as written, 2026-10-12.
 export const HERO_AQI_LABEL = "AQI · {when}";
 export const HERO_AQI_NOW = "now";
 export const HERO_BREATH_LABEL = "Breath";
@@ -119,7 +119,7 @@ export const ABOUT = {
   made: "First prototype made with Figma Make in March\u00a02026. Claude Code for the rest.", // the AI disclosure (Shoro, 2026-10-12, in the wording of Shoro's case study): the overlay's last line, under the links, the least intrusive place on the page (Shoro's call). A no-break space keeps "March 2026" whole when the line wraps on a phone
   links: { website: "Website", linkedin: "LinkedIn", github: "GitHub" }, // Shoro, 2026-09-16: Website with the circle-user-round glyph, LinkedIn with its mark, GitHub with its mark
   close: "Exhale", // the button that leaves the overlay on laptop (Shoro, 2026-09-16): the Patch notes button becomes it, Lucide's minimize before the label
-  dismiss: "Close", // the same control below laptop, a round pill with a close mark and no label: its accessible name. PLACEHOLDER \u2014 Shoro's.
+  dismiss: "Close", // the same control below laptop, a round pill with a close mark and no label: its accessible name. Approved by Shoro as written, 2026-10-12.
 } as const;
 export const LINKEDIN_URL = "https://www.linkedin.com/in/royshoro/";
 export const GITHUB_URL = "https://github.com/ryo-67/Interactiveaqisynth";

@@ -132,7 +132,7 @@ The tier is PM2.5 alone, through EPA's PM2.5 table (the May 2024 revision: Good 
 
 The melody contour is preserved across scales: the same O3 arch quantized to Phrygian is the same shape, wrecked. That is the mechanism by which June 7 sounds like the same piece.
 
-Mood words are provisional copy; prose pass pending (§9).
+Mood words approved by Shoro as written, 2026-10-12 (O-02 closed).
 
 ### §3.5 FM synthesis
 
@@ -468,7 +468,7 @@ Code
 | ID | Item | Owner | Blocking |
 |---|---|---|---|
 | O-01 | Timelapse compression ratio and clock | Shoro | Phase 2 |
-| O-02 | Mood word copy pass | Shoro | Phase 1 content |
+| O-02 | Closed 2026-10-12. Mood words approved by Shoro as written, with every other string in content.ts | — | — |
 | O-03 | Delhi winter mean, sourced | Shoro | Imagine presets |
 | O-04 | Lockdown: measured pin or counterfactual | Data script | Timeline pins |
 | O-05 | Whether any NO2 monitor exists in Manhattan, Brooklyn, or Staten Island under a parameter code other than 42602 | Data script | Source-line copy per borough |

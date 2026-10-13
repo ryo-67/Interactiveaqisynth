@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — A load caught mid-deploy recovers (BUG-66)
+
+Checking a deploy turned up a blank page: in the seconds while the domain moved to the new deployment, the browser got the old page, whose script the new deployment no longer had. Nothing ran, so nothing could say anything. Vercel's Skew Protection keeps old files reachable for exactly this, but it is a Pro feature and the team is on Hobby. Instead the page now reloads itself when one of its own files fails to load: once at once, once more four seconds later, then it stops, so a page that is genuinely broken cannot reload for ever. Tested on the built page with the bundle removed and then restored partway through.
+
 ## 2026-10-12 — Borough tabs say the borough (BUG-65)
 
 On a phone the borough row shows codes, MN, BK, QN, and the tabs took their accessible names from them, so a screen reader spelled out letters. Each tab is now named "Manhattan (MN)" and so on: the borough for a listener, and the code still in the name for someone driving the page by voice, who says what they see. NYC is the same either way and stays "NYC". Nothing drawn changes.

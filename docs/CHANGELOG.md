@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — Borough tabs say the borough (BUG-65)
+
+On a phone the borough row shows codes, MN, BK, QN, and the tabs took their accessible names from them, so a screen reader spelled out letters. Each tab is now named "Manhattan (MN)" and so on: the borough for a listener, and the code still in the name for someone driving the page by voice, who says what they see. NYC is the same either way and stays "NYC". Nothing drawn changes.
+
 ## 2026-10-12 — Landmarks and headings (A11Y-01, BUG-48, D-70)
 
 A screen reader met 26 well-named controls with no structure to move between and no page heading. The page now has a header (the borough and day controls, under the page's h1), a main (the two pages, each under its own h2) and a footer (the bottom bar), so a listener can jump between them and hear what the page is. The headings are visually hidden and use only approved words, the title and the page icons' names, so nothing new was written and nothing drawn moved: the boxes of eleven key elements were measured at all four layouts before and after and match. The entry screen's title became a paragraph so the page keeps one h1. It has not been tried with a real screen reader.

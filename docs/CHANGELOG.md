@@ -2,6 +2,14 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — The page says what state it is in (D-68, D-69; BUG-60 to BUG-64 fixed)
+
+The states mocked earlier the same day are now set by their causes. A day that fails says so with a retry instead of showing an empty day; a day that takes more than a beat says it is loading, which a phone never did; sound that does not start turns the button back to Play and says so, where it had stayed on Pause over silence; a live answer with nothing measured in it says AirNow has nothing for New York. Any error the page throws now ends on a screen with a reload, not a blank page, and a browser without WebGL 2 is told so before anything mounts.
+
+Five bugs went with it. "Can't reach AirNow" no longer fires when it is our own anchors file that failed. Failures are no longer cached for the visit: one blip on a year file, or one refused audio start, used to last until a reload. A Try again on the sound has to ask the browser again inside its own click, which the first fix did not do; the test harness caught it. An empty AirNow answer is cached five minutes instead of thirty. With no reading the Breath card shows a dash rather than "Easy". And the AQI no longer counts the typical NO₂ profile, which had made the live headline a number built from averages during AirNow's New York outage (D-68).
+
+Each state was checked by causing it in the dev page: the page loaded in a frame whose fetch, canvas or audio was made to fail first, and the sound checks pressed Play with a real click and measured the signal at the master.
+
 ## 2026-10-12 — The page's other states, mocked (BUG-60 to BUG-64 logged)
 
 Mapping how the page fails found one designed state, the live line's "Can't reach AirNow", and everything else silent or wrong: a day that does not load shows a dash and "Easy", a two-minute wait for EPA shows nothing on a phone, sound that does not start leaves the button on Pause, and no WebGL or any uncaught error leaves a blank page. Before wiring any of them to their causes, the states are mocked so their look and copy can be judged in the real page: `?mock=no-readings`, `day-loading`, `day-failed`, `no-sound` put one line on the live line's spot (`StatusLine`, the same pill, glass and layouts, "error" with the red bezel where something failed and there is something to do, "quiet" where there is simply nothing yet); `?mock=crashed` and `no-webgl` replace the page with the entry screen's panel on the night's navy (`Fallback`), which is what an error boundary would show. The parameter is read only on the dev server; a production build never looks at it. The copy is placeholder, in `content.ts` STATUS and FALLBACK. The five bugs the mapping turned up are logged as BUG-60 to BUG-64; wiring the states to their causes, and fixing those, is the next pass.

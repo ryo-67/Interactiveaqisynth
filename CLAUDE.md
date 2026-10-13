@@ -17,6 +17,7 @@ Shipped and working:
 - Vercel serverless routes under `api/`: `aqi/current.ts` (AirNow data endpoint, NYC bbox, per site), `aqi/historical.ts` (EPA AQS, current year only), `health.ts`, `aqi/diagnostic.ts`. Shared logic in `api/_lib/aqi.ts`. CDN caching via `Cache-Control: s-maxage`; `vercel.json` sets `maxDuration: 300` on the historical route.
 - Deployed at aqi.shoro.space from GitHub main (D-67; aqi-synth.vercel.app and interactive-aqi-synth.vercel.app 308-redirect to it). Env vars on Vercel: `AIRNOW_API_KEY`, `EPA_AQS_EMAIL`, `EPA_AQS_API_KEY`.
 - `/` is the scene (`src/scene/ScenePage.tsx`, D-40); `/scene` is an alias and `/scene-test` is the tuning harness. The earlier typographic page (`App.tsx`) is deleted.
+- Page states (D-69): one status line above the footer (`StatusLine`, or `LiveStatus` for the live feed) chosen in ScenePage from the session's state; `Fallback` screens for a thrown error (`ErrorBoundary` in `main.tsx`) and for no WebGL 2. `?mock=<state>` forces each on the dev server (`src/utils/mock.ts`).
 - `src/content.ts` holds the prose (DSN-01). `src/utils/theme.ts` holds the tokens (DSN-02).
 - Search and AI-engine discoverability (D-66): `src/seo.ts` builds head tags, JSON-LD, a hidden crawler reading of the About text, robots.txt, sitemap.xml and llms.txt from `content.ts`; the Vite plugin in `vite.config.ts` writes them at build. The share image is `public/og.png`. `.github/workflows/indexnow.yml` pings IndexNow (Bing) once a push that can change the page is live, polling the live `/build.txt` for its commit (D-66a). The `SEO` block in `content.ts` is copy Shoro approved on 2026-10-12. When the About copy changes, the crawler text follows on the next build.
 - The engine is the Phase 0 engine, not the Figma one: `src/engine/SynthEngine.ts` with `contour.ts`, `euclid.ts`, `scales.ts`, `aqi.ts`. FM voices, Euclidean pulse, six tiers, fixed 90 BPM (SON-01 to SON-03, SON-05, SON-06 done).
@@ -31,7 +32,7 @@ Not yet done (see BACKLOG.md):
 - No landmarks and no `h1` on the page (A11Y-01, BUG-48), parked: what the page's structure should be is a design question.
 - Copy placeholders awaiting Shoro, all in `content.ts` and flagged PLACEHOLDER there (reconciled 2026-10-12):
   - Seen on every visit: `ENTRY.title` and `ENTRY.line` (the screen before the tool); `HERO_AQI_LABEL`, `HERO_AQI_NOW`, `HERO_BREATH_LABEL`; `TRACK_LABELS`; `MONITOR_LABELS`, `SOURCE_LABELS`, `SCALE_DISPLAY`, and `TONE_WORDS` after the first two; the day navigation's `NAV_LIVE`, `NAV_LAST_24H`, `CAL_AVAILABLE_UNTIL`. `TIER_NAMES` (the mood words) are marked provisional.
-  - Seen only in a state: `LIVE_STATUS.loading`, `.toArchive`, `.retry` (the live feed slow or unreachable); `SOURCE_BORROWED` (a borough on the citywide value); `SOURCE_LINE_TYPICAL_NO2` (marked "Shoro's to revise").
+  - Seen only in a state: `LIVE_STATUS.loading`, `.toArchive`, `.retry` (the live feed slow or unreachable); `STATUS.*` (the status line's other states, D-69); `FALLBACK.*` (the crash and no-WebGL screens); `SOURCE_BORROWED` (a borough on the citywide value); `SOURCE_LINE_TYPICAL_NO2` (marked "Shoro's to revise").
   - Heard only (accessible names): `ABOUT.dismiss`, `DAY_SHEET.label`, `DAY_SHEET.close`, `TRANSPORT_PLAY`, `TRANSPORT_PAUSE`, `TRANSPORT_VOLUME`, `SKY_TOGGLE_LABEL`, `VIEW_LABELS`, `NAV_CALENDAR`.
   - Written by Shoro, no longer placeholders: `ABOUT.close` ("Exhale"), `LIVE_STATUS.unavailable`, `ABOUT.made` (the AI disclosure).
   - Unused: `NAV_UNAVAILABLE` ("Not yet reported.") is exported and rendered nowhere.
@@ -103,7 +104,7 @@ Data
 - Missing is null only when no borough reports. Citywide is the per-hour mean of reporting boroughs.
 - The AQI is EPA's reported AQI (D-42, `src/engine/aqi.ts`): the highest pollutant sub-index on the current breakpoint tables. A chosen day's number is the official daily AQI from daily statistics; Live and the graph line are the NowCast composite. The routes ship hours only; never compute an AQI anywhere else. The sound's tier is PM2.5 alone.
 - Look up API behavior before proposing a fix. AirNow and EPA AQS both have quirks; do not cycle through guesses.
-- Live NO2: New York publishes none in real time, so absence is filled from the archive's typical profile, flagged source.no2 = 'typical' and disclosed on the page (D-18, amending §4.2/§4.4).
+- Live NO2: New York publishes none in real time, so absence is filled from the archive's typical profile, flagged source.no2 = 'typical' and disclosed on the page (D-18, amending §4.2/§4.4). Typical NO2 drives the pulse and never enters the AQI (D-68).
 
 Code
 - TypeScript strict. Functional components. No component libraries. Tokens from `theme.ts` only. All prose from `content.ts`.

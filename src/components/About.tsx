@@ -2,7 +2,7 @@
 // The way out is the Patch notes button itself (Shoro, 2026-09-16; Transport.tsx AboutButton morphs in place, stacked above this overlay). The overlay is drawn inside the scaffold, not in a portal, so that stacking is one z-order. A mask band across the scroll surface's bottom, the button's row, keeps the reading from showing behind it below laptop. Escape and a press on the scrim close the overlay too. Focus goes to the title on open and back to the button on close; everything else in the scaffold is inert behind it (ScenePage). The overlay scrolls on its own; the page never does.
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme, themeColors, families, typeScale, motion, CONTROL, ABOUT as T } from "../utils/theme";
-import { ABOUT, CREDIT_URL, LINKEDIN_URL, GITHUB_URL } from "../content";
+import { ABOUT, CREDIT_URL, LINKEDIN_URL, GITHUB_URL, PORTFOLIO_RECORD_URL, RECORD_LINK } from "../content";
 import { chipStyle } from "./chip";
 import { weeksBehind } from "../utils/time";
 import { CircleUserRoundIcon, LinkedinIcon, GithubIcon } from "./icons";
@@ -126,6 +126,11 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
           <footer className="scene-about-credit">
             <p className="scene-about-body" style={creditStyle}>{keepTogether(ABOUT.credit, ABOUT.creditKeep)}</p>
             <p className="scene-about-body" style={{ ...creditStyle, color: c.textMuted }}>{ABOUT.credit2}</p>
+            {/* The record (2026-10-13): this piece's own entry on the portfolio, under the credit it belongs to. A plain link in the credit's size, a step brighter than the muted line above it so it holds 4.5:1 on the brightest sky behind the scrim (about 6:1); the ID in the data face. It opens a new tab, so the phrase playing underneath is never interrupted. */}
+            <a className="scene-about-record" href={PORTFOLIO_RECORD_URL} target="_blank" rel="noopener noreferrer" aria-label={RECORD_LINK.name} style={{ ...creditStyle, color: c.textSecondary }}>
+              <span>{RECORD_LINK.before}<span className="scene-about-record-id" style={{ fontFamily: families.data, fontVariantNumeric: "tabular-nums" }}>{RECORD_LINK.id}</span>{RECORD_LINK.after}</span>
+              <span aria-hidden="true">↗</span>
+            </a>
             <div className="scene-about-links">
               <a className="scene-chip scene-about-link" href={CREDIT_URL} target="_blank" rel="noreferrer" aria-label={ABOUT.links.website} title={ABOUT.links.website} style={linkStyle}><CircleUserRoundIcon size={16} /></a>
               <a className="scene-chip scene-about-link" href={LINKEDIN_URL} target="_blank" rel="noreferrer" aria-label={ABOUT.links.linkedin} title={ABOUT.links.linkedin} style={linkStyle}><LinkedinIcon size={16} /></a>

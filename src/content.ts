@@ -7,7 +7,7 @@ export const TIER_NAMES = ["Easy", "Shallow", "Short", "Tight", "Ragged", "Suffo
 
 // Status words in the borough row.
 
-// The credit (Shoro, 2026-09-16): a small pill beside the source line, the name a link to the portfolio.
+// The credit (Shoro, 2026-09-16): a small pill beside the source line, the name a link to Shoro's LinkedIn (bacc594, 2026-09-17; it had gone to the portfolio). The portfolio is reached from the About overlay: its home from the website glyph, this piece's record from the record line.
 export const CREDIT_LINE = "by {name}"; // Shoro, 2026-09-16 (was "Designed for fun by {name}", then "Made by {name}")
 export const ABOUT_LABEL = "Patch notes"; // the footer button's label (Shoro, 2026-09-16; was "About this", then "About"); it opens the About overlay (D-56)
 export const CREDIT_NAME = "Shoro Roy";
@@ -137,6 +137,8 @@ export const GITHUB_URL = "https://github.com/ryo-67/Interactiveaqisynth";
 export const SITE_URL = "https://aqi.shoro.space"; // the canonical origin (Shoro, 2026-10-12; moved from aqi-synth.vercel.app the same day, D-67): canonical link, sitemap, share tags and structured data all point here
 export const PORTFOLIO_URL = "https://shoro.space"; // the portfolio's origin; its home publishes the schema.org Person this page's author points at
 export const PORTFOLIO_RECORD_URL = "https://shoro.space/records/aqi-synth"; // the portfolio's own page for this piece
+// The record link (2026-10-13): one quiet line in the About credit to this piece's own record on the portfolio, which files it as build 0023 (the website glyph beside it keeps going to the portfolio's home). The record ID in the data face, a nod to the portfolio's four-digit IDs; ↗ is the portfolio's own mark for a link that leaves the site ("Live ↗︎"). PLACEHOLDER — Shoro's to approve. Options: "Filed as record 0023" (default), "On file: build 0023 · 2026", "Open the case file". The accessible name starts with the visible words, so a voice-control user can say what they see (WCAG 2.5.3), then says where it goes.
+export const RECORD_LINK = { before: "Filed as record ", id: "0023", after: "", name: "Filed as record 0023: AQI Synth's record on Shoro Roy's portfolio, opens in a new tab" } as const;
 export const SEO = {
   title: "New York AQI Synth: the city's air quality, played as music",
   description: "New York City's air quality played as music. Live AirNow readings and EPA data back to 2020 drive a synthesizer and a sky, borough by borough.",

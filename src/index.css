@@ -1879,6 +1879,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone-landscape"] .scene-monitor .scene-card-routing { display: none; }
 .scene-root[data-layout="phone-landscape"] .scene-ui { --slider-width: 100%; --pill-room: 0px; }
 .scene-root[data-layout="phone-landscape"] .scene-about { --about-link-size: 44px; }
+.scene-root[data-layout="phone-landscape"] .scene-about-record { min-height: 44px; }
 .scene-root[data-layout="phone-landscape"] .scene-transport { gap: var(--ui-gap); width: 100%; align-self: stretch; } /* the full row at any width: a short laptop window is landscape too, and the tablet rule that stretched it ends at 1023 */
 .scene-root[data-layout="phone-landscape"] .scene-transport > .scene-icon-pill { width: 48px; height: 48px; border-radius: 24px; }
 .scene-root[data-layout="phone-landscape"] .scene-transport > .scene-icon-pill .scene-play { width: 100% !important; height: 100% !important; border-radius: inherit !important; }
@@ -1920,6 +1921,10 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-about-credit { align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 6px; margin-top: 32px; }
 .scene-about-links { display: flex; gap: 8px; margin-top: 12px; }
 .scene-about-made { margin-top: 12px; } /* the AI disclosure (content.ts ABOUT.made): under the links, set off from them by the links' own gap above, so it reads as a footnote to the credit rather than part of it */
+/* The record link (About.tsx): text, not a chip, so it reads as part of the credit; underlined so it reads as a link without colour alone, brighter on hover; the page's focus ring (the volume slider's). On touch layouts it is a 44 px target, the floor every control keeps (D-64). */
+.scene-about-record { display: inline-flex; align-items: center; gap: 4px; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, 0.35); }
+.scene-about-record:hover { text-decoration-color: currentColor; }
+.scene-about-record:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 4px; border-radius: 4px; }
 .scene-about-link:active { background-color: rgba(255, 255, 255, var(--chip-hover-active, 0.22)) !important; } /* the chip's hover comes with its class; the press is the button family's fill, since the page's cursor (whose closing dot is the press elsewhere) is off here */
 @media (max-width: 1023px) {
   .scene-about { --about-pad: 24px; --about-inline: 32px; --about-link-size: 44px; } /* a thumb's target rather than a pointer's (Shoro, 2026-09-17): these three are the only controls in the reading, and 32 is under what a thumb wants */
@@ -1927,6 +1932,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
   .scene-about-credit { align-self: center; align-items: center; text-align: center; margin-top: 48px; }
   .scene-about-links { justify-content: center; margin-top: 16px; gap: 12px; }
   .scene-about-made { margin-top: 16px; }
+  .scene-about-record { min-height: 44px; }
 }
 .scene-root[data-layout^="phone"] .scene-about { --about-pad: 16px; --about-inline: 48px; } /* the reading's side padding on a phone (keyed on the layout since D-63; it was max-width 575): Shoro's 48 (2026-09-17; 64 for a day, 24 before that) */
 /* The phone's About (D-64): the close is the notebook in the top bar, so the reading starts under the bar and fades out beneath it, and the bottom keeps only its padding. */

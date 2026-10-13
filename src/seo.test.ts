@@ -33,6 +33,20 @@ describe("head and structured data", () => {
     expect(app.author["@id"]).toBe(PERSON_ID);
     expect(PERSON_ID).toBe("https://shoro.space/#person");
   });
+  it("marks up no Dataset: the sources are AirNow's and the EPA's, not the page's (Search Console, 2026-10-13)", () => {
+    const types: string[] = [];
+    const walk = (o: unknown): void => {
+      if (Array.isArray(o)) o.forEach(walk);
+      else if (o && typeof o === "object") {
+        const t = (o as Record<string, unknown>)["@type"];
+        if (t) types.push(...([] as string[]).concat(t as string | string[]));
+        Object.values(o).forEach(walk);
+      }
+    };
+    walk(jsonLd());
+    expect(types).not.toContain("Dataset");
+    expect(types).toContain("CreativeWork");
+  });
 });
 
 // Every section of the About overlay reaches the crawlers too: a section added to the overlay and missing here fails.

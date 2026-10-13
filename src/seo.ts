@@ -88,9 +88,10 @@ export function jsonLd() {
         author: person,
         creator: { "@id": PERSON_ID },
         sameAs: [PORTFOLIO_RECORD_URL, GITHUB_URL],
+        // The two sources as works the piece is built on, not as Datasets (2026-10-13): Google reads any Dataset as a candidate for Dataset Search, and flagged these for a missing description, creator and license. They are AirNow's and the EPA's, not ours to describe or license, and the page does not host them, so it should not offer itself as their entry.
         isBasedOn: [
-          { "@type": "Dataset", name: SEO.sourceAirNow, url: SOURCE_URL_AIRNOW },
-          { "@type": "Dataset", name: SEO.sourceEpa, url: SOURCE_URL_EPA },
+          { "@type": "CreativeWork", name: SEO.sourceAirNow, url: SOURCE_URL_AIRNOW },
+          { "@type": "CreativeWork", name: SEO.sourceEpa, url: SOURCE_URL_EPA },
         ],
       },
       { "@type": "WebSite", "@id": `${SITE_URL}/#website`, url: CANONICAL, name: ABOUT.title, description: SEO.description, inLanguage: "en", author: { "@id": PERSON_ID } },

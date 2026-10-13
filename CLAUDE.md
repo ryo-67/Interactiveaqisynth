@@ -29,7 +29,6 @@ Shipped and working:
 Not yet done (see BACKLOG.md):
 - Imagine is not built: no virtual-AQI wiring (SON-04), no counterfactual selector (UX-04), no pollutant sliders (UX-05), no speculative indicator (UX-06).
 - The bed is still the Phase 0 placeholder; the real one is Shoro's to write (SON-10).
-- The timeline's drawn lag gap (UX-03, BUG-02). The lag IS stated in prose in the About overlay.
 
 ## Commands
 

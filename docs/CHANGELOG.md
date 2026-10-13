@@ -2,6 +2,12 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — The engine goes when the page goes (BUG-50; BUG-02 closed)
+
+The synthesizer had no teardown. Its audio nodes, its repeats on Tone's shared transport and a release timer outlived the page that made them, which was harmless while the page never went away. Now it can: the crash screen replaces the page, and a crash while playing left the music playing under it. The engine now has a dispose that silences and frees everything it made, and the page calls it when it unmounts; in development a hot reload gets a fresh engine instead of a second one. Measured before and after with a crash injected mid-phrase, and play, pause and resume measured unchanged.
+
+BUG-02, the publishing lag not being drawn, is closed at Shoro's call: the calendar's footer, "EPA data available till" its last day, with every later day disabled, is the gap. The timeline it was written for no longer exists.
+
 ## 2026-10-12 — A load caught mid-deploy recovers (BUG-66)
 
 Checking a deploy turned up a blank page: in the seconds while the domain moved to the new deployment, the browser got the old page, whose script the new deployment no longer had. Nothing ran, so nothing could say anything. Vercel's Skew Protection keeps old files reachable for exactly this, but it is a Pro feature and the team is on Hobby. Instead the page now reloads itself when one of its own files fails to load: once at once, once more four seconds later, then it stops, so a page that is genuinely broken cannot reload for ever. Tested on the built page with the bundle removed and then restored partway through.

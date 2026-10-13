@@ -1,6 +1,6 @@
 // ScenePage — /scene, the Listen page as the scene (D-19, §5). The sky is a pure function of two things the engine already emits every beat: the hour under the playhead and the smoothed normalized PM2.5. Sun elevation comes from the hour; the model cross-fade, exposure, stars and the plume all follow from those two numbers. Nothing here re-derives a mapping the harness did not judge.
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
-import { SKY_TOGGLE_LABEL } from "../content";
+import { SKY_TOGGLE_LABEL, STATUS, LIVE_STATUS } from "../content";
 import { useEased } from "./useEased";
 import { Monitor } from "../components/Monitor";
 import { PageIndicator, VIEWS, type View } from "../components/PageIndicator";
@@ -29,6 +29,10 @@ import { SourceLine } from "../components/SourceLine";
 import { channelSuffixes } from "../utils/channelSource";
 import { Credit } from "../components/Credit";
 import { LiveStatus } from "../components/LiveStatus";
+import { StatusLine, type StatusAction } from "../components/StatusLine";
+import { CalendarIcon, RefreshIcon, ChevronRightIcon } from "../components/icons";
+import { labelOf } from "../components/DayNav";
+import { MOCK } from "../utils/mock";
 import { Entry } from "../components/Entry";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
 import { ThemeContext, GLASS, MONITOR, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL, ABOUT as ABOUT_TOKENS } from "../utils/theme";
@@ -62,6 +66,20 @@ const DISSOLVE_BEATS = 1.5; // the dissolve's length on a change of day while pl
 
 export default function ScenePage() {
   const s = useListenSession();
+  // The pill states, mocked (utils/mock.ts; dev only): each on the live line's spot over the real page, with the buttons it would offer. A chosen day fills {date}; without one, a day that fits the state stands in (a current-year day past the snapshot for the EPA wait, the Wildfire pin for a failure).
+  const { date, latestDate, setDate } = s;
+  const pillMock = useMemo((): { tone: "error" | "quiet"; message: string; actions?: StatusAction[] } | null => {
+    const toArchive: StatusAction = { label: LIVE_STATUS.toArchive, icon: <CalendarIcon size={14} />, onPress: () => latestDate && setDate(latestDate) };
+    const retry: StatusAction = { label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: () => {} };
+    const toLive: StatusAction = { label: STATUS.toLive, icon: <ChevronRightIcon size={14} />, onPress: () => setDate(null) };
+    switch (MOCK) {
+      case "no-readings": return { tone: "quiet", message: STATUS.noReadings, actions: latestDate ? [toArchive] : [] };
+      case "day-loading": return { tone: "quiet", message: STATUS.dayLoading.replace("{date}", labelOf(date ?? "2026-08-03")) };
+      case "day-failed": return { tone: "error", message: STATUS.dayFailed.replace("{date}", labelOf(date ?? "2023-06-07")), actions: [retry, toLive] };
+      case "no-sound": return { tone: "error", message: STATUS.noSound, actions: [retry] };
+      default: return null;
+    }
+  }, [date, latestDate, setDate]);
   const [sheetHost, setSheetHost] = useState<HTMLDivElement | null>(null);
   const layout = useLayout(); // D-63: one rule for every layout decision on the page (utils/layout.ts)
   const phone = isPhoneLayout(layout); // the phone's controls: the day sheet, no sky tap-to-play, no page cursor
@@ -513,7 +531,7 @@ export default function ScenePage() {
           {/* The bottom bar (Shoro, 2026-09-16): on laptop the Patch notes button at the left, the source line centred on the bar, the credit at the right, the transport having moved into the band; below laptop the transport row (play, volume, the page pill), then the Patch notes button and the credit side by side and centred, and no source line. A borrowed channel is named where it is shown too, on the graph's tab and the card's source pill (D-56), and the About overlay carries the account. */}
           <div className="scene-bottom">
             {/* What the live feed is doing, while Live is the chosen day and it has not answered (D-60). It rides the footer's top edge, so it sits above the whole bar at every breakpoint — above the Patch notes row on laptop, above the transport row as well below it — and takes no room in the column, so nothing moves when it appears or goes. Held back until the entry screen has gone (Shoro, 2026-09-17), or it would be waiting behind it. */}
-            {s.live && entryGone && <LiveStatus status={s.liveStatus} archiveReady={s.latestDate != null} onArchive={() => s.latestDate && s.setDate(s.latestDate)} onRetry={s.retryLive} />}
+            {pillMock && entryGone ? <StatusLine {...pillMock} /> : s.live && entryGone && <LiveStatus status={s.liveStatus} archiveReady={s.latestDate != null} onArchive={() => s.latestDate && s.setDate(s.latestDate)} onRetry={s.retryLive} />}
             {!laptop && (
               <div className="scene-transport" inert={about ? "" : undefined}>
                 <Glass material="glass" className="scene-pill scene-icon-pill">

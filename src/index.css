@@ -1537,6 +1537,8 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-entry-lane { width: 180px; margin-top: 10px; }
 .scene-entry-lane .scene-lane-step { animation: scene-entry-step calc(var(--beat-ms, 667ms) * 4) linear infinite; } /* the bar crosses in four beats and starts again; each step's delay is its place in it (Entry.tsx) */
 .scene-entry-lane[data-still="true"] .scene-lane-step { animation: none; background: rgba(255, 255, 255, 0.4); }
+/* The fallback (Fallback.tsx): the entry's panel with no scene behind it, so no blur to take; fixed, since it is mounted in place of the root rather than inside it. The ground is the night's navy (GLASS.fill) rising from the page background (theme bg), the colour the sky would have been. */
+.scene-entry.scene-fallback { position: fixed; -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(140% 90% at 50% 115%, rgba(var(--fallback-sky), 0.95) 0%, var(--fallback-ground) 72%); }
 /* A step lights as the playhead reaches it and falls back over the next few, so what runs along the lane is a bright head with a short trail behind it — the piece's own sixteenth-note position, running the bar over and over while the air is read. */
 @keyframes scene-entry-step {
   0% { background: rgba(255, 255, 255, 0.95); }

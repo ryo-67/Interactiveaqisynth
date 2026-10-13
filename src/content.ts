@@ -37,6 +37,20 @@ export const LIVE_STATUS = {
   retry: "Try again",
 } as const;
 
+// The other states the page can be in (mocked 2026-10-12, not yet wired; BUG-60 to BUG-64). One line each on the live line's pill (StatusLine), or a whole screen when there is no page to put a line on (Fallback). PLACEHOLDERS — Shoro's to write. {date} is the chosen day as the date chip shows it.
+export const STATUS = {
+  noReadings: "AirNow has no New York readings right now.", // the feed answered, with nothing measured for the city (seen 2026-10-12)
+  dayFailed: "Couldn't load {date}.", // the archive file or the EPA month did not arrive
+  dayLoading: "Fetching {date} from EPA…", // a current-year day after the snapshot, which can take a minute
+  noSound: "Sound didn't start.", // Play was pressed and the audio did not begin
+  toLive: "Back to Live",
+} as const;
+export const FALLBACK = {
+  crashed: "Something broke and the page stopped.", // any error the page cannot recover from
+  noWebgl: "This page draws its sky with WebGL, which this browser can't run.", // no WebGL at all
+  reload: "Reload",
+} as const;
+
 // Transport (the first glass control, §5.3). PLACEHOLDERS — Shoro's to write.
 export const TRANSPORT_PLAY = "Play";
 export const TRANSPORT_PAUSE = "Pause";

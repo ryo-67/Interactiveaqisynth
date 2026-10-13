@@ -78,7 +78,6 @@ export const DAY_SHEET = { label: NAV_CALENDAR, close: "Close" } as const; // th
 export const NAV_LAST_24H = "Last 24h";
 export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}";
 export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the presets and the calendar (Shoro, 2026-09-15) // under the calendar (Shoro, 2026-09-15) // the date chip's label when live (Shoro, 2026-09-15)
-export const NAV_UNAVAILABLE = "Not yet reported."; // a day past the archive and the EPA feed
 
 // The monitor page (D-43, 2026-09-15): card labels, source-pill labels, the tone words and the scale names as shown. Approved by Shoro as written, 2026-10-12. The source pill is the routing: which measurement drives the card.
 export const VIEW_LABELS = { scene: "Scene", monitor: "Monitor" } as const; // the two page icons' accessible names

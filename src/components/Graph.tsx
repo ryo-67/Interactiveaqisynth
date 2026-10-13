@@ -172,6 +172,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       const pinch = window.visualViewport?.scale ?? 1;
       const dpr = Math.min((window.devicePixelRatio || 1) * pinch, Math.sqrt(MAX_RENDER_PIXELS / (cssW * cssH)));
       const bufW = Math.round(cssW * dpr), bufH = Math.round(cssH * dpr);
+      // A panel laid out at no width (a page mounted at zero size: a hidden pane, a zero-size frame) rounds to an empty buffer, and an empty canvas cannot be drawn from: drawImage throws, and thrown from this effect it unmounted the whole page (BUG-59, 2026-10-12). Nothing to draw, so wait: the observer below fires when the panel gets a size.
+      if (bufW < 1 || bufH < 1) return;
       if (canvas.width !== bufW || canvas.height !== bufH) {
         canvas.width = bufW;
         canvas.height = bufH;
@@ -210,6 +212,8 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       // The readings are pinned to the plot: the first on the y-axis line, the last on the right edge, so the line has no padding at either end (the y values live in the gutter and cannot collide). colW is the interval between readings; everything on the time axis — grid, area, line, playhead — is plotX + hours * colW.
       const colW = n > 1 ? plotW / (n - 1) : plotW;
       plotRef.current = { x: plotX, w: plotW, n };
+      // The same for a panel narrower than its gutter and legend: a plot of no device pixels gives the fill an empty buffer, and createImageData throws on one (BUG-59). The canvas is already cleared above, so the panel stands empty until the observer redraws it wider.
+      if (Math.round(plotW * dpr) < 1) return;
       const labelPx = parseInt(typeScale.caption.size);
       ctx.font = `${labelPx}px ${families.data}`;
       const lh = labelPx + 4; // label line height inside the canvas

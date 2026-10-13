@@ -6,6 +6,27 @@
       <!-- viewport-fit=cover: the page runs under Safari's bars, so the sky (page content, index.css .scene-root) can show under the toolbar and the safe-area insets are reported (BUG-57). -->
       <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
       <title>New York AQI Synth</title>
+    <!-- A page caught mid-deploy reloads itself (BUG-66, 2026-10-12). For a few seconds while the domain moves to a new deployment, a visitor can get the previous deployment's page, whose hashed script and stylesheet the new one does not have: the script 404s, nothing runs, and the page stays blank (the error boundary cannot help, since no code has started). Vercel's Skew Protection would keep the old files reachable, but it needs a Pro plan. So: a file under /assets/ that fails to load reloads the page, at once and then once more after four seconds in case the first reload lands in the same window, then gives up, so a page that is truly broken does not reload for ever. The count is kept per tab for two minutes; with storage blocked it never reloads, for the same reason. It runs before the module script, so it is listening when that loads. Vite's own event for a failed lazy chunk (the /scene-test harness) is handled the same way. -->
+    <script>
+      (function () {
+        var KEY = "aqi-asset-reload", WINDOW_MS = 120000, RETRY_MS = 4000;
+        function reload() {
+          var n = 0;
+          try {
+            var s = JSON.parse(sessionStorage.getItem(KEY) || "null");
+            n = s && Date.now() - s.t < WINDOW_MS ? s.n : 0;
+            if (n >= 2) return;
+            sessionStorage.setItem(KEY, JSON.stringify({ n: n + 1, t: Date.now() }));
+          } catch (e) { return; }
+          setTimeout(function () { location.reload(); }, n === 0 ? 0 : RETRY_MS);
+        }
+        addEventListener("error", function (e) {
+          var t = e.target, url = t && (t.src || t.href);
+          if (url && (t.tagName === "SCRIPT" || t.tagName === "LINK") && url.indexOf("/assets/") !== -1) reload();
+        }, true);
+        addEventListener("vite:preloadError", function (e) { e.preventDefault(); reload(); });
+      })();
+    </script>
       <!-- The tab icon is one SVG carrying its own light and dark faces (public/favicon.svg): cloud-sun in the scene's ink, cloud-moon in white. -->
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       <!-- Inter (SIL OFL), the UI face for chips and buttons (2026-09-15); the data face and the serif stay system fonts. -->

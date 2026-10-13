@@ -4,14 +4,35 @@
     {
       "name": "app-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--no-open"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--no-open"
+      ],
       "port": 55128,
       "autoPort": true
     },
     {
+      "name": "app-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
+      "port": 4173
+    },
+    {
       "name": "phase0-static",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "55977"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "55977"
+      ],
       "port": 55977
     }
   ]

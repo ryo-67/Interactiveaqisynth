@@ -37,7 +37,7 @@ export const LIVE_STATUS = {
   retry: "Try again",
 } as const;
 
-// The other states the page can be in (mocked 2026-10-12, not yet wired; BUG-60 to BUG-64). One line each on the live line's pill (StatusLine), or a whole screen when there is no page to put a line on (Fallback). PLACEHOLDERS — Shoro's to write. {date} is the chosen day as the date chip shows it.
+// The other states the page can be in (2026-10-12, D-69; chosen in ScenePage's status line, from the session's own state). One line each on the live line's pill (StatusLine), or a whole screen when there is no page to put a line on (Fallback). PLACEHOLDERS — Shoro's to write. {date} is the chosen day as the date chip shows it.
 export const STATUS = {
   noReadings: "AirNow has no New York readings right now.", // the feed answered, with nothing measured for the city (seen 2026-10-12)
   dayFailed: "Couldn't load {date}.", // the archive file or the EPA month did not arrive

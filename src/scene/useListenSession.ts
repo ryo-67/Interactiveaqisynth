@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { barK, barSteps } from "../engine/euclid";
 import { TIERS, detuneSigma } from "../engine/scales";
-import { pm25ToAQI } from "../engine/aqi";
+import { pm25ToAQI, measuredNo2 } from "../engine/aqi";
 import { motion, NYC_LAT, NYC_LON, CAMERA_FACING } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
 import { tierIndexOf } from "../engine/scales";
@@ -45,6 +45,9 @@ export interface ListenSession {
   date: string | null;
   setDate: (d: string | null) => void;
   dayLoading: boolean;
+  dayWaiting: boolean; // the chosen day has been loading longer than a beat: the page says so (a current-year day from EPA can take a minute)
+  dayFailed: boolean; // the chosen day did not arrive (the archive file or the EPA month failed)
+  retryDay: () => void;
   // ONE clock for everything that moves with the phrase: the beat's integer hour eased over one beat (§5.4), wrapping forward at the loop seam. The sun, the playhead and every graph track read this and nothing else.
   latestDate: string | null; // the last day the archive can play; null until known
   playheadHour: number; // eased transport position: an index into the day (fractional while running)
@@ -60,19 +63,21 @@ export interface ListenSession {
   // What the live fetch is doing (D-60, 2026-09-17): "loading" until AirNow answers, "ready" once it has, "unavailable" when it could not be reached. It used to fail into a console warning and an empty page that never said why.
   liveStatus: "loading" | "ready" | "unavailable";
   retryLive: () => void;
+  liveEmpty: boolean; // live answered, with no measured PM2.5 or ozone in any hour: AirNow has nothing for the city (the typical NO2 alone is not a reading)
   anchors: PollutantAnchors; // the engine's anchors (falls back to Queens 2023 until the borough's land)
   day: Day | null;
   live: boolean;
   playing: boolean;
   beat: BeatInfo | null;
   togglePlay: () => void;
+  soundFailed: boolean; // Play was pressed and the audio did not start: the button went back to Play and the page says so
   setVolume: (db: number) => void;
   displayAqi: number | null;
   aqiHours: Array<number | null>; // the loaded day's current AQI hour by hour (engine/aqi.ts): the graph's AQI line
   latest: { reading: HourReading; index: number; hour: number } | null; // latest non-null hour of the loaded day: its index and its clock hour
   rest: { reading: HourReading; index: number; hour: number } | null; // the hour the page reads at rest: the paused or seeked hour if the day has it, else latest
   // The category the mood word names and the AQI its colour reads: the current AQI (the composite) at the hour being heard while playing, at the rest hour otherwise, so the word follows the graph line at the playhead. The sound's tier stays PM2.5 alone (§3.4); the word and the number read EPA's category (D-42).
-  moodTier: number;
+  moodTier: number | null; // null when the hour has no AQI: the card shows no word rather than the first tier's (BUG-63)
   moodAqi: number | null;
   monitor: MonitorState; // the monitor page's readouts (D-43)
   pulse: PulseHit | null; // the last pulse hit the engine fired, for the monitor's lane
@@ -117,10 +122,10 @@ export function useListenSession(): ListenSession {
     setLiveStatus((s) => (s === "ready" ? s : "loading"));
     (async () => {
       try {
-        const [snap, a] = await Promise.all([getCurrentAll(), getAnchors("Citywide")]);
+        // AirNow alone decides the live line (BUG-60, 2026-10-12): the anchors are our own static file and were awaited alongside, so a failed anchors.json read as "Can't reach AirNow". They load with the day below, and fall back to the bundled ones if they fail.
+        const snap = await getCurrentAll();
         if (cancelled) return;
         setSnapshot(snap);
-        setAnchors(a);
         setLiveStatus("ready");
       } catch (err) {
         console.warn("[App] Live fetch failed:", err);
@@ -133,24 +138,32 @@ export function useListenSession(): ListenSession {
   }, [liveAttempt]);
   const retryLive = useCallback(() => { forgetLive(); setLiveAttempt((n) => n + 1); }, []);
 
-  // A chosen day loads on demand, for this borough; nothing is fetched until asked (BUG-20).
+  // A chosen day loads on demand, for this borough; nothing is fetched until asked (BUG-20). A failure is said, not shown as an empty day (2026-10-12): the page carries the empty day (a dash, no plot) and dayFailed, which puts the failure on the live line's spot with a retry; a load longer than a beat is said too (dayWaiting), since a current-year day from EPA can take a minute and a phone had no sign of it at all.
+  const [dayFailed, setDayFailed] = useState(false);
+  const [dayWaiting, setDayWaiting] = useState(false);
+  const [dayAttempt, setDayAttempt] = useState(0); // bumped by retryDay; the failed fetch is not cached (nycOpenData.ts), so asking again asks the network
   useEffect(() => {
+    setDayFailed(false);
+    setDayWaiting(false);
     if (!date) { setChosen(null); return; }
     let cancelled = false;
     setDayLoading(true);
+    const slow = window.setTimeout(() => { if (!cancelled) setDayWaiting(true); }, motion.beatMs);
     (async () => {
       try {
         const s = await getDay(borough, date);
         if (!cancelled) setChosen(s);
       } catch (err) {
         console.warn("[App] Day fetch failed:", err);
-        if (!cancelled) setChosen({ hours: [], aqi: { daily: null, current: null, hourly: [] }, fallback: null, fetchedAt: null });
+        if (!cancelled) { setChosen({ hours: [], aqi: { daily: null, current: null, hourly: [] }, fallback: null, fetchedAt: null }); setDayFailed(true); }
       } finally {
-        if (!cancelled) setDayLoading(false);
+        window.clearTimeout(slow);
+        if (!cancelled) { setDayLoading(false); setDayWaiting(false); }
       }
     })();
-    return () => { cancelled = true; };
-  }, [date, borough]);
+    return () => { cancelled = true; window.clearTimeout(slow); };
+  }, [date, borough, dayAttempt]);
+  const retryDay = useCallback(() => setDayAttempt((n) => n + 1), []);
 
   const setDate = useCallback((d: string | null) => setDateState(d), []);
 
@@ -173,7 +186,8 @@ export function useListenSession(): ListenSession {
         engine.setDay(devFixture.day, QUEENS_2023_ANCHORS);
         return;
       }
-      const a = await getAnchors(borough);
+      // Anchors that fail to load fall back to the bundled ones (BUG-60): the day still plays, normalized against Queens 2023 rather than its borough, instead of the engine silently keeping the previous day.
+      const a = await getAnchors(borough).catch((err) => { console.warn("[App] anchors failed, using the bundled ones:", err); return QUEENS_2023_ANCHORS; });
       // Any switch — borough or day — keeps the phrase position: the music does not stop, the next beat reads the new air (§2.1, §2.2).
       prevBoroughRef.current = borough;
       prevDateRef.current = date;
@@ -219,12 +233,25 @@ export function useListenSession(): ListenSession {
 
   // Play/pause: the sky, the transport button, and Space. The engine is told inside the gesture's own call stack — Tone.start() needs the gesture, and a pause that waited for a render and an effect landed a frame late, which the ear reads as a trailing tail. React state follows.
   const playingRef = useRef(false);
+  // Sound that did not start is said, and the button goes back to Play (BUG-61, 2026-10-12): it had stayed on Pause over silence. Two ways it fails: play() rejects (Tone.start or the reverbs' build threw), or the audio context is still not running a second after the press (a browser that holds audio back; Tone.start can then wait without ever settling). Neither can be seen from the page otherwise.
+  const [soundFailed, setSoundFailed] = useState(false);
   const togglePlay = useCallback(() => {
     const next = !playingRef.current;
     playingRef.current = next;
     const engine = engineRef.current;
-    if (next) void engine?.play(); // play() begins with init(), so Tone.start() runs here, in the gesture
-    else engine?.pause();
+    if (next && engine) {
+      setSoundFailed(false);
+      const fail = (why: unknown) => {
+        if (!playingRef.current) return; // paused in the meantime: nothing to report
+        console.warn("[App] Sound did not start:", why);
+        playingRef.current = false;
+        engine.pause();
+        setPlaying(false);
+        setSoundFailed(true);
+      };
+      engine.play().catch(fail); // play() begins with init(), so Tone.start() runs here, in the gesture
+      window.setTimeout(() => { if (!engine.running()) fail("audio context not running after 1 s"); }, 1000);
+    } else engine?.pause();
     setPlaying(next);
   }, []);
 
@@ -270,7 +297,7 @@ export function useListenSession(): ListenSession {
   const latest = useMemo(() => {
     if (!day) return null;
     for (let i = day.length - 1; i >= 0; i--) {
-      if (day[i].pm25 != null || day[i].o3 != null || day[i].no2 != null) return { reading: day[i], index: i, hour: hourOfTs(day[i].ts) };
+      if (day[i].pm25 != null || day[i].o3 != null || measuredNo2(day[i]) != null) return { reading: day[i], index: i, hour: hourOfTs(day[i].ts) }; // a MEASURED hour (BUG-64): one carrying only the typical NO2 has no AQI to rest on
     }
     return null;
   }, [day]);
@@ -293,7 +320,7 @@ export function useListenSession(): ListenSession {
   const a = anchors ?? QUEENS_2023_ANCHORS;
   const moodIndex = report ? report.hour : rest?.index;
   const moodAqi = moodIndex == null ? null : (aqiHours[moodIndex] ?? null);
-  const moodTier = moodAqi == null ? 0 : tierIndexOf(moodAqi); // the ladder's lines are EPA's category lines (D-38), so the tier index is the category index
+  const moodTier = moodAqi == null ? null : tierIndexOf(moodAqi); // the ladder's lines are EPA's category lines (D-38), so the tier index is the category index; no AQI, no word (BUG-63): it had fallen back to the first tier, "Easy", on a day that never loaded
   // The monitor's state (D-43): the beat report while playing; at rest the held hour through the engine's own functions. The rest tier is the hour's PM2.5 AQI unsmoothed (the smoother has no history at rest), which is what the engine reseeds from when play begins.
   const monitor = useMemo<MonitorState>(() => {
     if (report) {
@@ -337,8 +364,10 @@ export function useListenSession(): ListenSession {
         }
       : { pm25: null, o3: null, no2: null };
 
+  const liveEmpty = liveStatus === "ready" && snapshot != null && !snapshot.series.Citywide.hours.some((h) => h.pm25 != null || h.o3 != null); // the citywide series is the mean of every reporting borough, so empty there is empty everywhere
+
   return {
-    borough, setBorough, date, setDate, latestDate, dayLoading, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
+    borough, setBorough, date, setDate, latestDate, dayLoading, dayWaiting, dayFailed, retryDay, liveEmpty, soundFailed, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
     snapshot, liveStatus, retryLive, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, aqiHours, latest, rest, moodTier, moodAqi, monitor, pulse, channels, skyChannels, devDayKey, setDevDayKey,
   };

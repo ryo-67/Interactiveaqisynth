@@ -93,7 +93,13 @@ export class SynthEngine {
 
   // Must be called from a user gesture the first time (Tone.start()). Single-flight: concurrent calls share one build.
   init(): Promise<void> {
-    return (this.initPromise ??= this.buildAudio());
+    // A build that failed is forgotten (BUG-61, 2026-10-12), so the next Play builds again; cached, one refused Tone.start() made every later Play reject for the rest of the visit.
+    return (this.initPromise ??= this.buildAudio().catch((err) => { this.initPromise = null; throw err; }));
+  }
+
+  // Whether the browser is actually running the audio: Tone.start() resolves once it resumes the context, but a browser that holds audio back can leave it suspended without either answer, so the page asks after the fact (useListenSession, the sound-did-not-start line).
+  running(): boolean {
+    return Tone.getContext().state === "running";
   }
 
   private async buildAudio(): Promise<void> {
@@ -188,6 +194,8 @@ export class SynthEngine {
   }
 
   async play(): Promise<void> {
+    // Every press asks the browser to run the audio, inside its own gesture (2026-10-12). A browser that held the first request back leaves it pending rather than refusing it, and the build below awaits that first request, so a second press that only awaited the build never asked again and a Try again could not recover. Tone.start() is idempotent; once the context runs, the pending first request resolves with it.
+    void Tone.start();
     await this.init();
     const transport = Tone.getTransport();
     if (!this.day || transport.state === "started") return;

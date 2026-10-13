@@ -4,7 +4,7 @@ import { Card } from "./Card";
 import { AQINumber } from "./AQINumber";
 import { Ladder, AQIBar } from "./Gauges";
 import { useTheme, themeColors, families, typeScale, motion } from "../utils/theme";
-import { TIER_NAMES, HERO_AQI_LABEL, HERO_AQI_NOW, HERO_BREATH_LABEL } from "../content";
+import { TIER_NAMES, HERO_AQI_LABEL, HERO_AQI_NOW, HERO_BREATH_LABEL, MONITOR_REST } from "../content";
 import { shortDate } from "../utils/time";
 
 // Fixed widths (Shoro, 2026-09-16): neither card may change width with what it shows, so each body is sized from the widest thing it could show, measured on a hidden probe inside the card that sets the same variables as the live text: the number card from three of the widest digit and the widest label ("AQI · now" or any month and day), the breath card from the widest tier name. Below laptop the breath card takes the rest of the section anyway.
@@ -51,7 +51,7 @@ export function AQICard({ value, date, lift = 0, cardRef }: AQIProps) {
 
 interface BreathProps {
   aqi: number | null; // the AQI the word describes: colours the word and the lit step on the same scale as the graph (D-27)
-  tierIndex: number;
+  tierIndex: number | null; // null: the hour has no AQI, and the card says so with the page's dash rather than the first tier's word (BUG-63)
   lift?: number; // the ramp lift for this card (D-36)
   cardRef?: (el: HTMLDivElement | null) => void; // the page samples the sky behind this card for the lift
 }
@@ -79,7 +79,7 @@ export function BreathCard({ tierIndex, aqi, lift = 0, cardRef }: BreathProps) {
       <div className="scene-card-body" style={{ width: width || undefined }}>
         {/* The word in white: the ladder beneath carries the colour (Shoro, 2026-09-16). */}
         <div style={{ ...valueStyle, filter: blurred ? "blur(6px)" : "none", opacity: blurred ? 0.4 : 1, transition, color: c.textPrimary }}>
-          {TIER_NAMES[shown]}
+          {shown == null ? MONITOR_REST : TIER_NAMES[shown]}
         </div>
         {/* The probe: the widest tier name, hidden; the body takes it. */}
         <div ref={probe} className="scene-measure" aria-hidden>

@@ -115,3 +115,26 @@ describe("seriesAQI", () => {
     expect(s.daily).not.toBeNull();
   });
 });
+
+describe("typical NO2 never enters the AQI (BUG-64, D-68)", () => {
+  const typical = (h: HourReading): HourReading => ({ ...h, source: { ...h.source, no2: "typical" } });
+  it("gives an hour with only typical NO2 no AQI", () => {
+    const day = flat(null, null, 30).map(typical);
+    expect(hourlyAQI(day, 5)).toBeNull();
+    const s = seriesAQI(day);
+    expect(s.current).toBeNull();
+    expect(s.hourly.every((v) => v == null)).toBe(true);
+    expect(s.daily).toBeNull();
+  });
+  it("still counts measured NO2", () => {
+    const day = flat(null, null, 30);
+    expect(hourlyAQI(day, 5)).not.toBeNull();
+  });
+  it("takes current from the latest measured hour, past trailing typical-only hours", () => {
+    const day = flat(20, null, 30).map((h, i) => (i >= 20 ? typical({ ...h, pm25: null }) : typical(h)));
+    const s = seriesAQI(day);
+    expect(s.current).toBe(s.hourly[19]);
+    expect(s.current).not.toBeNull();
+  });
+});
+

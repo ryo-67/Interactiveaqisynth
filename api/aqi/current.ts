@@ -39,6 +39,12 @@ interface AirNowDataRow {
   Unit: string;
 }
 
+// How long the CDN keeps an answer (BUG-62, 2026-10-12). Half an hour for one that carries readings: AirNow updates hourly, and the half hour spares it. Five minutes for one with nothing measured in it, every hour of every channel null or the typical NO2: that is AirNow having nothing for the city (New York's sites went quiet from the evening of 2026-10-11), and kept for half an hour it went on being served for up to thirty minutes after AirNow came back.
+function cacheControl(result: TransformResult): string {
+  const measured = result.citywide.hours.some((h) => h.pm25 != null || h.o3 != null || (h.no2 != null && h.source.no2 !== "typical"));
+  return measured ? "public, s-maxage=1800, stale-while-revalidate=3600" : "public, s-maxage=300, stale-while-revalidate=60";
+}
+
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.AIRNOW_API_KEY;
   if (!apiKey) {
@@ -88,7 +94,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       // Whole-response fallback only: the data endpoint returned nothing for New York (outage or empty window). The zip-code endpoint cannot tell boroughs apart (BUG-12), so its area reading is flagged citywide on every channel and the response says so.
       const fallback = await zipCodeFallback(apiKey);
       fillTypicalNo2(fallback, typicalNo2 as TypicalNo2Table); // the zip endpoint has no NO2 either (BUG-11)
-      res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=3600");
+      res.setHeader("Cache-Control", cacheControl(fallback));
       res.status(200).json({ status: "ok", source: "airnow", fallback: "zipcode", fetchedAt: new Date().toISOString(), ...fallback });
       return;
     }
@@ -99,7 +105,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     // D-18: live NO2 absence (New York publishes none, BUG-25) filled from the archive's typical profile, disclosed as source 'typical'. Real readings always win; the historical route never does this.
     fillTypicalNo2(result, typicalNo2 as TypicalNo2Table);
 
-    res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=3600");
+    res.setHeader("Cache-Control", cacheControl(result));
     res.status(200).json({ status: "ok", source: "airnow", fetchedAt: new Date().toISOString(), ...result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

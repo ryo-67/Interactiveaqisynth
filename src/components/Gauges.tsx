@@ -9,11 +9,12 @@ import { DETUNE_MAX_CENTS } from "../engine/scales";
 const TAU = motion.beatMs * 0.5; // the sky's easing constant: settled within about a beat
 
 // A six-step ladder, one step per EPA grade (D-44), with one step lit, in the ramp's colour for the AQI the step was chosen from (the same rule as the mood word), white when there is none.
-export function Ladder({ step, aqi, lift }: { step: number; aqi: number | null; lift: number }) {
+// A null step lights nothing (BUG-63): the hero's ladder with no reading, where a lit first step would claim clean air.
+export function Ladder({ step, aqi, lift }: { step: number | null; aqi: number | null; lift: number }) {
   const c = themeColors(useTheme());
   const lit = aqi == null ? c.textPrimary : aqiScaleColor(aqi, lift);
   return (
-    <div className="scene-ladder" role="img" aria-label={`step ${step + 1} of 6`}>
+    <div className="scene-ladder" role="img" aria-label={step == null ? MONITOR_REST : `step ${step + 1} of 6`}>
       {[0, 1, 2, 3, 4, 5].map((i) => <span key={i} className="scene-ladder-step" style={{ background: i === step ? lit : undefined }} />)}
     </div>
   );

@@ -88,11 +88,14 @@ function meanIfComplete(window: ReadonlyArray<number | null>, nominal = 8): numb
   return present.reduce((s, v) => s + v, 0) / present.length;
 }
 
-// The current AQI for hour i of `all`, as AirNow would have reported it that hour: the highest of the PM2.5 NowCast over the trailing 12 hours, the trailing 8-hour ozone mean and the hour's NO2, each through its own table. Null only when no sub-index can be formed.
+// The current AQI for hour i of `all`, as AirNow would have reported it that hour: the highest of the PM2.5 NowCast over the trailing 12 hours, the trailing 8-hour ozone mean and the hour's measured NO2, each through its own table. Null only when no sub-index can be formed.
+// NO2 as measured, never the typical profile (BUG-64, D-68): live NO2 is filled from the archive's typical profile (D-18) so the pulse has a contour to play, but a typical value is an average of past days, not a reading of this hour, and the AQI is EPA's reported AQI (D-42), which no estimate may enter. With PM2.5 and ozone missing too, the hour has no AQI rather than one made from averages.
+export const measuredNo2 = (h: HourReading): number | null => (h.source?.no2 === "typical" ? null : h.no2);
+
 export function hourlyAQI(all: ReadonlyArray<HourReading>, i: number): number | null {
   const pm = nowcastPM25(all.slice(Math.max(0, i - 11), i + 1).map((h) => h.pm25));
   const o3 = meanIfComplete(all.slice(Math.max(0, i - 7), i + 1).map((h) => h.o3));
-  return maxOf([subIndex(pm, PM25_BANDS, 1), subIndex(o3, O3_8H_BANDS, 0), subIndex(all[i].no2, NO2_1H_BANDS, 0)]);
+  return maxOf([subIndex(pm, PM25_BANDS, 1), subIndex(o3, O3_8H_BANDS, 0), subIndex(measuredNo2(all[i]), NO2_1H_BANDS, 0)]);
 }
 
 // The graph's AQI line: hourlyAQI for every hour of the day, the previous day's hours in front so the first hours' windows are real rather than truncated.
@@ -116,7 +119,7 @@ export function dailyAQI(day: Day, next: Day = []): number | null {
     const mean = meanIfComplete(all.slice(s, s + 8).map((h) => h.o3));
     if (mean != null && (o3Max == null || mean > o3Max)) o3Max = mean;
   }
-  const no2Max = maxOf(day.map((h) => h.no2));
+  const no2Max = maxOf(day.map(measuredNo2));
   return maxOf([subIndex(pmMean, PM25_BANDS, 1), subIndex(o3Max, O3_8H_BANDS, 0), subIndex(no2Max, NO2_1H_BANDS, 0)]);
 }
 
@@ -130,7 +133,7 @@ export function seriesAQI(day: Day, prior: Day = [], next: Day = []): SeriesAQI 
   const hourly = hourlyAQISeries(day, prior);
   let current: number | null = null;
   for (let i = day.length - 1; i >= 0; i--) {
-    if (day[i].pm25 != null || day[i].o3 != null || day[i].no2 != null) { current = hourly[i]; break; }
+    if (day[i].pm25 != null || day[i].o3 != null || measuredNo2(day[i]) != null) { current = hourly[i]; break; } // the latest MEASURED hour: an hour carrying only the typical NO2 has nothing to report
   }
   return { daily: dailyAQI(day, next), current, hourly };
 }

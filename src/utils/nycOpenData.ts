@@ -42,7 +42,7 @@ async function fetchJson<T>(url: string, timeoutMs = 30000): Promise<T> {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+    if (!response.ok) throw Object.assign(new Error(`HTTP ${response.status} for ${url}`), { status: response.status }); // the status rides on the error, so a caller can tell "not there" (404) from "did not arrive"
     return (await response.json()) as T;
   } finally {
     clearTimeout(timer);
@@ -80,10 +80,9 @@ export function getCurrentAll(): Promise<CurrentSnapshot> {
   })();
   return currentPromise;
 }
-// A failed fetch is cached like a good one (the promise IS the cache), so a retry has to drop it first (D-60, 2026-09-17). Both of them: the first paint awaits the live snapshot AND the anchors together, and clearing only the live one left a single failed anchors fetch cached for the life of the page, so Try again could never recover from it however many times it was pressed (found in the 2026-09-17 audit).
+// A failed fetch is cached like a good one (the promise IS the cache), so a retry has to drop it first (D-60, 2026-09-17). The anchors no longer ride with it (BUG-60, 2026-10-12): they forget their own failure (getAnchors below).
 export function forgetLive(): void {
   currentPromise = null;
-  anchorsPromise = null;
 }
 
 // Live route: last 24 local hours for one borough.
@@ -94,9 +93,16 @@ export async function getLast24h(borough: Borough): Promise<DaySeries> {
 // Archive files are one flat HourReading[] per borough-year; cached per URL so a timeline scrub loads each year once. The current year has a snapshot file too (scripts/build-current-year.ts, D-41): the year so far, rebuilt when EPA publishes more; a year without a file resolves to no hours, so a fresh January before the first snapshot still works through the route.
 const archiveCache = new Map<string, Promise<HourReading[]>>();
 
+// A year that fails is not remembered (BUG-61, 2026-10-12): it had stayed failed for the visit, one network blip breaking that borough-year until a reload, and the idle warm-up could cause it unseen. Only the current year's 404 means "no snapshot yet" and is kept as no hours; any other failure of it is a failure, where it had quietly sent every day of the year to the EPA route.
 function archiveYear(borough: Borough, year: number): Promise<HourReading[]> {
   const url = `/data/${slug(borough)}-${year}.json`;
-  if (!archiveCache.has(url)) archiveCache.set(url, fetchJson<HourReading[]>(url, 60000).catch((e) => { if (year === new Date().getFullYear()) return []; throw e; }));
+  if (!archiveCache.has(url)) {
+    archiveCache.set(url, fetchJson<HourReading[]>(url, 60000).catch((e: { status?: number }) => {
+      if (year === new Date().getFullYear() && e.status === 404) return [];
+      archiveCache.delete(url);
+      throw e;
+    }));
+  }
   return archiveCache.get(url)!;
 }
 // The last day the current year's snapshot holds, or null when there is none.
@@ -192,7 +198,7 @@ export async function getLatestAvailableDate(borough: Borough): Promise<string |
 let anchorsPromise: Promise<Record<string, PollutantAnchors>> | null = null;
 
 export async function getAnchors(borough: Borough): Promise<PollutantAnchors> {
-  anchorsPromise ??= fetchJson<Record<string, PollutantAnchors>>("/data/anchors.json");
+  anchorsPromise ??= fetchJson<Record<string, PollutantAnchors>>("/data/anchors.json").catch((e) => { anchorsPromise = null; throw e; }); // a failure is forgotten, so the next day asks again (BUG-60)
   const all = await anchorsPromise;
   const a = all[borough];
   if (!a) throw new Error(`No anchors for ${borough}`);

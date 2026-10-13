@@ -66,20 +66,23 @@ const DISSOLVE_BEATS = 1.5; // the dissolve's length on a change of day while pl
 
 export default function ScenePage() {
   const s = useListenSession();
-  // The pill states, mocked (utils/mock.ts; dev only): each on the live line's spot over the real page, with the buttons it would offer. A chosen day fills {date}; without one, a day that fits the state stands in (a current-year day past the snapshot for the EPA wait, the Wildfire pin for a failure).
-  const { date, latestDate, setDate } = s;
-  const pillMock = useMemo((): { tone: "error" | "quiet"; message: string; actions?: StatusAction[] } | null => {
+  // The status line (2026-10-12): the one spot above the footer where the page says what state it is in, one line at a time. In order: sound that did not start (the visitor just pressed Play), a chosen day that did not arrive, the live feed's own line (LiveStatus, D-60), a chosen day still on its way, and a live answer with nothing measured in it. ?mock=<name> on the dev server forces a state (utils/mock.ts); without a chosen day a mocked day-state names a day that fits it (a current-year day past the snapshot for the EPA wait, the Wildfire pin for a failure).
+  const { date, latestDate, setDate, retryDay, togglePlay } = s;
+  const soundFailed = s.soundFailed || MOCK === "no-sound";
+  const dayFailed = (date != null && s.dayFailed) || MOCK === "day-failed";
+  const dayWaiting = (date != null && s.dayWaiting) || MOCK === "day-loading";
+  const liveEmpty = (s.live && s.liveEmpty) || MOCK === "no-readings";
+  const liveLine = s.live && s.liveStatus !== "ready";
+  const statusLine = useMemo((): { tone: "error" | "quiet"; message: string; actions?: StatusAction[] } | "live" | null => {
     const toArchive: StatusAction = { label: LIVE_STATUS.toArchive, icon: <CalendarIcon size={14} />, onPress: () => latestDate && setDate(latestDate) };
-    const retry: StatusAction = { label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: () => {} };
     const toLive: StatusAction = { label: STATUS.toLive, icon: <ChevronRightIcon size={14} />, onPress: () => setDate(null) };
-    switch (MOCK) {
-      case "no-readings": return { tone: "quiet", message: STATUS.noReadings, actions: latestDate ? [toArchive] : [] };
-      case "day-loading": return { tone: "quiet", message: STATUS.dayLoading.replace("{date}", labelOf(date ?? "2026-08-03")) };
-      case "day-failed": return { tone: "error", message: STATUS.dayFailed.replace("{date}", labelOf(date ?? "2023-06-07")), actions: [retry, toLive] };
-      case "no-sound": return { tone: "error", message: STATUS.noSound, actions: [retry] };
-      default: return null;
-    }
-  }, [date, latestDate, setDate]);
+    if (soundFailed) return { tone: "error", message: STATUS.noSound, actions: [{ label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: togglePlay }] }; // inside the press, which the browser needs to start audio
+    if (dayFailed) return { tone: "error", message: STATUS.dayFailed.replace("{date}", labelOf(date ?? "2023-06-07")), actions: [{ label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: retryDay }, toLive] };
+    if (liveLine && !MOCK) return "live";
+    if (dayWaiting) return { tone: "quiet", message: STATUS.dayLoading.replace("{date}", labelOf(date ?? "2026-08-03")) };
+    if (liveEmpty) return { tone: "quiet", message: STATUS.noReadings, actions: latestDate ? [toArchive] : [] };
+    return null;
+  }, [soundFailed, dayFailed, liveLine, dayWaiting, liveEmpty, date, latestDate, setDate, retryDay, togglePlay]);
   const [sheetHost, setSheetHost] = useState<HTMLDivElement | null>(null);
   const layout = useLayout(); // D-63: one rule for every layout decision on the page (utils/layout.ts)
   const phone = isPhoneLayout(layout); // the phone's controls: the day sheet, no sky tap-to-play, no page cursor
@@ -531,7 +534,8 @@ export default function ScenePage() {
           {/* The bottom bar (Shoro, 2026-09-16): on laptop the Patch notes button at the left, the source line centred on the bar, the credit at the right, the transport having moved into the band; below laptop the transport row (play, volume, the page pill), then the Patch notes button and the credit side by side and centred, and no source line. A borrowed channel is named where it is shown too, on the graph's tab and the card's source pill (D-56), and the About overlay carries the account. */}
           <div className="scene-bottom">
             {/* What the live feed is doing, while Live is the chosen day and it has not answered (D-60). It rides the footer's top edge, so it sits above the whole bar at every breakpoint — above the Patch notes row on laptop, above the transport row as well below it — and takes no room in the column, so nothing moves when it appears or goes. Held back until the entry screen has gone (Shoro, 2026-09-17), or it would be waiting behind it. */}
-            {pillMock && entryGone ? <StatusLine {...pillMock} /> : s.live && entryGone && <LiveStatus status={s.liveStatus} archiveReady={s.latestDate != null} onArchive={() => s.latestDate && s.setDate(s.latestDate)} onRetry={s.retryLive} />}
+            {/* LiveStatus stays mounted on Live (not only while it has something to say) so it can fade itself out when AirNow answers; any other state takes the spot from it. */}
+            {entryGone && (statusLine && statusLine !== "live" ? <StatusLine key={statusLine.message} {...statusLine} /> : s.live && <LiveStatus status={s.liveStatus} archiveReady={s.latestDate != null} onArchive={() => s.latestDate && s.setDate(s.latestDate)} onRetry={s.retryLive} />)}
             {!laptop && (
               <div className="scene-transport" inert={about ? "" : undefined}>
                 <Glass material="glass" className="scene-pill scene-icon-pill">

@@ -1,6 +1,6 @@
 // ScenePage — /scene, the Listen page as the scene (D-19, §5). The sky is a pure function of two things the engine already emits every beat: the hour under the playhead and the smoothed normalized PM2.5. Sun elevation comes from the hour; the model cross-fade, exposure, stars and the plume all follow from those two numbers. Nothing here re-derives a mapping the harness did not judge.
 // Shares useListenSession with the typographic page, so both play the same data through the same engine; this page replaces that one once it passes review.
-import { SKY_TOGGLE_LABEL, STATUS, LIVE_STATUS } from "../content";
+import { SKY_TOGGLE_LABEL, STATUS, LIVE_STATUS, ENTRY, VIEW_LABELS } from "../content";
 import { useEased } from "./useEased";
 import { Monitor } from "../components/Monitor";
 import { PageIndicator, VIEWS, type View } from "../components/PageIndicator";
@@ -449,7 +449,9 @@ export default function ScenePage() {
         {/* The scaffold (D-26): see .scene-ui in index.css. It sits in the window between Safari's bars (--win-*, useSafariWindow) inside a clip that is the whole root, so the About scrim in it can reach under the bars while every control stays where it was (BUG-57). */}
         <div className="scene-ui-clip">
         <div className="scene-ui" data-about={about} style={{ "--about-ms": `${ABOUT_MS}ms` } as React.CSSProperties}>
-          <div className="scene-top">
+          {/* The page's structure for assistive technology (A11Y-01, BUG-48, 2026-10-12): the top row is the header with the page's one heading, the band the main content with a heading per page, the bottom bar the footer. Nothing drawn changes: the headings are visually hidden and say only what the page already says (its title, the page icons' names). */}
+          <header className="scene-top">
+            <h1 className="scene-sr-only">{ENTRY.title}</h1>
             <Glass material="glass" className="scene-pill scene-borough" inert={about ? "" : undefined}>
               <BoroughToggle selected={s.borough} onSelect={s.setBorough} />
             </Glass>
@@ -473,15 +475,16 @@ export default function ScenePage() {
             </div>
             {/* On a phone the Patch notes button is the notebook beside the day pill (D-64); it stands above the About scrim from here, so it is not inert while About is open. */}
             {phone && <AboutButton ref={aboutBtnRef} onPress={about ? closeAbout : openAbout} open={about} form="icon" />}
-          </div>
+          </header>
 
           {/* The middle band (D-43): a frame that never changes size, holding both pages; a switch translates them along the axis (vertical above the phone width, horizontal on phones) with a fade, over PAGE_MS. The frame reaches the panels' shadow room on every side (index.css --clip-pad, --clip-pad-y), and what keeps a page mid-switch off the bars' pills is the drift: on laptop the visible motion is one gap, the travel between the fades runs unseen (D-48, Shoro, 2026-09-16). */}
-          <div className="scene-mid" inert={about ? "" : undefined} data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} data-moving={moving} style={{ "--page-ms": `${PAGE_MS}ms`, "--page-rest-scale": String(motion.pageRestScale) } as React.CSSProperties} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
+          <main className="scene-mid" inert={about ? "" : undefined} data-page={page} data-axis={vertical ? "y" : "x"} data-fade={REDUCED_MOTION} data-resizing={resizing} data-moving={moving} style={{ "--page-ms": `${PAGE_MS}ms`, "--page-rest-scale": String(motion.pageRestScale) } as React.CSSProperties} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClickCapture={(e) => { if (performance.now() - swipedAt.current < 400) { e.stopPropagation(); e.preventDefault(); } }}
             // Below laptop the band takes pointer events for the swipe, so it stands between the sky and a tap on the empty space around the panels; that tap is still the sky's play/pause (tablets), and the cursor there is the sky's.
             data-cursor={phone || laptop ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"}
             onClick={phone || laptop ? undefined : (e) => { if ((e.target as HTMLElement).closest(".glass")) return; if (consumeSuppressedClick()) return; s.togglePlay(); }}>
             <div ref={trackRef} className="scene-track">
               <div className="scene-page scene-page-scene" data-page="scene" aria-hidden={page !== "scene"} inert={page !== "scene" ? "" : undefined}>
+                <h2 className="scene-sr-only">{VIEW_LABELS.scene}</h2>
                 <div className="scene-page-inner">
                   {/* The hero as two widgets (2026-09-16): the number over its category bar under its day, the word over the ladder under "Breath"; both sampled for the ramp. */}
                   <div className="scene-hero-pair">
@@ -507,6 +510,7 @@ export default function ScenePage() {
                 </div>
               </div>
               <div className="scene-page scene-page-monitor" data-page="monitor" aria-hidden={page !== "monitor"} inert={page !== "monitor" ? "" : undefined}>
+                <h2 className="scene-sr-only">{VIEW_LABELS.monitor}</h2>
                 <div className="scene-page-inner">
                   <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} routing suffixes={suffixes} />
                 </div>
@@ -529,10 +533,10 @@ export default function ScenePage() {
                 </Glass>
               </div>
             )}
-          </div>
+          </main>
 
           {/* The bottom bar (Shoro, 2026-09-16): on laptop the Patch notes button at the left, the source line centred on the bar, the credit at the right, the transport having moved into the band; below laptop the transport row (play, volume, the page pill), then the Patch notes button and the credit side by side and centred, and no source line. A borrowed channel is named where it is shown too, on the graph's tab and the card's source pill (D-56), and the About overlay carries the account. */}
-          <div className="scene-bottom">
+          <footer className="scene-bottom">
             {/* What the live feed is doing, while Live is the chosen day and it has not answered (D-60). It rides the footer's top edge, so it sits above the whole bar at every breakpoint — above the Patch notes row on laptop, above the transport row as well below it — and takes no room in the column, so nothing moves when it appears or goes. Held back until the entry screen has gone (Shoro, 2026-09-17), or it would be waiting behind it. */}
             {/* LiveStatus stays mounted on Live (not only while it has something to say) so it can fade itself out when AirNow answers; any other state takes the spot from it. */}
             {entryGone && (statusLine && statusLine !== "live" ? <StatusLine key={statusLine.message} {...statusLine} /> : s.live && <LiveStatus status={s.liveStatus} archiveReady={s.latestDate != null} onArchive={() => s.latestDate && s.setDate(s.latestDate)} onRetry={s.retryLive} />)}
@@ -569,7 +573,7 @@ export default function ScenePage() {
                 </Glass>
               </div>
             ) : null /* on a phone the credit lives only in the About overlay, which credits Shoro and links the site (D-64) */}
-          </div>
+          </footer>
 
           {DEV && (
             <select className="scene-dev" inert={about ? "" : undefined} value={s.devDayKey} onChange={(e) => s.setDevDayKey(e.target.value)}>

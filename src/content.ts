@@ -61,6 +61,7 @@ export const SKY_TOGGLE_LABEL = "Play or pause"; // the sky itself as a play/pau
 export const TRACK_LABELS = { aqi: "AQI", pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // chemical subscripts (U+2083, U+2082): the data font carries them (Shoro, 2026-09-15) // the pulse row's numbers are hits per bar
 export const TRACK_QUALIFIERS: Partial<Record<keyof typeof TRACK_LABELS, string>> = { aqi: "Hourly" }; // a word before the label on the graph's tab, where there is room (Shoro, 2026-09-16: "Hourly AQI", since the number is the hour's NowCast, not the day's); phones show the label alone, like the units
 export const TRACK_UNITS = { aqi: "", pm25: "µg/m³", o3: "ppb", no2: "ppb" } as const;
+export const GRAPH_LABEL = "24-hour graph; press or drag to move the playhead"; // the plot's accessible name (moved here unchanged from Graph, 2026-10-12)
 
 // Day navigation. Pin names are Shoro's (from the Figma scaffold, 2026-09-15); the rest approved by Shoro as written, 2026-10-12.
 export const PINS = [
@@ -81,6 +82,9 @@ export const NAV_LIVE = "Live";
 export const NAV_CALENDAR = "Calendar"; // the date chip's accessible name and the popover's
 export const DAY_SHEET = { label: NAV_CALENDAR, close: "Close" } as const; // the phone's day sheet (D-65): its accessible name and the scrim's dismiss label. Approved by Shoro as written, 2026-10-12.
 export const NAV_LAST_24H = "Last 24h";
+// The day controls' accessible names (moved here unchanged from DayNav, 2026-10-12): the arrows step a day on the laptop row and a month in the calendar; "Day" names the list of preset days.
+export const NAV_ARROWS = { prevDay: "previous day", nextDay: "next day", prevMonth: "previous month", nextMonth: "next month" } as const;
+export const NAV_DAY_LIST = "Day";
 export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}";
 export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the presets and the calendar (Shoro, 2026-09-15) // under the calendar (Shoro, 2026-09-15) // the date chip's label when live (Shoro, 2026-09-15)
 

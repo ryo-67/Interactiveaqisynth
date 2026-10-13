@@ -5,7 +5,7 @@
 import { readingLabel } from "../utils/time";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
-import { TRACK_LABELS, TRACK_UNITS, TRACK_QUALIFIERS } from "../content";
+import { TRACK_LABELS, TRACK_UNITS, TRACK_QUALIFIERS, GRAPH_LABEL } from "../content";
 import { monotoneCurve, fitTicks } from "./graphSeries";
 import { chipStyle } from "./chip";
 import type { Day } from "../engine/SynthEngine";
@@ -525,7 +525,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         onPointerCancel={() => { dragging.current = false; }}
         data-cursor="drag" // the page cursor shows the drag arrows over the plot (Cursor.tsx)
         style={{ display: "block", touchAction: "none" }} // width and height are set by draw() to exactly buffer ÷ ratio
-        aria-label="24-hour graph; press or drag to move the playhead"
+        aria-label={GRAPH_LABEL}
       />
       {/* The playhead's readout, after the canvas so nothing measures it as the tab band: text and place set by the draw loop, never through React state (a render per frame while playing). Not a <Glass>: it floats over the plot, which the sky's frost cannot see, so it keeps the browser's filter like the popover (index.css). */}
       <div ref={chipRef} className="glass frosted scene-playhead-chip" aria-hidden style={{ fontFamily: families.data, fontSize: typeScale.caption.size, color: c.textPrimary }} />

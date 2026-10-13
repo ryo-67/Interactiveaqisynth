@@ -2,7 +2,7 @@
 import React from "react";
 import { useEased } from "../scene/useEased";
 import { useTheme, themeColors, motion, aqiScaleColor, aqiRampPosition } from "../utils/theme";
-import { MONITOR_REST } from "../content";
+import { MONITOR_REST, MONITOR_UNITS } from "../content";
 import type { PulseHit } from "../scene/useListenSession";
 import { DETUNE_MAX_CENTS } from "../engine/scales";
 
@@ -44,7 +44,7 @@ export function Meter({ value }: { value: number | null }) {
 export function DetuneBand({ cents }: { cents: number }) {
   const w = useEased(Math.min(1, cents / DETUNE_MAX_CENTS), TAU, "detune band");
   return (
-    <div className="scene-meter scene-detune" role="img" aria-label={`±${(cents / 100).toFixed(2)} semitones`}>
+    <div className="scene-meter scene-detune" role="img" aria-label={`±${(cents / 100).toFixed(2)} ${MONITOR_UNITS.detune}`}>
       <span className="scene-detune-centre" />
       <span className="scene-meter-fill scene-detune-band" style={{ left: `${(50 - w * 50).toFixed(2)}%`, width: `${(w * 100).toFixed(2)}%` }} />
     </div>

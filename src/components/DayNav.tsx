@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from "react-dom";
 import { useTheme, themeColors, families, typeScale, space, CONTROL, motion } from "../utils/theme";
 import { chipStyle } from "./chip";
-import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, CAL_AVAILABLE_UNTIL, PICK_OR_DATE, DAY_SHEET } from "../content";
+import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, NAV_ARROWS, NAV_DAY_LIST, CAL_AVAILABLE_UNTIL, PICK_OR_DATE, DAY_SHEET } from "../content";
 import { Sheet } from "./Sheet";
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from "./icons";
 import { setPopoverOpen, markOutsideDismiss } from "./popoverStore";
@@ -125,9 +125,9 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: space.xs }}>
-        <button className="scene-chip" style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label="previous month"><ChevronLeftIcon /></button>
+        <button className="scene-chip" style={chip(false)} onClick={() => shiftMonth(-1)} disabled={view <= MIN_DATE.slice(0, 7)} aria-label={NAV_ARROWS.prevMonth}><ChevronLeftIcon /></button>
         <span style={{ color: c.textPrimary }}>{monthLabel}</span>
-        <button className="scene-chip" style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label="next month"><ChevronRightIcon /></button>
+        <button className="scene-chip" style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label={NAV_ARROWS.nextMonth}><ChevronRightIcon /></button>
       </div>
       <div className="scene-cal-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs, fontFamily: families.data, letterSpacing: 0 }}>
         {["S", "M", "T", "W", "T", "F", "S"].map((dd, i) => (
@@ -205,7 +205,7 @@ export function DayPicker({ date, onChange, loading, latestDate, sheetHost }: Pr
       </button>
       {presence.mounted && !sheetHost && createPortal(
         <div className="glass frosted scene-popover" role="dialog" aria-label={NAV_CALENDAR} style={{ ...popoverStyle(c, presence.visible), left: pos.left, top: pos.top }}>
-          <div role="listbox" aria-label="Day" style={{ display: "flex", flexDirection: "column", gap: space.xxs, marginBottom: space.sm }}>
+          <div role="listbox" aria-label={NAV_DAY_LIST} style={{ display: "flex", flexDirection: "column", gap: space.xxs, marginBottom: space.sm }}>
             {options.map((o) => {
               const active = o.date === date;
               return (
@@ -223,7 +223,7 @@ export function DayPicker({ date, onChange, loading, latestDate, sheetHost }: Pr
       {/* On a phone the day comes up from the bottom (D-65): the six days as 44 chips, three across, and the month beneath at 44 (its cells are --ctl-inner, 44 on a phone). Picking either closes the sheet, as the popover did. */}
       {sheetHost && (
         <Sheet open={open} onClose={close} label={DAY_SHEET.label} host={sheetHost} returnTo={triggerRef}>
-          <div className="scene-sheet-days" role="listbox" aria-label="Day">
+          <div className="scene-sheet-days" role="listbox" aria-label={NAV_DAY_LIST}>
             {options.map((o) => {
               const active = o.date === date;
               return (
@@ -273,7 +273,7 @@ export function DayNav({ date, onChange, loading, latestDate, touch = false }: P
   return (
     <div ref={anchorRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: `var(--chip-inset, ${CONTROL.gap}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, whiteSpace: "nowrap" }}>
       {/* Order: ‹ [calendar icon + date] › Live. The date itself opens the calendar; live reads "Last 24h" with the next arrow disabled. ‹ from live is yesterday's full day; › from yesterday is live again. */}
-      <button className="scene-chip" style={chip(false)} onClick={prev} aria-label="previous day" disabled={!date && !last}><ChevronLeftIcon /></button>
+      <button className="scene-chip" style={chip(false)} onClick={prev} aria-label={NAV_ARROWS.prevDay} disabled={!date && !last}><ChevronLeftIcon /></button>
       <button
         className="scene-chip"
         data-active={open}
@@ -288,7 +288,7 @@ export function DayNav({ date, onChange, loading, latestDate, touch = false }: P
           <span style={{ gridArea: "1 / 1", justifySelf: "center", display: "inline-flex", alignItems: "center", gap: 6, color: c.textPrimary, fontFamily: families.data, letterSpacing: 0 }}><span style={{ display: "inline-flex", color: c.textMuted }}><CalendarIcon size={14} /></span>{date ? labelOf(date) : NAV_LAST_24H}</span>
         </span>
       </button>
-      <button className="scene-chip" style={chip(false)} onClick={next} aria-label="next day" disabled={!date}><ChevronRightIcon /></button>
+      <button className="scene-chip" style={chip(false)} onClick={next} aria-label={NAV_ARROWS.nextDay} disabled={!date}><ChevronRightIcon /></button>
       <button className="scene-chip" data-active={date === null} style={chip(date === null)} onClick={() => onChange(null)}>{NAV_LIVE}</button>
 
       {presence.mounted && createPortal(

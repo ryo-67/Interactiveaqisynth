@@ -126,9 +126,9 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
           <footer className="scene-about-credit">
             <p className="scene-about-body" style={creditStyle}>{keepTogether(ABOUT.credit, ABOUT.creditKeep)}</p>
             <p className="scene-about-body" style={{ ...creditStyle, color: c.textMuted }}>{ABOUT.credit2}</p>
-            {/* The record (2026-10-13): this piece's own entry on the portfolio, under the credit it belongs to. A plain link in the credit's size, a step brighter than the muted line above it so it holds 4.5:1 on the brightest sky behind the scrim (about 6:1); the ID in the data face. It opens a new tab, so the phrase playing underneath is never interrupted. */}
+            {/* The record (2026-10-13): this piece's own entry on the portfolio, under the credit it belongs to. A plain link in the credit's size, a step brighter than the muted line above it so it holds 4.5:1 on the brightest sky behind the scrim (about 6:1); the site's name in the data face, and no record number (D-72: the portfolio renumbers its records). It opens a new tab, so the phrase playing underneath is never interrupted. */}
             <a className="scene-about-record" href={PORTFOLIO_RECORD_URL} target="_blank" rel="noopener noreferrer" aria-label={RECORD_LINK.name} style={{ ...creditStyle, color: c.textSecondary }}>
-              <span>{RECORD_LINK.before}<span className="scene-about-record-id" style={{ fontFamily: families.data, fontVariantNumeric: "tabular-nums" }}>{RECORD_LINK.id}</span>{RECORD_LINK.after}</span>
+              <span>{RECORD_LINK.before}<span className="scene-about-record-mark" style={{ fontFamily: families.data }}>{RECORD_LINK.mark}</span>{RECORD_LINK.after}</span>
               <span aria-hidden="true">↗</span>
             </a>
             <div className="scene-about-links">

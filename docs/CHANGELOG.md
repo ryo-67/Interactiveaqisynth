@@ -2,9 +2,13 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-13 — The record link loses its number (D-72)
+
+The record line printed the portfolio's number for this piece, but the portfolio numbers its records by date and renumbers them whenever an older one is filed, so any number printed here would go stale and point at the wrong entry in the reader's mind. The link already used the record's URL, which does not change; now the words carry no number either, and the site's name takes its place: "On file at shoro.space ↗", pending Shoro's approval. The rule is general: no page outside shoro.space prints a record number.
+
 ## 2026-10-13 — The piece links to its record (D-71)
 
-The portfolio files AQI Synth as record 0023, but nothing a visitor could click here reached it: the About overlay's website glyph went to the portfolio's home, and the footer pill goes to LinkedIn. A text scrape had suggested otherwise because the record's URL sat in the hidden reading written for crawlers. The About credit now carries one quiet line, "Filed as record 0023 ↗", in the portfolio's deadpan register and this site's own type, with the record number in the data face. It opens a new tab, so whatever is playing keeps playing. Checked at phone, tablet, laptop and phone-landscape sizes, by keyboard, and clicked while playing and while stopped; shown to Shoro on a preview deployment before it shipped.
+The portfolio files AQI Synth as a numbered record, but nothing a visitor could click here reached it: the About overlay's website glyph went to the portfolio's home, and the footer pill goes to LinkedIn. A text scrape had suggested otherwise because the record's URL sat in the hidden reading written for crawlers. The About credit now carries one quiet line, naming the record by its number (removed the same day, D-72), in the portfolio's deadpan register and this site's own type. It opens a new tab, so whatever is playing keeps playing. Checked at phone, tablet, laptop and phone-landscape sizes, by keyboard, and clicked while playing and while stopped; shown to Shoro on a preview deployment before it shipped.
 
 ## 2026-10-13 — The sources are credited, not offered as datasets (BUG-67)
 

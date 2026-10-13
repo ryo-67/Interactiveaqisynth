@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-13 — The sources are credited, not offered as datasets (BUG-67)
+
+Search Console reported the page's structured data as broken Datasets: no description, no creator, no license. The page names AirNow and the EPA as what it is built on, and those two references had been typed as Datasets, which Google reads as an offer to list the page in Dataset Search. Filling the fields in would have meant describing and licensing someone else's data. They are now plain creative works with the same names and links, still credited, with nothing for Dataset Search to pick up.
+
 ## 2026-10-12 — The engine goes when the page goes (BUG-50; BUG-02 closed)
 
 The synthesizer had no teardown. Its audio nodes, its repeats on Tone's shared transport and a release timer outlived the page that made them, which was harmless while the page never went away. Now it can: the crash screen replaces the page, and a crash while playing left the music playing under it. The engine now has a dispose that silences and frees everything it made, and the page calls it when it unmounts; in development a hot reload gets a fresh engine instead of a second one. Measured before and after with a crash injected mid-phrase, and play, pause and resume measured unchanged.

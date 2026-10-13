@@ -29,7 +29,12 @@ Not yet done (see BACKLOG.md):
 - The bed is still the Phase 0 placeholder; the real one is Shoro's to write (SON-10).
 - The timeline's drawn lag gap (UX-03, BUG-02). The lag IS stated in prose in the About overlay.
 - No landmarks and no `h1` on the page (A11Y-01, BUG-48), parked: what the page's structure should be is a design question.
-- Copy placeholders awaiting Shoro: `ENTRY.title`, `ENTRY.line`, `LIVE_STATUS.*`, `ABOUT.close`, `ABOUT.dismiss`.
+- Copy placeholders awaiting Shoro, all in `content.ts` and flagged PLACEHOLDER there (reconciled 2026-10-12):
+  - Seen on every visit: `ENTRY.title` and `ENTRY.line` (the screen before the tool); `HERO_AQI_LABEL`, `HERO_AQI_NOW`, `HERO_BREATH_LABEL`; `TRACK_LABELS`; `MONITOR_LABELS`, `SOURCE_LABELS`, `SCALE_DISPLAY`, and `TONE_WORDS` after the first two; the day navigation's `NAV_LIVE`, `NAV_LAST_24H`, `CAL_AVAILABLE_UNTIL`. `TIER_NAMES` (the mood words) are marked provisional.
+  - Seen only in a state: `LIVE_STATUS.loading`, `.toArchive`, `.retry` (the live feed slow or unreachable); `SOURCE_BORROWED` (a borough on the citywide value); `SOURCE_LINE_TYPICAL_NO2` (marked "Shoro's to revise").
+  - Heard only (accessible names): `ABOUT.dismiss`, `DAY_SHEET.label`, `DAY_SHEET.close`, `TRANSPORT_PLAY`, `TRANSPORT_PAUSE`, `TRANSPORT_VOLUME`, `SKY_TOGGLE_LABEL`, `VIEW_LABELS`, `NAV_CALENDAR`.
+  - Written by Shoro, no longer placeholders: `ABOUT.close` ("Exhale"), `LIVE_STATUS.unavailable`, `ABOUT.made` (the AI disclosure).
+  - Unused: `NAV_UNAVAILABLE` ("Not yet reported.") is exported and rendered nowhere.
 
 ## Commands
 

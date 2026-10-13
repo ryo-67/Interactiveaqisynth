@@ -2,6 +2,10 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-12 — Landmarks and headings (A11Y-01, BUG-48, D-70)
+
+A screen reader met 26 well-named controls with no structure to move between and no page heading. The page now has a header (the borough and day controls, under the page's h1), a main (the two pages, each under its own h2) and a footer (the bottom bar), so a listener can jump between them and hear what the page is. The headings are visually hidden and use only approved words, the title and the page icons' names, so nothing new was written and nothing drawn moved: the boxes of eleven key elements were measured at all four layouts before and after and match. The entry screen's title became a paragraph so the page keeps one h1. It has not been tried with a real screen reader.
+
 ## 2026-10-12 — The page says what state it is in (D-68, D-69; BUG-60 to BUG-64 fixed)
 
 The states mocked earlier the same day are now set by their causes. A day that fails says so with a retry instead of showing an empty day; a day that takes more than a beat says it is loading, which a phone never did; sound that does not start turns the button back to Play and says so, where it had stayed on Pause over silence; a live answer with nothing measured in it says AirNow has nothing for New York. Any error the page throws now ends on a screen with a reload, not a blank page, and a browser without WebGL 2 is told so before anything mounts.

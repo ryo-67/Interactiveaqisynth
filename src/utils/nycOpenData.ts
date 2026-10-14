@@ -96,6 +96,23 @@ function archiveYear(borough: Borough, year: number): Promise<HourReading[]> {
   }
   return archiveCache.get(url)!;
 }
+// A year's hours by local date, built once per year file: a day and its two neighbours had each scanned the whole year (about 8,800 hours) for their date.
+const daysCache = new WeakMap<HourReading[], Map<string, HourReading[]>>();
+async function archiveDays(borough: Borough, year: number): Promise<Map<string, HourReading[]>> {
+  const hours = await archiveYear(borough, year);
+  let days = daysCache.get(hours);
+  if (!days) {
+    days = new Map();
+    for (const h of hours) {
+      const date = h.ts.slice(0, 10);
+      const day = days.get(date);
+      if (day) day.push(h); else days.set(date, [h]);
+    }
+    daysCache.set(hours, days);
+  }
+  return days;
+}
+
 // The last day the current year's snapshot holds, or null when there is none.
 async function snapshotLastDate(borough: Borough): Promise<string | null> {
   const hours = await archiveYear(borough, new Date().getFullYear());
@@ -134,7 +151,7 @@ async function hoursOf(borough: Borough, date: string): Promise<Day> {
   const currentYear = new Date().getFullYear();
   const snapshotLast = year === currentYear ? await snapshotLastDate(borough) : null;
   if (year < currentYear || (snapshotLast != null && date <= snapshotLast)) {
-    return (await archiveYear(borough, year)).filter((h) => h.ts.startsWith(date));
+    return (await archiveDays(borough, year)).get(date) ?? [];
   }
   return (await monthDays(borough, date.slice(0, 7))).get(date) ?? [];
 }
@@ -187,9 +204,17 @@ export async function getLatestAvailableDate(borough: Borough): Promise<string |
 // Normalization anchors from the archive build (p05/p95 per borough per pollutant over 2020–2025, §3.10).
 let anchorsPromise: Promise<Record<string, PollutantAnchors>> | null = null;
 
-export async function getAnchors(borough: Borough): Promise<PollutantAnchors> {
+function anchorsFile(): Promise<Record<string, PollutantAnchors>> {
   anchorsPromise ??= fetchJson<Record<string, PollutantAnchors>>("/data/anchors.json").catch((e) => { anchorsPromise = null; throw e; }); // a failure is forgotten, so the next day asks again (BUG-60)
-  const all = await anchorsPromise;
+  return anchorsPromise;
+}
+// Ask for the file early (the page does, beside the live call), so the engine is not left waiting on a second round trip once the first day lands. A failure here is forgotten and asked again by getAnchors.
+export function warmAnchors(): void {
+  void anchorsFile().catch(() => undefined);
+}
+
+export async function getAnchors(borough: Borough): Promise<PollutantAnchors> {
+  const all = await anchorsFile();
   const a = all[borough];
   if (!a) throw new Error(`No anchors for ${borough}`);
   return a;

@@ -72,8 +72,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const edate = paddedTo.replaceAll("-", "");
     const rows: SiteHourRow[] = [];
 
-    // One request per county, sequential with a short gap — EPA asks for pacing, and five requests is the whole fan-out.
-    for (const county of Object.keys(COUNTY_TO_BOROUGH)) {
+    // One request per county, sequential with a short gap between them — EPA asks for pacing, and five requests is the whole fan-out. No gap after the last (2026-10-14: it added 400 ms to every answer).
+    const counties = Object.keys(COUNTY_TO_BOROUGH);
+    for (const [i, county] of counties.entries()) {
+      if (i > 0) await new Promise((resolve) => setTimeout(resolve, 400));
       const url =
         `https://aqs.epa.gov/data/api/sampleData/byCounty?email=${encodeURIComponent(email)}` +
         `&key=${encodeURIComponent(apiKey)}&param=${EPA_PARAMS}&bdate=${bdate}&edate=${edate}` +
@@ -99,7 +101,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } finally {
         clearTimeout(timer);
       }
-      await new Promise((resolve) => setTimeout(resolve, 400));
     }
 
     // Axis: every local hour actually observed, sorted; grouped into days by local date below.

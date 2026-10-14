@@ -16,7 +16,7 @@ import { motion, NYC_LAT, NYC_LON, CAMERA_FACING } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
 import { PINS } from "../content";
-import { getCurrentAll, forgetLive, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
+import { getCurrentAll, forgetLive, getAnchors, warmAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
 import { clamp01, easeInOutQuad, wrap, wrapDelta } from "../utils/math";
 
 // The Phase 0 fixture select (?dev=1), on the dev server only: in production the parameter does nothing (2026-10-14; it had worked on the live site for anyone who added it).
@@ -123,6 +123,7 @@ export function useListenSession(): ListenSession {
     (async () => {
       try {
         // AirNow alone decides the live line (BUG-60, 2026-10-12): the anchors are our own static file and were awaited alongside, so a failed anchors.json read as "Can't reach AirNow". They load with the day below, and fall back to the bundled ones if they fail.
+        warmAnchors(); // beside the live call, not after it (nycOpenData.ts)
         const snap = await getCurrentAll();
         if (cancelled) return;
         setSnapshot(snap);

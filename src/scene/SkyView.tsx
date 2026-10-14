@@ -47,6 +47,14 @@ interface Props {
   frameTop?: number;
   // The WebGL canvas, handed to the page when the renderer is created: the panel sampler and the dissolve read the sky's pixels from it. They had found it by a DOM query that broke once already (BUG-58).
   canvasRef?: React.MutableRefObject<HTMLCanvasElement | null>;
+  // Counts the frames the sky renders, so the panel sampler can tell a sky that has not changed since its last look (ScenePage).
+  frameCountRef?: React.MutableRefObject<number>;
+}
+
+// Counts rendered frames into the page's ref: useFrame runs on every frame the canvas draws, continuously while playing and on demand at rest.
+function FrameCount({ countRef }: { countRef: React.MutableRefObject<number> }) {
+  useFrame(() => { countRef.current += 1; });
+  return null;
 }
 
 export type CameraFacing = "north" | "south" | "sun";
@@ -257,7 +265,7 @@ function Exposure({ value, live }: { value: number; live: boolean }) {
 // No multisampling (2026-09-16): the composer renders every pass into its own targets, which are never multisampled, and the sky has no geometry edges to smooth (a dome, point stars, a textured sun sprite); the multisampled default buffer only cost memory bandwidth on every frame.
 const GL_CONFIG = { antialias: false, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true } as const;
 
-export const SkyView = memo(function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0, canvasRef }: Props) {
+export const SkyView = memo(function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0, canvasRef, frameCountRef }: Props) {
   // The grade's effects, once per canvas; the composer's children are one memoized element so its pass chain is never rebuilt (see Fx).
   // ORDER (2026-09-15, measured): lens; tone mapping; bloom; saturation; aberration; noise. This is the order the sky was tuned against. The wrappers re-appended every re-created effect at the end of the list, so after the first eased change the chain settled into this order, with tone mapping BEFORE the bloom and the grade: the bloom's blur is taken from the HDR input of its pass and added onto the mapped image with nothing mapping it again, so the sun's glow goes to white — that is the glow every exposure and bloom value was judged on. The physically ordered chain (bloom and grade before tone mapping) is what showed on a fresh mount before any change, and reads as the dim, washed-out sky. The lens comes first, in its own pass (CONVOLUTION), so the frame it refracts is the raw sky and nothing it re-samples is lost.
   const fx = useMemo(makeFx, []);
@@ -304,6 +312,7 @@ export const SkyView = memo(function SkyView({ frameTop = 0, params, sunPosition
         <Exposure value={params.exposure} live={live} />
         <Grade fx={fx} bloom={params.bloomIntensity} saturation={saturation} particles={particles} grain={grain} />
         <SkyWatchdog composerRef={composerRef} fx={fx} snapshot={snapshot} />
+        {frameCountRef && <FrameCount countRef={frameCountRef} />}
         {import.meta.env.DEV && <DevHandle composerRef={composerRef} fx={fx} />}
         {/* Preetham always draws beneath (opaque, renderOrder 0); Hosek draws over it with alpha = hosekAlpha and is unmounted once fully faded, so night costs one dome, not two. */}
         {hosekAlpha < 1 && (

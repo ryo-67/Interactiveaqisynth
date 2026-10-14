@@ -360,10 +360,10 @@ export default function ScenePage() {
   const [skySamples, setSkySamples] = useState<Record<PanelKey, Sample>>({ hero: initialSample, aqi: initialSample, graph: initialSample, scale: initialSample, tone: initialSample });
   useEffect(() => {
     const tiny = document.createElement("canvas"); tiny.width = 4; tiny.height = 4;
+    const lastLook = { frame: -1, where: "" }; // the sky frame and the panels' boxes at the last sample
     const tctx = tiny.getContext("2d", { willReadFrequently: true });
-    const sampleBehind = (gl: HTMLCanvasElement, el: HTMLElement | null, cr: DOMRect): Sample | null => {
-      if (!el || !tctx) return null;
-      const hr = el.getBoundingClientRect();
+    const sampleBehind = (gl: HTMLCanvasElement, hr: DOMRect | undefined, cr: DOMRect): Sample | null => {
+      if (!hr || !tctx) return null;
       if (hr.bottom <= cr.top || hr.top >= cr.bottom || hr.right <= cr.left || hr.left >= cr.right) return null; // the panel is on the page that is off screen (D-43): it keeps its last sample; sampling the sky's edge for it eased its ramp toward nothing and, on the graph, redrew the plot every frame while nobody could see it (2026-09-16)
       const sx = gl.width / cr.width, sy = gl.height / cr.height, pad = parseFloat(GLASS.blur);
       const x = Math.max(0, (hr.left - cr.left - pad) * sx), y = Math.max(0, (hr.top - cr.top - pad) * sy);
@@ -384,11 +384,17 @@ export default function ScenePage() {
       if (!gl || gl.width === 0) return;
       const cr = gl.getBoundingClientRect();
       if (cr.width === 0 || cr.height === 0) return;
+      // Nothing to read again when the sky has drawn no frame since the last look and no panel has moved: at rest that is most ticks, and each look is five readbacks from the GPU (2026-10-14).
+      const rects = {} as Record<PanelKey, DOMRect | undefined>;
+      for (const key of Object.keys(panelRefs.current) as PanelKey[]) rects[key] = panelRefs.current[key]?.getBoundingClientRect();
+      const where = [cr, ...Object.values(rects)].map((r) => (r ? `${r.left},${r.top},${r.width},${r.height}` : "-")).join("|");
+      if (skyFramesRef.current === lastLook.frame && where === lastLook.where) return;
+      lastLook.frame = skyFramesRef.current; lastLook.where = where;
       setSkySamples((prev) => {
         let any = false;
         const next = { ...prev };
         for (const key of Object.keys(prev) as PanelKey[]) {
-          const s = sampleBehind(gl, panelRefs.current[key], cr);
+          const s = sampleBehind(gl, rects[key], cr);
           if (s && changed(s, prev[key])) { next[key] = s; any = true; }
         }
         return any ? next : prev;
@@ -415,6 +421,7 @@ export default function ScenePage() {
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
   const skyBoxRef = useRef<HTMLDivElement>(null);
   const skyCanvasRef = useRef<HTMLCanvasElement | null>(null); // the sky's WebGL canvas, handed over by SkyView: the panel sampler and the dissolve read its pixels
+  const skyFramesRef = useRef(0); // frames the sky has rendered (SkyView counts them): the sampler reads the sky again only when it has drawn
   const rootRef = useRef<HTMLDivElement>(null);
   const windowProbeRef = useRef<HTMLDivElement>(null);
   const skyFrameTop = useSafariWindow(rootRef, windowProbeRef); // the scene under Safari's bars: the screen's height, the window between the bars and the runway (BUG-57)
@@ -459,7 +466,7 @@ export default function ScenePage() {
         {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}
         {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (Cursor.tsx reads data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
         <div ref={skyBoxRef} className="scene-sky" inert={about ? "" : undefined} data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClick={phone ? undefined : () => { if (consumeSuppressedClick() || performance.now() - swipedAt.current < 400) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
-          <SkyView canvasRef={skyCanvasRef} frameTop={skyFrameTop} params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={FILL} />
+          <SkyView canvasRef={skyCanvasRef} frameCountRef={skyFramesRef} frameTop={skyFrameTop} params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={FILL} />
           {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
           <canvas ref={dissolveCanvasRef} aria-hidden data-dissolve style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />
           {!FX_OFF.has("nonight") && <NightLayer blend={nightEased} density={view.smoke} />}

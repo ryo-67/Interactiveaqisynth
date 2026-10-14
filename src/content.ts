@@ -83,13 +83,12 @@ export const BOROUGH_SHORT: Record<string, string> = { Citywide: "NYC", Manhatta
 export const NAV_LIVE = "Live";
 export const NAV_CALENDAR = "Calendar"; // the date chip's accessible name and the popover's
 export const DAY_SHEET = { label: NAV_CALENDAR, close: "Close" } as const; // the phone's day sheet (D-65): its accessible name and the scrim's dismiss label. Approved by Shoro as written, 2026-10-12.
-export const NAV_LAST_24H = "Last 24h";
+export const NAV_LAST_24H = "Last 24h"; // the date chip's label when live (Shoro, 2026-09-15)
 // The day controls' accessible names (moved here unchanged from DayNav, 2026-10-12): the arrows step a day on the laptop row and a month in the calendar; "Day" names the list of preset days.
 export const NAV_ARROWS = { prevDay: "previous day", nextDay: "next day", prevMonth: "previous month", nextMonth: "next month" } as const;
 export const NAV_DAY_LIST = "Day";
 export const CALENDAR_WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"] as const; // the calendar's column heads, Sunday first
-export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}";
-export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the presets and the calendar (Shoro, 2026-09-15) // under the calendar (Shoro, 2026-09-15) // the date chip's label when live (Shoro, 2026-09-15)
+export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}"; // under the calendar (Shoro, 2026-09-15)
 
 // The monitor page (D-43, 2026-09-15): card labels, source-pill labels, the tone words and the scale names as shown. Approved by Shoro as written, 2026-10-12. The source pill is the routing: which measurement drives the card.
 export const VIEW_LABELS = { scene: "Scene", monitor: "Monitor" } as const; // the two page icons' accessible names

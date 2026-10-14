@@ -1,5 +1,4 @@
 // AQINumber — the number (§5.2 item 2). The widgets' value size (2026-09-16: the hero is two cards in the monitor's style, so the number is set like the cards' values), serif, text primary — never the tier color, and it never animates. A chosen day shows its official daily AQI, Live the current AQI (the NowCast composite at the latest hour), both from engine/aqi.ts (D-42): the number a weather app would show, not the PM2.5 tier the sound plays.
-import React from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
 
 export function AQINumber({ value }: { value: number | null }) {

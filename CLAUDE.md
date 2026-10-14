@@ -13,7 +13,7 @@ The sonification model (STRATEGY §3) is the intellectual core. Ozone's hourly c
 Be precise about what exists. Much of STRATEGY.md is still target state, but far less than it was: the sections below were last reconciled against the working tree on 2026-09-17.
 
 Shipped and working:
-- React 18 + TypeScript + Vite (SWC), Tailwind v4, Tone.js, three.js via @react-three/fiber and postprocessing for the sky, Canvas 2D for the graph.
+- React 18 + TypeScript + Vite (SWC), hand-written CSS in `src/index.css` (no Tailwind: only the export's reset and base layer remain, 2026-10-14), Tone.js, three.js via @react-three/fiber and postprocessing for the sky, Canvas 2D for the graph.
 - Vercel serverless routes under `api/`: `aqi/current.ts` (AirNow data endpoint, NYC bbox, per site), `aqi/historical.ts` (EPA AQS, current year only), `health.ts`, `aqi/diagnostic.ts`. Shared logic in `api/_lib/aqi.ts`. CDN caching via `Cache-Control: s-maxage`; `vercel.json` sets `maxDuration: 300` on the historical route.
 - Deployed at aqi.shoro.space from GitHub main (D-67; aqi-synth.vercel.app and interactive-aqi-synth.vercel.app 308-redirect to it). Env vars on Vercel: `AIRNOW_API_KEY`, `EPA_AQS_EMAIL`, `EPA_AQS_API_KEY`.
 - `/` is the scene (`src/scene/ScenePage.tsx`, D-40); `/scene` is an alias and `/scene-test` is the tuning harness. The earlier typographic page (`App.tsx`) is deleted.

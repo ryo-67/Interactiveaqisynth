@@ -3,8 +3,8 @@
 // One clock: the playhead is the session's eased hour — the same number that moves the sun.
 // The graph is a transport surface, as in a DAW: press or drag anywhere on the plot to move the playhead, and the engine seeks with it, playing or paused. Play and pause live in the transport pill.
 import { readingLabel } from "../utils/time";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useTheme, themeColors, families, typeScale, space, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTheme, themeColors, families, typeScale, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS, TRACK_QUALIFIERS, GRAPH_LABEL } from "../content";
 import { monotoneCurve, fitTicks } from "./graphSeries";
 import { chipStyle } from "./chip";
@@ -38,7 +38,6 @@ function rgba(s: string): [number, number, number, number] {
 // No colours in a frame (2026-09-16): on the AQI tab the line's colour is a function of its HEIGHT alone, read off the same vertical ramp gradient the legend is drawn with, so a point on the line and the legend beside it at that height are the same pixel colour by construction, mid-morph included. Stored per-hour colours, blended between frames in sRGB, had a line halfway between a green day and a purple one showing a grey at a height where the legend showed red (Shoro: the line and the legend disagreed in some views); and a segment's two-stop gradient between hours, on a steep rise, skipped the hues the legend passes through between them.
 interface Frame {
   key: string; // the state: tab and day
-  dayKey: string;
   norm: Array<number | null>;
   alpha: number[];
   max: number;
@@ -115,7 +114,6 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     const max = tab === "aqi" ? (ceilings.find((c) => c >= peak) ?? ceilings[ceilings.length - 1]) : Math.max(floor, ...present) * 1.08;
     return {
       key: `${tab}|${dayId}|${tab === "aqi" ? max : ""}`, // the ceiling is part of the state: the live window's newest hour can raise it without a change of day
-      dayKey: `${dayId}`,
       norm: vals.map((v) => (v == null ? null : Math.min(v, max) / max)),
       alpha: vals.map((v) => (v == null ? 0 : 1)),
       max,

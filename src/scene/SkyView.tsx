@@ -3,14 +3,12 @@ import React, { useLayoutEffect, useMemo, useCallback, useRef, useEffect } from 
 import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei/core/Sky"; // the one component, from its own module (2026-09-16): drei's index pulls in three-stdlib's WebGL capabilities probe, which makes a throwaway context at load that Firefox later reclaims and reports as "WebGL context was lost"
 import { EffectComposer } from "@react-three/postprocessing";
-import { ToneMappingMode, BlendFunction, BloomEffect, HueSaturationEffect, ChromaticAberrationEffect, NoiseEffect, ToneMappingEffect, EffectPass, type Effect, type Pass, type EffectComposer as EffectComposerImpl } from "postprocessing";
-import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3, type PerspectiveCamera, type WebGLRenderer, type WebGLRenderTarget } from "three";
+import { ToneMappingMode, BlendFunction, BloomEffect, HueSaturationEffect, ChromaticAberrationEffect, NoiseEffect, ToneMappingEffect, EffectPass, type Effect, type EffectComposer as EffectComposerImpl } from "postprocessing";
+import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3, type PerspectiveCamera } from "three";
 import { LensFieldEffect } from "./LensFieldEffect";
 import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT, SKY_CAMERA } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
-
-export type GroundMode = "above" | "fade" | "edge";
 
 // Framing rule (row 5, option (a)): only above-horizon sky in frame, at every viewport size.
 // three's `fov` is the VERTICAL field of view and does not change with aspect, so the visible vertical span is always ±FOV_DEG/2 around the camera pitch. Pitching up by half the fov puts the bottom edge exactly on the horizon; the margin pushes it just below, so the horizon sits at or under the bottom edge and never inside the frame. Being vertical-only, this holds at any aspect ratio or box height without further work.
@@ -24,7 +22,6 @@ interface Props {
   params: SkyParams;
   sunPosition: [number, number, number];
   starOpacity: number;
-  groundMode?: GroundMode;
   style?: React.CSSProperties;
   // Static grid cells render on demand (once, then on prop change); the live preview renders continuously so dragging a slider is smooth.
   live?: boolean;
@@ -257,7 +254,7 @@ function Exposure({ value }: { value: number }) {
 // No multisampling (2026-09-16): the composer renders every pass into its own targets, which are never multisampled, and the sky has no geometry edges to smooth (a dome, point stars, a textured sun sprite); the multisampled default buffer only cost memory bandwidth on every frame.
 const GL_CONFIG = { antialias: false, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true } as const;
 
-export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, groundMode = "above", style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0 }: Props) {
+export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0 }: Props) {
   // The grade's effects, once per canvas; the composer's children are one memoized element so its pass chain is never rebuilt (see Fx).
   // ORDER (2026-09-15, measured): lens; tone mapping; bloom; saturation; aberration; noise. This is the order the sky was tuned against. The wrappers re-appended every re-created effect at the end of the list, so after the first eased change the chain settled into this order, with tone mapping BEFORE the bloom and the grade: the bloom's blur is taken from the HDR input of its pass and added onto the mapped image with nothing mapping it again, so the sun's glow goes to white — that is the glow every exposure and bloom value was judged on. The physically ordered chain (bloom and grade before tone mapping) is what showed on a fresh mount before any change, and reads as the dim, washed-out sky. The lens comes first, in its own pass (CONVOLUTION), so the frame it refracts is the raw sky and nothing it re-samples is lost.
   const fx = useMemo(makeFx, []);
@@ -280,7 +277,7 @@ export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, ground
   // How much Hosek shows: 1 in daylight, 0 at night, the band between (D-20). The fixed models pin it.
   const hosekAlpha = model === "hosek" ? 1 : model === "preetham" ? 0 : daylightBlend(sunElevationDeg);
   // "above": pitch up by half the vertical fov plus a margin, so the horizon falls at or below the bottom edge. The previous fixed 0.32 rad left the bottom edge 12.7 degrees BELOW the horizon, which rendered the dome's ground half — invisible only while the control bar happened to cover it. "edge"/"fade": horizon sits at the vertical middle.
-  const cameraRotationX = groundMode === "above" ? ABOVE_HORIZON_PITCH_RAD : 0;
+  const cameraRotationX = ABOVE_HORIZON_PITCH_RAD;
   // What the watchdog prints if the renderer misbehaves: every input this frame.
   const snapshot = useCallback(() => ({ params, sunPosition, sunElevationDeg, hosekAlpha, starOpacity, saturation, particles, grain, hour, live }), [params, sunPosition, sunElevationDeg, hosekAlpha, starOpacity, saturation, particles, grain, hour, live]);
 
@@ -324,20 +321,6 @@ export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, ground
         {/* The composer always mounts: the grade and the tone-mapping pass are part of the sky at every hour, not only when bloom is on. The order is fixed where `chain` is built. */}
         <EffectComposer ref={composerRef}>{chain}</EffectComposer>
       </Canvas>
-      {groundMode === "fade" && (
-        // A neutral band the sky fades into, instead of sky-below-horizon reading as fog.
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: "34%",
-            background: "linear-gradient(to bottom, rgba(10,10,16,0) 0%, rgba(10,10,16,0.72) 55%, rgba(10,10,16,0.92) 100%)",
-            pointerEvents: "none",
-          }}
-        />
-      )}
     </div>
   );
 }

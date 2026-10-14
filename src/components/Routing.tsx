@@ -1,6 +1,6 @@
 // Routing (D-43, reworked 2026-09-16 to Shoro's patch-bay brief) — the three measurements as pills along the top, the six sound parameters as pills along the bottom, and a curved cable for every mapping in STRATEGY §3.2/§3.6 between them, in the site's own vocabulary: the pills are the cards' source chips, the cables hairlines. Data is shown moving, not lit: each beat a source's normalized value changes, a glowing packet leaves its pill and travels every cable from it, eased over one beat, and fades at the far end. Laptop only (index.css); the source pills carry the routing below that.
 // Geometry is measured, not assumed: the pills are HTML so they set in the UI face, and the SVG behind them draws in pixels from their rects (ResizeObserver), so the cables leave and arrive at pill centres at any width.
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme, themeColors, motion, MONITOR } from "../utils/theme";
 import { chipStyle } from "./chip";
 import { MONITOR_LABELS, SOURCE_LABELS } from "../content";

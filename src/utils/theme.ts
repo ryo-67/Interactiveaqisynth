@@ -231,9 +231,6 @@ export const GRAPH = {
 export const MONITOR = {
   maxWidth: 1040, // the grid's width on laptop, centred in the band like the hero and graph row
   sectionHeight: 672, // the sections' height on laptop (2026-09-16): both pages take the band's height up to this; the monitor's rows split it 2-1-1 (four units of 158, a value card's height at the 12 px gaps) and the scene's graph grows into what the hero leaves
-  meter: 4, // meters, ladders and the detune band are 4 px tracks, the slider's hairline
-  lane: 4, // the 16-step lane's step height: the ladder's, so the two read as one control (2026-09-16)
-  gap: 4, // between ladder steps and lane steps
   // The patch bay's pills and cables (Shoro, 2026-09-16: both a step up). The pill is the cards' source chip, one size larger — the caption size in a 24 px pill rather than the micro size in a 20 — so the three measurements and the six parameters read as the labels they are rather than as tags. The cable is a hairline still, just not the thinnest one the screen can draw.
   pillHeight: 24,
   pillFontSize: "12px",
@@ -245,15 +242,6 @@ export const MONITOR = {
   packetCore: 2,
   icon: 20, // the two page icons at the foot
   iconInactive: 0.55, // the inactive page icon's alpha (textMuted's), the active one at textPrimary
-  hitBeats: 1, // a lane hit lights and decays over one beat
-} as const;
-
-// Opacity scale (§5.5). Tier color is applied through these, not at arbitrary alphas.
-export const opacity = {
-  full: 1,
-  medium: 0.72,
-  subtle: 0.4,
-  faint: 0.18,
 } as const;
 
 
@@ -267,7 +255,6 @@ export const families = {
 
 // Named type scale (§5.5): [fontSize, lineHeight].
 export const typeScale = {
-  display: { size: "96px", line: 1.0 }, // the AQI number (the optical lift against a text stack went with the two-card hero, 2026-09-16)
   heading: { size: "34px", line: 40 / 34 }, // mood word; a 40 px line box, on the grid
   body: { size: "15px", line: 1.6 }, // mood sentence
   caption: { size: "12px", line: 1.4 }, // borough row, legend
@@ -282,22 +269,15 @@ export const space = {
   xs: "8px",
   sm: "12px",
   md: "16px",
-  lg: "24px",
-  xl: "32px",
-  xxl: "48px",
 } as const;
 
 // Control sizing on the same grid: every pill is 40 tall, holding 32-tall content in 4 px of inset; chips, tabs, icon buttons and the slider are all 32, and corners are half the height (20 and 16), so every space, size and radius is a multiple of 4. One height, one rhythm, so a row of controls aligns by construction. These are the DESKTOP values and the fallbacks; the scene scales them per breakpoint through CSS custom properties (--ctl-inner, --ctl-pill, --display-size, --heading-size, --body-size) set on .scene-ui, so tablet and phone fit without scrolling. Components read the variables with these as fallbacks.
 export const CONTROL = {
   pillHeight: 40,
-  pillPad: "4px 16px",
   inner: 32,          // chips, tabs, icon buttons, slider track box: 32 in a 40 pill leaves a 4 px inset, on the grid
   touch: 44,          // the least hit area on a touch layout, phone and tablet (D-64, 2026-10-05): Apple's 44 pt; the phone's 24 px targets were the complaint
   chipPad: "0 12px",
   gap: 4,             // between chips inside a pill — the same 4 as the inset, so chips and pill edges align
-  groupGap: 8,        // between pills in a group (play · volume)
-  barGap: 20,         // between pills across a bar, and between the bars (from the scaffold)
-  panelRadius: 20,
   sliderWidth: 96,
   chipTracking: "0.04em", // 0.48 px at the 12 px desktop chip, scaling with the chip's type (2026-09-15)
   // Hover and pressed states for every clickable (2026-09-15): a chip lightens by hoverAlpha on hover (an active chip by hoverActiveAlpha, since it is already lit), and scales by pressScale while pressed; stateMs is the transition. index.css reads these as custom properties.
@@ -322,10 +302,8 @@ export const CURSOR = {
 export const motion = {
   beatMs: 60000 / 90 / 1, // one beat = one hour = 666.7 ms; playhead advance
   blurMs: 500, // mood word swap at tier boundaries
-  crossfadeMs: 300, // borough/day switch on the score
   popoverMs: 180, // the calendar popover in and out: opacity with a 4 px settle (2026-09-15)
   pageBeats: 1.5, // the middle band slides between the scene and the monitor over this many beats (D-43): the same span as the sun's glide, the dissolve and the graph morph
-  driftPxPerSec: 4, // haze grain drift speed — continuous
   pageRestScale: 0.9, // how small a page is while it is not the one showing (Shoro, 2026-09-17): the section that is leaving shrinks to this as it goes and the one arriving grows from it, so the two read as faces of one thing turning rather than two flat cards sliding past each other
 } as const;
 

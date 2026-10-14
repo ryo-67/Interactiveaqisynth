@@ -1,12 +1,12 @@
 // nycOpenData.ts — the data client (DAT-04 client side, UX-01, SON-03).
-// Three calls, nothing speculative: getLast24h (live route), getDay (static archive for past years, live-year route for the current year — the EPA API is only ever asked about the current year), getAnchors (archive percentiles, §3.10). First paint calls only getLast24h; nothing else loads until asked (BUG-20).
+// Three calls, nothing speculative: getCurrentAll (the live route, every borough at once), getDay (static archive for past years, live-year route for the current year — the EPA API is only ever asked about the current year), getAnchors (archive percentiles, §3.10). First paint calls only getCurrentAll; nothing else loads until asked (BUG-20).
 
 import type { Day, HourReading } from "../engine/SynthEngine";
 import type { PollutantAnchors } from "../engine/contour";
 import { seriesAQI, type SeriesAQI } from "../engine/aqi";
 export type { SeriesAQI };
 
-// ——— Borough types & map geometry ———
+// ——— Boroughs ———
 
 export type Borough =
   | "Citywide"
@@ -32,8 +32,6 @@ export interface DaySeries {
   fallback: "zipcode" | null; // set when the live route fell back to AirNow's area reading — the source line says "AirNow area reading", no borough named
   fetchedAt: string | null;
 }
-
-export type DataSource = "loading" | "live" | "mock";
 
 const slug = (b: Borough) => b.toLowerCase().replace(/ /g, "-");
 
@@ -83,11 +81,6 @@ export function getCurrentAll(): Promise<CurrentSnapshot> {
 // A failed fetch is cached like a good one (the promise IS the cache), so a retry has to drop it first (D-60, 2026-09-17). The anchors no longer ride with it (BUG-60, 2026-10-12): they forget their own failure (getAnchors below).
 export function forgetLive(): void {
   currentPromise = null;
-}
-
-// Live route: last 24 local hours for one borough.
-export async function getLast24h(borough: Borough): Promise<DaySeries> {
-  return (await getCurrentAll()).series[borough];
 }
 
 // Archive files are one flat HourReading[] per borough-year; cached per URL so a timeline scrub loads each year once. The current year has a snapshot file too (scripts/build-current-year.ts, D-41): the year so far, rebuilt when EPA publishes more; a year without a file resolves to no hours, so a fresh January before the first snapshot still works through the route.

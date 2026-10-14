@@ -87,7 +87,7 @@ export default function ScenePage() {
   const layout = useLayout(); // D-63: one rule for every layout decision on the page (utils/layout.ts)
   const phone = isPhoneLayout(layout); // the phone's controls: the day sheet, no sky tap-to-play, no page cursor
   const laptop = layout === "laptop"; // the vertical page axis and the side transport
-  const { day, beat, playing, paused, channels, skyChannels, rest } = s;
+  const { day, beat, playing, paused, skyChannels, rest } = s;
   const hour = s.playheadHour; // the one transport position: the graph's playhead reads it as an index
   const clock = s.playheadClock; // the same position as time of day: the sun and the stars read it
 
@@ -512,7 +512,7 @@ export default function ScenePage() {
               <div className="scene-page scene-page-monitor" data-page="monitor" aria-hidden={page !== "monitor"} inert={page !== "monitor" ? "" : undefined}>
                 <h2 className="scene-sr-only">{VIEW_LABELS.monitor}</h2>
                 <div className="scene-page-inner">
-                  <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} routing suffixes={suffixes} />
+                  <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} suffixes={suffixes} />
                 </div>
               </div>
             </div>

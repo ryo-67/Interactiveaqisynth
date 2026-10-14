@@ -6,12 +6,10 @@ import { skyFrameAspect } from "./useSafariWindow";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { barK, barSteps } from "../engine/euclid";
-import { TIERS, detuneSigma } from "../engine/scales";
-import { pm25ToAQI, measuredNo2 } from "../engine/aqi";
+import { TIERS, detuneSigma, tierIndexOf } from "../engine/scales";
+import { pm25ToAQI, measuredNo2, seriesAQI } from "../engine/aqi";
 import { motion, NYC_LAT, NYC_LON, CAMERA_FACING } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
-import { tierIndexOf } from "../engine/scales";
-import { seriesAQI } from "../engine/aqi";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
 import { PINS } from "../content";
 import { getCurrentAll, forgetLive, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
@@ -81,8 +79,6 @@ export interface ListenSession {
   moodAqi: number | null;
   monitor: MonitorState; // the monitor page's readouts (D-43)
   pulse: PulseHit | null; // the last pulse hit the engine fired, for the monitor's lane
-  // Normalized channels for whatever the page is showing right now: the beat while playing, the rest hour otherwise. A null channel is null here (the mood sentence must not name it).
-  channels: { pm25: number | null; o3: number | null; no2: number | null };
   skyChannels: { pm25: number | null; o3: number | null; no2: number | null }; // channels for the sky: a null hour holds the last reported value
   devDayKey: string;
   setDevDayKey: (k: string) => void;
@@ -122,8 +118,6 @@ export function useListenSession(): ListenSession {
       engineRef.current = null;
     };
   }, []);
-  const prevBoroughRef = useRef<Borough>(borough);
-  const prevDateRef = useRef<string | null>(null);
 
   // First paint loads only the last 24 hours (UX-01); the page renders immediately and fills when it lands. The outcome is reported as liveStatus (D-60): AirNow is down often enough, and missing entirely in a local checkout without the keys, that a silent failure left the page looking simply empty.
   useEffect(() => {
@@ -198,8 +192,6 @@ export function useListenSession(): ListenSession {
       // Anchors that fail to load fall back to the bundled ones (BUG-60): the day still plays, normalized against Queens 2023 rather than its borough, instead of the engine silently keeping the previous day.
       const a = await getAnchors(borough).catch((err) => { console.warn("[App] anchors failed, using the bundled ones:", err); return QUEENS_2023_ANCHORS; });
       // Any switch — borough or day — keeps the phrase position: the music does not stop, the next beat reads the new air (§2.1, §2.2).
-      prevBoroughRef.current = borough;
-      prevDateRef.current = date;
       engine.setDay(day, a, { keepPosition: true });
       setAnchors(a);
     })();
@@ -363,22 +355,13 @@ export function useListenSession(): ListenSession {
     return null;
   };
   const skyChannels = { pm25: held("pm25"), o3: held("o3"), no2: held("no2") };
-  const channels = report
-    ? { pm25: report.pm25n, o3: report.o3n, no2: report.no2n }
-    : rest
-      ? {
-          pm25: normalize(rest.reading.pm25 == null ? null : Math.max(0, rest.reading.pm25), a.pm25),
-          o3: normalize(rest.reading.o3, a.o3),
-          no2: normalize(rest.reading.no2, a.no2),
-        }
-      : { pm25: null, o3: null, no2: null };
 
   const liveEmpty = liveStatus === "ready" && snapshot != null && !snapshot.series.Citywide.hours.some((h) => h.pm25 != null || h.o3 != null); // the citywide series is the mean of every reporting borough, so empty there is empty everywhere
 
   return {
     borough, setBorough, date, setDate, latestDate, dayLoading, dayWaiting, dayFailed, retryDay, liveEmpty, soundFailed, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
     snapshot, liveStatus, retryLive, anchors: a, day, live, playing, beat, togglePlay, setVolume,
-    displayAqi, aqiHours, latest, rest, moodTier, moodAqi, monitor, pulse, channels, skyChannels, devDayKey, setDevDayKey,
+    displayAqi, aqiHours, latest, rest, moodTier, moodAqi, monitor, pulse, skyChannels, devDayKey, setDevDayKey,
   };
 }
 

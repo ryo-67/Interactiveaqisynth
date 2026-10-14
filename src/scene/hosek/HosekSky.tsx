@@ -1,6 +1,6 @@
 // HosekSky — the Hosek-Wilkie sky as a drop-in alternative to drei's Preetham <Sky>. Same call shape (sunPosition, turbidity), so SkyView can switch models on a flag.
 // Shader ported from diharaw/sky-models (MIT); coefficients computed on the CPU per frame-of-change and passed as uniforms, which is how the reference implementation drives it.
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type {} from "@react-three/fiber"; // pulls in the r3f JSX intrinsics (mesh, shaderMaterial, ...)
 import { BackSide, ShaderMaterial, Vector3 } from "three";
 import { hosekCoefficients } from "./hosekWilkie";

@@ -1,5 +1,5 @@
 // SourceLine — footer line three (§5.2): the source in use, muted, as fact (Shoro, 2026-09-16: AirNow while Live is selected, EPA on any other day), and only when it applies the one disclosure that matters: live NO2 is a typical archive day (D-18). Whether a channel is typical is read from the hour records' source flags, never from a hardcoded list.
-import React, { useLayoutEffect, useRef } from "react";
+import React from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
 import { SOURCE_LINE_LIVE, SOURCE_LINE_ARCHIVE, SOURCE_URL_AIRNOW, SOURCE_URL_EPA, SOURCE_BORROWED, SOURCE_AREA_READING, SOURCE_LINE_TYPICAL_NO2 } from "../content";
 import type { Borough } from "../utils/nycOpenData";
@@ -52,39 +52,8 @@ export function SourceLine({ borough, hours, fallback, live }: Props) {
     : [borrowed.length ? SOURCE_BORROWED.replace("{borough}", boroughName).replace("{list}", list).replace("{isAre}", borrowed.length === 1 ? "is" : "are") : null, anyTypical ? SOURCE_LINE_TYPICAL_NO2 : null];
   const detail = parts.filter((p): p is string => p != null).join(" ") || null;
 
-  // Hug the text even when it wraps: fit-content on a wrapping block is the container's width, so after layout the panel (the parent glass, when it is sized to content) is set to its widest rendered line plus its padding. That line still fits exactly, so nothing re-wraps. Re-measured on resize.
-  const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const panel = el?.parentElement;
-    if (!el || !panel || !panel.classList.contains("glass")) return;
-    const belowLaptop = window.matchMedia("(max-width: 1023px)");
-    const fit = () => {
-      panel.style.width = "";
-      // Only where the scene sizes the panel to content (tablet and phone). On laptop the panel already hugs one line, and a sub-pixel round-trip there re-wrapped it and cascaded the width down.
-      if (!belowLaptop.matches) return;
-      // Line widths, not span widths: fragments that share a top are one line, and a line's width is its rightmost edge minus its leftmost. Taking the widest span shrank the panel to one fragment and forced the text into three lines once the separator was inline.
-      const byTop = new Map<number, { left: number; right: number }>();
-      for (const span of el.querySelectorAll("span")) for (const r of span.getClientRects()) {
-        const key = Math.round(r.top);
-        const cur = byTop.get(key);
-        byTop.set(key, cur ? { left: Math.min(cur.left, r.left), right: Math.max(cur.right, r.right) } : { left: r.left, right: r.right });
-      }
-      const lines = [...byTop.values()].map((l) => l.right - l.left);
-      if (!lines.length) return;
-      const cs = getComputedStyle(panel);
-      const w = Math.ceil(Math.max(...lines) + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)) + 2;
-      if (w < panel.getBoundingClientRect().width - 2) panel.style.width = `${w}px`;
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(panel.parentElement ?? panel);
-    return () => { ro.disconnect(); panel.style.width = ""; };
-  }, [borough, hours, fallback, live]);
-
   return (
     <div
-      ref={ref}
       style={{
         fontFamily: families.uiCaps,
         fontSize: typeScale.caption.size,

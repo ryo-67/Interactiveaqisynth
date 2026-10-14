@@ -1,5 +1,4 @@
 // Gauges — the small readouts the widgets share (D-43, 2026-09-16): the five-step ladder, the meter, the detune band, the sixteen-step lane, and a single bar in one colour. All 4 px tracks (the slider's hairline; theme.ts MONITOR), lit steps and fills fading over one beat (index.css). The monitor's cards and the hero's two cards draw from the same set, so the pages are one family.
-import React from "react";
 import { useEased } from "../scene/useEased";
 import { useTheme, themeColors, motion, aqiScaleColor, aqiRampPosition } from "../utils/theme";
 import { MONITOR_REST, MONITOR_UNITS } from "../content";

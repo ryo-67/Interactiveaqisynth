@@ -14,7 +14,6 @@ interface Props {
   pulse: PulseHit | null;
   lifts: { scale: number; tone: number }; // the ramp lift for the two cards that colour a step (D-36)
   setRef: (key: "scale" | "tone") => (el: HTMLDivElement | null) => void; // the page samples the sky behind these two
-  routing: boolean; // the ROUTING card is a trial; the page can drop it
   suffixes?: ChannelSuffix; // a word beside a borrowed channel on the source pills (D-56)
 }
 
@@ -31,15 +30,13 @@ function Value({ children, unit }: { children: React.ReactNode; unit?: React.Rea
   );
 }
 
-export function Monitor({ m, pulse, lifts, setRef, routing, suffixes }: Props) {
+export function Monitor({ m, pulse, lifts, setRef, suffixes }: Props) {
   const tone = TONE_WORDS[m.tierIndex] ?? TONE_WORDS[0];
   return (
-    <div className="scene-monitor" data-routing={routing}>
-      {routing && (
-        <Card label={MONITOR_LABELS.routing} className="scene-card-routing">
-          <Routing m={m} />
-        </Card>
-      )}
+    <div className="scene-monitor">
+      <Card label={MONITOR_LABELS.routing} className="scene-card-routing">
+        <Routing m={m} />
+      </Card>
       {/* SCALE: PM2.5 → tier → scale (§3.4). The lit step in the category colour of the AQI the tier came from. */}
       <Card label={MONITOR_LABELS.scale} sources={["pm25"]} suffixes={suffixes} className="scene-card-scale" cardRef={setRef("scale")}>
         <Value>{SCALE_DISPLAY[m.scaleName] ?? m.scaleName}</Value>

@@ -523,7 +523,7 @@ export default function ScenePage() {
               <div className="scene-page scene-page-monitor" data-page="monitor" aria-hidden={page !== "monitor"} inert={page !== "monitor" ? "" : undefined}>
                 <h2 className="scene-sr-only">{VIEW_LABELS.monitor}</h2>
                 <div className="scene-page-inner">
-                  <Monitor m={s.monitor} pulse={s.pulse} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} suffixes={suffixes} />
+                  <Monitor m={s.monitor} pulses={s.pulses} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} suffixes={suffixes} />
                 </div>
               </div>
             </div>

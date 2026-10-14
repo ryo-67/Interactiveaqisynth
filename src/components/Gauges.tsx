@@ -1,8 +1,9 @@
 // Gauges — the small readouts the widgets share (D-43, 2026-09-16): the five-step ladder, the meter, the detune band, the sixteen-step lane, and a single bar in one colour. All 4 px tracks (the slider's hairline; theme.ts MONITOR), lit steps and fills fading over one beat (index.css). The monitor's cards and the hero's two cards draw from the same set, so the pages are one family.
+import { useSyncExternalStore } from "react";
 import { useEased } from "../scene/useEased";
 import { useTheme, themeColors, motion, aqiScaleColor, aqiRampPosition } from "../utils/theme";
 import { MONITOR_REST, MONITOR_UNITS } from "../content";
-import type { PulseHit } from "../scene/useListenSession";
+import type { PulseFeed } from "../scene/pulseFeed";
 import { DETUNE_MAX_CENTS } from "../engine/scales";
 import { clamp01 } from "../utils/math";
 
@@ -52,7 +53,8 @@ export function DetuneBand({ cents }: { cents: number }) {
 }
 
 // The 16-step lane: the bar's pattern as steps, a hit lit when the engine fires it and fading over a beat. Keyed on the hit's time so a repeated step restarts its fade.
-export function Lane({ steps, pulse, hour }: { steps: boolean[] | null; pulse: PulseHit | null; hour: number | null }) {
+export function Lane({ steps, pulses, hour }: { steps: boolean[] | null; pulses: PulseFeed; hour: number | null }) {
+  const pulse = useSyncExternalStore(pulses.subscribe, pulses.get);
   const sameBar = pulse != null && hour != null && Math.floor(pulse.hour / 4) === Math.floor(hour / 4);
   return (
     <div className="scene-lane" role="img" aria-label={steps ? `${steps.filter(Boolean).length} of 16` : MONITOR_REST}>

@@ -4,7 +4,8 @@ import { sunAnglesAt, tzOffsetFromTs, type SunAngles } from "./solar";
 import { sunAlongPath } from "./sunPath";
 import { skyFrameAspect } from "./useSafariWindow";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SynthEngine, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
+import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
+import { createPulseFeed, type PulseFeed } from "./pulseFeed";
 import { barK, barSteps } from "../engine/euclid";
 import { TIERS, detuneSigma, tierIndexOf } from "../engine/scales";
 import { pm25ToAQI, pm25Played, isMeasuredHour, seriesAQI } from "../engine/aqi";
@@ -35,7 +36,6 @@ export interface MonitorState {
   no2n: number | null;
   detuneCents: number; // σ of the melody's detune (§3.6)
 }
-export interface PulseHit extends PulseInfo { t: number } // a pulse the engine fired, with the frame time it landed (the lane lights the step and lets it decay)
 
 export interface ListenSession {
   borough: Borough;
@@ -79,7 +79,7 @@ export interface ListenSession {
   moodTier: number | null; // null when the hour has no AQI: the card shows no word rather than the first tier's (BUG-63)
   moodAqi: number | null;
   monitor: MonitorState; // the monitor page's readouts (D-43)
-  pulse: PulseHit | null; // the last pulse hit the engine fired, for the monitor's lane
+  pulses: PulseFeed; // the pulse hits the engine fires, for the monitor's lane to subscribe to (pulseFeed.ts)
   skyChannels: { pm25: number | null; o3: number | null; no2: number | null }; // channels for the sky: a null hour holds the last reported value
   devDayKey: string;
   setDevDayKey: (k: string) => void;
@@ -218,12 +218,12 @@ export function useListenSession(): ListenSession {
     return () => engineRef.current?.onBeat(null);
   }, []);
   // The pulse hits, for the monitor's lane (D-43): the engine's own 16th-step callback, deferred by the engine to the audible moment like the beat report.
-  const [pulse, setPulse] = useState<PulseHit | null>(null);
+  const [pulses] = useState(createPulseFeed); // a feed, not state: a hit renders the lane alone, not the page (pulseFeed.ts)
   useEffect(() => {
-    engineRef.current?.onPulse((info) => setPulse({ ...info, t: performance.now() }));
+    engineRef.current?.onPulse((info) => pulses.set({ ...info, t: performance.now() }));
     return () => engineRef.current?.onPulse(null);
-  }, []);
-  useEffect(() => { if (!playing) setPulse(null); }, [playing]); // at rest nothing fires; the lane shows the pattern unlit
+  }, [pulses]);
+  useEffect(() => { if (!playing) pulses.set(null); }, [playing, pulses]); // at rest nothing fires; the lane shows the pattern unlit
 
   // A seek moves the clock immediately; the next beat report (which arrives after it) takes over again.
   const [seekAt, setSeekAt] = useState<{ hour: number; t: number } | null>(null);
@@ -364,7 +364,7 @@ export function useListenSession(): ListenSession {
   return {
     borough, setBorough, date, setDate, latestDate, dayLoading, dayWaiting, dayFailed, retryDay, liveEmpty, soundFailed, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
     snapshot, liveStatus, retryLive, anchors: a, day, live, playing, beat, togglePlay, setVolume,
-    displayAqi, aqiHours, latest, rest, moodTier, moodAqi, monitor, pulse, skyChannels, devDayKey, setDevDayKey,
+    displayAqi, aqiHours, latest, rest, moodTier, moodAqi, monitor, pulses, skyChannels, devDayKey, setDevDayKey,
   };
 }
 

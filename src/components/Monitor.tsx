@@ -6,13 +6,14 @@ import { Routing } from "./Routing";
 import { Ladder, Meter, DetuneBand, Lane } from "./Gauges";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
 import { MONITOR_LABELS, TONE_WORDS, SCALE_DISPLAY, MONITOR_UNITS, MONITOR_REST } from "../content";
-import type { MonitorState, PulseHit } from "../scene/useListenSession";
+import type { MonitorState } from "../scene/useListenSession";
+import type { PulseFeed } from "../scene/pulseFeed";
 import type { ChannelSuffix } from "../utils/channelSource";
 import { clamp01 } from "../utils/math";
 
 interface Props {
   m: MonitorState;
-  pulse: PulseHit | null;
+  pulses: PulseFeed; // the lane subscribes to it itself, so a hit renders the lane and not this page
   lifts: { scale: number; tone: number }; // the ramp lift for the two cards that colour a step (D-36)
   setRef: (key: "scale" | "tone") => (el: HTMLDivElement | null) => void; // the page samples the sky behind these two
   suffixes?: ChannelSuffix; // a word beside a borrowed channel on the source pills (D-56)
@@ -31,7 +32,7 @@ function Value({ children, unit }: { children: React.ReactNode; unit?: React.Rea
   );
 }
 
-export function Monitor({ m, pulse, lifts, setRef, suffixes }: Props) {
+export function Monitor({ m, pulses, lifts, setRef, suffixes }: Props) {
   const tone = TONE_WORDS[m.tierIndex] ?? TONE_WORDS[0];
   return (
     <div className="scene-monitor">
@@ -51,7 +52,7 @@ export function Monitor({ m, pulse, lifts, setRef, suffixes }: Props) {
       {/* BEATS: NO2 → Euclidean k over 16 (§3.2); the lane is the engine's pattern, lit as it fires. */}
       <Card label={MONITOR_LABELS.beats} sources={["no2"]} suffixes={suffixes} className="scene-card-beats">
         <Value>{m.k == null ? MONITOR_REST : m.k} <span className="scene-card-unit">{MONITOR_UNITS.beats}</span></Value>
-        <Lane steps={m.steps} pulse={pulse} hour={m.hour} />
+        <Lane steps={m.steps} pulses={pulses} hour={m.hour} />
       </Card>
       {/* BRIGHTNESS: normalized O3 is the lowpass ceiling's input (§3.6, 2500 → 12000 Hz). Read as 1.0 to 10.0 over that input, the meter beneath it; the Hz stays in the engine. */}
       <Card label={MONITOR_LABELS.brightness} sources={["o3"]} suffixes={suffixes} className="scene-card-brightness">

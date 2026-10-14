@@ -8,13 +8,12 @@ export interface SolarTimes {
   polar: "day" | "night" | null; // NYC never hits these, but the math shouldn't NaN
 }
 
-export function solarTimes(dateIso: string, lat: number, lon: number, tzOffsetHours: number): SolarTimes {
+// The day's equation of time (minutes) and solar declination (radians), NOAA's approximation from the fractional year. Shared by the rise/set times and the sun's angles, which had each carried a copy.
+function solarTerms(dateIso: string): { eqTime: number; decl: number } {
   const d = new Date(dateIso + "T12:00:00Z");
   const start = Date.UTC(d.getUTCFullYear(), 0, 0);
   const dayOfYear = Math.floor((d.getTime() - start) / 86400000);
-
   const g = ((2 * Math.PI) / 365) * (dayOfYear - 1);
-  // Equation of time (minutes) and solar declination (radians), NOAA approximation.
   const eqTime =
     229.18 *
     (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
@@ -26,6 +25,11 @@ export function solarTimes(dateIso: string, lat: number, lon: number, tzOffsetHo
     0.000907 * Math.sin(2 * g) -
     0.002697 * Math.cos(3 * g) +
     0.00148 * Math.sin(3 * g);
+  return { eqTime, decl };
+}
+
+export function solarTimes(dateIso: string, lat: number, lon: number, tzOffsetHours: number): SolarTimes {
+  const { eqTime, decl } = solarTerms(dateIso);
 
   const latRad = (lat * Math.PI) / 180;
   // 90.833° zenith accounts for refraction and the solar disc.
@@ -57,16 +61,7 @@ export interface SunAngles {
 }
 
 export function sunAnglesAt(dateIso: string, hourFloat: number, lat: number, lon: number, tzOffsetHours: number): SunAngles {
-  const d = new Date(dateIso + "T12:00:00Z");
-  const start = Date.UTC(d.getUTCFullYear(), 0, 0);
-  const dayOfYear = Math.floor((d.getTime() - start) / 86400000);
-  const g = ((2 * Math.PI) / 365) * (dayOfYear - 1);
-  const eqTime =
-    229.18 *
-    (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
-  const decl =
-    0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) +
-    0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+  const { eqTime, decl } = solarTerms(dateIso);
 
   // True solar time → hour angle (degrees; 0 at solar noon, negative in the morning).
   const trueSolarMin = hourFloat * 60 + eqTime + 4 * lon - 60 * tzOffsetHours;

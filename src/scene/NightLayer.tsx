@@ -2,6 +2,7 @@
 // MAPPING (clock → night blue, PM2.5 → its damping): opacity is nightBlend(elevation) × strength, reduced by particulate, because a hazy night is grey-orange, not blue.
 import React from "react";
 import { NIGHT } from "../utils/theme";
+import { clamp01 } from "../utils/math";
 
 interface Props {
   blend: number;    // nightBlend(sunElevationDeg), 0..1
@@ -9,8 +10,11 @@ interface Props {
   strength?: number; // override for the harness; defaults to the token
 }
 
+// The layer's opacity, exported so the panel prediction (panelLuminance.ts) uses the same formula as the layer it predicts.
+export const nightOpacity = (blend: number, density = 0, strength: number = NIGHT.strength): number => clamp01(blend) * strength * (1 - NIGHT.smokeDamping * clamp01(density));
+
 export const NightLayer = React.memo(function NightLayer({ blend, density = 0, strength = NIGHT.strength }: Props) {
-  const opacity = Math.max(0, Math.min(1, blend)) * strength * (1 - NIGHT.smokeDamping * Math.max(0, Math.min(1, density)));
+  const opacity = nightOpacity(blend, density, strength);
   if (opacity <= 0.002) return null;
   return (
     <div

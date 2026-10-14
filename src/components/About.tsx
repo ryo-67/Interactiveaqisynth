@@ -1,11 +1,12 @@
 // About — the liner notes (D-56, 2026-09-16): what the piece is, how each pollutant becomes sound, what the sky and the air are drawn from, where the data comes from, and who made it. Opened from the Patch notes button. Not a panel over the page but the page receding behind a scrim: a full-viewport backdrop blur of everything beneath (the sky, the plume, the panels, all still moving under it: theme.ts ABOUT) under a dark tint that holds AA for the text on the brightest sky (ABOUT.tintAlpha). The reading is one left-aligned column in the page's own type (the heading face for the title, the caption caps for the labels, the body size for everything else), ending as a letter does, the credit at the column's right with its links, glyphs alone, in a row beneath (below laptop, centred); it rises a few pixels as it dissolves in with the scrim, all at once. Under prefers-reduced-motion the fade is ABOUT.reducedMs.
 // The way out is the Patch notes button itself (Shoro, 2026-09-16; Transport.tsx AboutButton morphs in place, stacked above this overlay). The overlay is drawn inside the scaffold, not in a portal, so that stacking is one z-order. A mask band across the scroll surface's bottom, the button's row, keeps the reading from showing behind it below laptop. Escape and a press on the scrim close the overlay too. Focus goes to the title on open and back to the button on close; everything else in the scaffold is inert behind it (ScenePage). The overlay scrolls on its own; the page never does.
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useTheme, themeColors, families, typeScale, motion, CONTROL, ABOUT as T } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, CONTROL, ABOUT as T, REDUCED_MOTION, ABOUT_FADE_MS } from "../utils/theme";
 import { ABOUT, CREDIT_URL, LINKEDIN_URL, GITHUB_URL, PORTFOLIO_RECORD_URL, RECORD_LINK } from "../content";
 import { chipStyle } from "./chip";
 import { weeksBehind } from "../utils/time";
 import { CircleUserRoundIcon, LinkedinIcon, GithubIcon } from "./icons";
+import { usePresence } from "./usePresence";
 
 interface Props {
   open: boolean;
@@ -14,8 +15,6 @@ interface Props {
   latestDate: string | null; // the archive's last day: the calendar footer's own value, from which {weeks} is computed
 }
 
-const REDUCED = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-const FADE_MS = REDUCED ? T.reducedMs : motion.beatMs * T.fadeBeats;
 
 // No paragraph ends on a word by itself, at any width (Shoro, 2026-09-17). The last space in a run of prose becomes a non-breaking one, which is the only way to say it that a wrap cannot ignore: text-wrap: pretty below asks the browser to even out the last lines, but it is a preference, not a rule, and it says nothing at a width where the last line can only hold one word. Tying the last two words means the pair goes over together instead.
 function noOrphan(text: string): string {
@@ -32,24 +31,11 @@ function keepTogether(line: string, phrase: string): React.ReactNode {
 
 export function About({ open, onClose, anchorRef, latestDate }: Props) {
   const c = themeColors(useTheme());
-  const [mounted, setMounted] = useState(open);
-  const [visible, setVisible] = useState(false);
+  const { mounted, visible } = usePresence(open, ABOUT_FADE_MS);
   const rootRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [top, setTop] = useState(0); // where the phone's close sits in the overlay (D-64): the reading's title is set on its row
   const [band, setBand] = useState(0); // the mask band's height below laptop: from the button's row to the bottom edge
-  // Mount, then a frame later declare visible so the transitions run from the base state; on close, leave the DOM once the fade is over.
-  useEffect(() => {
-    if (open) {
-      setMounted(true);
-      let inner = 0;
-      const outer = requestAnimationFrame(() => { inner = requestAnimationFrame(() => setVisible(true)); });
-      return () => { cancelAnimationFrame(outer); cancelAnimationFrame(inner); };
-    }
-    setVisible(false);
-    const t = setTimeout(() => setMounted(false), FADE_MS);
-    return () => clearTimeout(t);
-  }, [open]);
 
   // The mask band: from the button's row up to the bottom edge, with a margin. Re-read on every resize.
   useLayoutEffect(() => {
@@ -90,7 +76,7 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
   const weeks = weeksBehind(latestDate);
   const fill = (s: string) => s.replace("{weeks}", weeks == null ? "…" : String(weeks));
   const vars = {
-    "--about-ms": `${FADE_MS}ms`,
+    "--about-ms": `${ABOUT_FADE_MS}ms`,
     "--about-tint": T.tint,
     "--about-alpha": String(T.tintAlpha),
     "--about-blur": T.blur,
@@ -110,7 +96,7 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
   // Round, the glyph alone (Shoro, 2026-09-16: the labels did not fit every width); the name is the accessible label and the title. The size is a custom property so the breakpoint can set it: on a touch screen these are the only targets on the page without a row of their own, and 32 is under the 44 a thumb wants (Shoro, 2026-09-17).
   const linkStyle = { ...chipStyle(c, false, { padding: 0, width: "var(--about-link-size)", height: "var(--about-link-size)", borderRadius: "999px" }), textDecoration: "none", color: c.textSecondary } as React.CSSProperties;
   return (
-    <div ref={rootRef} className="scene-about" data-visible={visible} data-reduced={REDUCED} style={vars}>
+    <div ref={rootRef} className="scene-about" data-visible={visible} data-reduced={REDUCED_MOTION} style={vars}>
       <div className="scene-about-scrim" aria-hidden />
       {/* The scroll surface is the whole viewport; a press on it outside the column is a press on the scrim. */}
       <div className="scene-about-scroll" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>

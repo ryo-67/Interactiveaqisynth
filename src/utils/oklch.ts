@@ -1,5 +1,9 @@
 // oklch — the perceptual colour space the AQI ramp is built in (D-51, 2026-09-16). OKLCH's lightness and chroma track what the eye reads as brightness and saturation, so six hues set at one L and one C read as one family; sRGB hex values hand-picked per hue never did (yellow at 0.93 luminance beside a red at 0.28). Björn Ottosson's Oklab, the standard matrices; sRGB only.
+import { clamp01 } from "./math";
 export type RGB = [number, number, number]; // 0..255
+
+/** "#rrggbb" → [r, g, b], 0..255. */
+export const hexToRgb = (hex: string): RGB => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
 export const srgbToLinear = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
 const linearToSrgb = (v: number) => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
@@ -34,5 +38,5 @@ export function maxChroma(L: number, h: number): number {
 }
 export function oklchToHex(c: OKLCH): string {
   const lin = oklchToLinear({ ...c, C: Math.min(c.C, maxChroma(c.L, c.h)) }); // clipped to the gamut by chroma alone, so the hue and the lightness hold
-  return "#" + lin.map((v) => Math.round(Math.max(0, Math.min(255, linearToSrgb(Math.max(0, Math.min(1, v)))))).toString(16).padStart(2, "0")).join("");
+  return "#" + lin.map((v) => Math.round(Math.max(0, Math.min(255, linearToSrgb(clamp01(v))))).toString(16).padStart(2, "0")).join("");
 }

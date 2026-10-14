@@ -2,9 +2,8 @@
 import { BOROUGH_SHORT, BOROUGH_LONG, BOROUGH_TAB_NAME, BOROUGH_ROW_LABEL } from "../content";
 import React from "react";
 import { useTheme, themeColors, families, typeScale, CONTROL } from "../utils/theme";
-import type { Borough } from "../utils/nycOpenData";
+import { BOROUGHS, type Borough } from "../utils/nycOpenData";
 
-const ORDER: Borough[] = ["Citywide", "Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"];
 
 interface Props {
   selected: Borough;
@@ -28,7 +27,7 @@ export function BoroughToggle({ selected, onSelect }: Props) {
         maxWidth: "100%",
       }}
     >
-      {ORDER.map((b) => {
+      {BOROUGHS.map((b) => {
         const isSel = b === selected;
         // Both renderings of the word — upright and italic — are laid out in the same grid cell; the one for the current state shows and the other is hidden but still sized, so the button's width is the wider of the two and the row never changes length as the selection moves.
         const variant = (serif: boolean, visible: boolean): React.CSSProperties => ({

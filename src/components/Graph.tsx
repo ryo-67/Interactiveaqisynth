@@ -5,10 +5,13 @@
 import { readingLabel } from "../utils/time";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme, themeColors, families, typeScale, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
-import { TRACK_LABELS, TRACK_UNITS, TRACK_QUALIFIERS, GRAPH_LABEL } from "../content";
+import { TRACK_LABELS, TRACK_UNITS, TRACK_QUALIFIERS, GRAPH_LABEL, HERO_AQI_NOW, MONITOR_REST } from "../content";
 import { monotoneCurve, fitTicks } from "./graphSeries";
 import { chipStyle } from "./chip";
 import type { Day } from "../engine/SynthEngine";
+import { easeInOutQuad, lerp } from "../utils/math";
+import { hexToRgb } from "../utils/oklch";
+import { pm25Played } from "../engine/aqi";
 
 export type TrackKey = "aqi" | "pm25" | "o3" | "no2";
 export const TRACK_ORDER: TrackKey[] = ["aqi", "pm25", "o3", "no2"];
@@ -44,8 +47,6 @@ interface Frame {
   gridValues: number[];
   isAqi: number; // 1 on the AQI tab: the bar, the wider line and the deeper fill fade with it
 }
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 function lerpFrame(a: Frame, b: Frame, t: number): Frame {
   const n = Math.max(a.norm.length, b.norm.length);
   const norm: Array<number | null> = [], alpha: number[] = [];
@@ -57,10 +58,9 @@ function lerpFrame(a: Frame, b: Frame, t: number): Frame {
   return { ...b, norm, alpha, max: lerp(a.max, b.max, t), isAqi: lerp(a.isAqi, b.isAqi, t) };
 }
 // The line's colour at a normalized height, on a scale whose top is `max`: the ramp at that AQI (at the panel's lift), or the secondary grey off the AQI tab, and a blend of the two while a tab morph is in flight (`isAqi` between 0 and 1). The fill's columns and the legend's stops are read with the same rule.
-const hexRgb = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 function lineColour(f: number, max: number, lift: number, isAqi: number, grey: [number, number, number], a = 1): string {
   if (isAqi <= 0.005) return `rgba(${grey[0]},${grey[1]},${grey[2]},${a.toFixed(3)})`;
-  const r = hexRgb(aqiScaleColor(f * max, lift));
+  const r = hexToRgb(aqiScaleColor(f * max, lift));
   const m = isAqi >= 0.995 ? r : ([0, 1, 2].map((k) => Math.round(lerp(grey[k], r[k], isAqi))) as [number, number, number]);
   return `rgba(${m[0]},${m[1]},${m[2]},${a.toFixed(3)})`;
 }
@@ -94,7 +94,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
 
   const series = useMemo(() => ({
     aqi,
-    pm25: day.map((h) => (h.pm25 == null ? null : Math.max(0, h.pm25))),
+    pm25: day.map((h) => pm25Played(h.pm25)),
     o3: day.map((h) => h.o3),
     no2: day.map((h) => h.no2),
   }), [day, aqi]);
@@ -234,7 +234,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       const now = performance.now();
       const tr = transitionRef.current;
       let e = 1;
-      if (tr.from) { e = easeInOut(Math.min(1, (now - tr.start) / tr.ms)); if (e >= 1) tr.from = null; }
+      if (tr.from) { e = easeInOutQuad(Math.min(1, (now - tr.start) / tr.ms)); if (e >= 1) tr.from = null; }
       const cur = tr.from ? lerpFrame(tr.from, tr.to, e) : tr.to;
       shownRef.current = cur;
       if (canvas.dataset.scaleMax !== String(Math.round(tr.to.max))) canvas.dataset.scaleMax = String(Math.round(tr.to.max)); // the axis's ceiling, readable from outside (D-53): what a test or a hand on the console asks first
@@ -444,7 +444,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         // The date is on the left label only for the live window, whose readings straddle two days; a chosen day is named by the picker already, so its label is just the time.
         const axisLabelY = cssH - axisH / 2 + labelPx * 0.36; // centred in the axis row (2026-09-16): on the row's floor the plot's bottom read as cramped against the top's gutter (Shoro)
         ctx.fillText(readingLabel(day[0].ts, live), plotX + 2, axisLabelY);
-        const right = live ? "now" : readingLabel(day[n - 1].ts, false);
+        const right = live ? HERO_AQI_NOW : readingLabel(day[n - 1].ts, false);
         ctx.fillText(right, plotRight - ctx.measureText(right).width - 2, axisLabelY);
       }
 
@@ -458,7 +458,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         const hi = Math.max(0, Math.min(n - 1, Math.floor(playheadHour))); // clamped both ways: this indexes the day
         // Clock time from the reading's own timestamp, not the index. The date joins it only on the live window, whose readings straddle two days ("Sep 14, 6pm"), and only where the plot is wide enough to hold it beside the value; on a phone's plot the readout is the hour and the value ("11pm · AQI 32"). A chosen day already names its date in the axis label, so its readout is just "4am".
         const parts: string[] = [readingLabel(day[hi].ts, live && plotW >= GRAPH.chipDateMinPlotWidth)];
-        { const v = series[tab][hi]; parts.push(`${TRACK_LABELS[tab]} ${v == null ? "—" : Math.round(v)}`); }
+        { const v = series[tab][hi]; parts.push(`${TRACK_LABELS[tab]} ${v == null ? MONITOR_REST : Math.round(v)}`); }
         const label = parts.join(" · ");
         // The readout is a frosted pill in the DOM (index.css .scene-playhead-chip), placed here each frame: 24 tall, 8 px side padding, in the caption's data face, so its width is the text's in the canvas's own font plus the padding. Right of the playhead where there is room, left otherwise, and never past either edge of the plot.
         const chip = chipRef.current;

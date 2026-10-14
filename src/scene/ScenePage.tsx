@@ -31,11 +31,12 @@ import { Credit } from "../components/Credit";
 import { LiveStatus } from "../components/LiveStatus";
 import { StatusLine, type StatusAction } from "../components/StatusLine";
 import { CalendarIcon, RefreshIcon, ChevronRightIcon } from "../components/icons";
-import { labelOf } from "../components/DayNav";
+import { labelOf } from "../utils/time";
 import { MOCK } from "../utils/mock";
 import { Entry } from "../components/Entry";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
-import { ThemeContext, GLASS, MONITOR, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL, ABOUT as ABOUT_TOKENS } from "../utils/theme";
+import { ThemeContext, GLASS, MONITOR, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL, ABOUT as ABOUT_TOKENS, REDUCED_MOTION, ABOUT_FADE_MS, NIGHT_GROUND } from "../utils/theme";
+import { clamp01 } from "../utils/math";
 
 // The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
 const qs = new URLSearchParams(window.location.search);
@@ -57,8 +58,6 @@ const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-
 const SWIPE_LOCK_PX = 8; // movement before a drag commits to an axis
 const SWIPE_PX = 48; // a travel along the pages' axis that counts as a swipe (D-45)
 const WHEEL_PX = 120; // a wheel travel that counts as a page turn above the phone width
-const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const ABOUT_MS = REDUCED_MOTION ? ABOUT_TOKENS.reducedMs : motion.beatMs * ABOUT_TOKENS.fadeBeats; // the About overlay's fade and the Patch notes button's morph, one duration (About.tsx, Transport.tsx)
 
 declare module "react" { interface HTMLAttributes<T> { inert?: "" } } // React 18's typings lack the attribute; "" sets it, undefined removes it
 
@@ -105,7 +104,7 @@ export default function ScenePage() {
   const [aboutShown, setAboutShown] = useState(about); // true from open until the overlay has left the DOM: the page's own cursor stands down for exactly that span (a DOM cursor over a full-screen backdrop blur is the case that banded in Firefox, D-50)
   const aboutTimer = useRef(0);
   const openAbout = useCallback(() => { window.clearTimeout(aboutTimer.current); setAbout(true); setAboutShown(true); }, []);
-  const closeAbout = useCallback(() => { setAbout(false); window.clearTimeout(aboutTimer.current); aboutTimer.current = window.setTimeout(() => setAboutShown(false), motion.beatMs * ABOUT_TOKENS.fadeBeats + 20); }, []);
+  const closeAbout = useCallback(() => { setAbout(false); window.clearTimeout(aboutTimer.current); aboutTimer.current = window.setTimeout(() => setAboutShown(false), ABOUT_FADE_MS + 20); }, []);
   const lockRef = useRef(0); // the time until which a switch is refused: one slide at a time, and the wheel's inertia is not a second gesture
   // Moving (Shoro, 2026-09-16): true through a switch or a drag, and false at rest; the playhead's readout goes without its backdrop-filter while it is (index.css data-moving).
   const [moving, setMoving] = useState(false);
@@ -315,8 +314,8 @@ export default function ScenePage() {
     const saturation = SKY_GRADE.saturation + (SKY_GRADE.saturationUnderSmoke - SKY_GRADE.saturation) * regime + GOLDEN.saturationBoost * golden;
     // MAPPING (sun elevation, smoke → the glass): the material is a frost keyed to the sky (D-35). Its alpha runs from GLASS.fillAlphaNight to fillAlphaDay with the daylight, and the veil pulls it back toward night: white text needs the darkening only under a bright clear sky. Its tint runs from navy to umber with whichever is greater, the smoke share or the golden light, so the panel takes the sky's own cast under haze and smoke and at dusk, and stays navy under a blue sky. The white lift is the night's share.
     const veil = veilDensity(pm25nEased);
-    const smokeShare = Math.max(0, Math.min(1, (veil - GLASS.veilFrom) / (GLASS.veilFull - GLASS.veilFrom))); // the veil thins the frost only once it dims the sky
-    const daylight = Math.max(0, Math.min(1, (ang.elevationDeg - GLASS.dayFromDeg) / (GLASS.dayFullDeg - GLASS.dayFromDeg))) * (1 - smokeShare);
+    const smokeShare = clamp01((veil - GLASS.veilFrom) / (GLASS.veilFull - GLASS.veilFrom)); // the veil thins the frost only once it dims the sky
+    const daylight = clamp01((ang.elevationDeg - GLASS.dayFromDeg) / (GLASS.dayFullDeg - GLASS.dayFromDeg)) * (1 - smokeShare);
     const warm = Math.max(smokeShare, golden); // the tint keys on the same share as the alpha: a moderate haze leaves the panel navy, a grey or orange sky turns it umber
     const mix = (a: string, b: string) => a.split(",").map((x, i) => Math.round(Number(x) + (Number(b.split(",")[i]) - Number(x)) * warm)).join(", ");
     const glass = { alpha: GLASS.fillAlphaNight + (GLASS.fillAlphaDay - GLASS.fillAlphaNight) * daylight, fill: mix(GLASS.fill, GLASS.fillWarm), lift: GLASS.liftNight * (1 - daylight) };
@@ -430,7 +429,7 @@ export default function ScenePage() {
 
   return (
     <ThemeContext.Provider value="dark">
-      <div ref={rootRef} className="scene-root" data-layout={layout} data-entered={entryLifting} style={{ background: "#05050a", ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint } as React.CSSProperties}>
+      <div ref={rootRef} className="scene-root" data-layout={layout} data-entered={entryLifting} style={{ background: NIGHT_GROUND, ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint } as React.CSSProperties}>
         <div ref={windowProbeRef} className="scene-window-probe" aria-hidden /> {/* what Safari leaves between its bars, measured (useSafariWindow); empty and hidden, so it paints nothing and Safari's bar test passes over it */}
         {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. The root is page content, not fixed (index.css .scene-root, BUG-57), screen-tall with a runway above (useSafariWindow), so this box and every layer in it run on under both of Safari's bars. */}
         {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}
@@ -448,7 +447,7 @@ export default function ScenePage() {
 
         {/* The scaffold (D-26): see .scene-ui in index.css. It sits in the window between Safari's bars (--win-*, useSafariWindow) inside a clip that is the whole root, so the About scrim in it can reach under the bars while every control stays where it was (BUG-57). */}
         <div className="scene-ui-clip">
-        <div className="scene-ui" data-about={about} style={{ "--about-ms": `${ABOUT_MS}ms` } as React.CSSProperties}>
+        <div className="scene-ui" data-about={about} style={{ "--about-ms": `${ABOUT_FADE_MS}ms` } as React.CSSProperties}>
           {/* The page's structure for assistive technology (A11Y-01, BUG-48, 2026-10-12): the top row is the header with the page's one heading, the band the main content with a heading per page, the bottom bar the footer. Nothing drawn changes: the headings are visually hidden and say only what the page already says (its title, the page icons' names). */}
           <header className="scene-top">
             <h1 className="scene-sr-only">{ENTRY.title}</h1>

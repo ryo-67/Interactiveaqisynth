@@ -1,6 +1,7 @@
 // Pins the §4.4/D-16 transform rules: per-borough max across sites, citywide mean of reporting boroughs, substitution with provenance, null when nobody reports, and the New York state filter.
 import { describe, it, expect } from "vitest";
-import { toBoroughHours, reverseAQI, PM25_BANDS, O3_8H_BANDS, NO2_1H_BANDS, utcToNyIso, fillTypicalNo2, addDays, type SiteHourRow } from "./aqi";
+import { toBoroughHours, reverseAQI, PM25_BANDS, O3_8H_BANDS, NO2_1H_BANDS, utcToNyIso, gmtToNyIso, fillTypicalNo2, addDays, type SiteHourRow } from "./aqi";
+import * as client from "../../src/engine/aqi";
 
 const H0 = "2026-06-01T00:00:00-04:00";
 const H1 = "2026-06-01T01:00:00-04:00";
@@ -118,6 +119,25 @@ describe("addDays (O-12 window padding)", () => {
     expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
     expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
     expect(addDays("2024-03-01", -1)).toBe("2024-02-29");
+  });
+});
+
+// The breakpoint tables exist twice, here and in src/engine/aqi.ts, because api/ builds as its own CommonJS project and cannot import from src/. This keeps the two from drifting: a route and the page computing different AQIs from the same hour would be a silent data error (D-42).
+describe("AQI tables match the client's (D-42)", () => {
+  it("has the same PM2.5, ozone and NO2 breakpoints as src/engine/aqi.ts", () => {
+    expect(PM25_BANDS).toEqual(client.PM25_BANDS);
+    expect(O3_8H_BANDS).toEqual(client.O3_8H_BANDS);
+    expect(NO2_1H_BANDS).toEqual(client.NO2_1H_BANDS);
+  });
+});
+
+describe("gmtToNyIso: EPA's GMT fields as New York wall clock", () => {
+  it("renders a summer hour in daylight time and a winter hour in standard time", () => {
+    expect(gmtToNyIso("2023-06-07", "17:00")).toBe("2023-06-07T13:00:00-04:00");
+    expect(gmtToNyIso("2023-01-15", "17:00")).toBe("2023-01-15T12:00:00-05:00");
+  });
+  it("agrees with utcToNyIso on the same instant", () => {
+    expect(gmtToNyIso("2026-03-08", "07:00")).toBe(utcToNyIso(new Date(Date.UTC(2026, 2, 8, 7, 0))));
   });
 });
 

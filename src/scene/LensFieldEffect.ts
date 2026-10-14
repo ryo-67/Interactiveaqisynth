@@ -3,6 +3,7 @@
 import { Effect, BlendFunction, EffectAttribute } from "postprocessing";
 import { Uniform, Vector4 } from "three";
 import { PARTICLES } from "../utils/theme";
+import { clamp01 } from "../utils/math";
 
 const MAX = PARTICLES.max;
 
@@ -91,7 +92,7 @@ export class LensFieldEffect extends Effect {
 
   // Called each frame by the wrapper: level 0..1 sets how many lenses act and how strongly; time drives the drift.
   setState(level: number, aspect: number, time: number, dt: number, drift: boolean): void {
-    const l = Math.max(0, Math.min(1, level));
+    const l = clamp01(level);
     (this.uniforms.get("uLevel") as Uniform).value = l;
     (this.uniforms.get("uAspect") as Uniform).value = aspect;
     if (drift) (this.uniforms.get("uTime") as Uniform).value = time * PARTICLES.wobbleHz * Math.PI * 2;

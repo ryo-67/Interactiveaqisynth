@@ -1,12 +1,10 @@
 // SourceLine — footer line three (§5.2): the source in use, muted, as fact (Shoro, 2026-09-16: AirNow while Live is selected, EPA on any other day), and only when it applies the one disclosure that matters: live NO2 is a typical archive day (D-18). Whether a channel is typical is read from the hour records' source flags, never from a hardcoded list.
 import React from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
-import { SOURCE_LINE_LIVE, SOURCE_LINE_ARCHIVE, SOURCE_URL_AIRNOW, SOURCE_URL_EPA, SOURCE_BORROWED, SOURCE_AREA_READING, SOURCE_LINE_TYPICAL_NO2 } from "../content";
+import { SOURCE_LINE_LIVE, SOURCE_LINE_ARCHIVE, SOURCE_URL_AIRNOW, SOURCE_URL_EPA, SOURCE_BORROWED, SOURCE_AREA_READING, SOURCE_LINE_TYPICAL_NO2, SOURCE_LABELS, BOROUGH_LONG } from "../content";
+import { channelProvenance, CHANNELS } from "../utils/channelSource";
 import type { Borough } from "../utils/nycOpenData";
 import type { Day } from "../engine/SynthEngine";
-
-const CHANNEL_LABELS = { pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // the same labels the graph's tabs use
-type Channel = keyof typeof CHANNEL_LABELS;
 
 interface Props {
   borough: Borough;
@@ -36,17 +34,13 @@ export function SourceLine({ borough, hours, fallback, live }: Props) {
   const linkStyle: React.CSSProperties = { color: "inherit", textUnderlineOffset: 2 };
 
   // A channel is borrowed when the borough never reports it itself and carries the citywide value instead (D-16: substitution with provenance — Brooklyn's O3). Live NO2 arrives flagged 'typical' (D-18); an archive day carries real NO2 and says nothing more.
-  const borrowed: Channel[] = [];
-  let anyTypical = false;
-  for (const ch of Object.keys(CHANNEL_LABELS) as Channel[]) {
-    const tags = hours.filter((h) => h[ch] != null).map((h) => h.source[ch]);
-    if (tags.some((t) => t === "typical")) anyTypical = true;
-    if (!tags.some((t) => t === "own") && tags.some((t) => t === "citywide")) borrowed.push(ch);
-  }
+  const provenance = channelProvenance(hours);
+  const borrowed = CHANNELS.filter((ch) => provenance[ch].borrowed);
+  const anyTypical = CHANNELS.some((ch) => provenance[ch].typical);
   // "O3", "O3 and NO2": a spoken list.
-  const names = borrowed.map((ch) => CHANNEL_LABELS[ch]);
+  const names = borrowed.map((ch) => SOURCE_LABELS[ch]);
   const list = names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-  const boroughName = borough === "Citywide" ? "NYC" : borough;
+  const boroughName = borough === "Citywide" ? BOROUGH_LONG.Citywide : borough;
   const parts = fallback === "zipcode"
     ? [SOURCE_AREA_READING]
     : [borrowed.length ? SOURCE_BORROWED.replace("{borough}", boroughName).replace("{list}", list).replace("{isAre}", borrowed.length === 1 ? "is" : "are") : null, anyTypical ? SOURCE_LINE_TYPICAL_NO2 : null];

@@ -5,7 +5,7 @@ import { AQINumber } from "./AQINumber";
 import { Ladder, AQIBar } from "./Gauges";
 import { useTheme, themeColors, families, typeScale, motion } from "../utils/theme";
 import { TIER_NAMES, HERO_AQI_LABEL, HERO_AQI_NOW, HERO_BREATH_LABEL, MONITOR_REST } from "../content";
-import { shortDate } from "../utils/time";
+import { shortDate, MONTHS } from "../utils/time";
 
 // Fixed widths (Shoro, 2026-09-16): neither card may change width with what it shows, so each body is sized from the widest thing it could show, measured on a hidden probe inside the card that sets the same variables as the live text: the number card from three of the widest digit and the widest label ("AQI · now" or any month and day), the breath card from the widest tier name. Below laptop the breath card takes the rest of the section anyway.
 function useProbeWidth(ref: React.RefObject<HTMLElement>): number {
@@ -19,7 +19,6 @@ function useProbeWidth(ref: React.RefObject<HTMLElement>): number {
   }, [ref]);
   return w;
 }
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const valueStyle: React.CSSProperties = { fontFamily: families.serifItalic, fontStyle: "italic", fontSize: `var(--card-value-size, var(--heading-size, ${typeScale.heading.size}))`, lineHeight: `var(--card-value-line, var(--heading-line, 40px))`, whiteSpace: "nowrap" };
 
 interface AQIProps {

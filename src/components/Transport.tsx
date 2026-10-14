@@ -1,9 +1,10 @@
 // Transport controls (§5.3): a play/pause icon button and a volume slider, each its own glass pill in the page, both 28 tall inside 40-tall pills. Lucide glyphs (icons.tsx), tokens only. The gesture that starts audio must be the button's own click (Tone.start inside the call stack), so the toggle is wired straight to the session's togglePlay.
 import React, { useState, useRef, useLayoutEffect, forwardRef } from "react";
-import { useTheme, themeColors, CONTROL, families, typeScale } from "../utils/theme";
+import { useTheme, themeColors, CONTROL } from "../utils/theme";
 import { TRANSPORT_PLAY, TRANSPORT_PAUSE, TRANSPORT_VOLUME, ABOUT_LABEL, ABOUT } from "../content";
 import { PlayIcon, PauseIcon, NotebookTextIcon, MinimizeIcon, XIcon } from "./icons";
 import { Glass } from "./Glass";
+import { pillButtonStyle } from "./chip";
 
 // MAPPING (slider 0..1 → engine dB): the fader is perceptual — 1 is unity, 0.5 is −6 dB, 0.1 is −20 dB, 0 is silence — because a linear-gain fader spends most of its travel in the top few dB.
 function sliderToDb(v: number): number {
@@ -71,7 +72,7 @@ export const AboutButton = forwardRef<HTMLButtonElement, { onPress?: () => void;
   const exhale = open && form === "exhale";
   // The morph (Shoro, 2026-09-16, the fourth cut): the pill's width is never set; it is the sum of its parts, and the part that changes is the LABEL CELL, whose width eases from one label's to the other's while the two labels cross-fade inside it. The pill's edge therefore follows the incoming label exactly, with no reveal of a clipped label at one end and no gap of padding at the other, which a fixed-width pill with a switched string had shown on the way in and out. For the round dismiss the cell closes to nothing and the gap and padding close with it.
   const cellWidth = w.patch > 0 ? (dismiss ? 0 : exhale ? w.exhale : w.patch) : undefined;
-  const base: React.CSSProperties = { padding: "8px 16px 8px 14px", minHeight: `var(--ctl-pill, ${CONTROL.pillHeight}px)`, display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", borderRadius: 999, color: c.textSecondary, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, whiteSpace: "nowrap" };
+  const base = pillButtonStyle(c, { background: "none", border: "none" });
   const probe: React.CSSProperties = { position: "absolute", left: -9999, top: -9999, visibility: "hidden", pointerEvents: "none", whiteSpace: "nowrap" };
   const cell = (on: boolean): React.CSSProperties => ({ position: "absolute", left: 0, top: 0, bottom: 0, display: "inline-flex", alignItems: "center", whiteSpace: "nowrap", opacity: on ? 1 : 0, transition: "opacity var(--about-ms, 667ms) ease" });
   // The icon form (D-64, 2026-10-05): on a phone the Patch notes button is the notebook alone, a 44 square beside the day pill, and it turns into the close mark in place while About is open (no slide, no label: the slide to the footer's centre and the label belonged to the footer, which a phone no longer has).

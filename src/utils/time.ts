@@ -5,7 +5,19 @@ export function hourOfTs(ts: string): number {
   return Number(ts.slice(11, 13));
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// A calendar date n days from an ISO date (YYYY-MM-DD), in UTC so no daylight-saving day is skipped or doubled.
+export function addDays(iso: string, n: number): string {
+  const d = new Date(iso + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// A date as the day picker names it: "Jun 7, 2023".
+export function labelOf(iso: string): string {
+  return new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
 
 // New York's current year, so a reading from this year drops the year and an older one keeps it.
 function nyYear(): number {

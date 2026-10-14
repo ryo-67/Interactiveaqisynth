@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   toBoroughHours,
-  utcToNyIso,
   addDays,
   BOROUGHS,
   COUNTY_TO_BOROUGH,
@@ -10,6 +9,8 @@ import {
   type BoroughSeries,
   type Pollutant,
   type SiteHourRow,
+  gmtToNyIso,
+  sendError,
 } from "../_lib/aqi";
 
 /**
@@ -43,16 +44,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const email = process.env.EPA_AQS_EMAIL;
   const apiKey = process.env.EPA_AQS_API_KEY;
   if (!email || !apiKey) {
-    res.setHeader("Cache-Control", "no-store");
-    res.status(500).json({ status: "error", error: "EPA_AQS_EMAIL and EPA_AQS_API_KEY environment variables are required" });
+    sendError(res, 500, "EPA_AQS_EMAIL and EPA_AQS_API_KEY environment variables are required");
     return;
   }
 
   const boroughParam = String(req.query.borough ?? "");
   const isCitywide = boroughParam === "Citywide";
   if (!isCitywide && !BOROUGHS.includes(boroughParam as Borough)) {
-    res.setHeader("Cache-Control", "no-store");
-    res.status(400).json({ status: "error", error: `Invalid borough. Must be one of: Citywide, ${BOROUGHS.join(", ")}` });
+    sendError(res, 400, `Invalid borough. Must be one of: Citywide, ${BOROUGHS.join(", ")}`);
     return;
   }
 
@@ -61,13 +60,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const to = String(req.query.to ?? "");
   const dateRe = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRe.test(from) || !dateRe.test(to) || from > to) {
-    res.setHeader("Cache-Control", "no-store");
-    res.status(400).json({ status: "error", error: "from and to must be YYYY-MM-DD with from <= to" });
+    sendError(res, 400, "from and to must be YYYY-MM-DD with from <= to");
     return;
   }
   if (!from.startsWith(`${year}-`) || !to.startsWith(`${year}-`)) {
-    res.setHeader("Cache-Control", "no-store");
-    res.status(400).json({ status: "error", error: `This route serves the current year (${year}) only; earlier days live in the static archive under /data/` });
+    sendError(res, 400, `This route serves the current year (${year}) only; earlier days live in the static archive under /data/`);
     return;
   }
 
@@ -99,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             stateFips: r.state_code ?? NY_STATE_FIPS,
             countyFips: r.county_code,
             pollutant,
-            ts: localIsoWithOffset(r),
+            ts: gmtToNyIso(r.date_gmt, r.time_gmt),
             value: pollutant === "o3" ? r.sample_measurement * 1000 : r.sample_measurement,
           });
         }
@@ -130,16 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.log(`[/aqi/historical] Error for ${boroughParam}: ${msg}`);
-    res.setHeader("Cache-Control", "no-store");
-    res.status(500).json({ status: "error", error: `Failed to fetch historical data for ${boroughParam}: ${msg}` });
+    sendError(res, 500, `Failed to fetch historical data for ${boroughParam}: ${msg}`);
   }
 }
 
-// EPA reports date_local/time_local in Local STANDARD Time year-round (no DST), which would sit an hour off AirNow's live wall-clock labels every summer. One timestamp rule everywhere: derive the instant from the GMT fields and render it as true America/New_York wall clock with offset.
-function localIsoWithOffset(r: AQSRow): string {
-  const gmt = Date.UTC(
-    Number(r.date_gmt.slice(0, 4)), Number(r.date_gmt.slice(5, 7)) - 1, Number(r.date_gmt.slice(8, 10)),
-    Number(r.time_gmt.slice(0, 2)), Number(r.time_gmt.slice(3, 5)),
-  );
-  return utcToNyIso(new Date(gmt));
-}

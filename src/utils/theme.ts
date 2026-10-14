@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import { oklchToHex, maxChroma, type OKLCH } from "./oklch";
+import { clamp01 } from "./math";
 
 export type Theme = "dark" | "light";
 
@@ -146,9 +147,11 @@ export const RAMP = { panelDark: 0.058, panelBright: 0.12 } as const;
 // The live line's error colour (D-60, 2026-09-17): the ramp's own Unhealthy hue, the red the piece already uses for air that is bad, drawn as a RING around the pill rather than a tint through it (Shoro, 2026-09-17). A tint had to be carried to 0.82 alpha to read as red at all over a bright noon sky, by which point the pill was a solid slab and no longer the page's material; an edge reads at any brightness and leaves the glass alone.
 // The ring, and a near-black hairline just outside it (Shoro, 2026-09-17). The outer line is what makes the red hold: a light red sits at almost exactly the luminance of a mid-grey sky, around 145, so against the sky alone it measured 1.01:1 and no single colour could avoid that. Given a dark neighbour of its own the red clears 3:1 whatever the day is doing behind it, and the look barely changes, since the line is one pixel at the pill's very edge.
 // The live line's bezel (D-60). One rim, two colours: the ramp's red when the feed is down, a neutral white rim while it is being asked again, so a retry morphs rather than cuts (Shoro, 2026-09-17). Both faces carry the SAME shadow stack, which is what lets the browser interpolate the colour between them; the contact shadow is the tight one under the rim, over the panel's usual drop shadow.
+// The page's ground: the night with no sky in front of it (index.css html and body, the scene's root, the loading fallback, the harness).
+export const NIGHT_GROUND = "#05050a";
+
 export const LIVE_EDGE = { error: "rgba(232, 108, 92, 0.85)", quiet: "rgba(255, 255, 255, 0.20)", width: 2, contact: "0 1px 4px rgba(0, 0, 0, 0.45)" } as const;
 // And a little of that red through the fill as well (Shoro, 2026-09-17), in place of the panel's navy: the SAME alpha the line already carries, so only the tint changes and it stays glass. The cast is deliberately faint — measured over the brightest sky it leaves the surface about 11 points redder than it is blue, against the 55 of the solid version that was rejected and the 19 of the first pass, which Shoro still read as too much. The ring is what says error; this only keeps the surface from arguing with it.
-export const LIVE_FILL = { error: "48, 16, 34", quiet: "8, 14, 40" } as const; // quiet is GLASS.fill, written out because GLASS is declared below this
 
 // ONE colour rule for the AQI line and the bar beside it, so they always agree: each category's colour sits at the middle of its band and blends to the next, the way a standard AQI gauge is drawn. A flat colour per band on the line against a gradient on the bar read as two different legends.
 type Stops = Array<{ at: number; c: OKLCH }>;
@@ -163,7 +166,7 @@ const mixOklch = (a: OKLCH, b: OKLCH, t: number): OKLCH => ({ L: a.L + (b.L - a.
 // The stops at a lift. The last lift's stops are kept, since a draw asks for many colours at one lift.
 let liftCache: { lift: number; stops: Stops } | null = null;
 function stopsAt(lift: number): Stops {
-  const l = Math.max(0, Math.min(1, Number.isFinite(lift) ? lift : 0));
+  const l = clamp01(Number.isFinite(lift) ? lift : 0);
   if (liftCache && liftCache.lift === l) return liftCache.stops;
   const stops = DARK_STOPS.map((s, i) => ({ at: s.at, c: mixOklch(s.c, LIGHT_STOPS[i].c, l) }));
   liftCache = { lift: l, stops };
@@ -299,6 +302,9 @@ export const CURSOR = {
 } as const;
 
 // The four motion profiles (§5.4). Everything moves on the 90 BPM grid or not at all; drift is the one continuous exception (particulate, not rhythmic).
+// The visitor's reduced-motion preference, read once (2026-10-14; five files had each read it). Read at load, as every one of them did: a change mid-visit applies on the next load.
+export const REDUCED_MOTION = typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 export const motion = {
   beatMs: 60000 / 90 / 1, // one beat = one hour = 666.7 ms; playhead advance
   blurMs: 500, // mood word swap at tier boundaries
@@ -436,7 +442,7 @@ export const NIGHT = {
 } as const;
 
 export const SKY_RANGES = {
-  // Aerosol now covers ORDINARY HAZE only (D-20): the wildfire event is a composited plume, not a turbidity value. 2 = measured clear sky, 6 = Preetham's own hazy-evening figure. Must stay equal to HAZE_PATH in skyParams.ts — skyParamsFor reads these, so a change here without one there renders a different sky than the readout claims.
+  // Aerosol now covers ORDINARY HAZE only (D-20): the wildfire event is a composited plume, not a turbidity value. 2 = measured clear sky, 6 = Preetham's own hazy-evening figure. skyParamsFor reads these, and the /scene-test readout reads skyParamsFor, so the two cannot disagree.
   turbidity: { clear: 2, suffocating: 6 },
   mieCoefficient: { clear: 0.005, high: 0.02 },
   mieDirectionalG: 0.86, // held, per the brief
@@ -458,6 +464,8 @@ export const ABOUT = {
   rise: 12, // px the reading rises as it appears
   column: 520, // the reading width above the phone (Shoro, 2026-09-16: narrower than the 640 first cut)
 } as const;
+// The About overlay's fade and the Patch notes button's morph, one duration (About.tsx, Transport.tsx); the page's cursor waits exactly this long after a close (ScenePage).
+export const ABOUT_FADE_MS = REDUCED_MOTION ? ABOUT.reducedMs : motion.beatMs * ABOUT.fadeBeats;
 
 export const GLASS = {
   // ONE material for everything that floats, control and panel alike (D-59, 2026-09-16): one blur, one saturation, one fill. 20 px is Shoro's: at 28 the stars vanish and a panel reads opaque against a clear night, at 48 a 40 px control pill averages to one flat colour and stops reading as material at all. The blur and the saturation are both scaled by --glass-on in index.css, so a panel losing its material loses its blur with it.
@@ -484,4 +492,5 @@ export const GLASS = {
   fillAlphaOpaque: 0.9,
   blurOpaque: "36px",
 } as const;
+export const LIVE_FILL = { error: "48, 16, 34", quiet: GLASS.fill } as const; // the live line's fill (LIVE_EDGE above): a red cast when something failed, the page's own navy otherwise
 

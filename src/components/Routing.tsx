@@ -5,13 +5,13 @@ import { useTheme, themeColors, motion, MONITOR } from "../utils/theme";
 import { chipStyle } from "./chip";
 import { MONITOR_LABELS, SOURCE_LABELS } from "../content";
 import type { MonitorState, Channel } from "../scene/useListenSession";
+import { easeInOutQuad } from "../utils/math";
 
 type Dest = "scale" | "tone" | "beats" | "brightness" | "detune" | "reverb";
 const SOURCES: Channel[] = ["pm25", "o3", "no2"];
 const DESTS: Dest[] = ["scale", "tone", "detune", "reverb", "brightness", "beats"]; // ordered by source (Shoro, 2026-09-16): PM2.5's four destinations, then O₃'s, then NO₂'s, so the cables do not cross; the one crossing left, NO₂ to Tone, is a real one and stays
 // The mappings (§3.2 roles, §3.6 effects): PM2.5 → scale, tone, detune, reverb; NO2 → beats and tone (the pulse's and bass's index); O3 → brightness.
 const CABLES: Array<[Channel, Dest]> = [["pm25", "scale"], ["pm25", "tone"], ["pm25", "detune"], ["pm25", "reverb"], ["no2", "beats"], ["no2", "tone"], ["o3", "brightness"]];
-const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
 interface Cable { s: Channel; d: Dest; path: string }
 interface Packet { cable: number; start: number }
@@ -85,7 +85,7 @@ export function Routing({ m }: { m: MonitorState }) {
       const path = pathRefs.current[p.cable];
       if (!path) continue;
       const len = path.getTotalLength();
-      const pt = path.getPointAtLength(easeInOut(t) * len);
+      const pt = path.getPointAtLength(easeInOutQuad(t) * len);
       const alpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
       const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       halo.setAttribute("cx", pt.x.toFixed(1)); halo.setAttribute("cy", pt.y.toFixed(1)); halo.setAttribute("r", String(MONITOR.packetHalo)); halo.setAttribute("fill", `rgba(255,255,255,${(0.28 * alpha).toFixed(3)})`);

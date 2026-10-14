@@ -6,9 +6,10 @@ import { EffectComposer } from "@react-three/postprocessing";
 import { ToneMappingMode, BlendFunction, BloomEffect, HueSaturationEffect, ChromaticAberrationEffect, NoiseEffect, ToneMappingEffect, EffectPass, type Effect, type EffectComposer as EffectComposerImpl } from "postprocessing";
 import { ACESFilmicToneMapping, AdditiveBlending, CanvasTexture, BufferGeometry, Float32BufferAttribute, Quaternion, Vector2, Vector3, type PerspectiveCamera } from "three";
 import { LensFieldEffect } from "./LensFieldEffect";
-import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT, SKY_CAMERA } from "../utils/theme";
+import { SKY_RANGES, SUN_DISC, SKY_GRADE, PARTICLES, GRAIN, NYC_LAT, SKY_CAMERA, REDUCED_MOTION } from "../utils/theme";
 import { HosekSky } from "./hosek/HosekSky";
 import { daylightBlend, type SkyParams } from "./skyParams";
+import { clamp01 } from "../utils/math";
 
 // Framing rule (row 5, option (a)): only above-horizon sky in frame, at every viewport size.
 // three's `fov` is the VERTICAL field of view and does not change with aspect, so the visible vertical span is always ±FOV_DEG/2 around the camera pitch. Pitching up by half the fov puts the bottom edge exactly on the horizon; the margin pushes it just below, so the horizon sits at or under the bottom edge and never inside the frame. Being vertical-only, this holds at any aspect ratio or box height without further work.
@@ -121,12 +122,12 @@ function StarField({ opacity, count, hour }: { opacity: number; count: number; h
 // 0 below PARTICLES.visibleFromUgm3, 1 at fullAtUgm3.
 export function particleLevel(pm25: number | null | undefined): number {
   if (pm25 == null) return 0;
-  return Math.max(0, Math.min(1, (pm25 - PARTICLES.visibleFromUgm3) / (PARTICLES.fullAtUgm3 - PARTICLES.visibleFromUgm3)));
+  return clamp01((pm25 - PARTICLES.visibleFromUgm3) / (PARTICLES.fullAtUgm3 - PARTICLES.visibleFromUgm3));
 }
 // 0 below GRAIN.visibleFromUgm3, 1 at fullAtUgm3, on the grain's curve.
 export function grainLevel(pm25: number | null | undefined): number {
   if (pm25 == null) return 0;
-  const l = Math.max(0, Math.min(1, (pm25 - GRAIN.visibleFromUgm3) / (GRAIN.fullAtUgm3 - GRAIN.visibleFromUgm3)));
+  const l = clamp01((pm25 - GRAIN.visibleFromUgm3) / (GRAIN.fullAtUgm3 - GRAIN.visibleFromUgm3));
   return Math.pow(l, GRAIN.curve);
 }
 
@@ -143,7 +144,6 @@ function makeFx(): Fx {
   };
 }
 // Pushes the frame's values into the effects. Set on change and the canvas told to repaint (an on-demand canvas repaints only when told); the lens field also needs the clock, so it is fed every frame.
-const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 function Grade({ fx, bloom, saturation, particles, grain }: { fx: Fx; bloom: number; saturation: number; particles: number; grain: number }) {
   const size = useThree((s) => s.size);
   useLayoutEffect(() => {

@@ -5,6 +5,7 @@
 // Density is horizon-weighted: the sight-line through the plume is longest low in the frame.
 import React from "react";
 import { SMOKE } from "../utils/theme";
+import { clamp01, lerp } from "../utils/math";
 
 interface Props {
   density: number; // 0..1, normalized PM2.5 — how much veil
@@ -15,15 +16,14 @@ interface Props {
 // 0 = white haze, 1 = orange smoke, from absolute PM2.5.
 export function smokeRegime(pm25: number | null | undefined): number {
   if (pm25 == null) return 0;
-  return Math.max(0, Math.min(1, (pm25 - SMOKE.orange.fromUgm3) / (SMOKE.orange.toUgm3 - SMOKE.orange.fromUgm3)));
+  return clamp01((pm25 - SMOKE.orange.fromUgm3) / (SMOKE.orange.toUgm3 - SMOKE.orange.fromUgm3));
 }
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const STOPS = [0, 0.35, 0.62, 0.82, 1];
 
 // One stop of either term at vertical fraction t (0 top, 1 bottom): hue, saturation, lightness (0..1) and alpha. The gradient strings below are built from it, and panelLuminance.ts evaluates it at a panel's band, so the predicted panel and the drawn plume can never disagree.
 export function smokeStop(kind: "attenuation" | "inscatter", density: number, regime: number, t: number, hueDeg: number = SMOKE.hueDeg): { h: number; s: number; l: number; a: number } {
-  const d = Math.max(0, Math.min(1, density)), r = Math.max(0, Math.min(1, regime));
+  const d = clamp01(density), r = clamp01(regime);
   const h = hueDeg + SMOKE.hueDriftDeg * r;
   const strength = Math.pow(d, SMOKE.curve); // steeper at the low end: a normal day is visibly hazy
   const weight = SMOKE.zenithFactor + (1 - SMOKE.zenithFactor) * Math.pow(t, SMOKE.horizonBias);
@@ -47,9 +47,9 @@ function ramp(kind: "attenuation" | "inscatter", d: number, r: number, hueDeg?: 
 }
 
 export const SmokeLayer = React.memo(function SmokeLayer({ density, regime = 0, hueDeg }: Props) {
-  const d = Math.max(0, Math.min(1, density));
+  const d = clamp01(density);
   if (d <= 0.001) return null;
-  const r = Math.max(0, Math.min(1, regime)); // colour follows the regime; alpha follows density
+  const r = clamp01(regime); // colour follows the regime; alpha follows density
 
   // Absolute, not fixed: the scene owns its own box above the control bar, so the plume's densest band stays visible.
   const base: React.CSSProperties = { position: "absolute", inset: 0, pointerEvents: "none" };

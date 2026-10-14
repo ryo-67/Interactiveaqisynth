@@ -5,9 +5,9 @@
 // LOADING is held back for a moment (SETTLE_MS) the FIRST time, so a feed that answers quickly never flashes a message; on a retry it appears at once, because it is the answer to a press. Once it is up it stays at least HOLD_MS, so a retry that fails in ten milliseconds still reads as having been asked.
 // UNAVAILABLE stays until it is resolved rather than timing out: the page behind it is the placeholder, a dash where the number goes and no plot at all, which on its own says nothing about why. It offers the two things worth doing — play the last day the archive holds, or ask AirNow again — and it does neither on its own (Shoro, 2026-09-17: offer, do not act), so nothing moves under the visitor.
 // It is not dismissible and needs no dismiss: choosing a day takes the page off Live and the line goes with it, and coming back to Live brings it back if the feed is still down, which is the truth of the matter.
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Glass } from "./Glass";
-import { useTheme, themeColors, families, typeScale, CONTROL, motion, LIVE_EDGE, LIVE_FILL } from "../utils/theme";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { StatusPill, type StatusAction } from "./StatusPill";
+import { motion } from "../utils/theme";
 import { LIVE_STATUS } from "../content";
 import { RefreshIcon, CalendarIcon } from "./icons";
 
@@ -17,7 +17,6 @@ const HOLD_MS = motion.beatMs * 2; // and once asked, the least the loading face
 type Face = "loading" | "error";
 
 export function LiveStatus({ status, onArchive, onRetry, archiveReady }: { status: "loading" | "ready" | "unavailable"; onArchive: () => void; onRetry: () => void; archiveReady: boolean }) {
-  const c = themeColors(useTheme());
   const [mounted, setMounted] = useState(false);
   const [shown, setShown] = useState(false); // set a frame after mounting, so the arrival has a state to run from
   const [face, setFace] = useState<Face>("loading");
@@ -58,33 +57,11 @@ export function LiveStatus({ status, onArchive, onRetry, archiveReady }: { statu
 
   if (!mounted) return null;
   const error = face === "error";
-  const button: React.CSSProperties = { padding: "6px 12px 6px 10px", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", borderRadius: 999, color: c.textPrimary, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, whiteSpace: "nowrap", flex: "0 0 auto", minHeight: `var(--ctl-inner, ${CONTROL.inner}px)` };
-  const msg: React.CSSProperties = { fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, color: c.textSecondary };
-  return (
-    <div className="scene-live-status" data-shown={shown} role="status" aria-live="polite" style={{ "--live-ms": `${motion.beatMs}ms`, "--live-rise": "10px" } as React.CSSProperties}>
-      <Glass material="frosted" className="scene-live-pill" data-tone={face} style={{ "--live-edge": error ? LIVE_EDGE.error : LIVE_EDGE.quiet, "--live-edge-width": `${LIVE_EDGE.width}px`, "--live-edge-contact": LIVE_EDGE.contact, "--glass-fill": error ? LIVE_FILL.error : LIVE_FILL.quiet } as React.CSSProperties}>
-        {/* The word swaps: one track opens as the other closes, the two cross-fading across the change. */}
-        <span className="scene-live-msg">
-          <span className="scene-live-word" data-on={!error} aria-hidden={error} style={msg}>{LIVE_STATUS.loading}</span>
-          <span className="scene-live-word" data-on={error} aria-hidden={!error} style={msg}>{LIVE_STATUS.unavailable}</span>
-        </span>
-        {/* The controls are one element, not two siblings, so that when the pill stacks they go under the message together rather than one being left on the message's row — and so that the pair collapses as one. */}
-        <div ref={actRef} className="scene-live-actions">
-          <div className="scene-live-actions-row">
-            {/* The archive is offered only once its last day is known, which is what the button would move to. */}
-            {archiveReady && (
-              <button className="scene-play scene-about-btn" onClick={onArchive} style={button}>
-                <CalendarIcon size={14} />
-                <span>{LIVE_STATUS.toArchive}</span>
-              </button>
-            )}
-            <button className="scene-play scene-about-btn" onClick={onRetry} style={button}>
-              <RefreshIcon size={14} />
-              <span>{LIVE_STATUS.retry}</span>
-            </button>
-          </div>
-        </div>
-      </Glass>
-    </div>
-  );
+  // The archive is offered only once its last day is known, which is what the button would move to.
+  const actions: StatusAction[] = [
+    ...(archiveReady ? [{ label: LIVE_STATUS.toArchive, icon: <CalendarIcon size={14} />, onPress: onArchive }] : []),
+    { label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: onRetry },
+  ];
+  // The word swaps: one track opens as the other closes, the two cross-fading across the change.
+  return <StatusPill tone={face} shown={shown} words={[{ text: LIVE_STATUS.loading, on: !error }, { text: LIVE_STATUS.unavailable, on: error }]} actions={actions} actionsRef={actRef} />;
 }

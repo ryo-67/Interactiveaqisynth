@@ -5,7 +5,7 @@
 
 import * as Tone from "tone";
 import { normalize, SmoothedAQI, melodyMidi, type PollutantAnchors } from "./contour";
-import { pm25ToAQI } from "./aqi";
+import { pm25ToAQI, pm25Played } from "./aqi";
 import { euclidHit, barK, barSteps, barAndStep } from "./euclid";
 import { TIERS, tierIndexOf, detuneSigma, chordMidi, midiToFreq } from "./scales";
 
@@ -328,7 +328,7 @@ export class SynthEngine {
     // DST days carry 23 or 25 local hours (archive policy); a beat past the day's last entry plays as an all-null hour — data voices rest, the bed keeps its identity.
     const reading: HourReading = day[hour] ?? { ts: "", pm25: null, o3: null, no2: null, source: { pm25: "own", o3: "own", no2: "own" } };
     // Negative PM2.5 is instrument noise, clamped to 0 (§4.1 audit).
-    const pm25 = reading.pm25 == null ? null : Math.max(0, reading.pm25);
+    const pm25 = pm25Played(reading.pm25);
     const pm25n = normalize(pm25, this.anchors.pm25);
     const o3n = normalize(reading.o3, this.anchors.o3);
     const no2n = normalize(reading.no2, this.anchors.no2);

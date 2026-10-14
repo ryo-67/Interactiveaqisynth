@@ -15,3 +15,13 @@ export function chipStyle(c: ReturnType<typeof themeColors>, active: boolean, ex
     ...extra,
   };
 }
+
+// The footer's pill buttons (Shoro, 2026-09-16): the Patch notes button and the credit beside it are the same pill, the same type and the same padding, so they are one style. The glyph sits before the label, hence the extra 2 px on the right.
+export function pillButtonStyle(c: ReturnType<typeof themeColors>, extra?: React.CSSProperties): React.CSSProperties {
+  return {
+    padding: "8px 16px 8px 14px", minHeight: `var(--ctl-pill, ${CONTROL.pillHeight}px)`, boxSizing: "border-box",
+    display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999,
+    color: c.textSecondary, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, whiteSpace: "nowrap",
+    ...extra,
+  };
+}

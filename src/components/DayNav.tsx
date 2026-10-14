@@ -1,12 +1,14 @@
 // DayNav — scrubbing older days (§2.2, UX-03 as page-level navigation): pagination one day at a time, the measured pins as chips, and a hand-built month calendar. Range is January 2020 to the archive's last available day (the static archive plus the live-year route; EPA lags real time, so yesterday is never assumed); "Live" returns to the last 24 hours. No component libraries; tokens only; copy from content.ts.
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useTheme, themeColors, families, typeScale, space, CONTROL, motion } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, space, CONTROL, motion, NIGHT_GROUND } from "../utils/theme";
 import { chipStyle } from "./chip";
 import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, NAV_ARROWS, NAV_DAY_LIST, CAL_AVAILABLE_UNTIL, PICK_OR_DATE, DAY_SHEET } from "../content";
 import { Sheet } from "./Sheet";
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from "./icons";
 import { setPopoverOpen, markOutsideDismiss } from "./popoverStore";
+import { addDays, labelOf } from "../utils/time";
+import { usePresence } from "./usePresence";
 
 interface Props {
   date: string | null; // null = live
@@ -21,14 +23,6 @@ const POPOVER_WIDTH = 288; // 4 px grid; seven 36 px columns plus the panel padd
 const TOUCH_POPOVER_WIDTH = 340; // on a tablet (D-64): seven 44 columns (308) with no gaps between them (index.css .scene-cal-grid), the 12 padding each side and the border, on the 4 px grid
 const MIN_DATE = "2020-01-01";
 
-function addDays(iso: string, n: number): string {
-  const d = new Date(iso + "T12:00:00Z");
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-export function labelOf(iso: string): string {
-  return new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
-}
 
 
 // The popover is rendered at the document level (a portal), not inside the pill: the pill has its own backdrop blur, and a blur nested inside another blurred element can only sample what is painted inside its parent, so the graph beneath showed through sharp. Fixed under the anchor, kept inside the viewport, re-measured every frame while open (cheap: one rect) so it follows the anchor through any reflow, zoom or resize.
@@ -80,23 +74,10 @@ function useDismiss(open: boolean, close: () => void, anchorRef: React.RefObject
   }, [open, close, anchorRef]);
 }
 
-// Presence with an entrance and an exit: mounted a frame before it shows, so the transition has a start state to leave from, and kept mounted through its exit for motion.popoverMs.
-function usePresence(open: boolean): { mounted: boolean; visible: boolean } {
-  const [mounted, setMounted] = useState(open);
-  const [visible, setVisible] = useState(false);
+// The popover's presence (usePresence, exiting over motion.popoverMs), and the page told while one is open.
+function usePopoverPresence(open: boolean): { mounted: boolean; visible: boolean } {
   useEffect(() => setPopoverOpen(open), [open]); // the page knows while one is open
-  useEffect(() => {
-    if (open) {
-      setMounted(true);
-      let inner = 0;
-      const outer = requestAnimationFrame(() => { inner = requestAnimationFrame(() => setVisible(true)); });
-      return () => { cancelAnimationFrame(outer); cancelAnimationFrame(inner); };
-    }
-    setVisible(false);
-    const t = setTimeout(() => setMounted(false), motion.popoverMs);
-    return () => clearTimeout(t);
-  }, [open]);
-  return { mounted, visible };
+  return usePresence(open, motion.popoverMs);
 }
 
 // CalendarGrid — the month view with its bounds (January 2020 to the archive's last available day) and the line that states the bound. Owns the month it shows; mounts on the month of the chosen day, else the last available day's.
@@ -147,7 +128,7 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
               // A 32 px square centred in its column (the columns are a fraction wider): the cells are one shape whatever the number in them. Left to the grid they shrank to their text.
               style={{
                 fontFamily: families.data, fontSize: typeScale.caption.size, display: "inline-flex", alignItems: "center", justifyContent: "center", justifySelf: "center", width: `var(--ctl-inner, ${CONTROL.inner}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, padding: 0,
-                color: out ? c.textFaint : sel ? "#05050a" : c.textPrimary,
+                color: out ? c.textFaint : sel ? NIGHT_GROUND : c.textPrimary,
                 background: sel ? "rgba(255,255,255,0.9)" : "none",
                 border: "none", borderRadius: "var(--chip-radius, 8px)", // the small readouts' corner, stepped with the breakpoint (index.css)
               }}
@@ -175,7 +156,7 @@ export function DayPicker({ date, onChange, loading, latestDate, sheetHost }: Pr
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null); // where the sheet hands focus back (Sheet returnTo)
-  const presence = usePresence(open);
+  const presence = usePopoverPresence(open);
   const pos = usePopoverPosition(presence.mounted, anchorRef, POPOVER_WIDTH);
   const close = useCallback(() => setOpen(false), []);
   useDismiss(open && !sheetHost, close, anchorRef); // with the sheet, its scrim and its own Escape do this
@@ -246,7 +227,7 @@ export function DayNav({ date, onChange, loading, latestDate, touch = false }: P
   const c = themeColors(useTheme());
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
-  const presence = usePresence(open);
+  const presence = usePopoverPresence(open);
   const pos = usePopoverPosition(presence.mounted, anchorRef, touch ? TOUCH_POPOVER_WIDTH : POPOVER_WIDTH);
   const close = useCallback(() => setOpen(false), []);
   useDismiss(open, close, anchorRef);

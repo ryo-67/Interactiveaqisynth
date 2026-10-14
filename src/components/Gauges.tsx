@@ -4,6 +4,7 @@ import { useTheme, themeColors, motion, aqiScaleColor, aqiRampPosition } from ".
 import { MONITOR_REST, MONITOR_UNITS } from "../content";
 import type { PulseHit } from "../scene/useListenSession";
 import { DETUNE_MAX_CENTS } from "../engine/scales";
+import { clamp01 } from "../utils/math";
 
 const TAU = motion.beatMs * 0.5; // the sky's easing constant: settled within about a beat
 
@@ -31,7 +32,7 @@ export function AQIBar({ aqi, lift }: { aqi: number | null; lift: number }) {
 
 // A horizontal meter: a 4 px track with the filled share, eased.
 export function Meter({ value }: { value: number | null }) {
-  const v = useEased(Math.max(0, Math.min(1, value ?? 0)), TAU, "monitor meter");
+  const v = useEased(clamp01(value ?? 0), TAU, "monitor meter");
   return (
     <div className="scene-meter" role="img" aria-label={value == null ? MONITOR_REST : `${Math.round(v * 100)}%`}>
       <span className="scene-meter-fill" style={{ width: `${(v * 100).toFixed(2)}%`, opacity: value == null ? 0 : 1 }} />

@@ -5,13 +5,14 @@
 // Everything lives in the URL, so any view can be reopened or sent: ?model=hosek&day=2023-06-07&hour=14&haze=0.6&ozone=0.7&glass=css
 import React, { useEffect, useMemo, useState } from "react";
 import { SkyView, particleLevel, grainLevel, type SkyModel, type CameraFacing } from "./SkyView";
-import { skyParamsFor, starOpacity, hazeToAerosol, daylightBlend, nightBlend, RAYLEIGH_DEFAULT } from "./skyParams";
+import { skyParamsFor, starOpacity, daylightBlend, nightBlend, RAYLEIGH_DEFAULT } from "./skyParams";
 import { SmokeLayer, smokeRegime } from "./SmokeLayer";
 import { NightLayer } from "./NightLayer";
 import { sunAnglesAt, sunPositionVector } from "./solar";
-import { CLEAR_NOON_EXPOSURE, HOSEK_ALBEDO, NYC_LAT, NYC_LON, SMOKE, SUN_DISC, NIGHT, SKY_GRADE, families, typeScale, space } from "../utils/theme";
+import { CLEAR_NOON_EXPOSURE, HOSEK_ALBEDO, NYC_LAT, NYC_LON, SMOKE, SUN_DISC, NIGHT, SKY_GRADE, families, typeScale, space, NIGHT_GROUND } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
 import type { HourReading } from "../engine/SynthEngine";
+import { pm25Played } from "../engine/aqi";
 
 const DAYS = [
   { date: "2023-10-29", label: "Oct 29, cleanest" },
@@ -78,7 +79,7 @@ export default function SceneTestPage() {
     const rec = archive.find((h) => h.ts.startsWith(day) && Number(h.ts.slice(11, 13)) === Math.floor(hour)) ?? null;
     setReading(rec);
     if (!rec) return;
-    const pm25n = normalize(rec.pm25 == null ? null : Math.max(0, rec.pm25), anchors.pm25);
+    const pm25n = normalize(pm25Played(rec.pm25), anchors.pm25);
     const o3n = normalize(rec.o3, anchors.o3);
     if (pm25n != null) setHaze(Math.round(Math.min(1, pm25n) * 20) / 20);
     if (rec.pm25 != null) setPmAbs(Math.round(Math.max(0, rec.pm25)));
@@ -100,7 +101,7 @@ export default function SceneTestPage() {
     // haze and ozone run through the same mapping the scene uses; rayleigh, bloom and exposure then override what the mapping produced, so they can be judged directly.
     const mapped = skyParamsFor(haze, ozone, ang.elevationDeg);
     const params = { ...mapped, rayleigh, bloomIntensity: bloom, exposure: expAuto ? mapped.exposure : exposure };
-    const aer = hazeToAerosol(haze);
+    const aer = { turbidity: mapped.turbidity, mieCoefficient: mapped.mieCoefficient }; // the scene's own aerosol for this haze, so the readout cannot drift from what the scene draws
     const blend = model === "auto" ? daylightBlend(ang.elevationDeg) : model === "hosek" ? 1 : 0;
     return {
       params,
@@ -121,7 +122,7 @@ export default function SceneTestPage() {
 
   return (
     // The scene owns the area above the control bar rather than the whole viewport, so the plume's densest band — which sits at the horizon, at the bottom of the frame — is never hidden behind the controls.
-    <div style={{ position: "fixed", inset: 0, background: "#05050a", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, background: NIGHT_GROUND, display: "flex", flexDirection: "column" }}>
       <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
         <SkyView params={view.params} sunPosition={view.sun} starOpacity={view.stars} model={model} albedo={albedo} disc={disc} discDeg={discDeg} facing={facing} hour={hour} saturation={saturation + (SKY_GRADE.saturationUnderSmoke - saturation) * smokeRegime(pmAbs)} particles={particleLevel(pmAbs)} grain={grainLevel(pmAbs)} style={{ width: "100%", height: "100%" }} live />
 
@@ -210,7 +211,7 @@ function Toggle<T extends string>({ options, value, onChange }: { options: T[]; 
           onClick={() => onChange(o)}
           style={{
             fontFamily: families.data, fontSize: typeScale.micro.size,
-            color: value === o ? "#05050a" : "rgba(255,255,255,0.9)",
+            color: value === o ? NIGHT_GROUND : "rgba(255,255,255,0.9)",
             background: value === o ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.1)",
             border: "1px solid rgba(255,255,255,0.25)",
             borderRadius: i === 0 ? "3px 0 0 3px" : i === options.length - 1 ? "0 3px 3px 0" : "0",

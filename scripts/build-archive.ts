@@ -14,7 +14,6 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   toBoroughHours,
-  utcToNyIso,
   dayTypeOf,
   BOROUGHS,
   COUNTY_TO_BOROUGH,
@@ -25,6 +24,7 @@ import {
   type HourReading,
   type Pollutant,
   type SiteHourRow,
+  gmtToNyIso,
 } from "../api/_lib/aqi";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -68,11 +68,6 @@ function parseCsvLine(line: string): string[] {
   return out;
 }
 
-// EPA bulk files report Date Local/Time Local in Local STANDARD Time year-round (no DST). One timestamp rule everywhere: derive the instant from the GMT fields and render true America/New_York wall clock with offset (utcToNyIso), so archive hours line up with AirNow's live labels and DST days keep their real 23/25 hours.
-function offsetIso(_dateLocal: string, _timeLocal: string, dateGmt: string, timeGmt: string): string {
-  const gmt = Date.UTC(+dateGmt.slice(0, 4), +dateGmt.slice(5, 7) - 1, +dateGmt.slice(8, 10), +timeGmt.slice(0, 2), +timeGmt.slice(3, 5));
-  return utcToNyIso(new Date(gmt));
-}
 
 async function parseZip(zipPath: string, pollutant: Pollutant, toPpb: boolean, sink: SiteHourRow[]): Promise<number> {
   const child = spawn("unzip", ["-p", zipPath]);
@@ -100,7 +95,7 @@ async function parseZip(zipPath: string, pollutant: Pollutant, toPpb: boolean, s
       stateFips: state,
       countyFips: county,
       pollutant,
-      ts: offsetIso(f[idx["Date Local"]], f[idx["Time Local"]], f[idx["Date GMT"]], f[idx["Time GMT"]]),
+      ts: gmtToNyIso(f[idx["Date GMT"]], f[idx["Time GMT"]]),
       value: toPpb ? value * 1000 : value,
     });
     kept++;

@@ -13,6 +13,7 @@ import {
   type TransformResult,
   type HourReading,
   type TypicalNo2Table,
+  sendError,
 } from "../_lib/aqi";
 // Bundled at build time; the function has no filesystem access to public/ at runtime.
 import typicalNo2 from "../../public/data/typical-no2.json";
@@ -48,8 +49,7 @@ function cacheControl(result: TransformResult): string {
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.AIRNOW_API_KEY;
   if (!apiKey) {
-    res.setHeader("Cache-Control", "no-store");
-    res.status(500).json({ status: "error", error: "AIRNOW_API_KEY environment variable is required" });
+    sendError(res, 500, "AIRNOW_API_KEY environment variable is required");
     return;
   }
 
@@ -110,8 +110,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.log(`[/aqi/current] Error: ${msg}`);
-    res.setHeader("Cache-Control", "no-store");
-    res.status(500).json({ status: "error", error: `Failed to fetch current AQI: ${msg}` });
+    sendError(res, 500, `Failed to fetch current AQI: ${msg}`);
   }
 }
 

@@ -7,17 +7,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type PulseInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { barK, barSteps } from "../engine/euclid";
 import { TIERS, detuneSigma, tierIndexOf } from "../engine/scales";
-import { pm25ToAQI, measuredNo2, seriesAQI } from "../engine/aqi";
+import { pm25ToAQI, pm25Played, isMeasuredHour, seriesAQI } from "../engine/aqi";
 import { motion, NYC_LAT, NYC_LON, CAMERA_FACING } from "../utils/theme";
 import { normalize, type PollutantAnchors } from "../engine/contour";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
 import { PINS } from "../content";
 import { getCurrentAll, forgetLive, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
+import { easeInOutQuad } from "../utils/math";
 
 // Dev-only fixture select (?dev=1): never renders for a visitor.
 export const DEV = new URLSearchParams(window.location.search).has("dev");
 
-export type Channel = "pm25" | "o3" | "no2";
+export type { Channel } from "../utils/channelSource";
 
 // What the monitor page reads (D-43): the engine's state for the hour being heard, from the beat report while playing, and for the held hour at rest through the same engine functions (the tier from PM2.5 alone, §3.4; the bar's k and pattern from euclid.ts; σ from the hour's PM2.5 AQI through scales.ts detuneSigma). Nothing here is a second formula.
 export interface MonitorState {
@@ -298,7 +299,7 @@ export function useListenSession(): ListenSession {
   const latest = useMemo(() => {
     if (!day) return null;
     for (let i = day.length - 1; i >= 0; i--) {
-      if (day[i].pm25 != null || day[i].o3 != null || measuredNo2(day[i]) != null) return { reading: day[i], index: i, hour: hourOfTs(day[i].ts) }; // a MEASURED hour (BUG-64): one carrying only the typical NO2 has no AQI to rest on
+      if (isMeasuredHour(day[i])) return { reading: day[i], index: i, hour: hourOfTs(day[i].ts) }; // a MEASURED hour (BUG-64): one carrying only the typical NO2 has no AQI to rest on
     }
     return null;
   }, [day]);
@@ -328,7 +329,7 @@ export function useListenSession(): ListenSession {
       return { hour: report.hour, tierIndex: report.tierIndex, tierAqi: report.smoothedAQI, scaleName: report.scaleName, k: report.k, steps: report.steps, o3n: report.o3n, o3: report.o3, pm25n: report.pm25n, pm25: report.pm25, no2n: report.no2n, detuneCents: report.detuneCents };
     }
     const r = rest?.reading ?? null;
-    const pm25 = r?.pm25 == null ? null : Math.max(0, r.pm25);
+    const pm25 = pm25Played(r?.pm25 ?? null);
     const pm25n = normalize(pm25, a.pm25);
     const tierAqi = pm25ToAQI(pm25);
     const tierIndex = tierAqi == null ? 0 : tierIndexOf(tierAqi);
@@ -350,7 +351,7 @@ export function useListenSession(): ListenSession {
     if (!day || heldIndex == null) return null;
     for (let i = Math.min(heldIndex, day.length - 1); i >= 0; i--) {
       const v = day[i][ch];
-      if (v != null) return normalize(ch === "pm25" ? Math.max(0, v) : v, a[ch]);
+      if (v != null) return normalize(ch === "pm25" ? pm25Played(v) : v, a[ch]);
     }
     return null;
   };
@@ -403,7 +404,7 @@ function useSunTransition(target: number, sunDay: SunDay | null, playing: boolea
       const g = glideRef.current;
       if (!g) return;
       const t = Math.min(1, (now - g.start) / g.ms);
-      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const e = easeInOutQuad(t);
       const to = sunAnglesAt(sunDay.date, targetRef.current, NYC_LAT, NYC_LON, sunDay.tz); // re-read: the target may be moving
       // The path is planned in the camera's screen space (sunPath.ts, D-33): straight on screen while visible, angles while unseen. In the camera's FRAME, which on an iPhone is the screen below the window's top rather than the whole sky box (useSafariWindow, BUG-57); everywhere else it is the viewport, as it always was.
       const sun = sunAlongPath(g.from, to, e, { facingDeg: CAMERA_FACING === "south" ? 180 : 0, aspect: skyFrameAspect() });

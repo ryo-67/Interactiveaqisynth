@@ -4,6 +4,7 @@
 import type { Day, HourReading } from "../engine/SynthEngine";
 import type { PollutantAnchors } from "../engine/contour";
 import { seriesAQI, type SeriesAQI } from "../engine/aqi";
+import { addDays } from "./time";
 export type { SeriesAQI };
 
 // ——— Boroughs ———
@@ -143,14 +144,13 @@ async function hoursOf(borough: Borough, date: string): Promise<Day> {
   return (await monthDays(borough, date.slice(0, 7))).get(date) ?? [];
 }
 
-const shiftDate = (date: string, days: number): string => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
 
 // One local day with its AQI. The neighbouring days are loaded with it because the AQI reaches across midnight (engine/aqi.ts): the NowCast at 1 am weighs the previous evening, and the day's ozone windows starting after 4 pm run into the next morning. A neighbour that cannot be loaded (before the archive begins, or not yet published) is simply absent and the windows shorten.
 export async function getDay(borough: Borough, date: string): Promise<DaySeries> {
   const [hours, prior, next] = await Promise.all([
     hoursOf(borough, date),
-    hoursOf(borough, shiftDate(date, -1)).catch(() => []),
-    hoursOf(borough, shiftDate(date, 1)).catch(() => []),
+    hoursOf(borough, addDays(date, -1)).catch(() => []),
+    hoursOf(borough, addDays(date, 1)).catch(() => []),
   ]);
   return { hours, aqi: seriesAQI(hours, prior, next), fallback: null, fetchedAt: null };
 }

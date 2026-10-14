@@ -5,7 +5,7 @@
 // It is only ever the FIRST moment. A later fetch — the retry on the live line — never brings it back; by then the visitor is inside and the page should not be taken away from them.
 import React, { useEffect, useRef, useState } from "react";
 import { Glass } from "./Glass";
-import { useTheme, themeColors, families, typeScale, motion, GLASS } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, motion, GLASS, REDUCED_MOTION } from "../utils/theme";
 import { ENTRY } from "../content";
 
 const FADE_MS = motion.beatMs; // one beat to lift
@@ -14,7 +14,6 @@ const MAX_MS = 6000;
 const STEPS = 16; // a bar of the piece: sixteen steps, as the pulse lane has (§3.2)
 const BAR_MS = motion.beatMs * 4; // and four beats to cross it
 
-const REDUCED = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export function Entry({ ready, onLift, onGone }: { ready: boolean; onLift: () => void; onGone: () => void }) {
   const c = themeColors(useTheme());
@@ -41,7 +40,7 @@ export function Entry({ ready, onLift, onGone }: { ready: boolean; onLift: () =>
         <p style={{ margin: 0, fontFamily: families.serifItalic, fontStyle: "italic", fontWeight: 400, fontSize: `calc(var(--heading-size, ${typeScale.heading.size}) * 0.7)`, lineHeight: 1.2, color: c.textPrimary }}>{ENTRY.title}</p>
         <p style={{ margin: 0, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, color: c.textMuted }}>{ENTRY.line}</p>
         {/* The pulse lane, borrowed from the monitor (Gauges.tsx Lane): sixteen steps, a bar of the piece, lighting one at a time on the beat and leaving the lit ones behind. A bar fills, clears and fills again, so what is on screen while the air is read is the sequencer warming up rather than a spinner. Each step's delay is its own position in the bar; under prefers-reduced-motion the bar simply stands filled. */}
-        <div className="scene-lane scene-entry-lane" aria-hidden data-still={REDUCED}>
+        <div className="scene-lane scene-entry-lane" aria-hidden data-still={REDUCED_MOTION}>
           {Array.from({ length: STEPS }, (_, i) => (
             <span key={i} className="scene-lane-step" style={{ animationDelay: `${((i / STEPS) * BAR_MS).toFixed(0)}ms` }} />
           ))}

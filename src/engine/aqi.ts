@@ -60,7 +60,7 @@ const maxOf = (subs: Array<number | null>): number | null => {
 
 // The PM NowCast (TAD, updated 2013-08-01). `window` is the last 12 hours oldest first, the last entry the hour being reported; shorter at the start of the loaded data. Two of the last three hours must be present. Weight w = 1 − (max − min) / max floored at 0.5: steady air approaches a 12-hour mean, changing air a 3-hour one, each hour weighted w^(hours ago).
 export function nowcastPM25(window: ReadonlyArray<number | null>): number | null {
-  const vals = window.slice(-12).map((v) => (v == null ? null : Math.max(0, v)));
+  const vals = window.slice(-12).map(pm25Played);
   const n = vals.length;
   if (n === 0) return null;
   const tail = vals.slice(-3);
@@ -91,6 +91,12 @@ function meanIfComplete(window: ReadonlyArray<number | null>, nominal = 8): numb
 // The current AQI for hour i of `all`, as AirNow would have reported it that hour: the highest of the PM2.5 NowCast over the trailing 12 hours, the trailing 8-hour ozone mean and the hour's measured NO2, each through its own table. Null only when no sub-index can be formed.
 // NO2 as measured, never the typical profile (BUG-64, D-68): live NO2 is filled from the archive's typical profile (D-18) so the pulse has a contour to play, but a typical value is an average of past days, not a reading of this hour, and the AQI is EPA's reported AQI (D-42), which no estimate may enter. With PM2.5 and ozone missing too, the hour has no AQI rather than one made from averages.
 export const measuredNo2 = (h: HourReading): number | null => (h.source?.no2 === "typical" ? null : h.no2);
+
+// PM2.5 as the page plays and shows it: a monitor's small negative reading (instrument noise; the archive carries a few thousand) reads as zero, and a missing one stays missing. One rule for the sound, the sky, the graph and the monitor.
+export const pm25Played = (v: number | null): number | null => (v == null ? null : Math.max(0, v));
+
+// An hour with something measured in it: PM2.5, ozone, or NO2 that is a reading rather than the typical profile (D-68).
+export const isMeasuredHour = (h: HourReading): boolean => h.pm25 != null || h.o3 != null || measuredNo2(h) != null;
 
 export function hourlyAQI(all: ReadonlyArray<HourReading>, i: number): number | null {
   const pm = nowcastPM25(all.slice(Math.max(0, i - 11), i + 1).map((h) => h.pm25));
@@ -133,7 +139,7 @@ export function seriesAQI(day: Day, prior: Day = [], next: Day = []): SeriesAQI 
   const hourly = hourlyAQISeries(day, prior);
   let current: number | null = null;
   for (let i = day.length - 1; i >= 0; i--) {
-    if (day[i].pm25 != null || day[i].o3 != null || measuredNo2(day[i]) != null) { current = hourly[i]; break; } // the latest MEASURED hour: an hour carrying only the typical NO2 has nothing to report
+    if (isMeasuredHour(day[i])) { current = hourly[i]; break; } // the latest MEASURED hour: an hour carrying only the typical NO2 has nothing to report
   }
   return { daily: dailyAQI(day, next), current, hourly };
 }

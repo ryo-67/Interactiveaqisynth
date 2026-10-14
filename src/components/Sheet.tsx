@@ -3,36 +3,28 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DAY_SHEET } from "../content";
 import { XIcon } from "./icons";
+import { REDUCED_MOTION } from "../utils/theme";
+import { usePresence } from "./usePresence";
 
 const DRAG_CLOSE = 80; // px along the close axis before a release closes the sheet: a deliberate pull, more than a thumb's wobble
 const DRAG_START = 8; // px before a press becomes a drag: under it a press is a tap, so a day or a date under the finger is still chosen
 const FLICK = 0.5; // px per ms: a release this fast closes the sheet however short the pull
 const SLIDE_MS = 300; // the slide's length, and how long the sheet stays mounted after it closes (index.css .scene-sheet)
-const REDUCED = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export function Sheet({ open, onClose, label, host, returnTo, children }: { open: boolean; onClose: () => void; label: string; host: HTMLElement | null; returnTo?: React.RefObject<HTMLElement | null>; children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(open);
-  const [visible, setVisible] = useState(false);
+  const { mounted, visible } = usePresence(open, SLIDE_MS);
   const [drag, setDrag] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
   const press = useRef<{ x: number; y: number; t: number; id: number; dragging: boolean } | null>(null);
   const swallowClick = useRef(false); // set by a drag, so the click that ends it does not choose whatever is under the finger
   const wasOpen = useRef(false); // whether the last run of the effect below saw the sheet open: focus goes back only on a real close, never on mount
-  // Mount, then show a frame later so the slide runs from the closed state; on close, hand focus back and leave once the slide is over.
+  // The slide in and out is usePresence's; on close the sheet also drops any drag and hands focus back.
   useEffect(() => {
     const closing = wasOpen.current && !open;
     wasOpen.current = open;
-    if (open) {
-      setMounted(true);
-      let inner = 0;
-      const outer = requestAnimationFrame(() => { inner = requestAnimationFrame(() => setVisible(true)); });
-      return () => { cancelAnimationFrame(outer); cancelAnimationFrame(inner); };
-    }
-    setVisible(false);
+    if (open) return;
     setDrag(0);
     if (closing) returnTo?.current?.focus({ preventScroll: true }); // the opener by reference, not document.activeElement: Safari does not focus a button on a tap, so the element focused when the sheet opened was the body
-    const t = setTimeout(() => setMounted(false), SLIDE_MS);
-    return () => clearTimeout(t);
   }, [open, returnTo]);
   // Focus in on open; Tab and Shift+Tab cycle inside; Escape closes.
   useEffect(() => {
@@ -81,7 +73,7 @@ export function Sheet({ open, onClose, label, host, returnTo, children }: { open
   const onCancel = () => { press.current = null; setDrag(0); };
   const onClickCapture = (e: React.MouseEvent) => { if (swallowClick.current) { swallowClick.current = false; e.stopPropagation(); e.preventDefault(); } };
   return createPortal(
-    <div className="scene-sheet-layer" data-visible={visible} data-reduced={REDUCED}>
+    <div className="scene-sheet-layer" data-visible={visible} data-reduced={REDUCED_MOTION}>
       <button className="scene-sheet-scrim" aria-label={DAY_SHEET.close} tabIndex={-1} onClick={onClose} />
       <div ref={panelRef} className="glass frosted scene-sheet" role="dialog" aria-modal="true" aria-label={label} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel} onClickCapture={onClickCapture} style={drag ? { transform: landscape() ? `translateX(${drag}px)` : `translateY(${drag}px)`, transition: "none" } : undefined}>
         <div className="scene-sheet-grab" aria-hidden><span /></div>

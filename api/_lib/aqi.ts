@@ -1,6 +1,7 @@
 // api/_lib/aqi.ts — shared data layer: borough maps, the site-hour → HourReading transform (§4.4, D-16), and AQI math (DAT-04, DAT-05).
 // One transform for every source (AirNow live, EPA AQS live-year, EPA bulk archive). Nothing here estimates a missing value from a different pollutant; missing is null, never zero. There is no PM10 anywhere (D-07).
 // All timestamps are America/New_York local hours with UTC offset (e.g. "2023-06-07T13:00:00-04:00"). DST days genuinely have 23 or 25 local hours; the offset keeps the fall-back duplicate 1 AMs distinct.
+import type { VercelResponse } from "@vercel/node";
 
 export type Borough = "Bronx" | "Brooklyn" | "Manhattan" | "Queens" | "Staten Island";
 
@@ -186,6 +187,18 @@ export function utcToNyIso(utc: Date): string {
   const offset = (parts.timeZoneName!.replace("GMT", "") || "+00:00").replace("−", "-");
   const hour = parts.hour === "24" ? "00" : parts.hour;
   return `${parts.year}-${parts.month}-${parts.day}T${hour}:${parts.minute}:00${offset}`;
+}
+
+// An EPA row's GMT date ("2023-06-07") and time ("17:00") as its New York local hour. EPA reports date_local/time_local in Local STANDARD Time year-round (no DST), which would sit an hour off AirNow's live wall-clock labels every summer. One timestamp rule everywhere: derive the instant from the GMT fields and render it as true America/New_York wall clock with offset (utcToNyIso), so archive hours line up with the live labels and DST days keep their real 23/25 hours. The bulk archive (scripts/build-archive.ts) and the current-year route (api/aqi/historical.ts) both read rows this way.
+export function gmtToNyIso(dateGmt: string, timeGmt: string): string {
+  const gmt = Date.UTC(Number(dateGmt.slice(0, 4)), Number(dateGmt.slice(5, 7)) - 1, Number(dateGmt.slice(8, 10)), Number(timeGmt.slice(0, 2)), Number(timeGmt.slice(3, 5)));
+  return utcToNyIso(new Date(gmt));
+}
+
+// A route's error answer: never cached, the same shape everywhere ({ status: "error", error }), so the client's one check (status !== "ok") reads every failure.
+export function sendError(res: VercelResponse, code: number, error: string): void {
+  res.setHeader("Cache-Control", "no-store");
+  res.status(code).json({ status: "error", error });
 }
 
 // ——— Typical NO2 fill (D-18, amends §4.2/§4.4 for live NO2 only) ———

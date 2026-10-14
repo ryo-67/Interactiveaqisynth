@@ -37,8 +37,9 @@ import { MOCK } from "../utils/mock";
 import { mockStatus } from "./pageStatus";
 import { Entry } from "../components/Entry";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
-import { ThemeContext, GLASS, MONITOR, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL, ABOUT as ABOUT_TOKENS, REDUCED_MOTION, ABOUT_FADE_MS, NIGHT_GROUND } from "../utils/theme";
+import { ThemeContext, GLASS, MONITOR, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL, ABOUT as ABOUT_TOKENS, REDUCED_MOTION, ABOUT_FADE_MS, NIGHT_GROUND, KNOB } from "../utils/theme";
 import { clamp01 } from "../utils/math";
+import { mixRgb, parseRgb } from "../utils/oklch";
 
 // The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
 const qs = new URLSearchParams(window.location.search);
@@ -323,7 +324,7 @@ export default function ScenePage() {
     const smokeShare = clamp01((veil - GLASS.veilFrom) / (GLASS.veilFull - GLASS.veilFrom)); // the veil thins the frost only once it dims the sky
     const daylight = clamp01((ang.elevationDeg - GLASS.dayFromDeg) / (GLASS.dayFullDeg - GLASS.dayFromDeg)) * (1 - smokeShare);
     const warm = Math.max(smokeShare, golden); // the tint keys on the same share as the alpha: a moderate haze leaves the panel navy, a grey or orange sky turns it umber
-    const mix = (a: string, b: string) => a.split(",").map((x, i) => Math.round(Number(x) + (Number(b.split(",")[i]) - Number(x)) * warm)).join(", ");
+    const mix = (a: string, b: string) => mixRgb(parseRgb(a), parseRgb(b), warm).map(Math.round).join(", ");
     const glass = { alpha: GLASS.fillAlphaNight + (GLASS.fillAlphaDay - GLASS.fillAlphaNight) * daylight, fill: mix(GLASS.fill, GLASS.fillWarm), lift: GLASS.liftNight * (1 - daylight) };
     return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, pm25nEased), smoke, regime, saturation, night: nightBlend(ang.elevationDeg), golden, glass };
   }, [s.sunDay, s.sunOverride, clock, pm25nEased, o3nEased, smokeEased, regime]);
@@ -444,7 +445,7 @@ export default function ScenePage() {
 
   return (
     <ThemeContext.Provider value="dark">
-      <div ref={rootRef} className="scene-root" data-layout={layout} data-entered={entryLifting} style={{ background: NIGHT_GROUND, ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint, "--about-alpha": String(ABOUT_TOKENS.tintAlpha) /* the scrims' tint, inherited by every layer that dims the page: the entry, the About overlay, the day sheet */ } as React.CSSProperties}>
+      <div ref={rootRef} className="scene-root" data-layout={layout} data-entered={entryLifting} style={{ background: NIGHT_GROUND, ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint, "--about-alpha": String(ABOUT_TOKENS.tintAlpha), "--knob-top": KNOB.top, "--knob-bottom": KNOB.bottom, "--knob-shadow": String(KNOB.shadowAlpha), "--knob-hairline": String(KNOB.hairlineAlpha) /* the scrims' tint, inherited by every layer that dims the page: the entry, the About overlay, the day sheet */ } as React.CSSProperties}>
         <div ref={windowProbeRef} className="scene-window-probe" aria-hidden /> {/* what Safari leaves between its bars, measured (useSafariWindow); empty and hidden, so it paints nothing and Safari's bar test passes over it */}
         {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. The root is page content, not fixed (index.css .scene-root, BUG-57), screen-tall with a runway above (useSafariWindow), so this box and every layer in it run on under both of Safari's bars. */}
         {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}

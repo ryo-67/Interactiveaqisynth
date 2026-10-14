@@ -25,3 +25,8 @@ export function pillButtonStyle(c: ReturnType<typeof themeColors>, extra?: React
     ...extra,
   };
 }
+
+// The round icon button: a size × size circle, the glyph centred, no fill or border of its own (the pill or the bar around it is the material). The transport's play button and the page indicator's two icons.
+export function iconButtonStyle(size: string, color: string, extra?: React.CSSProperties): React.CSSProperties {
+  return { width: size, height: size, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: `calc(${size} / 2)`, color, ...extra };
+}

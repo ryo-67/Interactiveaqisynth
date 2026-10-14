@@ -4,13 +4,13 @@
 // The graph is a transport surface, as in a DAW: press or drag anywhere on the plot to move the playhead, and the engine seeks with it, playing or paused. Play and pause live in the transport pill.
 import { readingLabel } from "../utils/time";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useTheme, themeColors, families, typeScale, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion } from "../utils/theme";
+import { useTheme, themeColors, families, typeScale, aqiScaleColor, aqiScaleStops, AQI_CATEGORIES, GRAPH, CONTROL, motion, KNOB } from "../utils/theme";
 import { TRACK_LABELS, TRACK_UNITS, TRACK_QUALIFIERS, GRAPH_LABEL, HERO_AQI_NOW, MONITOR_REST } from "../content";
 import { monotoneCurve, fitTicks } from "./graphSeries";
 import { chipStyle } from "./chip";
 import type { Day } from "../engine/SynthEngine";
 import { easeInOutQuad, lerp } from "../utils/math";
-import { hexToRgb } from "../utils/oklch";
+import { hexToRgb, mixRgb } from "../utils/oklch";
 import { pm25Played } from "../engine/aqi";
 
 export type TrackKey = "aqi" | "pm25" | "o3" | "no2";
@@ -61,7 +61,7 @@ function lerpFrame(a: Frame, b: Frame, t: number): Frame {
 function lineColour(f: number, max: number, lift: number, isAqi: number, grey: [number, number, number], a = 1): string {
   if (isAqi <= 0.005) return `rgba(${grey[0]},${grey[1]},${grey[2]},${a.toFixed(3)})`;
   const r = hexToRgb(aqiScaleColor(f * max, lift));
-  const m = isAqi >= 0.995 ? r : ([0, 1, 2].map((k) => Math.round(lerp(grey[k], r[k], isAqi))) as [number, number, number]);
+  const m = isAqi >= 0.995 ? r : mixRgb(grey, r, isAqi).map(Math.round);
   return `rgba(${m[0]},${m[1]},${m[2]},${a.toFixed(3)})`;
 }
 
@@ -416,19 +416,19 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           const cv = hi >= 0 ? norm[hi] : null;
           if (cv != null && alpha[hi] > 0.005) {
             // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. On the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base on the column's outer edge.
-            // Drawn to the volume slider's knob recipe (index.css .scene-volume): an opaque white fill, lit from above, with a soft shadow beneath and a hairline edge. One fill, one shadow: strokes over an anti-aliased fill this small doubled its outline.
+            // Drawn to the volume slider's knob recipe (theme.ts KNOB): an opaque white fill, lit from above, with a soft shadow beneath and a hairline edge. One fill, one shadow: strokes over an anti-aliased fill this small doubled its outline.
             ctx.globalAlpha = cur.isAqi * alpha[hi];
             const my = yOf(cv);
             const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX + trackW + GRAPH.scaleCaretGap;
             const caret = () => { ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.lineTo(tipX + d, my + h / 2); ctx.closePath(); };
             const knob = ctx.createLinearGradient(0, my - h / 2, 0, my + h / 2);
-            knob.addColorStop(0, "#ffffff"); knob.addColorStop(1, "#ececf2");
+            knob.addColorStop(0, KNOB.top); knob.addColorStop(1, KNOB.bottom);
             ctx.save();
-            ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 1;
+            ctx.shadowColor = `rgba(0,0,0,${KNOB.shadowAlpha})`; ctx.shadowBlur = 3; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 1;
             ctx.fillStyle = knob;
             caret(); ctx.fill();
             ctx.restore();
-            ctx.lineWidth = 0.5; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(0,0,0,0.14)"; caret(); ctx.stroke(); // the hairline edge
+            ctx.lineWidth = 0.5; ctx.lineJoin = "round"; ctx.strokeStyle = `rgba(0,0,0,${KNOB.hairlineAlpha})`; caret(); ctx.stroke(); // the hairline edge
           }
           ctx.restore();
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip(); // the wider clip again, matching the one the restore below leaves

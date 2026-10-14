@@ -232,6 +232,9 @@ export const GRAPH = {
 } as const;
 
 // The monitor page (D-43, 2026-09-15): a bento of frosted cards reading the engine. Every size a multiple of 4, on the control grid.
+// The knob recipe (2026-09-16): an opaque white lit from above, a soft shadow beneath, a hairline edge. The volume slider's thumb (index.css, through the --knob-* properties ScenePage sets) and the graph's AQI caret (Graph.tsx, on the canvas) are both drawn to it.
+export const KNOB = { top: "#ffffff", bottom: "#ececf2", shadowAlpha: 0.35, hairlineAlpha: 0.14 } as const;
+
 export const MONITOR = {
   sectionHeight: 672, // the sections' height on laptop (2026-09-16): both pages take the band's height up to this; the monitor's rows split it 2-1-1 (four units of 158, a value card's height at the 12 px gaps) and the scene's graph grows into what the hero leaves
   // The patch bay's pills and cables (Shoro, 2026-09-16: both a step up). The pill is the cards' source chip, one size larger — the caption size in a 24 px pill rather than the micro size in a 20 — so the three measurements and the six parameters read as the labels they are rather than as tags. The cable is a hairline still, just not the thinnest one the screen can draw.

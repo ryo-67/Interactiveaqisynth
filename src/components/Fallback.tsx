@@ -5,6 +5,7 @@ import { Glass } from "./Glass";
 import { useTheme, themeColors, families, typeScale, CONTROL, GLASS } from "../utils/theme";
 import { ENTRY, FALLBACK } from "../content";
 import { RefreshIcon } from "./icons";
+import { ENTRY_PANEL_VARS, entryTitleStyle, entryLineStyle } from "./Entry";
 
 export function Fallback({ line, reload }: { line: string; reload: boolean }) {
   const c = themeColors(useTheme());
@@ -12,9 +13,9 @@ export function Fallback({ line, reload }: { line: string; reload: boolean }) {
   const button: React.CSSProperties = { padding: "6px 14px 6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.22)", borderRadius: 999, color: c.textPrimary, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, whiteSpace: "nowrap", minHeight: CONTROL.touch, marginTop: 10, cursor: "pointer" };
   return (
     <div className="scene-entry scene-fallback" role="alert" style={{ "--fallback-ground": c.bg, "--fallback-sky": GLASS.fill } as React.CSSProperties}>
-      <Glass material="frosted" className="scene-entry-panel" style={{ "--glass-fill": GLASS.fill, "--glass-fill-alpha": String(GLASS.fillAlphaFixed), "--glass-lift": "0", "--glass-on": "1" } as React.CSSProperties}>
-        <h1 style={{ margin: 0, fontFamily: families.serifItalic, fontStyle: "italic", fontWeight: 400, fontSize: `calc(var(--heading-size, ${typeScale.heading.size}) * 0.7)`, lineHeight: 1.2, color: c.textPrimary }}>{ENTRY.title}</h1>
-        <p style={{ margin: 0, maxWidth: "34ch", fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, color: c.textMuted }}>{line}</p>
+      <Glass material="frosted" className="scene-entry-panel" style={ENTRY_PANEL_VARS}>
+        <h1 style={entryTitleStyle(c)}>{ENTRY.title}</h1>
+        <p style={{ ...entryLineStyle(c), maxWidth: "34ch" }}>{line}</p>
         {reload && (
           <button className="scene-play scene-about-btn" onClick={() => window.location.reload()} style={button}>
             <RefreshIcon size={14} />

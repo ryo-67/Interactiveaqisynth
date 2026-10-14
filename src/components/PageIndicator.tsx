@@ -2,6 +2,7 @@
 import { useTheme, themeColors, CONTROL, MONITOR } from "../utils/theme";
 import { VIEW_LABELS, VIEW_ROW_LABEL } from "../content";
 import { CloudSunIcon, AudioLinesIcon } from "./icons";
+import { iconButtonStyle } from "./chip";
 
 export type View = "scene" | "monitor";
 export const VIEWS: View[] = ["scene", "monitor"];
@@ -22,7 +23,7 @@ export function PageIndicator({ view, onView, vertical }: { view: View; onView: 
             aria-selected={active}
             aria-label={VIEW_LABELS[v]}
             onClick={() => onView(v)}
-            style={{ width: s, height: s, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: `calc(${s} / 2)`, color: active ? c.textPrimary : `rgba(255,255,255,${MONITOR.iconInactive})`, transition: `color ${CONTROL.stateMs}ms ease` }}
+            style={iconButtonStyle(s, active ? c.textPrimary : `rgba(255,255,255,${MONITOR.iconInactive})`, { transition: `color ${CONTROL.stateMs}ms ease` })}
           >
             {v === "scene" ? <CloudSunIcon size={MONITOR.icon} /> : <AudioLinesIcon size={MONITOR.icon} />}
           </button>

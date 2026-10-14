@@ -4,11 +4,10 @@ import { smokeStop } from "./SmokeLayer";
 import { nightOpacity } from "./NightLayer";
 import { goldenOpacity, GOLDEN_MID_AT } from "./GoldenLayer";
 import { clamp01, lerp } from "../utils/math";
-import { hexToRgb, srgbToLinear, type RGB } from "../utils/oklch";
+import { hexToRgb, srgbToLinear, mixRgb, parseRgb, type RGB } from "../utils/oklch";
 
 export type { RGB };
 
-const mix = (a: RGB, b: RGB, t: number): RGB => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 
 function hslToRgb(h: number, s: number, l: number): RGB {
   const k = (n: number) => (n + h / 30) % 12;
@@ -37,9 +36,9 @@ function predictSky(i: Omit<PanelInputs, "glass">): RGB {
   let c: RGB = i.sky;
   // The DOM layers, in the order the scene stacks them: night, golden, then the plume's two terms.
   const nightA = nightOpacity(i.night, d);
-  if (nightA > 0.002) c = screen(c, mix(hexToRgb(NIGHT.zenith), hexToRgb(NIGHT.horizon), t), nightA);
+  if (nightA > 0.002) c = screen(c, mixRgb(hexToRgb(NIGHT.zenith), hexToRgb(NIGHT.horizon), t), nightA);
   const goldenA = goldenOpacity(i.golden, d);
-  if (goldenA > 0.002) { const p = 1 - t; const g = p < GOLDEN_MID_AT ? mix(hexToRgb(GOLDEN.horizon), hexToRgb(GOLDEN.mid), p / GOLDEN_MID_AT) : mix(hexToRgb(GOLDEN.mid), hexToRgb(GOLDEN.zenith), (p - GOLDEN_MID_AT) / (1 - GOLDEN_MID_AT)); c = screen(c, g, goldenA); }
+  if (goldenA > 0.002) { const p = 1 - t; const g = p < GOLDEN_MID_AT ? mixRgb(hexToRgb(GOLDEN.horizon), hexToRgb(GOLDEN.mid), p / GOLDEN_MID_AT) : mixRgb(hexToRgb(GOLDEN.mid), hexToRgb(GOLDEN.zenith), (p - GOLDEN_MID_AT) / (1 - GOLDEN_MID_AT)); c = screen(c, g, goldenA); }
   if (d > 0.001) {
     const at = smokeStop("attenuation", d, i.smoke.regime, t); c = multiply(c, hslToRgb(at.h, at.s, at.l), at.a);
     const sc = smokeStop("inscatter", d, i.smoke.regime, t); c = screen(c, hslToRgb(sc.h, sc.s, sc.l), sc.a);
@@ -50,9 +49,8 @@ function predictSky(i: Omit<PanelInputs, "glass">): RGB {
 export function predictPanel(i: PanelInputs): { rgb: RGB; luminance: number } {
   let c = predictSky(i);
   // The glass: the fill over the backdrop, the night's white lift over that. The material's own saturation is not in the sample: the browser applies it to the backdrop at composite time (D-59), and the sample is the raw sky under the panel.
-  const fill = i.glass.fill.split(",").map(Number) as RGB;
-  c = mix(c, fill, clamp01(i.glass.alpha));
-  c = mix(c, [255, 255, 255], clamp01(i.glass.lift));
+  c = mixRgb(c, parseRgb(i.glass.fill), clamp01(i.glass.alpha));
+  c = mixRgb(c, [255, 255, 255], clamp01(i.glass.lift));
   return { rgb: c, luminance: luminance(c) };
 }
 

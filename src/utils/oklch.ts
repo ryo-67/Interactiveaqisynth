@@ -1,8 +1,12 @@
 // oklch — the perceptual colour space the AQI ramp is built in (D-51, 2026-09-16). OKLCH's lightness and chroma track what the eye reads as brightness and saturation, so six hues set at one L and one C read as one family; sRGB hex values hand-picked per hue never did (yellow at 0.93 luminance beside a red at 0.28). Björn Ottosson's Oklab, the standard matrices; sRGB only.
-import { clamp01 } from "./math";
+import { clamp01, lerp } from "./math";
 export type RGB = [number, number, number]; // 0..255
 
 /** "#rrggbb" → [r, g, b], 0..255. */
+// An "r, g, b" triplet, as the glass fill tokens and their CSS custom properties are written.
+export const parseRgb = (triplet: string): RGB => triplet.split(",").map(Number) as RGB;
+// a toward b by t, per channel in sRGB, unrounded: the panel prediction, the graph's grey-to-ramp blend and the glass's warm fill. Callers round where they draw.
+export const mixRgb = (a: RGB, b: RGB, t: number): RGB => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 export const hexToRgb = (hex: string): RGB => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
 export const srgbToLinear = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };

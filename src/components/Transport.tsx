@@ -4,7 +4,7 @@ import { useTheme, themeColors, CONTROL } from "../utils/theme";
 import { TRANSPORT_PLAY, TRANSPORT_PAUSE, TRANSPORT_VOLUME, ABOUT_LABEL, ABOUT } from "../content";
 import { PlayIcon, PauseIcon, NotebookTextIcon, MinimizeIcon, XIcon } from "./icons";
 import { Glass } from "./Glass";
-import { pillButtonStyle } from "./chip";
+import { pillButtonStyle, iconButtonStyle } from "./chip";
 
 // MAPPING (slider 0..1 → engine dB): the fader is perceptual — 1 is unity, 0.5 is −6 dB, 0.1 is −20 dB, 0 is silence — because a linear-gain fader spends most of its travel in the top few dB.
 function sliderToDb(v: number): number {
@@ -20,7 +20,7 @@ export function PlayButton({ playing, onToggle }: { playing: boolean; onToggle: 
       onClick={onToggle}
       aria-label={playing ? TRANSPORT_PAUSE : TRANSPORT_PLAY}
       aria-pressed={playing}
-      style={{ width: s, height: s, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: `calc(${s} / 2)`, color: c.textPrimary }}
+      style={iconButtonStyle(s, c.textPrimary)}
     >
       {/* Lucide's play and pause (icons.tsx), both mounted in the same cell and cross-faded, so the button transitions from one to the other rather than swapping (2026-09-15); the play triangle is shifted a unit right there so it reads centred in the round button. */}
       <span style={{ position: "relative", width: 16, height: 16, display: "inline-block" }}>

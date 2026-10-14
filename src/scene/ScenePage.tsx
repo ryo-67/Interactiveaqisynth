@@ -205,12 +205,16 @@ export default function ScenePage() {
     
     return () => { window.removeEventListener("resize", onResize); window.clearTimeout(t); };
   }, []);
+  // What the key and wheel handlers below read, current as of this render, so they are attached once rather than on every render (they were re-attached hundreds of times a second while playing, 2026-10-14).
+  const pagingRef = useRef({ vertical, switchView });
+  pagingRef.current = { vertical, switchView };
   // The arrows along the pages' axis switch pages (only Space and Escape were bound); not while a control that uses them (the volume slider) has focus. Above the phone width the wheel does too: a scroll of more than WHEEL_PX in one direction, then nothing more until the slide is over, so a trackpad's inertia does not carry the page back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target;
       if (t instanceof HTMLInputElement || t instanceof HTMLSelectElement || t instanceof HTMLTextAreaElement) return;
       if (aboutRef.current) return; // the overlay's own keys (Escape) are its; the pages do not turn beneath it
+      const { vertical, switchView } = pagingRef.current;
       const fwd = vertical ? "ArrowDown" : "ArrowRight", back = vertical ? "ArrowUp" : "ArrowLeft";
       if (e.key === fwd) switchView("monitor");
       if (e.key === back) switchView("scene");
@@ -218,6 +222,7 @@ export default function ScenePage() {
     // The wheel along the pages' axis: vertical travel on laptop, horizontal travel where the pages sit side by side (Shoro, 2026-09-16: a narrow laptop window is the horizontal layout too, and a trackpad's two-finger swipe sideways should turn the page there, not only a drag). A page's own horizontal scroll strips (the pins, the graph's tabs) get the gesture first: a wheel over one that can still scroll is theirs.
     const onWheel = (e: WheelEvent) => {
       if (aboutRef.current) return; // the overlay scrolls; the pages do not turn beneath it
+      const { vertical, switchView } = pagingRef.current;
       const w = wheelRef.current, now = performance.now();
       if (now - w.at > 400) w.acc = 0; // a fresh gesture
       w.at = now;
@@ -232,7 +237,7 @@ export default function ScenePage() {
     window.addEventListener("keydown", onKey);
     window.addEventListener("wheel", onWheel, { passive: true });
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("wheel", onWheel); };
-  });
+  }, []);
   // The page drag (D-45, 2026-09-16, Shoro): a press anywhere but a control (the sky, the band's empty space, any card; never the plot, a chip, a button, the slider or a link, so a drag never contends with a gesture of its own) dragged along the pages' axis switches pages on release past SWIPE_PX. Below laptop the axis is horizontal and the track follows the pointer as it does the finger (translated directly, no React state per move; on release the nearer page wins, or the one the pointer was heading for). On laptop the axis is vertical, the pages stay put, and the cursor says what release will do: Lucide's move-up or move-down (move-left or move-right below laptop) once the drag has gone SWIPE_PX in a direction that has a page, nothing in one that does not (body data-drag, read by Cursor.tsx). A touch keeps its implicit capture, which a chip's tap relies on. A mouse or pen is captured once the drag is allowed, so leaving the surface mid-drag does not lose it. A drag that commits to the other axis does nothing, and no drag is ever the sky's click (swipedAt).
   const trackRef = useRef<HTMLDivElement>(null);
   const swipe = useRef<{ id: number; x: number; y: number; axis: "x" | "y" | null; base: number } | null>(null);
@@ -243,7 +248,11 @@ export default function ScenePage() {
     if (fwd ? page === "monitor" : page === "scene") return null; // nothing past the last or before the first page
     return vertical ? (fwd ? "move-up" : "move-down") : (fwd ? "move-left" : "move-right");
   };
-  const setDragGlyph = (g: string | null) => { if (g) document.body.dataset.drag = g; else delete document.body.dataset.drag; };
+  // Written only when it changes: every write fires the cursor's MutationObserver (Cursor.tsx), which hit-tests the pointer, and a drag moves the pointer every frame.
+  const setDragGlyph = (g: string | null) => {
+    if ((document.body.dataset.drag ?? null) === g) return;
+    if (g) document.body.dataset.drag = g; else delete document.body.dataset.drag;
+  };
   const onDragDown = (e: React.PointerEvent) => {
     const t = e.target as HTMLElement, touch = e.pointerType === "touch";
     if (aboutRef.current) return;
@@ -337,7 +346,9 @@ export default function ScenePage() {
   // The sampled panels: the hero and the graph on the scene page, the two monitor cards that colour a step (D-43). A panel that is not on screen keeps its last sample.
   type PanelKey = "hero" | "aqi" | "graph" | "scale" | "tone";
   const panelRefs = useRef<Record<PanelKey, HTMLDivElement | null>>({ hero: null, aqi: null, graph: null, scale: null, tone: null });
-  const setPanelRef = (key: PanelKey) => (el: HTMLDivElement | null) => { panelRefs.current[key] = el; };
+  // One callback per panel for the page's life: a new function each render made React detach and re-attach all five refs on every commit (2026-10-14).
+  const panelRefSetters = useRef<Partial<Record<PanelKey, (el: HTMLDivElement | null) => void>>>({});
+  const setPanelRef = useCallback((key: PanelKey) => (panelRefSetters.current[key] ??= (el: HTMLDivElement | null) => { panelRefs.current[key] = el; }), []);
   type Sample = { rgb: RGB; t: number };
   const initialSample: Sample = { rgb: [40, 60, 90], t: 0.6 };
   const [skySamples, setSkySamples] = useState<Record<PanelKey, Sample>>({ hero: initialSample, aqi: initialSample, graph: initialSample, scale: initialSample, tone: initialSample });
@@ -361,6 +372,7 @@ export default function ScenePage() {
     };
     const changed = (a: Sample, b: Sample) => Math.abs(a.rgb[0] - b.rgb[0]) + Math.abs(a.rgb[1] - b.rgb[1]) + Math.abs(a.rgb[2] - b.rgb[2]) > 3 || Math.abs(a.t - b.t) > 0.01;
     const tick = () => {
+      if (document.hidden) return; // nobody is looking at the panels: no GPU readbacks in a background tab (2026-10-14); the next visible tick samples again
       if (performance.now() < lockRef.current) return; // a page switch in flight (D-43): the panels are passing over sky they will not rest on, and a sample there would ease the ramps toward a colour that is gone by the time they arrive; the first tick after the slide samples where they settled (2026-09-16)
       const gl = skyBoxRef.current?.querySelector("canvas:not([data-dissolve])") as HTMLCanvasElement | null; // the sky's canvas is the one that is not the dissolve's; both are aria-hidden since BUG-49, which is why this cannot ask for the one that is not (BUG-58)
       if (!gl || gl.width === 0) return;

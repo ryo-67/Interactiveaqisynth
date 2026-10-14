@@ -71,28 +71,43 @@ export function Routing({ m }: { m: MonitorState }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.hour, cables]);
 
+  // A cable's length, measured once per shape: getTotalLength walks the curve, and each live packet asked for it every frame.
+  const lengths = useRef(new WeakMap<SVGPathElement, { d: string; len: number }>());
+  const pathLength = (path: SVGPathElement): number => {
+    const d = path.getAttribute("d") ?? "";
+    const hit = lengths.current.get(path);
+    if (hit && hit.d === d) return hit.len;
+    const len = path.getTotalLength();
+    lengths.current.set(path, { d, len });
+    return len;
+  };
+
   // The packets: drawn straight into the SVG each frame (no React state per frame). Each is a soft halo and a bright core, moved along its cable's path by arc length with an ease-in-out over one beat (motion.beatMs), fading over the last quarter of the way.
   const tick = (now: number) => {
     const g = dotsRef.current;
     if (!g) { raf.current = 0; return; }
     const dur = motion.beatMs * MONITOR.packetBeats;
     const live: Packet[] = [];
-    while (g.firstChild) g.removeChild(g.firstChild);
+    // The circles are reused frame to frame (a pool in the group: the nth circle is the nth dot drawn, extras removed at the end), rather than all removed and rebuilt every frame (2026-10-14).
+    let used = 0;
+    const dot = (x: number, y: number, r: number, fill: string) => {
+      let el = g.children[used] as SVGCircleElement | undefined;
+      if (!el) { el = document.createElementNS("http://www.w3.org/2000/svg", "circle"); g.appendChild(el); }
+      el.setAttribute("cx", x.toFixed(1)); el.setAttribute("cy", y.toFixed(1)); el.setAttribute("r", String(r)); el.setAttribute("fill", fill);
+      used++;
+    };
     for (const p of packets.current) {
       const t = (now - p.start) / dur;
       if (t >= 1) continue;
       live.push(p);
       const path = pathRefs.current[p.cable];
       if (!path) continue;
-      const len = path.getTotalLength();
-      const pt = path.getPointAtLength(easeInOutQuad(t) * len);
+      const pt = path.getPointAtLength(easeInOutQuad(t) * pathLength(path));
       const alpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
-      const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      halo.setAttribute("cx", pt.x.toFixed(1)); halo.setAttribute("cy", pt.y.toFixed(1)); halo.setAttribute("r", String(MONITOR.packetHalo)); halo.setAttribute("fill", `rgba(255,255,255,${(0.28 * alpha).toFixed(3)})`);
-      const core = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      core.setAttribute("cx", pt.x.toFixed(1)); core.setAttribute("cy", pt.y.toFixed(1)); core.setAttribute("r", String(MONITOR.packetCore)); core.setAttribute("fill", `rgba(255,255,255,${(0.95 * alpha).toFixed(3)})`);
-      g.appendChild(halo); g.appendChild(core);
+      dot(pt.x, pt.y, MONITOR.packetHalo, `rgba(255,255,255,${(0.28 * alpha).toFixed(3)})`);
+      dot(pt.x, pt.y, MONITOR.packetCore, `rgba(255,255,255,${(0.95 * alpha).toFixed(3)})`);
     }
+    while (g.children.length > used) g.lastChild!.remove();
     packets.current = live;
     raf.current = live.length ? requestAnimationFrame(tick) : 0;
   };

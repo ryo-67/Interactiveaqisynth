@@ -171,11 +171,13 @@ export function useListenSession(): ListenSession {
 
   const setDate = useCallback((d: string | null) => setDateState(d), []);
 
-  // Warm the archive year the pins live in once the page is idle, so the first pin does not wait on a fetch (the year file is cached per borough after that).
+  // Warm the archive year the pins live in once the page is idle, so the first pin does not wait on a fetch (the year file is cached per borough after that). Idle means after the live answer, not during it: the year file is about a megabyte and had been competing with the first paint's one request (2026-10-14).
+  const liveSettled = liveStatus !== "loading";
   useEffect(() => {
+    if (!liveSettled) return;
     const id = window.setTimeout(() => { void getDay(borough, PINS[0].date).catch(() => undefined); }, 1500);
     return () => window.clearTimeout(id);
-  }, [borough]);
+  }, [borough, liveSettled]);
 
   const devFixture = DEV && devDayKey !== "live" ? PHASE0_DAYS.find((d) => d.key === devDayKey) : undefined;
   const day: Day | null = devFixture ? devFixture.day : date ? (chosen?.hours ?? null) : (snapshot?.series[borough].hours ?? null);

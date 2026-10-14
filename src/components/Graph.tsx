@@ -78,6 +78,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
   const maskCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null); // the fill's alpha mask, keyed on the geometry alone (see the draw)
   const hairRef = useRef<HTMLCanvasElement | null>(null); // the firm hairlines, opaque white, reused across draws
   const faintRef = useRef<HTMLCanvasElement | null>(null); // the faint hairlines, opaque white, composited at their own alpha
+  const columnsRef = useRef<HTMLCanvasElement | null>(null); // the area fill's column colours, painted before they go through the mask; reused, like the caches' own canvases (2026-10-14: a rebuild allocated three plot-sized canvases)
   const playheadRef = useRef<number | null>(playheadHour);
   playheadRef.current = playheadHour;
   const playing = running && playheadHour != null;
@@ -279,7 +280,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         if (!area || area.key !== areaKey) {
           let mask = maskCache.current;
           if (!mask || mask.key !== maskKey) {
-          const off = document.createElement("canvas");
+          const off = maskCache.current?.canvas ?? document.createElement("canvas"); // setting the size below clears it and resets its state, as a new canvas would be
           off.width = Math.round(plotW * dpr); off.height = bufH; // the plot's own device pixels, blitted 1:1 below
           const o = off.getContext("2d")!;
           o.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -308,11 +309,11 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           mask = maskCache.current!;
           // Pass 2: the colour, through the mask — every column in the line's own colour at that column's height (the same rule as the line and the legend), at the presence blended between its two hours. Per column, so the fill's top edge is the line's colour even on a rise that crosses several categories within one hour; a gradient with one stop per hour blended two hues in sRGB across the hour and missed the ones between.
           // The columns are painted on their own canvas and composited through a copy of the mask in ONE draw: source-in keeps only where the new paint and the canvas overlap and clears everything else, so column fills applied one by one through the mask left only the last column standing (2026-09-16).
-          const off = document.createElement("canvas");
+          const off = areaCache.current?.canvas ?? document.createElement("canvas");
           off.width = mask.canvas.width; off.height = mask.canvas.height;
           const o = off.getContext("2d")!;
           o.drawImage(mask.canvas, 0, 0);
-          const col = document.createElement("canvas");
+          const col = columnsRef.current ?? (columnsRef.current = document.createElement("canvas"));
           col.width = off.width; col.height = off.height;
           const cc = col.getContext("2d")!;
           cc.setTransform(dpr, 0, 0, dpr, 0, 0);

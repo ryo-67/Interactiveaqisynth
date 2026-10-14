@@ -238,15 +238,16 @@ function DevHandle({ composerRef, fx }: { composerRef: React.RefObject<EffectCom
 }
 
 // Tone-mapping exposure is a renderer setting, not a <Sky> prop. On-demand cells must be told to repaint after it changes.
-function Exposure({ value }: { value: number }) {
+function Exposure({ value, live }: { value: number; live: boolean }) {
   const gl = useThree((s) => s.gl);
   useLayoutEffect(() => {
     gl.toneMappingExposure = value;
+    if (live) return; // the frameloop is "always": the next frame draws it, and an invalidate or a timer would do nothing but run (every frame while playing)
     invalidate();
     // One more after materials compile, so an on-demand cell is never left blank on first paint.
     const t = setTimeout(() => invalidate(), 60);
     return () => clearTimeout(t);
-  }, [gl, value]);
+  }, [gl, value, live]);
   return null;
 }
 
@@ -279,7 +280,10 @@ export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style,
   // "above": pitch up by half the vertical fov plus a margin, so the horizon falls at or below the bottom edge. The previous fixed 0.32 rad left the bottom edge 12.7 degrees BELOW the horizon, which rendered the dome's ground half — invisible only while the control bar happened to cover it. "edge"/"fade": horizon sits at the vertical middle.
   const cameraRotationX = ABOVE_HORIZON_PITCH_RAD;
   // What the watchdog prints if the renderer misbehaves: every input this frame.
-  const snapshot = useCallback(() => ({ params, sunPosition, sunElevationDeg, hosekAlpha, starOpacity, saturation, particles, grain, hour, live }), [params, sunPosition, sunElevationDeg, hosekAlpha, starOpacity, saturation, particles, grain, hour, live]);
+  // Read through a ref, so the function stays the same for the watchdog's life: built from every input it changed each frame, and the watchdog re-attached its context-loss listeners every frame with it (2026-10-14).
+  const inputsRef = useRef<Record<string, unknown>>({});
+  inputsRef.current = { params, sunPosition, sunElevationDeg, hosekAlpha, starOpacity, saturation, particles, grain, hour, live };
+  const snapshot = useCallback(() => ({ ...inputsRef.current }), []);
 
   return (
     <div style={{ position: "relative", ...style }}>
@@ -295,7 +299,7 @@ export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style,
       >
         <CameraRig pitch={cameraRotationX} yaw={yaw} />
         <CameraFrame top={frameTop} />
-        <Exposure value={params.exposure} />
+        <Exposure value={params.exposure} live={live} />
         <Grade fx={fx} bloom={params.bloomIntensity} saturation={saturation} particles={particles} grain={grain} />
         <SkyWatchdog composerRef={composerRef} fx={fx} snapshot={snapshot} />
         <DevHandle composerRef={composerRef} fx={fx} />

@@ -37,6 +37,7 @@ export function maxChroma(L: number, h: number): number {
   return lo;
 }
 export function oklchToHex(c: OKLCH): string {
-  const lin = oklchToLinear({ ...c, C: Math.min(c.C, maxChroma(c.L, c.h)) }); // clipped to the gamut by chroma alone, so the hue and the lightness hold
+  // Clipped to the gamut by chroma alone, so the hue and the lightness hold. A colour already inside the gamut needs no search (along one hue and lightness the gamut is a single run of chroma from zero), which is most of them: the graph asks once per pixel column (oklch.test.ts pins the output to the full search's).
+  const lin = oklchToLinear(inGamut(c) ? c : { ...c, C: Math.min(c.C, maxChroma(c.L, c.h)) });
   return "#" + lin.map((v) => Math.round(Math.max(0, Math.min(255, linearToSrgb(clamp01(v))))).toString(16).padStart(2, "0")).join("");
 }

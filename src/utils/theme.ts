@@ -1,6 +1,8 @@
 import { createContext, useContext } from "react";
 import { oklchToHex, maxChroma, type OKLCH } from "./oklch";
-import { clamp01 } from "./math";
+import { clamp01, wrap, wrapDelta } from "./math";
+import { BPM } from "../engine/tempo";
+import { AQI_CATEGORY_MAX } from "../engine/aqi";
 
 export type Theme = "dark" | "light";
 
@@ -138,8 +140,7 @@ export const AQI_RAMP = {
   dark: { L: 0.78, C: 0.12 }, // WCAG Y 0.44 to 0.50: 4.6 to 5.1 on the darkest panel (0.058)
   light: { L: 0.86, C: 0.08 }, // Y 0.61 to 0.66: 3.9 to 4.2 on the brightest panel (0.12), 6.1 or better on the darkest
 } as const;
-const CATEGORY_MAX = [50, 100, 150, 200, 300, 500] as const;
-export const AQI_CATEGORIES = CATEGORY_MAX.map((max, i) => ({ max, dark: oklchToHex({ ...AQI_RAMP.dark, h: AQI_RAMP.hues[i] }), light: oklchToHex({ ...AQI_RAMP.light, h: AQI_RAMP.hues[i] }) }));
+export const AQI_CATEGORIES = AQI_CATEGORY_MAX.map((max, i) => ({ max, dark: oklchToHex({ ...AQI_RAMP.dark, h: AQI_RAMP.hues[i] }), light: oklchToHex({ ...AQI_RAMP.light, h: AQI_RAMP.hues[i] }) }));
 // The panels the ramp's ends are set for, as WCAG luminance of composited frosted panels measured 2026-09-15 with the denser frost: the night graph (0.057) at the dark end, the hazy-noon hero (0.130) at the light end, the brightest any panel reached. Each panel predicts its own luminance and lifts the ramp it draws linearly between the two.
 
 export const RAMP = { panelDark: 0.058, panelBright: 0.12 } as const;
@@ -157,11 +158,11 @@ export const LIVE_EDGE = { error: "rgba(232, 108, 92, 0.85)", quiet: "rgba(255, 
 type Stops = Array<{ at: number; c: OKLCH }>;
 const stopsFor = (end: { L: number; C: number }): Stops => {
   let lo = 0;
-  return CATEGORY_MAX.map((max, i) => { const at = (lo + max) / 2; lo = max; const h = AQI_RAMP.hues[i]; return { at, c: { L: end.L, C: Math.min(end.C, maxChroma(end.L, h)), h } }; });
+  return AQI_CATEGORY_MAX.map((max, i) => { const at = (lo + max) / 2; lo = max; const h = AQI_RAMP.hues[i]; return { at, c: { L: end.L, C: Math.min(end.C, maxChroma(end.L, h)), h } }; });
 };
 const DARK_STOPS = stopsFor(AQI_RAMP.dark);
 const LIGHT_STOPS = stopsFor(AQI_RAMP.light);
-const mixHue = (a: number, b: number, t: number) => { const d = ((b - a + 540) % 360) - 180; return (a + d * t + 360) % 360; }; // the shorter way round the wheel
+const mixHue = (a: number, b: number, t: number) => wrap(a + wrapDelta(a, b, 360) * t, 360); // the shorter way round the wheel
 const mixOklch = (a: OKLCH, b: OKLCH, t: number): OKLCH => ({ L: a.L + (b.L - a.L) * t, C: a.C + (b.C - a.C) * t, h: mixHue(a.h, b.h, t) });
 // The stops at a lift. The last lift's stops are kept, since a draw asks for many colours at one lift.
 let liftCache: { lift: number; stops: Stops } | null = null;
@@ -187,7 +188,7 @@ export function aqiScaleColor(aqi: number, lift = 0): string { return rampColor(
 export function aqiRampPosition(aqi: number): number {
   const v = Math.max(0, Math.min(500, aqi));
   let lo = 0;
-  for (let i = 0; i < CATEGORY_MAX.length; i++) { const max = CATEGORY_MAX[i]; if (v <= max) return (i + (v - lo) / (max - lo)) / CATEGORY_MAX.length; lo = max; }
+  for (let i = 0; i < AQI_CATEGORY_MAX.length; i++) { const max = AQI_CATEGORY_MAX[i]; if (v <= max) return (i + (v - lo) / (max - lo)) / AQI_CATEGORY_MAX.length; lo = max; }
   return 1;
 }
 // The gradient's stops, on a 0..max scale, for a canvas or CSS gradient drawn with the same rule.
@@ -306,7 +307,7 @@ export const CURSOR = {
 export const REDUCED_MOTION = typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export const motion = {
-  beatMs: 60000 / 90 / 1, // one beat = one hour = 666.7 ms; playhead advance
+  beatMs: 60000 / BPM, // one beat = one hour = 666.7 ms; playhead advance (engine/tempo.ts)
   blurMs: 500, // mood word swap at tier boundaries
   popoverMs: 180, // the calendar popover in and out: opacity with a 4 px settle (2026-09-15)
   pageBeats: 1.5, // the middle band slides between the scene and the monitor over this many beats (D-43): the same span as the sun's glide, the dissolve and the graph morph

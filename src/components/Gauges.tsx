@@ -5,6 +5,7 @@ import { useTheme, themeColors, motion, aqiScaleColor, aqiRampPosition } from ".
 import { MONITOR_REST, MONITOR_UNITS } from "../content";
 import type { PulseFeed } from "../scene/pulseFeed";
 import { DETUNE_MAX_CENTS } from "../engine/scales";
+import { HOURS_PER_BAR } from "../engine/tempo";
 import { clamp01 } from "../utils/math";
 
 const TAU = motion.beatMs * 0.5; // the sky's easing constant: settled within about a beat
@@ -55,7 +56,7 @@ export function DetuneBand({ cents }: { cents: number }) {
 // The 16-step lane: the bar's pattern as steps, a hit lit when the engine fires it and fading over a beat. Keyed on the hit's time so a repeated step restarts its fade.
 export function Lane({ steps, pulses, hour }: { steps: boolean[] | null; pulses: PulseFeed; hour: number | null }) {
   const pulse = useSyncExternalStore(pulses.subscribe, pulses.get);
-  const sameBar = pulse != null && hour != null && Math.floor(pulse.hour / 4) === Math.floor(hour / 4);
+  const sameBar = pulse != null && hour != null && Math.floor(pulse.hour / HOURS_PER_BAR) === Math.floor(hour / HOURS_PER_BAR);
   return (
     <div className="scene-lane" role="img" aria-label={steps ? `${steps.filter(Boolean).length} of 16` : MONITOR_REST}>
       {Array.from({ length: 16 }, (_, i) => {

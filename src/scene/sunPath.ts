@@ -8,6 +8,7 @@
 // The visible leg takes VISIBLE_SHARE of the time so it never looks rushed; the unseen leg takes the rest.
 import { SKY_CAMERA } from "../utils/theme";
 import type { SunAngles } from "./solar";
+import { wrap, wrapDelta } from "../utils/math";
 
 export interface SunCamera { facingDeg: number; aspect: number }
 export const VISIBLE_SHARE = 0.65;
@@ -31,7 +32,7 @@ function dirOf(s: SunAngles, cam: SunCamera): [number, number, number] {
 function anglesOf(d: [number, number, number], cam: SunCamera): SunAngles {
   const el = Math.asin(Math.max(-1, Math.min(1, d[1]))) / rad;
   const phi = Math.atan2(d[0], -d[2]) / rad;
-  return { elevationDeg: el, azimuthDeg: ((cam.facingDeg + phi) % 360 + 360) % 360 };
+  return { elevationDeg: el, azimuthDeg: wrap(cam.facingDeg + phi, 360) };
 }
 export function project(s: SunAngles, cam: SunCamera): Screen | null {
   const b = basis(cam), d = dirOf(s, cam), f = dot(d, b.f);
@@ -69,7 +70,7 @@ function edgePoint(from: Screen, toward: Screen): Screen {
 function aim(s: SunAngles, cam: SunCamera): Screen {
   const p = project(s, cam);
   if (p && Math.abs(p.x) < 4 && Math.abs(p.y) < 4) return p;
-  const phi = ((s.azimuthDeg - cam.facingDeg + 540) % 360) - 180; // −180..180
+  const phi = wrapDelta(cam.facingDeg, s.azimuthDeg, 360); // −180..180
   const side = phi >= 0 ? 1 : -1;
   const edgePhi = Math.atan(basis(cam).tanH) / rad; // the frame's horizontal half-angle
   const atEdge = project({ azimuthDeg: cam.facingDeg + side * Math.min(edgePhi, 80), elevationDeg: Math.max(-5, Math.min(60, s.elevationDeg)) }, cam);
@@ -77,8 +78,8 @@ function aim(s: SunAngles, cam: SunCamera): Screen {
 }
 
 const angleLerp = (a: SunAngles, b: SunAngles, t: number): SunAngles => {
-  let d = (b.azimuthDeg - a.azimuthDeg) % 360; if (d > 180) d -= 360; if (d < -180) d += 360;
-  return { elevationDeg: a.elevationDeg + (b.elevationDeg - a.elevationDeg) * t, azimuthDeg: ((a.azimuthDeg + d * t) % 360 + 360) % 360 };
+  const d = wrapDelta(a.azimuthDeg, b.azimuthDeg, 360);
+  return { elevationDeg: a.elevationDeg + (b.elevationDeg - a.elevationDeg) * t, azimuthDeg: wrap(a.azimuthDeg + d * t, 360) };
 };
 const screenLerp = (a: Screen, b: Screen, t: number): Screen => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 

@@ -1,5 +1,8 @@
 // euclid.ts — Euclidean rhythm (Bjorklund) with rotation.
 // Ported from prototype/phase0.html V4 (STRATEGY §3.2, §3.9).
+import { normalize, type NormAnchors } from "./contour";
+import { HOURS_PER_BAR } from "./tempo";
+import type { Day } from "./SynthEngine";
 
 // Bjorklund via the Bresenham formulation: step i of n is a hit when the k-count advances. Rotation r shifts the pattern left so the bar's downbeat character follows the hour of day.
 export function euclidHit(step: number, k: number, n: number, rotation: number): boolean {
@@ -19,6 +22,13 @@ export function barK(no2nValues: ReadonlyArray<number | null>): number | null {
   if (vals.length === 0) return null;
   const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
   return Math.min(11, Math.max(3, Math.round(3 + 8 * mean)));
+}
+
+// One bar's pulse: k from the mean normalized NO2 of the bar's hours, rotated by the bar's first hour (§3.2). The one rule for what the engine plays and what the monitor's lane shows at rest (D-43), which had each written it out.
+export function barPattern(day: Day, bar: number, no2Anchors: NormAnchors): { k: number | null; rotation: number } {
+  const first = bar * HOURS_PER_BAR;
+  const k = barK(day.slice(first, first + HOURS_PER_BAR).map((h) => normalize(h.no2, no2Anchors)));
+  return { k, rotation: first % 16 };
 }
 
 // Where the transport is, as a bar and a sixteenth step, from its tick count. The step is rounded to the nearest sixteenth (the scheduler fires a hair early or late); the bar is then derived FROM THE STEP, never from a separately rounded beat — rounding the beat put the last two sixteenths of every bar into the next bar, so they played the next bar's pattern and reported the next bar's hour.

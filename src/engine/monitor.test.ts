@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { barSteps, euclidHit, barK } from "./euclid";
 import { detuneSigma, tierIndexOf, TIERS, chordMidi } from "./scales";
+import { AQI_CATEGORY_MAX } from "./aqi";
 
 describe("barSteps (the monitor's lane is the engine's pattern)", () => {
   it("matches euclidHit step for step, with rotation", () => {
@@ -41,6 +42,8 @@ describe("six tiers on EPA's lines (D-44)", () => {
   it("steps at 50, 100, 150, 200, 300", () => {
     expect(TIERS.length).toBe(6);
     expect([0, 50, 51, 100, 101, 150, 151, 200, 201, 300, 301, 500].map(tierIndexOf)).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+    expect(tierIndexOf(650)).toBe(5); // past the top of the scale, still Hazardous
+    expect(TIERS.length).toBe(AQI_CATEGORY_MAX.length); // one tier per EPA category, the same lines as the colour ramp
   });
   it("orders the scales by loss of centre and rings only the top tier", () => {
     expect(TIERS.map((t) => t.scaleName)).toEqual(["Major", "Major Pentatonic", "Dorian", "Phrygian", "Locrian", "Chromatic"]); // D-46: Good is Major, Moderate its pentatonic; D-47: Very Unhealthy is Locrian

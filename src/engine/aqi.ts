@@ -6,6 +6,9 @@
 
 import type { Day, HourReading } from "./SynthEngine";
 
+// EPA's six category lines: the top AQI of Good, Moderate, Unhealthy for Sensitive Groups, Unhealthy, Very Unhealthy and Hazardous (500, the top of the scale). One list for the two things that read them, the colour ramp (theme.ts) and the sound's tiers (scales.ts), so the ear and the page change category on the same number (D-44); each had kept its own.
+export const AQI_CATEGORY_MAX = [50, 100, 150, 200, 300, 500] as const;
+
 type Band = readonly [number, number, number, number]; // concentration low, concentration high, index low, index high
 
 // PM2.5, 24-hour µg/m³, the May 2024 revision (Good ends at 9.0, not 12.0; Hazardous begins at 225.5, not 250.5).

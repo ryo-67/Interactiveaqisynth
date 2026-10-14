@@ -7,7 +7,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { createPulseFeed, type PulseFeed } from "./pulseFeed";
 import { pageStatus, type PageStatus } from "./pageStatus";
-import { barK, barSteps } from "../engine/euclid";
+import { barPattern, barSteps } from "../engine/euclid";
+import { HOURS_PER_BAR } from "../engine/tempo";
 import { TIERS, detuneSigma, tierIndexOf } from "../engine/scales";
 import { pm25ToAQI, pm25Played, isMeasuredHour, seriesAQI } from "../engine/aqi";
 import { motion, NYC_LAT, NYC_LON, CAMERA_FACING } from "../utils/theme";
@@ -15,7 +16,7 @@ import { normalize, type PollutantAnchors } from "../engine/contour";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
 import { PINS } from "../content";
 import { getCurrentAll, forgetLive, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
-import { easeInOutQuad } from "../utils/math";
+import { easeInOutQuad, wrap, wrapDelta } from "../utils/math";
 
 // Dev-only fixture select (?dev=1): never renders for a visitor.
 export const DEV = new URLSearchParams(window.location.search).has("dev");
@@ -336,9 +337,9 @@ export function useListenSession(): ListenSession {
     const pm25n = normalize(pm25, a.pm25);
     const tierAqi = pm25ToAQI(pm25);
     const tierIndex = tierAqi == null ? 0 : tierIndexOf(tierAqi);
-    const bar = rest ? Math.floor(rest.index / 4) : 0;
-    const k = day ? barK(day.slice(bar * 4, bar * 4 + 4).map((h) => normalize(h.no2, a.no2))) : null;
-    return { hour: rest?.index ?? null, tierIndex, tierAqi, scaleName: TIERS[tierIndex].scaleName, k, steps: barSteps(k, (bar * 4) % 16), o3n: normalize(r?.o3 ?? null, a.o3), o3: r?.o3 ?? null, pm25n, pm25, no2n: normalize(r?.no2 ?? null, a.no2), detuneCents: detuneSigma(tierAqi) };
+    const bar = rest ? Math.floor(rest.index / HOURS_PER_BAR) : 0;
+    const { k, rotation } = day ? barPattern(day, bar, a.no2) : { k: null, rotation: 0 };
+    return { hour: rest?.index ?? null, tierIndex, tierAqi, scaleName: TIERS[tierIndex].scaleName, k, steps: barSteps(k, rotation), o3n: normalize(r?.o3 ?? null, a.o3), o3: r?.o3 ?? null, pm25n, pm25, no2n: normalize(r?.no2 ?? null, a.no2), detuneCents: detuneSigma(tierAqi) };
   }, [report, rest, day, a]);
   const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.index ?? 12);
   const playheadHour = useEasedHour(clockTarget, playing);
@@ -407,8 +408,7 @@ function useSunTransition(target: number, sunDay: SunDay | null, playing: boolea
     const to = sunAnglesAt(sunDay.date, target, NYC_LAT, NYC_LON, sunDay.tz); // the target as of this render: it may be moving
     // The path is planned in the camera's screen space (sunPath.ts, D-33): straight on screen while visible, angles while unseen. In the camera's FRAME, which on an iPhone is the screen below the window's top rather than the whole sky box (useSafariWindow, BUG-57); everywhere else it is the viewport, as it always was.
     const sun = sunAlongPath(glide.from, to, e, { facingDeg: CAMERA_FACING === "south" ? 180 : 0, aspect: skyFrameAspect() });
-    const shortest = (a: number, b: number, period: number) => { let d = (b - a) % period; if (d > period / 2) d -= period; if (d < -period / 2) d += period; return d; };
-    out = { clock: ((glide.fromClock + shortest(glide.fromClock, target, 24) * e) % 24 + 24) % 24, sun };
+    out = { clock: wrap(glide.fromClock + wrapDelta(glide.fromClock, target, 24) * e, 24), sun };
   } else out = { clock: target, sun: null }; // outside a glide the sun is where the clock puts it, exactly
   useLayoutEffect(() => { shown.current = out; });
 
@@ -442,7 +442,7 @@ function useEasedHour(target: number, running: boolean): number {
       const tick = (now: number) => {
         const t = Math.min(1, Math.max(0, (now - start) / (motion.beatMs * 0.5))); // a frame's timestamp can precede the performance.now() that started it by a few ms; never run backwards
         const e = 1 - Math.pow(1 - t, 3);
-        const v = ((from + (to - from) * e) % 24 + 24) % 24;
+        const v = wrap(from + (to - from) * e, 24);
         heldRef.current = v;
         setValue(v);
         if (t < 1) raf = requestAnimationFrame(tick);

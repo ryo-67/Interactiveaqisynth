@@ -6,7 +6,8 @@
 import * as Tone from "tone";
 import { normalize, SmoothedAQI, melodyMidi, type PollutantAnchors } from "./contour";
 import { pm25ToAQI, pm25Played } from "./aqi";
-import { euclidHit, barK, barSteps, barAndStep } from "./euclid";
+import { euclidHit, barSteps, barAndStep, barPattern } from "./euclid";
+import { BPM, BEAT_S, HOURS_PER_BAR } from "./tempo";
 import { TIERS, tierIndexOf, detuneSigma, chordMidi, midiToFreq } from "./scales";
 
 export type SourceTag = "own" | "citywide" | "typical"; // typical = live NO2 filled from the archive profile (D-18)
@@ -48,7 +49,6 @@ export interface PulseInfo {
   step: number; // 16th-note step within the bar
 }
 
-const BEAT_S = 60 / 90; // one beat = one hour = 0.667 s; every parameter ramp uses this (never jump)
 const PAUSE_FADE_S = 0.03; // pause and resume fade at the master: long enough to avoid a click, short enough to read as immediate. Scheduled from the immediate clock, not Tone.now(), which sits a lookahead (~100 ms) in the future.
 const MELODY_ROOT_MIDI = 48; // C3; melody spans two octaves to C5 (§3.2)
 const CHORD_ROOT_MIDI = 60; // C4; the bed's quartal chords stack upward from here (scales.ts chordMidi, D-47)
@@ -164,7 +164,7 @@ export class SynthEngine {
     this.bedVoices = [0, 1, 2].map(() => this.own(new Tone.FMSynth({ volume: -16, envelope: { attack: 0.4, decay: 0.3, sustain: 0.8, release: 1.2 } })).connect(this.filter));
 
     const transport = Tone.getTransport();
-    transport.bpm.value = 90;
+    transport.bpm.value = BPM;
     transport.timeSignature = 4;
     transport.loop = true;
     transport.loopStart = 0;
@@ -181,11 +181,7 @@ export class SynthEngine {
   setDay(day: Day, anchors?: PollutantAnchors, opts?: { keepPosition?: boolean }): void {
     if (anchors) this.anchors = anchors;
     this.day = day;
-    this.bars = [];
-    for (let b = 0; b < 6; b++) {
-      const no2n = day.slice(b * 4, b * 4 + 4).map((h) => normalize(h.no2, this.anchors.no2));
-      this.bars.push({ k: barK(no2n), rotation: (b * 4) % 16 });
-    }
+    this.bars = Array.from({ length: 24 / HOURS_PER_BAR }, (_, b) => barPattern(day, b, this.anchors.no2));
     const transport = Tone.getTransport();
     const wasPlaying = transport.state === "started";
     if (wasPlaying && opts?.keepPosition) return;

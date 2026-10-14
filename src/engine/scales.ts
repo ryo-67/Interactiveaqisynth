@@ -1,10 +1,10 @@
 // scales.ts — the scale ladder, tier lookup, FM tier table, degree math.
 // Ported from prototype/phase0.html V4 (STRATEGY §3.4, §3.5). Tier display names live in content.ts; this module deals in indices and structure.
+import { AQI_CATEGORY_MAX } from "./aqi";
 
 // Scale ladder (§3.4) + FM parameters and melody articulation per tier. FM: low tier = integer ratios and low index (warm); high tier = irrational ratios and high index (metallic, beating) — dissonance lives at the oscillator, not an external distortion stage (§3.5). Note length shortens with tier: same notes, less air (§3.9).
 // Tier boundaries are EPA's category lines: Good ≤ 50, Moderate ≤ 100, Unhealthy for Sensitive Groups ≤ 150, Unhealthy ≤ 200, Very Unhealthy ≤ 300, Hazardous above (D-44; D-38 had the top two sharing Chromatic; Phase 0's 35, 65, 100, 150 put the ear a category ahead of the page's colours).
 export interface Tier {
-  maxAQI: number;
   scaleName: string;
   semis: readonly number[];
   harmonicity: number;
@@ -16,16 +16,18 @@ export interface Tier {
 // Six tiers, one per EPA grade, on EPA's lines (D-44, 2026-09-16, amending D-02, D-17, D-38). The scales are ordered on one axis, loss of tonal centre: Major, Pentatonic, Dorian, Phrygian, Locrian, Chromatic. Good is the full major scale and Moderate its pentatonic (D-46, Shoro, 2026-09-16, swapping D-44's first two). Very Unhealthy is Locrian, not whole tone (D-47, Shoro's listening pass, 2026-09-16): whole tone floated, ambiguous rather than severe; Locrian is the darkest diatonic step before chromatic, the diminished fifth on the root. Only the scales change; the timbre, note length and σ columns stay with their grades.
 // The timbre axis is DISTANCE FROM AN INTEGER RATIO, not the harmonicity number: 1, 2, 2, 3 are integers, so the partials line up and the tone is clean; 2.76 is 0.24 from 3; 1.414 is 0.414 from 1 and 0.586 from 2, further from any integer than 2.76 is. So inharmonicity runs one way up the ladder although the raw number drops at the last step, and the index doubling makes the inharmonic partials louder at each step. The 2.76/12 and 1.414/24 pairs are the ones Phase 0 approved by ear, moved up two grades.
 export const TIERS: readonly Tier[] = [
-  { maxAQI: 50, scaleName: "Major", semis: [0, 2, 4, 5, 7, 9, 11], harmonicity: 1, modulationIndex: 1, melodyNoteLength: "1n", melodyRelease: 0.3 },
-  { maxAQI: 100, scaleName: "Major Pentatonic", semis: [0, 2, 4, 7, 9], harmonicity: 2, modulationIndex: 2, melodyNoteLength: "2n.", melodyRelease: 0.3 },
-  { maxAQI: 150, scaleName: "Dorian", semis: [0, 2, 3, 5, 7, 9, 10], harmonicity: 2, modulationIndex: 3, melodyNoteLength: "2n", melodyRelease: 0.3 },
-  { maxAQI: 200, scaleName: "Phrygian", semis: [0, 1, 3, 5, 7, 8, 10], harmonicity: 3, modulationIndex: 6, melodyNoteLength: "4n", melodyRelease: 0.3 },
-  { maxAQI: 300, scaleName: "Locrian", semis: [0, 1, 3, 5, 6, 8, 10], harmonicity: 2.76, modulationIndex: 12, melodyNoteLength: "8n", melodyRelease: 0.3 },
-  { maxAQI: Infinity, scaleName: "Chromatic", semis: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], harmonicity: 1.414, modulationIndex: 24, melodyNoteLength: "8n", melodyRelease: 1.2 },
+  { scaleName: "Major", semis: [0, 2, 4, 5, 7, 9, 11], harmonicity: 1, modulationIndex: 1, melodyNoteLength: "1n", melodyRelease: 0.3 },
+  { scaleName: "Major Pentatonic", semis: [0, 2, 4, 7, 9], harmonicity: 2, modulationIndex: 2, melodyNoteLength: "2n.", melodyRelease: 0.3 },
+  { scaleName: "Dorian", semis: [0, 2, 3, 5, 7, 9, 10], harmonicity: 2, modulationIndex: 3, melodyNoteLength: "2n", melodyRelease: 0.3 },
+  { scaleName: "Phrygian", semis: [0, 1, 3, 5, 7, 8, 10], harmonicity: 3, modulationIndex: 6, melodyNoteLength: "4n", melodyRelease: 0.3 },
+  { scaleName: "Locrian", semis: [0, 1, 3, 5, 6, 8, 10], harmonicity: 2.76, modulationIndex: 12, melodyNoteLength: "8n", melodyRelease: 0.3 },
+  { scaleName: "Chromatic", semis: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], harmonicity: 1.414, modulationIndex: 24, melodyNoteLength: "8n", melodyRelease: 1.2 },
 ];
 
+// The tier is the EPA category the AQI falls in (aqi.ts AQI_CATEGORY_MAX, one tier per category); past the top of the scale it is still Hazardous.
 export function tierIndexOf(aqi: number): number {
-  return TIERS.findIndex((t) => aqi <= t.maxAQI);
+  const i = AQI_CATEGORY_MAX.findIndex((max) => aqi <= max);
+  return i < 0 && aqi > AQI_CATEGORY_MAX[AQI_CATEGORY_MAX.length - 1] ? TIERS.length - 1 : i;
 }
 
 // MAPPING (PM2.5 → Brownian detune σ, §3.6, D-44): σ in cents is piecewise-linear in the HOUR'S OWN PM2.5 AQI (the raw hour, not the smoothed tier) through these anchors, held above the last. So the jitter grows all the way up the ladder while only the scale steps; at 400 σ is a full semitone. Metaphor: particulate jitter on the line. A null hour draws nothing.

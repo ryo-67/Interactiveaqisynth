@@ -196,6 +196,11 @@ export class SynthEngine {
       this.lastBeatTime = this.lastStepTime = -1;
       // Beyond Tone's lookahead (~100 ms), not within it (2026-09-16): the transport that just stopped had already run its callbacks up to a lookahead ahead, so a voice may hold a start scheduled at now + 0.1; a restart inside that window asks the same voice to start EARLIER than that, and Tone refuses ("Start time must be strictly greater than previous start time"), which threw out of the first beat of the new day and left the voices after it in that tick silent. 150 ms is one more sixteenth of a beat before the new day speaks.
       transport.start("+0.15", "0:0:0"); // a new day starts at its first hour
+    } else if (this.pendingPlay) {
+      // Play was pressed before there was a day (BUG-69): this is the day it was waiting for, so start as play() would have.
+      this.pendingPlay = false;
+      this.openMaster();
+      this.startTransport();
     }
   }
 
@@ -222,7 +227,9 @@ export class SynthEngine {
     void Tone.start();
     await this.init();
     const transport = Tone.getTransport();
-    if (!this.day || transport.state === "started") return;
+    if (transport.state === "started") return;
+    // No day yet (live has not answered, or answered with nothing): the press is kept, and the first day that arrives starts (BUG-69, 2026-10-14). It had been dropped while the page went on showing Pause, so a day chosen next stayed silent until Pause and Play again.
+    if (!this.day) { this.pendingPlay = true; return; }
     // Resume from a pause or a seek: the transport holds its position, the smoothers their state — the phrase picks up from there.
     if (transport.state === "paused" || this.seeked) {
       this.seeked = false;
@@ -245,6 +252,7 @@ export class SynthEngine {
 
   // Pause holds the position (Tone's pause keeps it; stop would reset to 0), so play() resumes from the same beat. Pausing the transport alone only stops the clock: events Tone had already scheduled inside its lookahead still fire, the bed's bar-long notes ring through their 1.2 s release, and the long reverb decays for 7.5 s — a pause that trails off for seconds. So the master closes in PAUSE_FADE_S and every held voice is released under it; the position is untouched.
   pause(): void {
+    this.pendingPlay = false;
     const transport = Tone.getTransport();
     transport.pause();
     if (!this.master) return;
@@ -264,6 +272,7 @@ export class SynthEngine {
     this.seeked = true;
   }
   private seeked = false;
+  private pendingPlay = false; // play() was asked while there was no day: setDay starts the first one (BUG-69)
 
   private startTransport(): void {
     this.lastBeatTime = this.lastStepTime = -1;

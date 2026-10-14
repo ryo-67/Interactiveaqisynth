@@ -13,10 +13,10 @@ interface Props {
   shown: boolean; // set a frame after mounting, so the arrival has a state to run from
   words: Array<{ text: string; on: boolean }>;
   actions: StatusAction[];
-  actionsRef?: React.Ref<HTMLDivElement>; // LiveStatus marks the collapsed buttons inert through it
+  actionsInert?: boolean; // LiveStatus's buttons while collapsed: out of the tab order and not read out
 }
 
-export function StatusPill({ tone, shown, words, actions, actionsRef }: Props) {
+export function StatusPill({ tone, shown, words, actions, actionsInert = false }: Props) {
   const c = themeColors(useTheme());
   const error = tone === "error";
   const button: React.CSSProperties = { padding: "6px 12px 6px 10px", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", borderRadius: 999, color: c.textPrimary, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, whiteSpace: "nowrap", flex: "0 0 auto", minHeight: `var(--ctl-inner, ${CONTROL.inner}px)` };
@@ -30,7 +30,7 @@ export function StatusPill({ tone, shown, words, actions, actionsRef }: Props) {
           ))}
         </span>
         {actions.length > 0 && (
-          <div ref={actionsRef} className="scene-live-actions">
+          <div className="scene-live-actions" inert={actionsInert ? "" : undefined}>
             <div className="scene-live-actions-row">
               {actions.map((a) => (
                 <button key={a.label} className="scene-play scene-about-btn" onClick={a.onPress} style={button}>

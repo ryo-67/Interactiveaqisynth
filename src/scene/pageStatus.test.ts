@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { pageStatus, mockStatus, type StatusInputs } from "./pageStatus";
 
-const calm: StatusInputs = { soundFailed: false, date: null, dayFailed: false, dayWaiting: false, live: true, liveStatus: "ready", liveEmpty: false };
+const calm: StatusInputs = { soundFailed: false, date: null, dayFetch: "idle", live: true, liveStatus: "ready", liveEmpty: false };
 
 describe("the page status (D-69)", () => {
   it("says nothing when live has readings", () => {
@@ -9,7 +9,7 @@ describe("the page status (D-69)", () => {
   });
   it("puts sound that did not start above everything", () => {
     expect(pageStatus({ ...calm, soundFailed: true, liveStatus: "unavailable" })).toEqual({ kind: "no-sound" });
-    expect(pageStatus({ ...calm, soundFailed: true, live: false, date: "2023-06-07", dayFailed: true })).toEqual({ kind: "no-sound" });
+    expect(pageStatus({ ...calm, soundFailed: true, live: false, date: "2023-06-07", dayFetch: "failed" })).toEqual({ kind: "no-sound" });
   });
   it("hands the live feed's own line to LiveStatus while AirNow is asked or unreachable", () => {
     expect(pageStatus({ ...calm, liveStatus: "loading" })).toEqual({ kind: "live-feed" });
@@ -18,14 +18,15 @@ describe("the page status (D-69)", () => {
   it("says a live answer with nothing measured once AirNow has answered", () => {
     expect(pageStatus({ ...calm, liveEmpty: true })).toEqual({ kind: "no-readings" });
   });
-  it("puts a failed day above a waiting one, and names the day", () => {
+  it("says a failed day and a slow one, naming the day, and nothing while a day loads within a beat", () => {
     const day = { ...calm, live: false, date: "2026-08-03" };
-    expect(pageStatus({ ...day, dayFailed: true, dayWaiting: true })).toEqual({ kind: "day-failed", date: "2026-08-03" });
-    expect(pageStatus({ ...day, dayWaiting: true })).toEqual({ kind: "day-waiting", date: "2026-08-03" });
+    expect(pageStatus({ ...day, dayFetch: "failed" })).toEqual({ kind: "day-failed", date: "2026-08-03" });
+    expect(pageStatus({ ...day, dayFetch: "slow" })).toEqual({ kind: "day-waiting", date: "2026-08-03" });
+    expect(pageStatus({ ...day, dayFetch: "loading" })).toEqual({ kind: "none" });
   });
   it("ignores the live feed's state on a chosen day, and a day's flags on live", () => {
     expect(pageStatus({ ...calm, live: false, date: "2023-06-07", liveStatus: "unavailable", liveEmpty: true })).toEqual({ kind: "none" });
-    expect(pageStatus({ ...calm, dayFailed: true, dayWaiting: true })).toEqual({ kind: "none" });
+    expect(pageStatus({ ...calm, dayFetch: "failed" })).toEqual({ kind: "none" });
   });
 });
 

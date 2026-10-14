@@ -10,11 +10,13 @@ export type PageStatus =
   | { kind: "no-readings" } // live answered, with no measured PM2.5 or ozone in any hour (the typical NO2 alone is not a reading)
   | { kind: "none" };
 
+// The chosen day's fetch: idle (nothing asked, or it arrived), loading, slow (loading for longer than a beat: a current-year day from EPA can take a minute), or failed. One value, where three flags (loading, waiting, failed) could have been set in any combination.
+export type DayFetch = "idle" | "loading" | "slow" | "failed";
+
 export interface StatusInputs {
   soundFailed: boolean;
   date: string | null; // the chosen day; null on live
-  dayFailed: boolean;
-  dayWaiting: boolean;
+  dayFetch: DayFetch;
   live: boolean;
   liveStatus: "loading" | "ready" | "unavailable";
   liveEmpty: boolean;
@@ -22,9 +24,9 @@ export interface StatusInputs {
 
 export function pageStatus(i: StatusInputs): PageStatus {
   if (i.soundFailed) return { kind: "no-sound" };
-  if (i.date != null && i.dayFailed) return { kind: "day-failed", date: i.date };
+  if (i.date != null && i.dayFetch === "failed") return { kind: "day-failed", date: i.date };
   if (i.live && i.liveStatus !== "ready") return { kind: "live-feed" };
-  if (i.date != null && i.dayWaiting) return { kind: "day-waiting", date: i.date };
+  if (i.date != null && i.dayFetch === "slow") return { kind: "day-waiting", date: i.date };
   if (i.live && i.liveEmpty) return { kind: "no-readings" };
   return { kind: "none" };
 }

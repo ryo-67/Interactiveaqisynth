@@ -6,7 +6,7 @@ import { skyFrameAspect } from "./useSafariWindow";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { createPulseFeed, type PulseFeed } from "./pulseFeed";
-import { pageStatus, type PageStatus } from "./pageStatus";
+import { pageStatus, type PageStatus, type DayFetch } from "./pageStatus";
 import { barPattern, barSteps } from "../engine/euclid";
 import { HOURS_PER_BAR } from "../engine/tempo";
 import { TIERS, detuneSigma, tierIndexOf } from "../engine/scales";
@@ -102,7 +102,6 @@ export function useListenSession(): ListenSession {
   const [devDayKey, setDevDayKey] = useState<string>("live");
   const [date, setDate] = useState<string | null>(null);
   const [chosen, setChosen] = useState<DaySeries | null>(null);
-  const [dayLoading, setDayLoading] = useState(false);
 
   const engineRef = useRef<SynthEngine | null>(null);
   if (engineRef.current === null) engineRef.current = new SynthEngine(QUEENS_2023_ANCHORS);
@@ -138,27 +137,23 @@ export function useListenSession(): ListenSession {
   }, [liveAttempt]);
   const retryLive = useCallback(() => { forgetLive(); setLiveAttempt((n) => n + 1); }, []);
 
-  // A chosen day loads on demand, for this borough; nothing is fetched until asked (BUG-20). A failure is said, not shown as an empty day (2026-10-12): the page carries the empty day (a dash, no plot) and dayFailed, which puts the failure on the live line's spot with a retry; a load longer than a beat is said too (dayWaiting), since a current-year day from EPA can take a minute and a phone had no sign of it at all.
-  const [dayFailed, setDayFailed] = useState(false);
-  const [dayWaiting, setDayWaiting] = useState(false);
+  // A chosen day loads on demand, for this borough; nothing is fetched until asked (BUG-20). A failure is said, not shown as an empty day (2026-10-12): the page carries the empty day (a dash, no plot) and the fetch "failed", which puts the failure on the live line's spot with a retry; a load longer than a beat is said too (the fetch "slow"), since a current-year day from EPA can take a minute and a phone had no sign of it at all.
+  const [dayFetch, setDayFetch] = useState<DayFetch>("idle");
   const [dayAttempt, setDayAttempt] = useState(0); // bumped by retryDay; the failed fetch is not cached (nycOpenData.ts), so asking again asks the network
   useEffect(() => {
-    setDayFailed(false);
-    setDayWaiting(false);
-    if (!date) { setChosen(null); return; }
+    if (!date) { setChosen(null); setDayFetch("idle"); return; } // back to live: a fetch still in flight is cancelled and nothing is loading (BUG-73: the flag had stayed on)
     let cancelled = false;
-    setDayLoading(true);
-    const slow = window.setTimeout(() => { if (!cancelled) setDayWaiting(true); }, motion.beatMs);
+    setDayFetch("loading");
+    const slow = window.setTimeout(() => { if (!cancelled) setDayFetch((f) => (f === "loading" ? "slow" : f)); }, motion.beatMs);
     (async () => {
       try {
         const s = await getDay(borough, date);
-        if (!cancelled) setChosen(s);
+        if (!cancelled) { setChosen(s); setDayFetch("idle"); }
       } catch (err) {
         console.warn("[App] Day fetch failed:", err);
-        if (!cancelled) { setChosen({ hours: [], aqi: { daily: null, current: null, hourly: [] } }); setDayFailed(true); }
+        if (!cancelled) { setChosen({ hours: [], aqi: { daily: null, current: null, hourly: [] } }); setDayFetch("failed"); }
       } finally {
         window.clearTimeout(slow);
-        if (!cancelled) { setDayLoading(false); setDayWaiting(false); }
       }
     })();
     return () => { cancelled = true; window.clearTimeout(slow); };
@@ -359,10 +354,10 @@ export function useListenSession(): ListenSession {
   const skyChannels = { pm25: held("pm25"), o3: held("o3") };
 
   const liveEmpty = liveStatus === "ready" && snapshot != null && !snapshot.series.Citywide.hours.some((h) => h.pm25 != null || h.o3 != null); // the citywide series is the mean of every reporting borough, so empty there is empty everywhere
-  const status = useMemo(() => pageStatus({ soundFailed, date, dayFailed, dayWaiting, live, liveStatus, liveEmpty }), [soundFailed, date, dayFailed, dayWaiting, live, liveStatus, liveEmpty]); // memoised, so the page's line is rebuilt only when the state changes
+  const status = useMemo(() => pageStatus({ soundFailed, date, dayFetch, live, liveStatus, liveEmpty }), [soundFailed, date, dayFetch, live, liveStatus, liveEmpty]); // memoised, so the page's line is rebuilt only when the state changes
 
   return {
-    borough, setBorough, date, setDate, latestDate, dayLoading, retryDay, status, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
+    borough, setBorough, date, setDate, latestDate, dayLoading: dayFetch === "loading" || dayFetch === "slow", retryDay, status, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
     snapshot, liveStatus, retryLive, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, aqiHours, rest, moodTier, moodAqi, monitor, pulses, skyChannels, devDayKey, setDevDayKey,
   };

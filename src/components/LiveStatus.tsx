@@ -5,7 +5,8 @@
 // LOADING is held back for a moment (SETTLE_MS) the FIRST time, so a feed that answers quickly never flashes a message; on a retry it appears at once, because it is the answer to a press. Once it is up it stays at least HOLD_MS, so a retry that fails in ten milliseconds still reads as having been asked.
 // UNAVAILABLE stays until it is resolved rather than timing out: the page behind it is the placeholder, a dash where the number goes and no plot at all, which on its own says nothing about why. It offers the two things worth doing — play the last day the archive holds, or ask AirNow again — and it does neither on its own (Shoro, 2026-09-17: offer, do not act), so nothing moves under the visitor.
 // It is not dismissible and needs no dismiss: choosing a day takes the page off Live and the line goes with it, and coming back to Live brings it back if the feed is still down, which is the truth of the matter.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePresence } from "./usePresence";
 import { StatusPill, type StatusAction } from "./StatusPill";
 import { motion } from "../utils/theme";
 import { LIVE_STATUS } from "../content";
@@ -17,43 +18,27 @@ const HOLD_MS = motion.beatMs * 2; // and once asked, the least the loading face
 type Face = "loading" | "error";
 
 export function LiveStatus({ status, onArchive, onRetry, archiveReady }: { status: "loading" | "ready" | "unavailable"; onArchive: () => void; onRetry: () => void; archiveReady: boolean }) {
-  const [mounted, setMounted] = useState(false);
-  const [shown, setShown] = useState(false); // set a frame after mounting, so the arrival has a state to run from
+  const [up, setUp] = useState(false); // whether the line should be up; its arrival and departure are usePresence's
+  const { mounted, visible: shown } = usePresence(up, FADE_MS);
   const [face, setFace] = useState<Face>("loading");
-  const actRef = useRef<HTMLDivElement>(null);
   // The effect below runs on status alone — it must not restart when the things it sets change — so it reads them from refs.
-  const mountedRef = useRef(false); mountedRef.current = mounted;
+  const upRef = useRef(false); upRef.current = up;
   const faceRef = useRef<Face>("loading"); faceRef.current = face;
   const askedAt = useRef(0);
 
   useEffect(() => {
-    if (status === "ready") {
-      setShown(false);
-      const t = window.setTimeout(() => setMounted(false), FADE_MS);
-      return () => window.clearTimeout(t);
-    }
+    if (status === "ready") { setUp(false); return; }
     if (status === "loading") {
       askedAt.current = Date.now();
-      if (mountedRef.current) { setFace("loading"); return; } // a retry: answer the press in the frame it was made
-      const t = window.setTimeout(() => { setFace("loading"); setMounted(true); }, SETTLE_MS);
+      if (upRef.current) { setFace("loading"); return; } // a retry: answer the press in the frame it was made
+      const t = window.setTimeout(() => { setFace("loading"); setUp(true); }, SETTLE_MS);
       return () => window.clearTimeout(t);
     }
     // Unavailable. If the loading face is up it keeps the rest of its beat first, so the morph is seen either way.
-    const wait = mountedRef.current && faceRef.current === "loading" ? Math.max(0, HOLD_MS - (Date.now() - askedAt.current)) : 0;
-    const t = window.setTimeout(() => { setFace("error"); setMounted(true); }, wait);
+    const wait = upRef.current && faceRef.current === "loading" ? Math.max(0, HOLD_MS - (Date.now() - askedAt.current)) : 0;
+    const t = window.setTimeout(() => { setFace("error"); setUp(true); }, wait);
     return () => window.clearTimeout(t);
   }, [status]);
-
-  useEffect(() => {
-    if (!mounted) return;
-    const r = requestAnimationFrame(() => setShown(true));
-    return () => cancelAnimationFrame(r);
-  }, [mounted]);
-
-  // What is out takes no focus and is not read out. Set on the node rather than as a prop: inert is not a typed attribute in this React.
-  useLayoutEffect(() => {
-    actRef.current?.toggleAttribute("inert", face !== "error");
-  }, [face, mounted]);
 
   if (!mounted) return null;
   const error = face === "error";
@@ -63,5 +48,5 @@ export function LiveStatus({ status, onArchive, onRetry, archiveReady }: { statu
     { label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: onRetry },
   ];
   // The word swaps: one track opens as the other closes, the two cross-fading across the change.
-  return <StatusPill tone={face} shown={shown} words={[{ text: LIVE_STATUS.loading, on: !error }, { text: LIVE_STATUS.unavailable, on: error }]} actions={actions} actionsRef={actRef} />;
+  return <StatusPill tone={face} shown={shown} words={[{ text: LIVE_STATUS.loading, on: !error }, { text: LIVE_STATUS.unavailable, on: error }]} actions={actions} actionsInert={!error} />; // the collapsed buttons take no focus and are not read out
 }

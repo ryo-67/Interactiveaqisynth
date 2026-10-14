@@ -18,6 +18,7 @@ import { sunAnglesAt, sunPositionVector } from "./solar";
 import { useListenSession, DEV } from "./useListenSession";
 import { Glass } from "../components/Glass";
 import { Cursor } from "../components/Cursor";
+import { usePresence } from "../components/usePresence";
 import { usePopoverOpen, consumeSuppressedClick } from "../components/popoverStore";
 import { PlayButton, VolumeSlider, AboutButton } from "../components/Transport";
 import { BoroughToggle } from "../components/BoroughToggle";
@@ -101,10 +102,9 @@ export default function ScenePage() {
   const [entryLifting, setEntryLifting] = useState(false); // and has begun to lift: the scene blends up with it rather than being revealed at full strength behind it
   const onEntryLift = useCallback(() => setEntryLifting(true), []);
   const onEntryGone = useCallback(() => setEntryGone(true), []);
-  const [aboutShown, setAboutShown] = useState(about); // true from open until the overlay has left the DOM: the page's own cursor stands down for exactly that span (a DOM cursor over a full-screen backdrop blur is the case that banded in Firefox, D-50)
-  const aboutTimer = useRef(0);
-  const openAbout = useCallback(() => { window.clearTimeout(aboutTimer.current); setAbout(true); setAboutShown(true); }, []);
-  const closeAbout = useCallback(() => { setAbout(false); window.clearTimeout(aboutTimer.current); aboutTimer.current = window.setTimeout(() => setAboutShown(false), ABOUT_FADE_MS + 20); }, []);
+  const { mounted: aboutShown } = usePresence(about, ABOUT_FADE_MS + 20); // true from open until the overlay has left the DOM: the page's own cursor stands down for exactly that span (a DOM cursor over a full-screen backdrop blur is the case that banded in Firefox, D-50)
+  const openAbout = useCallback(() => setAbout(true), []);
+  const closeAbout = useCallback(() => setAbout(false), []);
   const lockRef = useRef(0); // the time until which a switch is refused: one slide at a time, and the wheel's inertia is not a second gesture
   // Moving (Shoro, 2026-09-16): true through a switch or a drag, and false at rest; the playhead's readout goes without its backdrop-filter while it is (index.css data-moving).
   const [moving, setMoving] = useState(false);

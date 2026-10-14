@@ -141,7 +141,10 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     if (!ctx) return;
     let raf = 0;
 
-    const draw = () => {
+    // The geometry: everything the draw takes from layout and CSS, measured when it can change (mount, the panel's or the tab band's size, a window resize, the pixel ratio, a pinch) and not on every frame. Read per frame, it forced a synchronous layout on every frame while playing, since each frame also re-renders the page (2026-10-14). null while the panel has no size.
+    let geo: { cssW: number; cssH: number; dpr: number; bufW: number; bufH: number; tabH: number; axisH: number; cssFaint: number; canvasTop: number } | null = null;
+    const measure = () => {
+      geo = null;
       // Rectangles are what is DRAWN, and since D-62 a page that is not showing carries a scale, so a measurement
       // taken while this page is the off one comes back a tenth small and the buffer is sized for the wrong box.
       // The observer only fires on LAYOUT changes, which a transform is not, so this bites on a window resize made
@@ -179,6 +182,14 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       }
       canvas.style.width = `${bufW / dpr}px`;
       canvas.style.height = `${bufH / dpr}px`;
+      // The faint lines' alpha can be set by the scene per breakpoint (--graph-faint-alpha; phones set 0), else the token's (in the draw, which knows the theme).
+      const cssFaint = parseFloat(getComputedStyle(wrap).getPropertyValue("--graph-faint-alpha"));
+      geo = { cssW, cssH, dpr, bufW, bufH, tabH, axisH, cssFaint, canvasTop: canvas.offsetTop };
+    };
+
+    const draw = () => {
+      if (!geo) return;
+      const { cssW, cssH, dpr, bufW, bufH, tabH, axisH, cssFaint, canvasTop } = geo;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cssW, cssH);
       // The hairline layer (see rgba() above): same buffer, same transform, cleared each draw.
@@ -194,8 +205,6 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       faint.setTransform(dpr, 0, 0, dpr, 0, 0);
       faint.clearRect(0, 0, cssW, cssH);
       const [fr, fg, fb, fa] = rgba(c.textFaint);
-      // The faint lines' alpha can be set by the scene per breakpoint (--graph-faint-alpha; phones set 0), else the token's.
-      const cssFaint = parseFloat(getComputedStyle(wrap).getPropertyValue("--graph-faint-alpha"));
       const ha = Number.isFinite(cssFaint) ? cssFaint : rgba(c.gridHair)[3];
       const firmLine = `rgb(${fr},${fg},${fb})`;
       hair.lineWidth = 1; faint.lineWidth = 1; faint.strokeStyle = firmLine;
@@ -467,7 +476,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           if (chip.textContent !== label) chip.textContent = label;
           const w = Math.ceil(ctx.measureText(label).width) + 16;
           const lx = Math.max(plotX, Math.min(plotRight - w, x + 8 + w > plotRight ? x - 8 - w : x + 8));
-          chip.style.transform = `translate(${lx}px, ${canvas.offsetTop + GRAPH.labelGutter}px)`;
+          chip.style.transform = `translate(${lx}px, ${canvasTop + GRAPH.labelGutter}px)`;
           chip.style.visibility = "visible";
         }
       } else if (chipRef.current) chipRef.current.style.visibility = "hidden";
@@ -477,9 +486,12 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
     };
 
     drawRef.current = () => { cancelAnimationFrame(raf); draw(); };
+    measure();
     draw();
-    const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); draw(); });
+    const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); measure(); draw(); });
     ro.observe(wrap);
+    const tabsEl = wrap.querySelector<HTMLElement>("[role=\"tablist\"]");
+    if (tabsEl) ro.observe(tabsEl); // the band's height sets the plot's (a web font arriving can change it without changing the panel's)
     // Browser zoom changes the device pixel ratio without always changing the panel's CSS size (Firefox fires no resize then), so watch the ratio itself: a media query that matches the current ratio stops matching the moment it changes; redraw and watch the new one.
     let mq: MediaQueryList | null = null;
     const watchRatio = () => {
@@ -487,12 +499,13 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
       mq.addEventListener("change", onRatio);
     };
-    const onRatio = () => { cancelAnimationFrame(raf); draw(); watchRatio(); };
+    const onRatio = () => { cancelAnimationFrame(raf); measure(); draw(); watchRatio(); };
     watchRatio();
     // Browser zoom also fires a window resize; a pinch fires the visual viewport's resize. Redraw when the effective ratio (device ratio × pinch scale) has moved, whether or not the media query reported it (Firefox rounds resolution queries).
     const effective = () => (window.devicePixelRatio || 1) * (window.visualViewport?.scale ?? 1);
     let seen = effective();
-    const onResize = () => { const e = effective(); if (e !== seen) { seen = e; cancelAnimationFrame(raf); draw(); watchRatio(); } };
+    // Every resize re-measures, since the scene's CSS for the graph (--graph-tab-h, --graph-fill, --graph-faint-alpha) follows the viewport and can change without the panel's size changing; only a changed ratio also re-watches it.
+    const onResize = () => { cancelAnimationFrame(raf); measure(); draw(); const e = effective(); if (e !== seen) { seen = e; watchRatio(); } };
     window.addEventListener("resize", onResize);
     window.visualViewport?.addEventListener("resize", onResize);
     return () => { drawRef.current = null; cancelAnimationFrame(raf); ro.disconnect(); mq?.removeEventListener("change", onRatio); window.removeEventListener("resize", onResize); window.visualViewport?.removeEventListener("resize", onResize); };

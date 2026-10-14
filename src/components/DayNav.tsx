@@ -278,11 +278,10 @@ export function DayNav({ date, onChange, loading, latestDate, touch = false }: P
 // PinStrip — the measured days as chips (§2.2), its own pill in the scaffold, always one row.
 export function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
   const c = themeColors(useTheme());
-  const ref = useRef<HTMLDivElement>(null);
 
   // One row, always (2026-09-15): the chips never wrap, so the pill's fit-content is exact and needs no script; when the day group cannot hold this pill beside the date pill, the group wraps the whole pill onto its own row (index.css). A chip folding onto a second line inside the pill read as an overflow.
   return (
-    <div ref={ref} style={{ display: "flex", flexWrap: "nowrap", gap: `var(--chip-inset, ${CONTROL.gap}px)` }}>
+    <div style={{ display: "flex", flexWrap: "nowrap", gap: `var(--chip-inset, ${CONTROL.gap}px)` }}>
       {PINS.map((p) => {
         const active = date === p.date;
         return (

@@ -135,7 +135,7 @@ function buildThemeColors(theme: Theme) {
 // The colours are the standard hues lifted to pass WCAG 1.4.11 (≥ 3:1 for graphics) against the dark panel (#0e0e1c, the hard case). The standard values fail for the top two: Very Unhealthy #8f3f97 is 3.0:1 and Hazardous #7e0023 is 1.7:1. Measured: Good 11.0, Moderate 17.8, USG 8.2, Unhealthy 6.3, Very Unhealthy 7.3, Hazardous 6.3.
 // One ramp with two ends (D-36, 2026-09-15), built in OKLCH (D-51, 2026-09-16): six hues at ONE lightness and ONE chroma per end, so the six read as one family. The former hex ends had been picked per hue for the most saturation each could carry at the luminance 3:1 needed, which left yellow at 0.93 luminance beside a red at 0.28 (Shoro: green and yellow shouted, red, magenta and purple read washed out). Now every hue at an end has the same lightness and the same chroma (the chroma the least able hue, purple, can hold at that lightness; the rest are held to it rather than allowed more). `dark` is set for AA, 4.5:1 or better, on the darkest panel the scene makes; `light` for as near AA as the brightest panel allows, 3.9:1 (Shoro, 2026-09-16: AA or close across every variation; at 4.5:1 on the brightest panel the purple has no chroma left). The lift the scene derives from the predicted panel (panelLuminance.ts) blends between them. The legend, the line, the fill, the bars and the mood word all read the one ramp at the one lift, so they never disagree within a state; between states the scale lightens as the panel does, the way the material does.
 // The hues are the standard EPA hues as OKLCH read them from the former ends: green, yellow, orange, red, then the cycle continues past red into magenta and purple (Shoro, 2026-09-16); EPA's maroon is too dark for any panel. A blend along the ramp, between the categories and between the ends, is in OKLCH too, so lightness and chroma hold along the whole legend and no midpoint dips toward grey or dark.
-export const AQI_RAMP = {
+const AQI_RAMP = {
   hues: [146, 108, 60, 24, 337, 288],
   dark: { L: 0.78, C: 0.12 }, // WCAG Y 0.44 to 0.50: 4.6 to 5.1 on the darkest panel (0.058)
   light: { L: 0.86, C: 0.08 }, // Y 0.61 to 0.66: 3.9 to 4.2 on the brightest panel (0.12), 6.1 or better on the darkest
@@ -233,7 +233,6 @@ export const GRAPH = {
 
 // The monitor page (D-43, 2026-09-15): a bento of frosted cards reading the engine. Every size a multiple of 4, on the control grid.
 export const MONITOR = {
-  maxWidth: 1040, // the grid's width on laptop, centred in the band like the hero and graph row
   sectionHeight: 672, // the sections' height on laptop (2026-09-16): both pages take the band's height up to this; the monitor's rows split it 2-1-1 (four units of 158, a value card's height at the 12 px gaps) and the scene's graph grows into what the hero leaves
   // The patch bay's pills and cables (Shoro, 2026-09-16: both a step up). The pill is the cards' source chip, one size larger — the caption size in a 24 px pill rather than the micro size in a 20 — so the three measurements and the six parameters read as the labels they are rather than as tags. The cable is a hairline still, just not the thinnest one the screen can draw.
   pillHeight: 24,
@@ -328,7 +327,7 @@ export const NYC_LON = -73.9857;
 // MAPPING (clock → sunPosition + star visibility): the day itself.
 // MAPPING (clock → exposure): a measured curve over sun elevation — the camera's auto-exposure. Exposure is clock-only (D-20); ozone does not touch it. Two models hand over at the horizon and neither is monotonic in brightness on its own there: the day model's clamped horizon glow at 0.7° outshines its own sky at 3°, and the night model is darkest just below the horizon. The curve is set so the mean luminance of the sky band rises through dawn and on to noon without a dip or a spike (measured 2026-09-15, Clear Day, quarter-hour steps), then falls the same way through dusk. Anchors: NIGHT_EXPOSURE with the sun well down, CLEAR_NOON_EXPOSURE from 36° up (the settled noon look); the points between are the measurement. Linear between points.
 export const CLEAR_NOON_EXPOSURE = 0.2;
-export const NIGHT_EXPOSURE = 0.45; // 0.65 → 0.45 (2026-09-15): at 0.65 the night sky (84, mean luminance) was brighter than the day model can be at low sun, so no dawn could rise from it
+const NIGHT_EXPOSURE = 0.45; // 0.65 → 0.45 (2026-09-15): at 0.65 the night sky (84, mean luminance) was brighter than the day model can be at low sun, so no dawn could rise from it
 export const EXPOSURE_CURVE: ReadonlyArray<readonly [elevationDeg: number, exposure: number]> = [
   [-90, NIGHT_EXPOSURE],
   [-2, NIGHT_EXPOSURE],

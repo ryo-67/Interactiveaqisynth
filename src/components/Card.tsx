@@ -4,7 +4,7 @@ import { Glass } from "./Glass";
 import { chipStyle } from "./chip";
 import { useTheme, themeColors, families, typeScale, CONTROL } from "../utils/theme";
 import { SOURCE_LABELS, SOURCE_JOIN } from "../content";
-import type { Channel } from "../scene/useListenSession";
+import type { Channel } from "../utils/channelSource";
 
 // The card's label: the UI face at the caption size, tracked like the chips, muted. HeroCards measures its widest label in the same style.
 export const cardLabelStyle = (c: ReturnType<typeof themeColors>): React.CSSProperties => ({ fontFamily: families.ui, letterSpacing: CONTROL.chipTracking, fontSize: typeScale.caption.size, lineHeight: 1, color: c.textMuted });

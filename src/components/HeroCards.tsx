@@ -63,13 +63,11 @@ export function BreathCard({ tierIndex, aqi, lift = 0, cardRef }: BreathProps) {
   // Hold the displayed tier and swap only when the tier actually changes, with the blur transition.
   const [shown, setShown] = useState(tierIndex);
   const [blurred, setBlurred] = useState(false);
-  const pending = useRef(tierIndex);
-  pending.current = tierIndex;
   useEffect(() => {
     // The tier is back to the one shown before the swap fired (it crossed a boundary and returned, which a day transition does): the timer was cleared by the cleanup, so the blur must be lifted here or it stays for good (2026-09-15).
     if (tierIndex === shown) { setBlurred(false); return; }
     setBlurred(true);
-    const t = setTimeout(() => { setShown(pending.current); setBlurred(false); }, motion.blurMs / 2);
+    const t = setTimeout(() => { setShown(tierIndex); setBlurred(false); }, motion.blurMs / 2); // a newer tier re-runs this effect and clears the timer, so the tier here is always the current one
     return () => clearTimeout(t);
   }, [tierIndex, shown]);
   const transition = `filter ${motion.blurMs / 2}ms ease, opacity ${motion.blurMs / 2}ms ease`;

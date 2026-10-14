@@ -32,7 +32,7 @@ export interface PanelInputs {
 }
 
 // The sky as it is seen at height t, the DOM layers over the canvas sample and no glass: what a panel frosts, and the colour Safari's status bar band is set to (ScenePage, BUG-57).
-export function predictSky(i: Omit<PanelInputs, "glass">): RGB {
+function predictSky(i: Omit<PanelInputs, "glass">): RGB {
   const t = clamp01(i.t), d = clamp01(i.smoke.density);
   let c: RGB = i.sky;
   // The DOM layers, in the order the scene stacks them: night, golden, then the plume's two terms.

@@ -31,8 +31,6 @@ export const BOROUGHS: Borough[] = [
 export interface DaySeries {
   hours: Day;
   aqi: SeriesAQI;
-  fallback: "zipcode" | null; // set when the live route fell back to AirNow's area reading — the source line says "AirNow area reading", no borough named
-  fetchedAt: string | null;
 }
 
 
@@ -59,8 +57,7 @@ interface CurrentResponse {
 // One live fetch for the whole city, cached: the response already carries every borough, so switching boroughs is local (§5.4 crossfade, no spinner).
 export interface CurrentSnapshot {
   series: Record<Borough, DaySeries>;
-  fetchedAt: string;
-  fallback: "zipcode" | null;
+  fallback: "zipcode" | null; // set when the live route fell back to AirNow's area reading — the source line says "AirNow area reading", no borough named
 }
 
 let currentPromise: Promise<CurrentSnapshot> | null = null;
@@ -73,9 +70,9 @@ export function getCurrentAll(): Promise<CurrentSnapshot> {
     const series = {} as Record<Borough, DaySeries>;
     for (const b of BOROUGHS) {
       const s = b === "Citywide" ? json.citywide : json.boroughs[b];
-      series[b] = { hours: s.hours, aqi: seriesAQI(s.hours), fallback, fetchedAt: json.fetchedAt }; // the routes ship hours only; every AQI on the page is computed here by one rule (D-42). The live window is 24 hours, so the NowCast's first hours see a shorter window.
+      series[b] = { hours: s.hours, aqi: seriesAQI(s.hours) }; // the routes ship hours only; every AQI on the page is computed here by one rule (D-42). The live window is 24 hours, so the NowCast's first hours see a shorter window.
     }
-    return { series, fetchedAt: json.fetchedAt, fallback };
+    return { series, fallback };
   })();
   return currentPromise;
 }
@@ -150,7 +147,7 @@ export async function getDay(borough: Borough, date: string): Promise<DaySeries>
     hoursOf(borough, addDays(date, -1)).catch(() => []),
     hoursOf(borough, addDays(date, 1)).catch(() => []),
   ]);
-  return { hours, aqi: seriesAQI(hours, prior, next), fallback: null, fetchedAt: null };
+  return { hours, aqi: seriesAQI(hours, prior, next) };
 }
 
 // The last day the archive can play, in two stages. The static archive's last day answers at once (its last hour's date); the current year then refines it to the last day EPA has published, which lags real time by days to weeks, by loading months backwards from the current one until one has data (the same loads getDay uses, so the month a visitor lands in is already in memory). Yesterday is never assumed: a day is available only if it has hours.

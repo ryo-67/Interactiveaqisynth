@@ -71,8 +71,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLDivElement>(null); // the playhead's readout, a frosted pill the draw loop places over the canvas
-  const [narrow, setNarrow] = useState(false);
-  const narrowRef = useRef(false); // the plot at a phone's width (the draw measures it): the AQI axis then starts at 0 to 100
+  const [narrow, setNarrow] = useState(false); // the plot at a phone's width (the draw measures it): the AQI axis then starts at 0 to 100
   // The playhead changes every frame; it goes through a ref so the draw effect — which owns the canvas size, the observer and the animation loop — is not torn down and rebuilt sixty times a second.
   const areaCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
   const maskCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null); // the fill's alpha mask, keyed on the geometry alone (see the draw)
@@ -157,7 +156,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       const cssW = wrap.getBoundingClientRect().width * unscale; // the real, fractional width: clientWidth rounds, and a buffer sized from the rounded width was stretched across the real box by a fraction of a pixel, blurring every line
       // Breakpoint from the panel's own width: the panel is ~640 on laptop, ~700 on a portrait tablet, ~320 on a phone.
       const bp: "laptop" | "tablet" | "phone" = cssW < 480 ? "phone" : cssW < 760 ? "tablet" : "laptop";
-      if ((bp === "phone") !== narrowRef.current) { narrowRef.current = bp === "phone"; setNarrow(narrowRef.current); } // a state change, so the frame re-derives its ceiling and morphs to it
+      setNarrow(bp === "phone"); // a change re-derives the frame's ceiling, which morphs to it; the same value is no render
       // The scene may override the tab height by CSS (--graph-tab-h) where the VIEWPORT is short — a phone's width says nothing about its height.
       const axisH = GRAPH.axisHeight[bp];
       const cssTab = parseInt(getComputedStyle(wrap).getPropertyValue("--graph-tab-h"));
@@ -228,14 +227,14 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       const lh = labelPx + 4; // label line height inside the canvas
 
       // Hour grid: a faint line at every reading through everything, a firmer one per four-hour bar (the bar lines), each running on past the axis as its own tick (5 px at bar starts, 3 otherwise) — one stroke, so the tick never sits on top of the line. Faint ones first, firm ones after, so a firm line covers rather than doubles.
-      const axisYForGrid = cssH - axisH;
+      const axisY = cssH - axisH; // the plot's baseline, the axis line
       for (const pass of [false, true]) {
         const layer = pass ? hair : faint;
         layer.strokeStyle = firmLine;
         for (let i = 0; i < n; i++) {
           if ((i % 4 === 0) !== pass) continue;
           const x = Math.round(plotX + i * colW) + 0.5;
-          layer.beginPath(); layer.moveTo(x, GRAPH.labelGutter); layer.lineTo(x, axisYForGrid + (pass ? 5 : 3)); layer.stroke();
+          layer.beginPath(); layer.moveTo(x, GRAPH.labelGutter); layer.lineTo(x, axisY + (pass ? 5 : 3)); layer.stroke();
         }
       }
       // The plot's right edge, so the grid never runs under the scale bar.
@@ -251,7 +250,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       if (canvas.dataset.scaleMax !== String(Math.round(tr.to.max))) canvas.dataset.scaleMax = String(Math.round(tr.to.max)); // the axis's ceiling, readable from outside (D-53): what a test or a hand on the console asks first
       const transitioning = tr.from != null;
       const fromFrame = tr.from, toFrame = tr.to;
-      let y0 = GRAPH.labelGutter;
+      const y0 = GRAPH.labelGutter; // the track's top: the label gutter, then the label line, then the plot
       {
         const { norm, alpha, max } = cur;
         const curve = monotoneCurve(norm);
@@ -435,11 +434,9 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
           ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip(); // the wider clip again, matching the one the restore below leaves
         }
 
-        y0 += tabH;
       }
 
       // X axis: the plot's baseline is the axis line (a second line here sat two pixels under it once the pulse row went, 2026-09-15); the ticks come from the hour grid above; two labels only, drawn after the hairlines are composited below.
-      const axisY = cssH - axisH;
       // Every hairline is in the layer now; composite it once, BENEATH everything drawn so far (the line, the area, the labels): the hairlines are the bottom of the stack and the line is the top. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
       faint.save(); faint.setTransform(1, 0, 0, 1, 0, 0); faint.globalCompositeOperation = "destination-out"; faint.drawImage(hairCanvas, 0, 0); faint.restore();
       ctx.save();

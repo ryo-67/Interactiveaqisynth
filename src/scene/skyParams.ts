@@ -38,7 +38,7 @@ export function nightBlend(sunElevationDeg: number): number {
 }
 
 // MAPPING (clock → exposure): the measured EXPOSURE_CURVE over sun elevation (theme.ts), linear between its points.
-export function exposureFor(sunElevationDeg: number): number {
+function exposureFor(sunElevationDeg: number): number {
   const c = EXPOSURE_CURVE;
   if (sunElevationDeg <= c[0][0]) return c[0][1];
   for (let i = 1; i < c.length; i++) {
@@ -48,24 +48,9 @@ export function exposureFor(sunElevationDeg: number): number {
   return c[c.length - 1][1];
 }
 
-// pm25n and o3n are the engine's normalized values (p05 → 0, p95 → 1). Both saturate above 1: an extreme day sits at the ceiling rather than running away. sunElevationDeg drives exposure; with no elevation given, noon is assumed.
-// The shape of SKY_RANGES, so a caller can pass a tuned copy instead of the compiled one.
-export interface SkyRanges {
-  turbidity: { clear: number; suffocating: number };
-  mieCoefficient: { clear: number; high: number };
-  mieDirectionalG: number;
-  rayleigh: { lowO3: number; highO3: number };
-  bloomIntensity: { lowO3: number; highO3: number };
-  discBrightness: { lowO3: number; highO3: number };
-}
-
-// `r` overrides the compiled ranges.
-export function skyParamsFor(
-  pm25n: number | null,
-  o3n: number | null,
-  sunElevationDeg?: number,
-  r: SkyRanges = SKY_RANGES as unknown as SkyRanges,
-): SkyParams {
+// pm25n and o3n are the engine's normalized values (p05 → 0, p95 → 1). Both saturate above 1: an extreme day sits at the ceiling rather than running away. sunElevationDeg drives exposure.
+export function skyParamsFor(pm25n: number | null, o3n: number | null, sunElevationDeg: number): SkyParams {
+  const r = SKY_RANGES;
   const p = Math.min(1, pm25n ?? 0);
   const o = Math.min(1, o3n ?? 0);
   return {
@@ -75,7 +60,7 @@ export function skyParamsFor(
     rayleigh: lerp(r.rayleigh.lowO3, r.rayleigh.highO3, o),
     bloomIntensity: o3n == null ? 0 : lerp(r.bloomIntensity.lowO3, r.bloomIntensity.highO3, o),
     discBrightness: lerp(r.discBrightness.lowO3, r.discBrightness.highO3, o),
-    exposure: exposureFor(sunElevationDeg ?? 90),
+    exposure: exposureFor(sunElevationDeg),
   };
 }
 

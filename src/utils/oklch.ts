@@ -26,7 +26,7 @@ function oklchToLinear({ L, C, h }: OKLCH): [number, number, number] {
   const rad = (h * Math.PI) / 180;
   return oklabToLinear(L, C * Math.cos(rad), C * Math.sin(rad));
 }
-export function inGamut(c: OKLCH): boolean {
+function inGamut(c: OKLCH): boolean {
   const eps = 1e-4;
   return oklchToLinear(c).every((v) => v >= -eps && v <= 1 + eps);
 }

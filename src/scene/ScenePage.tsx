@@ -94,7 +94,7 @@ export default function ScenePage() {
   // The page (D-43): the scene or the monitor. Both pages are always mounted in a frame that never changes size (the band fills the height the bars leave); a switch pushes them along the axis, eased out, under the band's edge masks (index.css, PAGE_MS; Shoro, 2026-09-16). Above the phone width the pages stack vertically, the monitor below the scene, and the wheel, the up and down arrows or the side icons move between them; on phones they sit side by side and a swipe, the left and right arrows or the icons do.
   const [page, setPage] = useState<View>(viewFromUrl);
   // The About overlay (D-56): open from the Patch notes button, closed by its twin over the scrim, Escape or a press on the scrim; ?about=1 in the URL while it is up. The scene behind it is inert and its panels dissolve (data-about, index.css); the page's own gestures (the wheel, the arrows, a drag, a switch) are refused while it is open.
-  const [about, setAbout] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("about") === "1");
+  const [about, setAbout] = useState(() => qs.get("about") === "1");
   const aboutRef = useRef(false); aboutRef.current = about;
   const aboutBtnRef = useRef<HTMLButtonElement>(null);
   const [entryGone, setEntryGone] = useState(false); // the entry screen has left the DOM: the live line may show
@@ -148,11 +148,9 @@ export default function ScenePage() {
   // It used to parse --page-gap with parseFloat, which works only while the value is a plain length. On a phone it is calc(24px + 16px): parseFloat returns NaN, the fallback made it 0, and the push therefore ended 40 px short of where the stylesheet rests the page — so the track snapped that 40 px the instant the inline transform was handed back. The vertical axis was unaffected only because --clip-pad-y happens to be a bare 140px.
   // offsetLeft and offsetTop are layout positions and ignore transforms, which matters now that each page carries a scale of its own; getBoundingClientRect would fold that in.
   const restOffset = (p: View): number => {
-    const track = trackRef.current;
-    if (!track || p === "scene") return 0;
-    const scene = track.querySelector<HTMLElement>(".scene-page-scene");
-    const monitor = track.querySelector<HTMLElement>(".scene-page-monitor");
-    if (!scene || !monitor) return 0;
+    const els = p === "scene" ? null : pagesEl();
+    if (!els) return 0;
+    const { scene, monitor } = els;
     return -(vertical ? monitor.offsetTop - scene.offsetTop : monitor.offsetLeft - scene.offsetLeft);
   };
   // The push, frame by frame (the pages' own scale is stepPages above).
@@ -274,8 +272,7 @@ export default function ScenePage() {
     const bounded = page === "scene" ? Math.min(0, dx) : Math.max(0, dx); // no pull past the first or last page
     track.dataset.dragging = "true";
     
-    if (!moving) markMoving(PAGE_MS + 400);
-    else { window.clearTimeout(movingTimer.current); movingTimer.current = window.setTimeout(() => setMoving(false), PAGE_MS + 400); }
+    markMoving(PAGE_MS + 400); // setting moving while it is already set is no render
     track.style.transform = `translateX(${s.base + bounded}px)`;
     // The scale follows the finger too, or it would jump the moment the drag becomes a push.
     const span = Math.abs(restOffset("monitor"));
@@ -335,10 +332,11 @@ export default function ScenePage() {
   const lastGood = useRef<{ params: typeof view.params; sun: typeof view.sun; stars: number; saturation: number; lens: number; grain: number; clock: number } | null>(null);
   const safe = useMemo(() => {
     const finite = (v: number) => Number.isFinite(v);
+    const inputs = { params: view.params, sun: view.sun, stars: view.stars, saturation: view.saturation, lens, grain, clock };
     const ok = Object.values(view.params).every(finite) && view.sun.every(finite) && [view.stars, view.saturation, lens, grain, clock].every(finite);
-    if (ok) { lastGood.current = { params: view.params, sun: view.sun, stars: view.stars, saturation: view.saturation, lens, grain, clock }; return lastGood.current; }
-    warnOnce(`sky inputs ${JSON.stringify({ params: view.params, sun: view.sun, stars: view.stars, saturation: view.saturation, lens, grain, clock })}`);
-    return lastGood.current ?? { params: view.params, sun: view.sun, stars: view.stars, saturation: view.saturation, lens, grain, clock };
+    if (ok) { lastGood.current = inputs; return inputs; }
+    warnOnce(`sky inputs ${JSON.stringify(inputs)}`);
+    return lastGood.current ?? inputs;
   }, [view, lens, grain, clock]);
   const nightEased = useEased(view.night, tau, "night blend"); // eased so a cut between days never pops the blue above the dissolve
 
@@ -374,7 +372,7 @@ export default function ScenePage() {
     const tick = () => {
       if (document.hidden) return; // nobody is looking at the panels: no GPU readbacks in a background tab (2026-10-14); the next visible tick samples again
       if (performance.now() < lockRef.current) return; // a page switch in flight (D-43): the panels are passing over sky they will not rest on, and a sample there would ease the ramps toward a colour that is gone by the time they arrive; the first tick after the slide samples where they settled (2026-09-16)
-      const gl = skyBoxRef.current?.querySelector("canvas:not([data-dissolve])") as HTMLCanvasElement | null; // the sky's canvas is the one that is not the dissolve's; both are aria-hidden since BUG-49, which is why this cannot ask for the one that is not (BUG-58)
+      const gl = skyCanvasRef.current;
       if (!gl || gl.width === 0) return;
       const cr = gl.getBoundingClientRect();
       if (cr.width === 0 || cr.height === 0) return;
@@ -392,8 +390,12 @@ export default function ScenePage() {
     tick();
     return () => clearInterval(id);
   }, []);
-  const predict = (sm: Sample) => predictPanel({ sky: sm.rgb, t: sm.t, smoke: { density: view.smoke, regime: view.regime }, night: nightEased, golden: goldenEased, glass: { alpha: view.glass.alpha, fill: view.glass.fill, lift: view.glass.lift } });
-  const panels = useMemo(() => ({ hero: predict(skySamples.hero), aqi: predict(skySamples.aqi), graph: predict(skySamples.graph), scale: predict(skySamples.scale), tone: predict(skySamples.tone) }), [skySamples, view.smoke, view.regime, view.glass, nightEased, goldenEased]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The panels' predicted luminance (D-36), recomputed only when an input to it changes: the glass is read by its three values, since the object holding them is rebuilt with every view.
+  const { alpha: glassAlpha, fill: glassFill, lift: glassLift } = view.glass;
+  const panels = useMemo(() => {
+    const predict = (sm: Sample) => predictPanel({ sky: sm.rgb, t: sm.t, smoke: { density: view.smoke, regime: view.regime }, night: nightEased, golden: goldenEased, glass: { alpha: glassAlpha, fill: glassFill, lift: glassLift } });
+    return { hero: predict(skySamples.hero), aqi: predict(skySamples.aqi), graph: predict(skySamples.graph), scale: predict(skySamples.scale), tone: predict(skySamples.tone) };
+  }, [skySamples, view.smoke, view.regime, glassAlpha, glassFill, glassLift, nightEased, goldenEased]);
   const heroLift = useEased(rampLiftFor(panels.hero.luminance), tau, "hero ramp lift");
   const aqiLift = useEased(rampLiftFor(panels.aqi.luminance), tau, "aqi card ramp lift");
   const graphLift = useEased(rampLiftFor(panels.graph.luminance), tau, "graph ramp lift");
@@ -403,6 +405,7 @@ export default function ScenePage() {
 
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
   const skyBoxRef = useRef<HTMLDivElement>(null);
+  const skyCanvasRef = useRef<HTMLCanvasElement | null>(null); // the sky's WebGL canvas, handed over by SkyView: the panel sampler and the dissolve read its pixels
   const rootRef = useRef<HTMLDivElement>(null);
   const windowProbeRef = useRef<HTMLDivElement>(null);
   const skyFrameTop = useSafariWindow(rootRef, windowProbeRef); // the scene under Safari's bars: the screen's height, the window between the bars and the runway (BUG-57)
@@ -411,7 +414,7 @@ export default function ScenePage() {
   useLayoutEffect(() => {
     if (s.dissolve === dissolveSeen.current) return;
     dissolveSeen.current = s.dissolve;
-    const gl = skyBoxRef.current?.querySelector("canvas:not([data-dissolve])") as HTMLCanvasElement | null; // the sky's canvas is the one that is not the dissolve's; both are aria-hidden since BUG-49, which is why this cannot ask for the one that is not (BUG-58)
+    const gl = skyCanvasRef.current;
     const overlay = dissolveCanvasRef.current;
     if (!gl || !overlay) return;
     overlay.width = gl.width; overlay.height = gl.height;
@@ -447,7 +450,7 @@ export default function ScenePage() {
         {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}
         {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (Cursor.tsx reads data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
         <div ref={skyBoxRef} className="scene-sky" inert={about ? "" : undefined} data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClick={phone ? undefined : () => { if (consumeSuppressedClick() || performance.now() - swipedAt.current < 400) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
-          <SkyView frameTop={skyFrameTop} params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView canvasRef={skyCanvasRef} frameTop={skyFrameTop} params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={{ width: "100%", height: "100%" }} />
           {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
           <canvas ref={dissolveCanvasRef} aria-hidden data-dissolve style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />
           {!FX_OFF.has("nonight") && <NightLayer blend={nightEased} density={view.smoke} />}

@@ -21,7 +21,6 @@ import { clamp01, easeInOutQuad, wrap, wrapDelta } from "../utils/math";
 // Dev-only fixture select (?dev=1): never renders for a visitor.
 export const DEV = new URLSearchParams(window.location.search).has("dev");
 
-export type { Channel } from "../utils/channelSource";
 
 // What the monitor page reads (D-43): the engine's state for the hour being heard, from the beat report while playing, and for the held hour at rest through the same engine functions (the tier from PM2.5 alone, §3.4; the bar's k and pattern from euclid.ts; σ from the hour's PM2.5 AQI through scales.ts detuneSigma). Nothing here is a second formula.
 export interface MonitorState {
@@ -63,7 +62,6 @@ export interface ListenSession {
   liveStatus: "loading" | "ready" | "unavailable";
   retryLive: () => void;
   status: PageStatus; // what the line above the footer says, one state at a time in priority order (pageStatus.ts)
-  anchors: PollutantAnchors; // the engine's anchors (falls back to Queens 2023 until the borough's land)
   day: Day | null;
   live: boolean;
   playing: boolean;
@@ -72,14 +70,13 @@ export interface ListenSession {
   setVolume: (db: number) => void;
   displayAqi: number | null;
   aqiHours: Array<number | null>; // the loaded day's current AQI hour by hour (engine/aqi.ts): the graph's AQI line
-  latest: { reading: HourReading; index: number; hour: number } | null; // latest non-null hour of the loaded day: its index and its clock hour
   rest: { reading: HourReading; index: number; hour: number } | null; // the hour the page reads at rest: the paused or seeked hour if the day has it, else latest
   // The category the mood word names and the AQI its colour reads: the current AQI (the composite) at the hour being heard while playing, at the rest hour otherwise, so the word follows the graph line at the playhead. The sound's tier stays PM2.5 alone (§3.4); the word and the number read EPA's category (D-42).
   moodTier: number | null; // null when the hour has no AQI: the card shows no word rather than the first tier's (BUG-63)
   moodAqi: number | null;
   monitor: MonitorState; // the monitor page's readouts (D-43)
   pulses: PulseFeed; // the pulse hits the engine fires, for the monitor's lane to subscribe to (pulseFeed.ts)
-  skyChannels: { pm25: number | null; o3: number | null; no2: number | null }; // channels for the sky: a null hour holds the last reported value
+  skyChannels: { pm25: number | null; o3: number | null }; // channels for the sky: a null hour holds the last reported value
   devDayKey: string;
   setDevDayKey: (k: string) => void;
 }
@@ -103,7 +100,7 @@ export function useListenSession(): ListenSession {
   const [playing, setPlaying] = useState(false);
   const [beat, setBeat] = useState<BeatInfo | null>(null);
   const [devDayKey, setDevDayKey] = useState<string>("live");
-  const [date, setDateState] = useState<string | null>(null);
+  const [date, setDate] = useState<string | null>(null);
   const [chosen, setChosen] = useState<DaySeries | null>(null);
   const [dayLoading, setDayLoading] = useState(false);
 
@@ -158,7 +155,7 @@ export function useListenSession(): ListenSession {
         if (!cancelled) setChosen(s);
       } catch (err) {
         console.warn("[App] Day fetch failed:", err);
-        if (!cancelled) { setChosen({ hours: [], aqi: { daily: null, current: null, hourly: [] }, fallback: null, fetchedAt: null }); setDayFailed(true); }
+        if (!cancelled) { setChosen({ hours: [], aqi: { daily: null, current: null, hourly: [] } }); setDayFailed(true); }
       } finally {
         window.clearTimeout(slow);
         if (!cancelled) { setDayLoading(false); setDayWaiting(false); }
@@ -168,7 +165,6 @@ export function useListenSession(): ListenSession {
   }, [date, borough, dayAttempt]);
   const retryDay = useCallback(() => setDayAttempt((n) => n + 1), []);
 
-  const setDate = useCallback((d: string | null) => setDateState(d), []);
 
   // Warm the archive year the pins live in once the page is idle, so the first pin does not wait on a fetch (the year file is cached per borough after that). Idle means after the live answer, not during it: the year file is about a megabyte and had been competing with the first paint's one request (2026-10-14).
   const liveSettled = liveStatus !== "loading";
@@ -309,7 +305,8 @@ export function useListenSession(): ListenSession {
   }, [day]);
 
   // The beat report describes the hour being heard; a seek made after it (paused or at rest) supersedes it, so the page reads the seeked hour, not the hour the report described.
-  const report = beat && !(seekAt && seekAt.t > beatAtRef.current) ? beat : null;
+  const seekHour = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : null;
+  const report = beat && seekHour == null ? beat : null;
   // At rest the page reads one hour of the loaded day: the paused or seeked hour if there is one and the day has it, else the latest reporting hour.
   const rest = useMemo(
     () => (pausedHour != null && day && day[pausedHour] ? { reading: day[pausedHour], index: pausedHour, hour: hourOfTs(day[pausedHour].ts) } : latest),
@@ -341,33 +338,33 @@ export function useListenSession(): ListenSession {
     const { k, rotation } = day ? barPattern(day, bar, a.no2) : { k: null, rotation: 0 };
     return { hour: rest?.index ?? null, tierIndex, tierAqi, scaleName: TIERS[tierIndex].scaleName, k, steps: barSteps(k, rotation), o3n: normalize(r?.o3 ?? null, a.o3), o3: r?.o3 ?? null, pm25n, pm25, no2n: normalize(r?.no2 ?? null, a.no2), detuneCents: detuneSigma(tierAqi) };
   }, [report, rest, day, a]);
-  const clockTarget = seekAt && seekAt.t > beatAtRef.current ? seekAt.hour : beat ? beat.hour : (rest?.index ?? 12);
+  const clockTarget = seekHour ?? (beat ? beat.hour : (rest?.index ?? 12));
   const playheadHour = useEasedHour(clockTarget, playing);
   // The clock glides where the index cannot: a day switch keeps the transport position but the same index is a different time of day on the new day (live index 23 is 1 pm; an archive day's is 11 pm), and the sun must not jump between them.
-  const sunDayOf = day && day.length > 0 ? { date: day[0].ts.slice(0, 10), tz: tzOffsetFromTs(day[0].ts) } : null;
-  const sunDayMemo = useMemo(() => sunDayOf, [sunDayOf?.date, sunDayOf?.tz]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sunDate = day && day.length > 0 ? day[0].ts.slice(0, 10) : null;
+  const sunTz = day && day.length > 0 ? tzOffsetFromTs(day[0].ts) : null;
+  const sunDayMemo = useMemo(() => (sunDate != null && sunTz != null ? { date: sunDate, tz: sunTz } : null), [sunDate, sunTz]); // a new object only when the date or the offset changes
   const transition = useSunTransition(clockOf(playheadHour), sunDayMemo, playing);
   const playheadClock = transition.clock;
   const paused = !playing && (pausedHour != null || seekAt != null);
   // The sky's inputs: the same channels, but a channel the current hour lacks holds its last reported value from earlier in the day (looked back through the day, so a rest hour with no O3 yet still carries the afternoon's O3). The engine holds its effects the same way across a null hour (§4.4: no data, no movement). AirNow publishes PM2.5 for the newest hour before O3, so without this the afternoon sky fell to its low-ozone end.
-  const heldIndex = report ? report.hour : rest?.index;
-  const held = (ch: "pm25" | "o3" | "no2"): number | null => {
-    if (!day || heldIndex == null) return null;
-    for (let i = Math.min(heldIndex, day.length - 1); i >= 0; i--) {
+  const held = (ch: "pm25" | "o3"): number | null => {
+    if (!day || moodIndex == null) return null; // the hour being read, the same one the mood word reads
+    for (let i = Math.min(moodIndex, day.length - 1); i >= 0; i--) {
       const v = day[i][ch];
       if (v != null) return normalize(ch === "pm25" ? pm25Played(v) : v, a[ch]);
     }
     return null;
   };
-  const skyChannels = { pm25: held("pm25"), o3: held("o3"), no2: held("no2") };
+  const skyChannels = { pm25: held("pm25"), o3: held("o3") };
 
   const liveEmpty = liveStatus === "ready" && snapshot != null && !snapshot.series.Citywide.hours.some((h) => h.pm25 != null || h.o3 != null); // the citywide series is the mean of every reporting borough, so empty there is empty everywhere
   const status = useMemo(() => pageStatus({ soundFailed, date, dayFailed, dayWaiting, live, liveStatus, liveEmpty }), [soundFailed, date, dayFailed, dayWaiting, live, liveStatus, liveEmpty]); // memoised, so the page's line is rebuilt only when the state changes
 
   return {
     borough, setBorough, date, setDate, latestDate, dayLoading, retryDay, status, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
-    snapshot, liveStatus, retryLive, anchors: a, day, live, playing, beat, togglePlay, setVolume,
-    displayAqi, aqiHours, latest, rest, moodTier, moodAqi, monitor, pulses, skyChannels, devDayKey, setDevDayKey,
+    snapshot, liveStatus, retryLive, day, live, playing, beat, togglePlay, setVolume,
+    displayAqi, aqiHours, rest, moodTier, moodAqi, monitor, pulses, skyChannels, devDayKey, setDevDayKey,
   };
 }
 

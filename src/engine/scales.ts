@@ -46,7 +46,7 @@ export function detuneSigma(aqi: number | null): number {
 // Build a chord for a 1-indexed degree by stacking every-other degree (root, +2, +4) with octave carry. In Chromatic this collapses toward clusters — that is the wreckage working as intended (§3.4).
 // The bed's voicing (§3.8, D-47, Shoro's listening pass, 2026-09-16): stacked fourths, the degree and the notes three and six scale degrees above it (1-4-7 on a seven-note scale), not the every-other-degree triad (1-3-5). Triads made the major bed read as pop and gave it a major-triad cadence; quartal chords carry the scale's colour without the cadence. The same rule is applied in every scale by degree, so the placeholder progression transposes as before.
 // By degree, not by interval, and the two edge cases are intended (Shoro, 2026-09-16): in the pentatonic three degrees up is a fifth, so Moderate's chords are stacked fifths (C G D), open and undecided; in the chromatic it is a minor third, so Hazardous's chords are diminished triads (C D# F#), the darkest thing three notes can be. A by-interval rule would put quartal chords in chromatic, and quartal is neutral, which is wrong at the top.
-export const CHORD_STEPS: readonly number[] = [0, 3, 6];
+const CHORD_STEPS: readonly number[] = [0, 3, 6];
 export function chordMidi(degree: number, scaleSemis: readonly number[], rootMidi: number): number[] {
   const len = scaleSemis.length;
   return CHORD_STEPS.map((step) => {

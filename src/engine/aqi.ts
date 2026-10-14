@@ -94,7 +94,7 @@ function meanIfComplete(window: ReadonlyArray<number | null>, nominal = 8): numb
 
 // The current AQI for hour i of `all`, as AirNow would have reported it that hour: the highest of the PM2.5 NowCast over the trailing 12 hours, the trailing 8-hour ozone mean and the hour's measured NO2, each through its own table. Null only when no sub-index can be formed.
 // NO2 as measured, never the typical profile (BUG-64, D-68): live NO2 is filled from the archive's typical profile (D-18) so the pulse has a contour to play, but a typical value is an average of past days, not a reading of this hour, and the AQI is EPA's reported AQI (D-42), which no estimate may enter. With PM2.5 and ozone missing too, the hour has no AQI rather than one made from averages.
-export const measuredNo2 = (h: HourReading): number | null => (h.source?.no2 === "typical" ? null : h.no2);
+const measuredNo2 = (h: HourReading): number | null => (h.source?.no2 === "typical" ? null : h.no2);
 
 // PM2.5 as the page plays and shows it: a monitor's small negative reading (instrument noise; the archive carries a few thousand) reads as zero, and a missing one stays missing. One rule for the sound, the sky, the graph and the monitor.
 export const pm25Played = (v: number | null): number | null => (v == null ? null : Math.max(0, v));

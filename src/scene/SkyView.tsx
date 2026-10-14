@@ -45,6 +45,8 @@ interface Props {
   facing?: CameraFacing;
   // How far down the canvas the camera's frame begins, in CSS px (BUG-57). The field of view spans the canvas below it, and what is above renders as overscan: on an iPhone the canvas runs up under the status bar and a runway above the screen, which the framing and the sun's placement must not count (useSafariWindow). 0 off iOS and in the harness: the frame is the canvas.
   frameTop?: number;
+  // The WebGL canvas, handed to the page when the renderer is created: the panel sampler and the dissolve read the sky's pixels from it. They had found it by a DOM query that broke once already (BUG-58).
+  canvasRef?: React.MutableRefObject<HTMLCanvasElement | null>;
 }
 
 export type CameraFacing = "north" | "south" | "sun";
@@ -255,7 +257,7 @@ function Exposure({ value, live }: { value: number; live: boolean }) {
 // No multisampling (2026-09-16): the composer renders every pass into its own targets, which are never multisampled, and the sky has no geometry edges to smooth (a dome, point stars, a textured sun sprite); the multisampled default buffer only cost memory bandwidth on every frame.
 const GL_CONFIG = { antialias: false, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true } as const;
 
-export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0 }: Props) {
+export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0, canvasRef }: Props) {
   // The grade's effects, once per canvas; the composer's children are one memoized element so its pass chain is never rebuilt (see Fx).
   // ORDER (2026-09-15, measured): lens; tone mapping; bloom; saturation; aberration; noise. This is the order the sky was tuned against. The wrappers re-appended every re-created effect at the end of the list, so after the first eased change the chain settled into this order, with tone mapping BEFORE the bloom and the grade: the bloom's blur is taken from the HDR input of its pass and added onto the mapped image with nothing mapping it again, so the sun's glow goes to white — that is the glow every exposure and bloom value was judged on. The physically ordered chain (bloom and grade before tone mapping) is what showed on a fresh mount before any change, and reads as the dim, washed-out sky. The lens comes first, in its own pass (CONVOLUTION), so the frame it refracts is the raw sky and nothing it re-samples is lost.
   const fx = useMemo(makeFx, []);
@@ -295,7 +297,7 @@ export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style,
         frameloop={live ? "always" : "demand"}
         style={{ width: "100%", height: "100%", display: "block" }}
         // The sky is scenery, and says so (BUG-49, 2026-09-17). An empty canvas has no fallback children to expose, so nothing was being announced either way, but the element that carries the whole sky should not be left for a browser to guess at. It cannot go on .scene-sky, which is the page's own play and pause target and carries a role and a label of its own; fiber does not forward arbitrary attributes to the canvas, so it is set on the element once it exists.
-        onCreated={({ gl }) => { gl.domElement.setAttribute("aria-hidden", "true"); }}
+        onCreated={({ gl }) => { gl.domElement.setAttribute("aria-hidden", "true"); if (canvasRef) canvasRef.current = gl.domElement; }}
       >
         <CameraRig pitch={cameraRotationX} yaw={yaw} />
         <CameraFrame top={frameTop} />

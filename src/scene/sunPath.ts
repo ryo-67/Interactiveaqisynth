@@ -11,7 +11,7 @@ import type { SunAngles } from "./solar";
 import { wrap, wrapDelta } from "../utils/math";
 
 export interface SunCamera { facingDeg: number; aspect: number }
-export const VISIBLE_SHARE = 0.65;
+const VISIBLE_SHARE = 0.65;
 const rad = Math.PI / 180;
 
 interface Screen { x: number; y: number } // the frame is [-1, 1] on both axes
@@ -39,7 +39,7 @@ export function project(s: SunAngles, cam: SunCamera): Screen | null {
   if (f <= 1e-6) return null; // behind the camera
   return { x: dot(d, b.r) / f / b.tanH, y: dot(d, b.u) / f / b.tanV };
 }
-export function unproject(p: Screen, cam: SunCamera): SunAngles {
+function unproject(p: Screen, cam: SunCamera): SunAngles {
   const b = basis(cam);
   const d: [number, number, number] = [
     b.f[0] + p.x * b.tanH * b.r[0] + p.y * b.tanV * b.u[0],

@@ -27,11 +27,9 @@ export interface BeatInfo {
   tierIndex: number;
   scaleName: string;
   k: number | null; // current bar's Euclidean density; null = no pulse this bar (§4.4)
-  borrowed: { pm25: boolean; o3: boolean; no2: boolean };
   smoothedAQI: number | null;
   pm25: number | null;
   o3: number | null;
-  no2: number | null;
   // Normalized values against the engine's anchors, so the page (mood clause, score) reads the same normalization the sound plays — one source of truth (§3.10).
   pm25n: number | null;
   o3n: number | null;
@@ -41,7 +39,6 @@ export interface BeatInfo {
   // For the monitor page (D-43), so it draws what the engine did and re-derives nothing: the σ the melody's detune was drawn from this beat, and the current bar's 16-step pattern (null = no pulse this bar).
   detuneCents: number;
   steps: boolean[] | null;
-  melodyRelease: number; // the melody envelope's release as it stands at this beat, seconds (D-44): it walks to the tier's value over the beat, so this trails the tier by one
 }
 
 export interface PulseInfo {
@@ -388,22 +385,15 @@ export class SynthEngine {
       tierIndex: this.curTier,
       scaleName: tier.scaleName,
       k: this.curBarK,
-      borrowed: {
-        pm25: reading.source.pm25 !== "own",
-        o3: reading.source.o3 !== "own",
-        no2: reading.source.no2 !== "own",
-      },
       smoothedAQI: smoothed,
       pm25: reading.pm25,
       o3: reading.o3,
-      no2: reading.no2,
       pm25n,
       o3n,
       no2n,
       pm25nSmoothed,
       detuneCents: sigma,
       steps: barSteps(this.curBarK, this.bars[bar]?.rotation ?? 0),
-      melodyRelease: Number(this.melody.envelope.release),
     }));
   }
 

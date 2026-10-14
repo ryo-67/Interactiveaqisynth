@@ -124,6 +124,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
   }, [series, tab, dayId, narrow]);
   // The lift and the theme are read at draw time (below), not baked into the frame: they colour the ramp, they do not move the line.
   const liftRef = useRef(lift); liftRef.current = lift;
+  const readoutRef = useRef({ tab, series }); readoutRef.current = { tab, series }; // the readout's tab and values as of this render: the draw loop is rebuilt only on a new day, play or live, and read them from its closure, so after a tab switch the readout named the old tab until one of those changed (BUG-70)
   const transitionRef = useRef<{ from: Frame | null; to: Frame; start: number; ms: number }>({ from: null, to: target, start: 0, ms: 0 });
   const shownRef = useRef<Frame | null>(null);
   if (transitionRef.current.to.key !== target.key) {
@@ -468,7 +469,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
         const hi = Math.max(0, Math.min(n - 1, Math.floor(playheadHour))); // clamped both ways: this indexes the day
         // Clock time from the reading's own timestamp, not the index. The date joins it only on the live window, whose readings straddle two days ("Sep 14, 6pm"), and only where the plot is wide enough to hold it beside the value; on a phone's plot the readout is the hour and the value ("11pm · AQI 32"). A chosen day already names its date in the axis label, so its readout is just "4am".
         const parts: string[] = [readingLabel(day[hi].ts, live && plotW >= GRAPH.chipDateMinPlotWidth)];
-        { const v = series[tab][hi]; parts.push(`${TRACK_LABELS[tab]} ${v == null ? MONITOR_REST : Math.round(v)}`); }
+        { const r = readoutRef.current; const v = r.series[r.tab][hi]; parts.push(`${TRACK_LABELS[r.tab]} ${v == null ? MONITOR_REST : Math.round(v)}`); }
         const label = parts.join(" · ");
         // The readout is a frosted pill in the DOM (index.css .scene-playhead-chip), placed here each frame: 24 tall, 8 px side padding, in the caption's data face, so its width is the text's in the canvas's own font plus the padding. Right of the playhead where there is room, left otherwise, and never past either edge of the plot.
         const chip = chipRef.current;

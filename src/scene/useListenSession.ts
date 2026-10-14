@@ -3,7 +3,7 @@ import { hourOfTs, warnOnce } from "../utils/time";
 import { sunAnglesAt, tzOffsetFromTs, type SunAngles } from "./solar";
 import { sunAlongPath } from "./sunPath";
 import { skyFrameAspect } from "./useSafariWindow";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { createPulseFeed, type PulseFeed } from "./pulseFeed";
 import { pageStatus, type PageStatus } from "./pageStatus";
@@ -374,56 +374,55 @@ const SUN_GLIDE_BEATS = 1.5;
 interface SunDay { date: string; tz: number }
 interface SunState { clock: number; sun: SunAngles | null; dissolve: number } // sun: the interpolated position during a glide, else null (the page computes it from the day and the clock). dissolve: a counter the page watches — each increment is a change of day made while playing, to be shown as a dissolve of the rendered sky rather than a glide (D-32).
 function useSunTransition(target: number, sunDay: SunDay | null, playing: boolean): SunState {
-  const [state, setState] = useState<SunState>({ clock: target, sun: null, dissolve: 0 });
-  const dissolveRef = useRef(0);
-  const clockRef = useRef(target);
-  const sunRef = useRef<SunAngles | null>(null); // where the sun is right now, kept so a second change can start from it
-  const targetRef = useRef(target);
-  targetRef.current = target;
-  const seenRef = useRef<SunDay | null>(null);
-  const glideRef = useRef<{ from: SunAngles; fromClock: number; start: number; ms: number } | null>(null);
-  useEffect(() => {
-    if (!sunDay) return; // a day is loading: hold
-    const key = (d: SunDay | null) => (d ? `${d.date}|${d.tz}` : "");
-    if (key(sunDay) !== key(seenRef.current)) {
-      const prev = seenRef.current;
-      seenRef.current = sunDay;
-      if (prev && playing) {
-        // Playing: the target keeps moving, so a glide bends toward a moving point. Cut instead — the page dissolves the last rendered frame over the new sky.
-        glideRef.current = null;
-        dissolveRef.current += 1;
-      } else if (prev) {
-        const from = sunRef.current ?? sunAnglesAt(prev.date, clockRef.current, NYC_LAT, NYC_LON, prev.tz);
-        glideRef.current = { from, fromClock: clockRef.current, start: performance.now(), ms: motion.beatMs * SUN_GLIDE_BEATS };
-      }
+  // Derived during render, not copied into state from an effect (2026-10-14). The effect version set state on every change of target, which while playing is every frame, so the page rendered twice a frame; and it saw a change of day only after that day had committed, so for a frame or two the sky had the new day's sun before the glide pulled it back to where it was (measured: 39° to the destination and back on Rush Hour → Wildfire at rest).
+  // A change of day is noticed here, during render, and answered with state set during render (React's way of adjusting state to a new prop): React renders again before committing, so nothing ever commits the new day without its glide, or hands the sky the new day while playing before the dissolve's counter has moved (the page copies the old frame in the same commit, ScenePage).
+  const key = (d: SunDay | null) => (d ? `${d.date}|${d.tz}` : "");
+  const [seen, setSeen] = useState<SunDay | null>(sunDay);
+  const [glide, setGlide] = useState<{ from: SunAngles; fromClock: number; start: number; ms: number } | null>(null);
+  const [now, setNow] = useState(0); // the glide's frame time: the only thing that renders per frame, and only while a glide runs
+  const [dissolve, setDissolve] = useState(0);
+  const shown = useRef<{ clock: number; sun: SunAngles | null }>({ clock: target, sun: null }); // what the last commit showed: a change of day starts from it, and a loading day holds it
+
+  if (sunDay && key(sunDay) !== key(seen)) {
+    setSeen(sunDay);
+    if (seen && playing) {
+      // Playing: the target keeps moving, so a glide bends toward a moving point. Cut instead — the page dissolves the last rendered frame over the new sky.
+      setGlide(null);
+      setDissolve((n) => n + 1);
+    } else if (seen) {
+      const from = shown.current.sun ?? sunAnglesAt(seen.date, shown.current.clock, NYC_LAT, NYC_LON, seen.tz); // mid-glide, where the glide had got to
+      const start = performance.now();
+      setGlide({ from, fromClock: shown.current.clock, start, ms: motion.beatMs * SUN_GLIDE_BEATS });
+      setNow(start);
     }
-    const shortest = (from: number, to: number, period: number) => { let d = (to - from) % period; if (d > period / 2) d -= period; if (d < -period / 2) d += period; return d; };
-    const run = glideRef.current;
-    if (!run) { clockRef.current = target; sunRef.current = null; setState({ clock: target, sun: null, dissolve: dissolveRef.current }); return; }
+  }
+
+  let out: { clock: number; sun: SunAngles | null };
+  if (!sunDay) out = shown.current; // a day is loading: hold
+  else if (glide && now - glide.start < glide.ms) {
+    const e = easeInOutQuad(Math.max(0, (now - glide.start) / glide.ms));
+    const to = sunAnglesAt(sunDay.date, target, NYC_LAT, NYC_LON, sunDay.tz); // the target as of this render: it may be moving
+    // The path is planned in the camera's screen space (sunPath.ts, D-33): straight on screen while visible, angles while unseen. In the camera's FRAME, which on an iPhone is the screen below the window's top rather than the whole sky box (useSafariWindow, BUG-57); everywhere else it is the viewport, as it always was.
+    const sun = sunAlongPath(glide.from, to, e, { facingDeg: CAMERA_FACING === "south" ? 180 : 0, aspect: skyFrameAspect() });
+    const shortest = (a: number, b: number, period: number) => { let d = (b - a) % period; if (d > period / 2) d -= period; if (d < -period / 2) d += period; return d; };
+    out = { clock: ((glide.fromClock + shortest(glide.fromClock, target, 24) * e) % 24 + 24) % 24, sun };
+  } else out = { clock: target, sun: null }; // outside a glide the sun is where the clock puts it, exactly
+  useLayoutEffect(() => { shown.current = out; });
+
+  // The glide's frames: a timestamp per frame until it is over, then no glide.
+  useEffect(() => {
+    if (!glide) return;
     let raf = 0;
-    const tick = (now: number) => {
-      const g = glideRef.current;
-      if (!g) return;
-      const t = Math.min(1, (now - g.start) / g.ms);
-      const e = easeInOutQuad(t);
-      const to = sunAnglesAt(sunDay.date, targetRef.current, NYC_LAT, NYC_LON, sunDay.tz); // re-read: the target may be moving
-      // The path is planned in the camera's screen space (sunPath.ts, D-33): straight on screen while visible, angles while unseen. In the camera's FRAME, which on an iPhone is the screen below the window's top rather than the whole sky box (useSafariWindow, BUG-57); everywhere else it is the viewport, as it always was.
-      const sun = sunAlongPath(g.from, to, e, { facingDeg: CAMERA_FACING === "south" ? 180 : 0, aspect: skyFrameAspect() });
-      const clock = ((g.fromClock + shortest(g.fromClock, targetRef.current, 24) * e) % 24 + 24) % 24;
-      clockRef.current = clock;
-      sunRef.current = sun;
-      setState({ clock, sun, dissolve: dissolveRef.current });
-      if (t < 1) { raf = requestAnimationFrame(tick); return; }
-      glideRef.current = null;
-      clockRef.current = targetRef.current;
-      sunRef.current = null;
-      setState({ clock: targetRef.current, sun: null, dissolve: dissolveRef.current });
+    const tick = (t: number) => {
+      if (t - glide.start >= glide.ms) { setGlide(null); return; }
+      setNow(t);
+      raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, sunDay]);
-  return state;
+  }, [glide]);
+
+  return useMemo(() => ({ clock: out.clock, sun: out.sun, dissolve }), [out.clock, out.sun, dissolve]);
 }
 
 function useEasedHour(target: number, running: boolean): number {

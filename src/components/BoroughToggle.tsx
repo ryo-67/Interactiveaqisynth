@@ -36,7 +36,7 @@ export function BoroughToggle({ selected, onSelect }: Props) {
           fontStyle: serif ? "italic" : "normal",
           fontWeight: serif ? 700 : 400, // selected: bold italic of the same face
           textTransform: "uppercase",
-          letterSpacing: "0.08em",
+          letterSpacing: CONTROL.capsTracking,
           fontSize: typeScale.caption.size,
           lineHeight: `var(--ctl-inner, ${CONTROL.inner}px)`,
           textAlign: "center",

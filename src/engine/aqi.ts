@@ -5,6 +5,7 @@
 // The sound does not use this file's composite: the tier is PM2.5 alone (STRATEGY §3.4), through pm25ToAQI below, because particles are the dissonance axis and ozone and NO2 already have voices of their own.
 
 import type { Day, HourReading } from "./SynthEngine";
+import { hourOfTs } from "../utils/time";
 
 // EPA's six category lines: the top AQI of Good, Moderate, Unhealthy for Sensitive Groups, Unhealthy, Very Unhealthy and Hazardous (500, the top of the scale). One list for the two things that read them, the colour ramp (theme.ts) and the sound's tiers (scales.ts), so the ear and the page change category on the same number (D-44); each had kept its own.
 export const AQI_CATEGORY_MAX = [50, 100, 150, 200, 300, 500] as const;
@@ -113,17 +114,15 @@ export function hourlyAQISeries(day: Day, prior: Day = []): Array<number | null>
   return day.map((_, k) => hourlyAQI(all, prior.length + k));
 }
 
-const clockHour = (h: HourReading): number => Number(h.ts.slice(11, 13));
-
 // The official daily AQI (TAD §IV, Table 6): PM2.5 from the 24-hour mean, ozone from the highest 8-hour mean among the 17 windows starting 7 am through 11 pm (the late windows run into the next day, whose hours are passed in when loaded), NO2 from the highest hour. The PM2.5 mean needs 75% of the day's hours, as EPA's daily value does; a day with a few hours of particles reads null rather than a number built on a morning.
 export function dailyAQI(day: Day, next: Day = []): number | null {
   if (day.length === 0) return null;
-  const pmVals = day.map((h) => h.pm25).filter((v): v is number => v != null).map((v) => Math.max(0, v));
+  const pmVals = day.map((h) => pm25Played(h.pm25)).filter((v): v is number => v != null);
   const pmMean = pmVals.length >= Math.ceil(0.75 * day.length) ? pmVals.reduce((s, v) => s + v, 0) / pmVals.length : null;
   const all = [...day, ...next];
   let o3Max: number | null = null;
   for (let s = 0; s < day.length; s++) {
-    const hour = clockHour(day[s]);
+    const hour = hourOfTs(day[s].ts);
     if (hour < 7) continue;
     const mean = meanIfComplete(all.slice(s, s + 8).map((h) => h.o3));
     if (mean != null && (o3Max == null || mean > o3Max)) o3Max = mean;

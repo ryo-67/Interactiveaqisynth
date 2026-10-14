@@ -3,6 +3,7 @@
 import { ABOUT, CREDIT_NAME, CREDIT_URL, GITHUB_URL, LINKEDIN_URL, PORTFOLIO_RECORD_URL, PORTFOLIO_URL, SEO, SITE_URL, SOURCE_URL_AIRNOW, SOURCE_URL_EPA } from "./content";
 import { ARCHIVE_LAST_DATE } from "./utils/nycOpenData";
 import { weeksBehind } from "./utils/time";
+import { NIGHT_GROUND } from "./utils/theme";
 
 /** The AI search and assistant crawlers named and welcomed in robots.txt: the portfolio's list (OpenAI, Anthropic, Perplexity, Google's and Apple's AI uses, Common Crawl). Being read and cited by them is the point. */
 export const AI_CRAWLERS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Perplexity-User", "Google-Extended", "Applebot-Extended", "CCBot"] as const;
@@ -43,7 +44,7 @@ export function headTags(): string {
     `<link rel="canonical" href="${CANONICAL}" />`,
     meta("name", "robots", "index, follow, max-image-preview:large"),
     meta("name", "author", CREDIT_NAME),
-    meta("name", "theme-color", "#05050a"), // the night ground (index.css html)
+    meta("name", "theme-color", NIGHT_GROUND), // the night ground (theme.ts; index.css html)
     meta("name", "google-site-verification", GOOGLE_SITE_VERIFICATION),
     meta("property", "og:type", "website"),
     meta("property", "og:site_name", ABOUT.title),

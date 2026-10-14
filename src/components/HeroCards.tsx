@@ -1,6 +1,6 @@
 // HeroCards — the hero as two widgets with the monitor's exact anatomy (Shoro, 2026-09-16; §5.2 items 2 and 3): label, value, gauge. The AQI card: the number under "AQI · now" on Live or "AQI · Oct 29" on an archive day, and beneath it one bar in the number's own colour on the six-category EPA ramp. The Breath card: the tier word in white over the five-step ladder the scale and tone cards carry, its lit step in the tier's colour on the ramp (the ladder is where the colour lives; the word stays white). The word changes only at tier boundaries, with a 0.5 s blur (§5.4); the number never animates. The mood sentence went with this: the gauge says what it said.
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Card } from "./Card";
+import { Card, cardLabelStyle } from "./Card";
 import { AQINumber } from "./AQINumber";
 import { Ladder, AQIBar } from "./Gauges";
 import { useTheme, themeColors, families, typeScale, motion } from "../utils/theme";
@@ -40,7 +40,7 @@ export function AQICard({ value, date, lift = 0, cardRef }: AQIProps) {
         {/* The probe: every width the card could need, hidden; the body takes the widest. */}
         <div ref={probe} className="scene-measure" aria-hidden>
           {["000", "888", "500"].map((d) => <div key={d} style={valueStyle}>{d}</div>)}
-          {[HERO_AQI_NOW, ...MONTHS.map((m) => `${m} 30`)].map((when) => <div key={when} style={{ fontFamily: families.ui, letterSpacing: "0.04em", fontSize: typeScale.caption.size, color: c.textMuted }}>{HERO_AQI_LABEL.replace("{when}", when)}</div>)}
+          {[HERO_AQI_NOW, ...MONTHS.map((m) => `${m} 30`)].map((when) => <div key={when} style={cardLabelStyle(c)}>{HERO_AQI_LABEL.replace("{when}", when)}</div>)}
         </div>
       </div>
       <AQIBar aqi={value} lift={lift} />

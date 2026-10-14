@@ -8,7 +8,7 @@ import { DETUNE_MAX_CENTS } from "../engine/scales";
 import { HOURS_PER_BAR } from "../engine/tempo";
 import { clamp01 } from "../utils/math";
 
-const TAU = motion.beatMs * 0.5; // the sky's easing constant: settled within about a beat
+const TAU = motion.easeTauMs; // the sky's easing constant: settled within about a beat
 
 // A six-step ladder, one step per EPA grade (D-44), with one step lit, in the ramp's colour for the AQI the step was chosen from (the same rule as the mood word), white when there is none.
 // A null step lights nothing (BUG-63): the hero's ladder with no reading, where a lit first step would claim clean air.

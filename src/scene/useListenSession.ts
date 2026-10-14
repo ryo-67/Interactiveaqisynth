@@ -16,7 +16,7 @@ import { normalize, type PollutantAnchors } from "../engine/contour";
 import { PHASE0_DAYS, QUEENS_2023_ANCHORS } from "../fixtures/phase0-days";
 import { PINS } from "../content";
 import { getCurrentAll, forgetLive, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
-import { easeInOutQuad, wrap, wrapDelta } from "../utils/math";
+import { clamp01, easeInOutQuad, wrap, wrapDelta } from "../utils/math";
 
 // Dev-only fixture select (?dev=1): never renders for a visitor.
 export const DEV = new URLSearchParams(window.location.search).has("dev");
@@ -440,7 +440,7 @@ function useEasedHour(target: number, running: boolean): number {
       const start = performance.now();
       let raf = 0;
       const tick = (now: number) => {
-        const t = Math.min(1, Math.max(0, (now - start) / (motion.beatMs * 0.5))); // a frame's timestamp can precede the performance.now() that started it by a few ms; never run backwards
+        const t = clamp01((now - start) / motion.easeTauMs); // a frame's timestamp can precede the performance.now() that started it by a few ms; never run backwards
         const e = 1 - Math.pow(1 - t, 3);
         const v = wrap(from + (to - from) * e, 24);
         heldRef.current = v;
@@ -453,7 +453,7 @@ function useEasedHour(target: number, running: boolean): number {
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
-      const t = Math.min(1, Math.max(0, (now - start) / motion.beatMs)); // same clamp: an early frame timestamp made hour 0 read −0.004 for a frame
+      const t = clamp01((now - start) / motion.beatMs); // same clamp: an early frame timestamp made hour 0 read −0.004 for a frame
       heldRef.current = (target + t) % 24;
       setValue(heldRef.current);
       if (t < 1) raf = requestAnimationFrame(tick);

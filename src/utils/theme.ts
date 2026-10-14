@@ -284,6 +284,7 @@ export const CONTROL = {
   gap: 4,             // between chips inside a pill — the same 4 as the inset, so chips and pill edges align
   sliderWidth: 96,
   chipTracking: "0.04em", // 0.48 px at the 12 px desktop chip, scaling with the chip's type (2026-09-15)
+  capsTracking: "0.08em", // the caps labels' wider tracking: the borough row and the About overlay's section labels
   // Hover and pressed states for every clickable (2026-09-15): a chip lightens by hoverAlpha on hover (an active chip by hoverActiveAlpha, since it is already lit), and scales by pressScale while pressed; stateMs is the transition. index.css reads these as custom properties.
   hoverAlpha: 0.10,
   hoverActiveAlpha: 0.22,
@@ -308,6 +309,7 @@ export const REDUCED_MOTION = typeof window !== "undefined" && !!window.matchMed
 
 export const motion = {
   beatMs: 60000 / BPM, // one beat = one hour = 666.7 ms; playhead advance (engine/tempo.ts)
+  easeTauMs: 60000 / BPM / 2, // the eased inputs' time constant, half a beat: the sky's inputs, the gauges and the playhead's glide at rest settle within about a beat
   blurMs: 500, // mood word swap at tier boundaries
   popoverMs: 180, // the calendar popover in and out: opacity with a 4 px settle (2026-09-15)
   pageBeats: 1.5, // the middle band slides between the scene and the monitor over this many beats (D-43): the same span as the sun's glide, the dissolve and the graph morph

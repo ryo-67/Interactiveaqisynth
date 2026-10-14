@@ -13,6 +13,7 @@ import { CLEAR_NOON_EXPOSURE, HOSEK_ALBEDO, NYC_LAT, NYC_LON, SMOKE, SUN_DISC, N
 import { normalize, type PollutantAnchors } from "../engine/contour";
 import type { HourReading } from "../engine/SynthEngine";
 import { pm25Played } from "../engine/aqi";
+import { hourOfTs } from "../utils/time";
 
 const DAYS = [
   { date: "2023-10-29", label: "Oct 29, cleanest" },
@@ -76,13 +77,14 @@ export default function SceneTestPage() {
       return;
     }
     // Fractional hours (URL only, e.g. hour=17.6) land inside the dusk fade band, which no integer hour reaches on an autumn day; the reading is the enclosing hour's.
-    const rec = archive.find((h) => h.ts.startsWith(day) && Number(h.ts.slice(11, 13)) === Math.floor(hour)) ?? null;
+    const rec = archive.find((h) => h.ts.startsWith(day) && hourOfTs(h.ts) === Math.floor(hour)) ?? null;
     setReading(rec);
     if (!rec) return;
     const pm25n = normalize(pm25Played(rec.pm25), anchors.pm25);
     const o3n = normalize(rec.o3, anchors.o3);
     if (pm25n != null) setHaze(Math.round(Math.min(1, pm25n) * 20) / 20);
-    if (rec.pm25 != null) setPmAbs(Math.round(Math.max(0, rec.pm25)));
+    const pm = pm25Played(rec.pm25);
+    if (pm != null) setPmAbs(Math.round(pm));
     if (o3n != null) setOzone(Math.round(Math.min(1, o3n) * 20) / 20);
   }, [day, hour, archive, anchors]);
 

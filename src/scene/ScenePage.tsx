@@ -297,7 +297,7 @@ export default function ScenePage() {
     } else if (!vertical) { delete track.dataset.dragging; track.style.transform = ""; }
   };
   // Every input that steps with the data is eased in the space where it is USED, so in and out take the same curve: the particulate LEVELS (0..1), not the raw µg/m³ — eased in µg/m³ the field appeared at once on the way up (the value rushed through the 35–150 band) and receded slowly on the way down (it lingered there on the exponential tail). The sky's own channels ease too, so the dome, the plume and the type move together instead of the dome cutting while the plume fades. Time constant: half a beat (~330 ms), settled within about a second.
-  const tau = motion.beatMs * 0.5;
+  const tau = motion.easeTauMs;
   const pm25Target = beat ? (beat.pm25 ?? 0) : (rest?.reading.pm25 ?? 0);
   const lens = useEased(particleLevel(pm25Target), tau, "lens level");
   const grain = useEased(grainLevel(pm25Target), tau, "grain level");

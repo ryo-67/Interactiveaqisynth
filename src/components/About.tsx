@@ -90,7 +90,7 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
     "--state-ms": `${CONTROL.stateMs}ms`,
   } as React.CSSProperties;
   const bodyStyle: React.CSSProperties = { fontFamily: families.ui, fontSize: typeScale.body.size, lineHeight: typeScale.body.line, color: c.textSecondary };
-  const labelStyle: React.CSSProperties = { fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: typeScale.caption.line, letterSpacing: "0.08em", textTransform: "uppercase", color: c.textMuted, fontWeight: 400 }; // muted, like the page's labels; the tint is set so it still holds AA on the brightest sky (theme.ts ABOUT.tintAlpha)
+  const labelStyle: React.CSSProperties = { fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: typeScale.caption.line, letterSpacing: CONTROL.capsTracking, textTransform: "uppercase", color: c.textMuted, fontWeight: 400 }; // muted, like the page's labels; the tint is set so it still holds AA on the brightest sky (theme.ts ABOUT.tintAlpha)
   const creditStyle: React.CSSProperties = { ...bodyStyle, fontSize: typeScale.caption.size, lineHeight: 1.6 }; // the credit a size below the body (Shoro, 2026-09-16)
   // The link chips: the chip style in its inactive state at the control height, a glyph before each label, the chips' own hover (the scene-chip class) and the button family's press.
   // Round, the glyph alone (Shoro, 2026-09-16: the labels did not fit every width); the name is the accessible label and the title. The size is a custom property so the breakpoint can set it: on a touch screen these are the only targets on the page without a row of their own, and 32 is under the 44 a thumb wants (Shoro, 2026-09-17).

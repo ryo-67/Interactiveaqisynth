@@ -7,6 +7,7 @@ import {
   O3_8H_BANDS,
   NO2_1H_BANDS,
   BOROUGHS,
+  NY_STATE_FIPS,
   type SiteHourRow,
   type Pollutant,
   fillTypicalNo2,
@@ -89,7 +90,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       });
     }
 
-    const nyRows = rows.filter((r) => r.stateFips === "36");
+    const nyRows = rows.filter((r) => r.stateFips === NY_STATE_FIPS);
     if (nyRows.length === 0) {
       // Whole-response fallback only: the data endpoint returned nothing for New York (outage or empty window). The zip-code endpoint cannot tell boroughs apart (BUG-12), so its area reading is flagged citywide on every channel and the response says so.
       const fallback = await zipCodeFallback(apiKey);

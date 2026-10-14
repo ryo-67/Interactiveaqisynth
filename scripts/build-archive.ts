@@ -14,34 +14,28 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   toBoroughHours,
-  dayTypeOf,
   BOROUGHS,
   COUNTY_TO_BOROUGH,
   NY_STATE_FIPS,
   POLLUTANTS,
-  type Borough,
   type DayType,
   type HourReading,
   type Pollutant,
   type SiteHourRow,
   gmtToNyIso,
+  EPA_PARAMETERS,
+  ppbOf,
+  round1,
+  typicalCell,
+  type TypicalNo2Table,
 } from "../api/_lib/aqi";
+import { archiveFile } from "../src/utils/archiveFiles";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE = join(ROOT, "scripts", ".cache");
 const OUT = join(ROOT, "public", "data");
 const YEARS = [2020, 2021, 2022, 2023, 2024, 2025];
-const PARAMS: Array<{ code: string; pollutant: Pollutant; toPpb: boolean }> = [
-  { code: "88101", pollutant: "pm25", toPpb: false },
-  { code: "88502", pollutant: "pm25", toPpb: false },
-  { code: "44201", pollutant: "o3", toPpb: true }, // bulk files report O3 in ppm
-  { code: "42602", pollutant: "no2", toPpb: false },
-];
 const COUNTIES = new Set(Object.keys(COUNTY_TO_BOROUGH));
-
-function slug(name: string): string {
-  return name.toLowerCase().replace(/ /g, "-");
-}
 
 async function download(url: string, dest: string): Promise<void> {
   if (existsSync(dest) && statSync(dest).size > 0) return;
@@ -69,7 +63,7 @@ function parseCsvLine(line: string): string[] {
 }
 
 
-async function parseZip(zipPath: string, pollutant: Pollutant, toPpb: boolean, sink: SiteHourRow[]): Promise<number> {
+async function parseZip(zipPath: string, pollutant: Pollutant, sink: SiteHourRow[]): Promise<number> {
   const child = spawn("unzip", ["-p", zipPath]);
   const rl = createInterface({ input: child.stdout, crlfDelay: Infinity });
   let header: string[] | null = null;
@@ -96,7 +90,7 @@ async function parseZip(zipPath: string, pollutant: Pollutant, toPpb: boolean, s
       countyFips: county,
       pollutant,
       ts: gmtToNyIso(f[idx["Date GMT"]], f[idx["Time GMT"]]),
-      value: toPpb ? value * 1000 : value,
+      value: ppbOf(pollutant, value), // bulk files report O3 in ppm
     });
     kept++;
   }
@@ -133,10 +127,10 @@ async function main() {
   for (const year of YEARS) {
     console.log(`\n=== ${year} ===`);
     const rows: SiteHourRow[] = [];
-    for (const { code, pollutant, toPpb } of PARAMS) {
+    for (const [code, pollutant] of EPA_PARAMETERS) {
       const zip = join(CACHE, `hourly_${code}_${year}.zip`);
       await download(`https://aqs.epa.gov/aqsweb/airdata/hourly_${code}_${year}.zip`, zip);
-      const kept = await parseZip(zip, pollutant, toPpb, rows);
+      const kept = await parseZip(zip, pollutant, rows);
       console.log(`  ${code}: kept ${kept} NYC rows`);
     }
 
@@ -165,16 +159,17 @@ async function main() {
     }
 
     for (const [name, hours] of perBorough) {
-      const file = join(OUT, `${slug(name)}-${year}.json`);
+      const file = join(OUT, archiveFile(name, year));
       writeFileSync(file, JSON.stringify(hours));
       const gz = execFileSync("gzip", ["-9", "-c", file]).length;
-      console.log(`  ${slug(name)}-${year}.json: ${hours.length} hours, ${(statSync(file).size / 1e6).toFixed(2)} MB raw, ${(gz / 1e3).toFixed(0)} KB gzipped`);
+      console.log(`  ${archiveFile(name, year)}: ${hours.length} hours, ${(statSync(file).size / 1e6).toFixed(2)} MB raw, ${(gz / 1e3).toFixed(0)} KB gzipped`);
       const av = anchorVals.get(name)!;
       const ta = typAcc.get(name)!;
       for (const h of hours) {
         for (const p of POLLUTANTS) if (h[p] != null) av.get(p)!.push(h[p] as number);
         if (h.no2 != null) {
-          const cell = ta.get(String(Number(h.ts.slice(5, 7))))!.get(dayTypeOf(h.ts))![Number(h.ts.slice(11, 13))];
+          const { month, dayType, hour } = typicalCell(h.ts);
+          const cell = ta.get(month)!.get(dayType)![hour];
           cell.sum += h.no2;
           cell.n += 1;
         }
@@ -197,7 +192,7 @@ async function main() {
   writeFileSync(join(OUT, "anchors.json"), JSON.stringify(anchors, null, 2));
 
   // typical-no2.json (D-18): mean hourly contour per borough per month per day type over the archive.
-  const typical: Record<string, Record<string, Record<DayType, Array<number | null>>>> = {};
+  const typical: TypicalNo2Table = {};
   for (const [name, byMonth] of typAcc) {
     typical[name] = {};
     for (const [month, byType] of byMonth) {
@@ -213,9 +208,6 @@ async function main() {
   console.log(JSON.stringify(anchors, null, 2));
 }
 
-function round1(v: number): number {
-  return Math.round(v * 10) / 10;
-}
 
 main().catch((e) => {
   console.error(e);

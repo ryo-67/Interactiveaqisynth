@@ -4,23 +4,21 @@ import { writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BOROUGHS, type HourReading } from "../api/_lib/aqi";
+import { archiveFile } from "../src/utils/archiveFiles";
+import { monthWindow } from "../src/utils/time";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "public", "data");
 const base = process.argv[2] ?? "http://localhost:55995";
 const year = new Date().getFullYear();
 const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-const slug = (b: string) => b.toLowerCase().replace(/ /g, "-");
 
 interface Resp { status: string; days: Array<{ date: string; hours: HourReading[] }> }
 
 async function month(borough: string, ym: string): Promise<HourReading[]> {
-  const [y, m] = ym.split("-").map(Number);
-  const last = `${ym}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
-  const to = last > yesterday ? yesterday : last;
-  const from = `${ym}-01`;
-  if (from > to) return [];
-  const url = `${base}/api/aqi/historical?borough=${encodeURIComponent(borough)}&from=${from}&to=${to}`;
+  const win = monthWindow(ym, yesterday);
+  if (!win) return [];
+  const url = `${base}/api/aqi/historical?borough=${encodeURIComponent(borough)}&from=${win.from}&to=${win.to}`;
   const started = Date.now();
   const res = await fetch(url, { signal: AbortSignal.timeout(290000) });
   if (!res.ok) throw new Error(`${res.status} for ${url}`);
@@ -39,7 +37,7 @@ async function main() {
     hours.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
     // Trailing hours with nothing reported are not the archive's edge: trim them so the file's last day is a day with data.
     while (hours.length && hours[hours.length - 1].pm25 == null && hours[hours.length - 1].o3 == null) hours.pop();
-    const file = join(OUT, `${slug(borough)}-${year}.json`);
+    const file = join(OUT, archiveFile(borough, year));
     writeFileSync(file, JSON.stringify(hours));
     console.log(`→ ${file}  ${hours.length} hours, last ${hours.length ? hours[hours.length - 1].ts.slice(0, 10) : "—"}`);
   }

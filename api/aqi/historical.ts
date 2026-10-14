@@ -7,10 +7,11 @@ import {
   NY_STATE_FIPS,
   type Borough,
   type BoroughSeries,
-  type Pollutant,
   type SiteHourRow,
   gmtToNyIso,
   sendError,
+  EPA_PARAMETERS,
+  ppbOf,
 } from "../_lib/aqi";
 
 /**
@@ -20,13 +21,8 @@ import {
  * "Citywide" is a valid borough value. CDN-cached one day, stale-while-revalidate one week. maxDuration is set explicitly in vercel.json (INF-03, BUG-23).
  */
 
-const EPA_PARAMS = "88101,88502,44201,42602";
-const PARAM_TO_POLLUTANT: Record<string, Pollutant> = {
-  "88101": "pm25",
-  "88502": "pm25",
-  "44201": "o3",
-  "42602": "no2",
-};
+const EPA_PARAMS = EPA_PARAMETERS.map(([code]) => code).join(",");
+const POLLUTANT_OF = new Map(EPA_PARAMETERS);
 
 interface AQSRow {
   parameter_code: string;
@@ -89,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!response.ok) throw new Error(`EPA AQS HTTP ${response.status} for county ${county}`);
         const json = (await response.json()) as { Data?: AQSRow[] };
         for (const r of json.Data ?? []) {
-          const pollutant = PARAM_TO_POLLUTANT[r.parameter_code];
+          const pollutant = POLLUTANT_OF.get(r.parameter_code);
           if (!pollutant || r.sample_measurement == null) continue;
           if (!r.sample_duration.startsWith("1 HOUR")) continue;
           rows.push({
@@ -97,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             countyFips: r.county_code,
             pollutant,
             ts: gmtToNyIso(r.date_gmt, r.time_gmt),
-            value: pollutant === "o3" ? r.sample_measurement * 1000 : r.sample_measurement,
+            value: ppbOf(pollutant, r.sample_measurement),
           });
         }
       } finally {

@@ -7,6 +7,23 @@ export function hourOfTs(ts: string): number {
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+// Calendar months as YYYY-MM, in UTC like addDays. The calendar steps through them, and the EPA route and the snapshot script both ask for one month at a time.
+export function daysInMonth(ym: string): number {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+export function addMonths(ym: string, n: number): string {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7);
+}
+// The days of a month that EPA can have published: the 1st to the month's last day or yesterday, whichever is earlier; null when the month has not begun by yesterday.
+export function monthWindow(ym: string, yesterday: string): { from: string; to: string } | null {
+  const last = `${ym}-${String(daysInMonth(ym)).padStart(2, "0")}`;
+  const from = `${ym}-01`;
+  const to = last > yesterday ? yesterday : last;
+  return from > to ? null : { from, to };
+}
+
 // A calendar date n days from an ISO date (YYYY-MM-DD), in UTC so no daylight-saving day is skipped or doubled.
 export function addDays(iso: string, n: number): string {
   const d = new Date(iso + "T12:00:00Z");

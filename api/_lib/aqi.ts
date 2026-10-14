@@ -9,6 +9,10 @@ export const BOROUGHS: Borough[] = ["Bronx", "Brooklyn", "Manhattan", "Queens", 
 
 // NYC county FIPS (state 36). The AirNow bbox also catches New Jersey (state 34) sites; the transform drops any row whose state is not 36 — a correctness rule, not a nicety.
 export const NY_STATE_FIPS = "36";
+
+// EPA's parameter codes for the three pollutants, the same in the AirData bulk files and the AQS API: PM2.5 as FRM/FEM 88101 and non-FRM 88502, ozone 44201, NO2 42602. Both report ozone in ppm; the archive and the routes store ppb. The historical route and the archive build each had their own copy.
+export const EPA_PARAMETERS: ReadonlyArray<readonly [code: string, pollutant: Pollutant]> = [["88101", "pm25"], ["88502", "pm25"], ["44201", "o3"], ["42602", "no2"]]; // a list, not an object: an object would order these integer-like codes numerically, and the request and the build both go in this order
+export const ppbOf = (pollutant: Pollutant, value: number): number => (pollutant === "o3" ? value * 1000 : value);
 export const COUNTY_TO_BOROUGH: Record<string, Borough> = {
   "005": "Bronx",
   "047": "Brooklyn",
@@ -163,7 +167,7 @@ export function toBoroughHours(rows: SiteHourRow[], hoursAxis: string[]): Transf
   return { boroughs, citywide: { hours: citywideHours } };
 }
 
-function round1(v: number): number {
+export function round1(v: number): number {
   return Math.round(v * 10) / 10;
 }
 
@@ -212,13 +216,17 @@ export function dayTypeOf(dateIso: string): DayType {
   return dow === 0 || dow === 6 ? "weekend" : "weekday";
 }
 
+// Where an hour sits in the table: its month ("1".."12"), its day type and its clock hour. The archive build writes the table by this key and the live route reads it by the same one.
+export function typicalCell(ts: string): { month: string; dayType: DayType; hour: number } {
+  return { month: String(Number(ts.slice(5, 7))), dayType: dayTypeOf(ts), hour: Number(ts.slice(11, 13)) };
+}
+
 export function fillTypicalNo2(result: TransformResult, table: TypicalNo2Table): void {
   const fill = (name: string, series: BoroughSeries) => {
     for (const h of series.hours) {
       if (h.no2 != null) continue; // real readings (own or citywide-substituted) always win
-      const month = String(Number(h.ts.slice(5, 7)));
-      const hour = Number(h.ts.slice(11, 13));
-      const v = table[name]?.[month]?.[dayTypeOf(h.ts)]?.[hour];
+      const { month, dayType, hour } = typicalCell(h.ts);
+      const v = table[name]?.[month]?.[dayType]?.[hour];
       if (v != null) {
         h.no2 = v;
         h.source.no2 = "typical";

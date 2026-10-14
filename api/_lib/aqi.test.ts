@@ -1,6 +1,6 @@
 // Pins the §4.4/D-16 transform rules: per-borough max across sites, citywide mean of reporting boroughs, substitution with provenance, null when nobody reports, and the New York state filter.
 import { describe, it, expect } from "vitest";
-import { toBoroughHours, reverseAQI, PM25_BANDS, O3_8H_BANDS, NO2_1H_BANDS, utcToNyIso, gmtToNyIso, fillTypicalNo2, addDays, type SiteHourRow } from "./aqi";
+import { toBoroughHours, reverseAQI, PM25_BANDS, O3_8H_BANDS, NO2_1H_BANDS, utcToNyIso, gmtToNyIso, fillTypicalNo2, addDays, typicalCell, dayTypeOf, EPA_PARAMETERS, ppbOf, type SiteHourRow } from "./aqi";
 import * as client from "../../src/engine/aqi";
 
 const H0 = "2026-06-01T00:00:00-04:00";
@@ -138,6 +138,21 @@ describe("gmtToNyIso: EPA's GMT fields as New York wall clock", () => {
   });
   it("agrees with utcToNyIso on the same instant", () => {
     expect(gmtToNyIso("2026-03-08", "07:00")).toBe(utcToNyIso(new Date(Date.UTC(2026, 2, 8, 7, 0))));
+  });
+});
+
+describe("the keys the archive build and the routes share", () => {
+  it("files an hour in the typical-NO2 table by month, day type and clock hour, as the build and the live route both did inline", () => {
+    for (const ts of ["2026-01-03T07:00:00-05:00", "2026-07-20T23:00:00-04:00", "2025-12-31T00:00:00-05:00"]) {
+      expect(typicalCell(ts)).toEqual({ month: String(Number(ts.slice(5, 7))), dayType: dayTypeOf(ts), hour: Number(ts.slice(11, 13)) });
+    }
+    expect(typicalCell("2026-01-03T07:00:00-05:00")).toEqual({ month: "1", dayType: "weekend", hour: 7 });
+  });
+  it("maps EPA's parameter codes to pollutants and stores ozone in ppb", () => {
+    expect(EPA_PARAMETERS.map(([code]) => code).join(",")).toBe("88101,88502,44201,42602"); // the order the route and the build always used
+    expect(new Map(EPA_PARAMETERS).get("88502")).toBe("pm25");
+    expect(ppbOf("o3", 0.042)).toBeCloseTo(42, 9);
+    expect(ppbOf("pm25", 12.3)).toBe(12.3);
   });
 });
 

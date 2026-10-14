@@ -7,7 +7,7 @@ import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, NAV_ARROWS, NAV_DAY_LIST, C
 import { Sheet } from "./Sheet";
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from "./icons";
 import { setPopoverOpen, markOutsideDismiss } from "./popoverStore";
-import { addDays, labelOf } from "../utils/time";
+import { addDays, addMonths, daysInMonth, labelOf } from "../utils/time";
 import { usePresence } from "./usePresence";
 
 interface Props {
@@ -88,20 +88,13 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
   const [view, setView] = useState(() => (date ?? latestDate ?? PINS[0].date).slice(0, 7)); // YYYY-MM shown
   // Calendar grid for the viewed month.
   const grid = useMemo(() => {
-    const [y, m] = view.split("-").map(Number);
-    const first = new Date(Date.UTC(y, m - 1, 1));
-    const startDow = first.getUTCDay();
-    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const startDow = new Date(`${view}-01T00:00:00Z`).getUTCDay();
     const cells: Array<string | null> = Array(startDow).fill(null);
-    for (let d = 1; d <= daysInMonth; d++) cells.push(`${view}-${String(d).padStart(2, "0")}`);
+    for (let d = 1, n = daysInMonth(view); d <= n; d++) cells.push(`${view}-${String(d).padStart(2, "0")}`);
     return cells;
   }, [view]);
   const monthLabel = new Date(view + "-15T12:00:00Z").toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-  const shiftMonth = (n: number) => {
-    const [y, m] = view.split("-").map(Number);
-    const d = new Date(Date.UTC(y, m - 1 + n, 1));
-    setView(d.toISOString().slice(0, 7));
-  };
+  const shiftMonth = (n: number) => setView(addMonths(view, n));
 
   return (
     <>

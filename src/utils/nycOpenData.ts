@@ -4,7 +4,8 @@
 import type { Day, HourReading } from "../engine/SynthEngine";
 import type { PollutantAnchors } from "../engine/contour";
 import { seriesAQI, type SeriesAQI } from "../engine/aqi";
-import { addDays } from "./time";
+import { addDays, monthWindow } from "./time";
+import { archiveFile } from "./archiveFiles";
 export type { SeriesAQI };
 
 // ——— Boroughs ———
@@ -34,7 +35,6 @@ export interface DaySeries {
   fetchedAt: string | null;
 }
 
-const slug = (b: Borough) => b.toLowerCase().replace(/ /g, "-");
 
 async function fetchJson<T>(url: string, timeoutMs = 30000): Promise<T> {
   const controller = new AbortController();
@@ -89,7 +89,7 @@ const archiveCache = new Map<string, Promise<HourReading[]>>();
 
 // A year that fails is not remembered (BUG-61, 2026-10-12): it had stayed failed for the visit, one network blip breaking that borough-year until a reload, and the idle warm-up could cause it unseen. Only the current year's 404 means "no snapshot yet" and is kept as no hours; any other failure of it is a failure, where it had quietly sent every day of the year to the EPA route.
 function archiveYear(borough: Borough, year: number): Promise<HourReading[]> {
-  const url = `/data/${slug(borough)}-${year}.json`;
+  const url = `/data/${archiveFile(borough, year)}`;
   if (!archiveCache.has(url)) {
     archiveCache.set(url, fetchJson<HourReading[]>(url, 60000).catch((e: { status?: number }) => {
       if (year === new Date().getFullYear() && e.status === 404) return [];
@@ -120,14 +120,10 @@ const monthCache = new Map<string, Promise<Map<string, Day>>>();
 function monthDays(borough: Borough, ym: string): Promise<Map<string, Day>> {
   const key = `${borough}|${ym}`;
   if (!monthCache.has(key)) {
-    const [y, m] = ym.split("-").map(Number);
-    const lastOfMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    const from = `${ym}-01`;
-    const to = `${ym}-${String(lastOfMonth).padStart(2, "0")}` > yesterday ? yesterday : `${ym}-${String(lastOfMonth).padStart(2, "0")}`;
-    const p = from > to
+    const win = monthWindow(ym, new Date(Date.now() - 86400000).toISOString().slice(0, 10));
+    const p = !win
       ? Promise.resolve(new Map())
-      : fetchJson<HistoricalResponse>(`/api/aqi/historical?borough=${encodeURIComponent(borough)}&from=${from}&to=${to}`, 120000)
+      : fetchJson<HistoricalResponse>(`/api/aqi/historical?borough=${encodeURIComponent(borough)}&from=${win.from}&to=${win.to}`, 120000)
           .then((json) => new Map(json.days.map((d) => [d.date, d.hours])));
     p.catch(() => monthCache.delete(key)); // a failed month is not remembered as empty
     monthCache.set(key, p);

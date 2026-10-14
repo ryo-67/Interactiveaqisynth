@@ -1,0 +1,2 @@
+// archiveFiles — the static archive's file names (public/data), one rule for the scripts that write them (scripts/build-archive.ts, build-current-year.ts) and the page that reads them (nycOpenData.ts). Each had spelled the name out itself. Plain TypeScript, no DOM, so the scripts can import it.
+export const archiveFile = (name: string, year: number): string => `${name.toLowerCase().replace(/ /g, "-")}-${year}.json`;

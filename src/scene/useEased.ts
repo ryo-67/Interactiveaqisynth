@@ -5,7 +5,11 @@ import { warnOnce } from "../utils/time";
 
 interface Entry { value: number; target: number; tau: number; last: number; listeners: Set<() => void> }
 
+// A value with its own motion that advances in the same frame callback: the playhead (useListenSession useEasedHour). step moves it to the frame's time and says whether it is still moving; notify tells its subscribers. Driven here rather than on a loop of its own, so React renders the playhead and the eased inputs of one frame together (2026-10-14: on separate loops they were two renders a frame, the playhead's at default priority, the store's synchronously, and could never batch).
+export interface Driver { step: (now: number) => boolean; notify: () => void }
+
 const active = new Set<Entry>();
+const drivers = new Set<Driver>();
 let raf = 0;
 function tick(now: number) {
   raf = 0;
@@ -17,8 +21,17 @@ function tick(now: number) {
     changed.push(e);
     if (e.value === e.target) active.delete(e);
   }
+  const stepped = [...drivers];
+  for (const d of stepped) if (!d.step(now)) drivers.delete(d);
   for (const e of changed) for (const l of e.listeners) l();
-  if (active.size) raf = requestAnimationFrame(tick);
+  for (const d of stepped) d.notify();
+  if (active.size || drivers.size) raf = requestAnimationFrame(tick);
+}
+// Run a driver from the next frame until its step says it is done; the returned function stops it early.
+export function drive(d: Driver): () => void {
+  drivers.add(d);
+  if (!raf) raf = requestAnimationFrame(tick);
+  return () => { drivers.delete(d); };
 }
 function wake(e: Entry) {
   if (e.value === e.target) return;

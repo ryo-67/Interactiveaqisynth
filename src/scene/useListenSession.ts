@@ -3,9 +3,10 @@ import { hourOfTs, warnOnce } from "../utils/time";
 import { sunAnglesAt, tzOffsetFromTs, type SunAngles } from "./solar";
 import { sunAlongPath } from "./sunPath";
 import { skyFrameAspect } from "./useSafariWindow";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { createPulseFeed, type PulseFeed } from "./pulseFeed";
+import { drive } from "./useEased";
 import { pageStatus, type PageStatus, type DayFetch } from "./pageStatus";
 import { barPattern, barSteps } from "../engine/euclid";
 import { HOURS_PER_BAR } from "../engine/tempo";
@@ -421,39 +422,40 @@ function useSunTransition(target: number, sunDay: SunDay | null, playing: boolea
 }
 
 function useEasedHour(target: number, running: boolean): number {
-  const [value, setValue] = useState(target);
-  const heldRef = useRef(target);
+  // The playhead is a small store advanced by the shared frame loop (useEased.ts drive), not React state on a loop of its own, so a frame's playhead and its eased inputs render together.
+  const store = useRef<{ value: number; listeners: Set<() => void> } | null>(null);
+  if (!store.current) store.current = { value: target, listeners: new Set() };
+  const s = store.current;
+  const subscribe = useCallback((l: () => void) => { s.listeners.add(l); return () => { s.listeners.delete(l); }; }, [s]);
+  const value = useSyncExternalStore(subscribe, () => s.value, () => s.value);
   useEffect(() => {
     if (!Number.isFinite(target)) { warnOnce("playhead target"); return; } // never let a NaN into the eased state: it would never come back
+    const notify = () => { for (const l of s.listeners) l(); };
     if (!running) {
       // At rest or paused: glide to the target over half a beat rather than jump. Linear, in the direction of the seek: the transport position is a line from hour 0 to 23, not a circle, so a scrub from 23 to 8 runs back through the afternoon rather than wrapping through midnight (the playhead would appear to jump to the start, and the clock would follow it).
-      const from = heldRef.current;
+      const from = s.value;
       const to = target % 24;
       const start = performance.now();
-      let raf = 0;
-      const tick = (now: number) => {
-        const t = clamp01((now - start) / motion.easeTauMs); // a frame's timestamp can precede the performance.now() that started it by a few ms; never run backwards
-        const e = 1 - Math.pow(1 - t, 3);
-        const v = wrap(from + (to - from) * e, 24);
-        heldRef.current = v;
-        setValue(v);
-        if (t < 1) raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
+      return drive({
+        step: (now) => {
+          const t = clamp01((now - start) / motion.easeTauMs); // a frame's timestamp can precede the performance.now() that started it by a few ms; never run backwards
+          s.value = wrap(from + (to - from) * (1 - Math.pow(1 - t, 3)), 24);
+          return t < 1;
+        },
+        notify,
+      });
     }
     const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const t = clamp01((now - start) / motion.beatMs); // same clamp: an early frame timestamp made hour 0 read −0.004 for a frame
-      heldRef.current = (target + t) % 24;
-      setValue(heldRef.current);
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    heldRef.current = target % 24;
-    setValue(target % 24);
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, running]);
+    s.value = target % 24;
+    notify();
+    return drive({
+      step: (now) => {
+        const t = clamp01((now - start) / motion.beatMs); // same clamp: an early frame timestamp made hour 0 read −0.004 for a frame
+        s.value = (target + t) % 24;
+        return t < 1;
+      },
+      notify,
+    });
+  }, [target, running, s]);
   return value;
 }

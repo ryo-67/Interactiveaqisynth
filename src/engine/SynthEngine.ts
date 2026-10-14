@@ -68,7 +68,6 @@ export class SynthEngine {
   private curTier = 0;
   private curChordRootMidi = CHORD_ROOT_MIDI;
   private curBarK: number | null = null;
-  private startHour = 0;
   private beatCallback: ((info: BeatInfo) => void) | null = null;
   private pulseCallback: ((info: PulseInfo) => void) | null = null;
   private initPromise: Promise<void> | null = null;
@@ -196,16 +195,12 @@ export class SynthEngine {
     if (wasPlaying) {
       this.lastBeatTime = this.lastStepTime = -1;
       // Beyond Tone's lookahead (~100 ms), not within it (2026-09-16): the transport that just stopped had already run its callbacks up to a lookahead ahead, so a voice may hold a start scheduled at now + 0.1; a restart inside that window asks the same voice to start EARLIER than that, and Tone refuses ("Start time must be strictly greater than previous start time"), which threw out of the first beat of the new day and left the voices after it in that tick silent. 150 ms is one more sixteenth of a beat before the new day speaks.
-      transport.start("+0.15", `${Math.floor(this.startHour / 4)}:${this.startHour % 4}:0`);
+      transport.start("+0.15", "0:0:0"); // a new day starts at its first hour
     }
   }
 
   setBed(degrees: number[]): void {
     this.bedDegrees = degrees;
-  }
-
-  setStartHour(hour: number): void {
-    this.startHour = Math.min(23, Math.max(0, Math.floor(hour)));
   }
 
   setVolume(db: number): void {
@@ -270,14 +265,9 @@ export class SynthEngine {
   }
   private seeked = false;
 
-  stop(): void {
-    Tone.getTransport().stop();
-  }
-
   private startTransport(): void {
     this.lastBeatTime = this.lastStepTime = -1;
-    const pos = `${Math.floor(this.startHour / 4)}:${this.startHour % 4}:0`;
-    Tone.getTransport().start("+0.05", pos);
+    Tone.getTransport().start("+0.05", "0:0:0"); // from rest, the day's first hour; any other hour is a seek() first, which play() honours
   }
 
   // The melody's envelope release walked to a tier's value over one beat in eight steps (Tone's envelope times are numbers, not signals, so there is no rampTo). A new target cancels the walk in progress and starts from where it is.

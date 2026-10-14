@@ -15,7 +15,7 @@ import { predictPanel, rampLiftFor, type RGB } from "./panelLuminance";
 import { useSafariWindow } from "./useSafariWindow";
 import { useLayout, isPhoneLayout } from "../utils/layout";
 import { sunAnglesAt, sunPositionVector } from "./solar";
-import { useListenSession, DEV } from "./useListenSession";
+import { useListenSession, DEV_FIXTURES } from "./useListenSession";
 import { Glass } from "../components/Glass";
 import { Cursor } from "../components/Cursor";
 import { usePresence } from "../components/usePresence";
@@ -41,12 +41,13 @@ import { ThemeContext, GLASS, MONITOR, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC
 import { clamp01 } from "../utils/math";
 import { mixRgb, parseRgb } from "../utils/oklch";
 
-// The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. Dev URL params can override both for comparison.
+// The camera faces south (D-22, CAMERA_FACING) and the sun disc is on; its size is the token, under benchmark in the harness. On the dev server URL params can override both for comparison; in production they do nothing (Shoro, 2026-10-14: debugging handles are dev-only).
+const DEV = import.meta.env.DEV;
 const qs = new URLSearchParams(window.location.search);
-const DISC = qs.get("disc") !== "0";
-// Dev bisect for Chrome's raster bands (2026-09-16): ?fx=nosmoke,nonight,nodither,noblur,nocursor leaves those layers out, one reload each, so the layer behind the artefact can be named on the machine that shows it.
-const FX_OFF = new Set((qs.get("fx") ?? "").split(",").map((s) => s.trim()).filter(Boolean));
-const FACING = (qs.get("facing") ?? CAMERA_FACING) as CameraFacing;
+const DISC = !(DEV && qs.get("disc") === "0");
+// Dev bisect for Chrome's raster bands (2026-09-16): ?fx=nosmoke,nonight,nodither,noblur,nocursor leaves those layers out, one reload each, so the layer behind the artefact can be named on the machine that shows it. Dev server only.
+const FX_OFF = new Set(DEV ? (qs.get("fx") ?? "").split(",").map((s) => s.trim()).filter(Boolean) : []);
+const FACING = ((DEV && qs.get("facing")) || CAMERA_FACING) as CameraFacing;
 
 // The graph's active tab and the page live in the URL so a view can be sent: ?tab=o3, ?view=monitor (absent = the scene).
 function tabFromUrl(): TrackKey {
@@ -402,7 +403,7 @@ export default function ScenePage() {
   const graphLift = useEased(rampLiftFor(panels.graph.luminance), tau, "graph ramp lift");
   const scaleLift = useEased(rampLiftFor(panels.scale.luminance), tau, "scale card ramp lift");
   const toneLift = useEased(rampLiftFor(panels.tone.luminance), tau, "tone card ramp lift");
-  (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, aqi: aqiLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, hour, playing, beat }; // a handle for measurement, like the sky's __sky
+  if (DEV) (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, aqi: aqiLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, hour, playing, beat }; // a handle for measurement, like the sky's __sky
 
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
   const skyBoxRef = useRef<HTMLDivElement>(null);
@@ -445,7 +446,7 @@ export default function ScenePage() {
 
   return (
     <ThemeContext.Provider value="dark">
-      <div ref={rootRef} className="scene-root" data-layout={layout} data-entered={entryLifting} style={{ background: NIGHT_GROUND, ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint, "--about-alpha": String(ABOUT_TOKENS.tintAlpha), "--knob-top": KNOB.top, "--knob-bottom": KNOB.bottom, "--knob-shadow": String(KNOB.shadowAlpha), "--knob-hairline": String(KNOB.hairlineAlpha) /* the scrims' tint, inherited by every layer that dims the page: the entry, the About overlay, the day sheet */ } as React.CSSProperties}>
+      <div ref={rootRef} className="scene-root" data-layout={layout} data-entered={entryLifting} style={{ background: NIGHT_GROUND, ...glassVars, "--chip-hover": String(CONTROL.hoverAlpha), "--chip-hover-active": String(CONTROL.hoverActiveAlpha), "--state-ms": `${CONTROL.stateMs}ms`, "--beat-ms": `${motion.beatMs}ms`, "--entry-ms": `${motion.beatMs}ms`, "--about-tint": ABOUT_TOKENS.tint, "--about-alpha": String(ABOUT_TOKENS.tintAlpha), "--knob-top": KNOB.top, "--knob-bottom": KNOB.bottom, "--knob-shadow": String(KNOB.shadowAlpha), "--knob-hairline": String(KNOB.hairlineAlpha), "--settle-ease": motion.settleEase /* the scrims' tint, inherited by every layer that dims the page: the entry, the About overlay, the day sheet */ } as React.CSSProperties}>
         <div ref={windowProbeRef} className="scene-window-probe" aria-hidden /> {/* what Safari leaves between its bars, measured (useSafariWindow); empty and hidden, so it paints nothing and Safari's bar test passes over it */}
         {/* The scene: renders continuously while playing, on demand at rest. On tablets and up a click anywhere on the sky toggles play: the largest target on the page, and the audio gesture is the click itself. Not on phones — there a thumb resting on the sky, a scroll that lands, or a mis-tap would start or stop the music, and the transport button is within reach. Panels sit above and take their own clicks. Space does the same from the keyboard (hook), so the box is not in the tab order. The root is page content, not fixed (index.css .scene-root, BUG-57), screen-tall with a runway above (useSafariWindow), so this box and every layer in it run on under both of Safari's bars. */}
         {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}
@@ -590,7 +591,7 @@ export default function ScenePage() {
             ) : null /* on a phone the credit lives only in the About overlay, which credits Shoro and links the site (D-64) */}
           </footer>
 
-          {DEV && (
+          {DEV_FIXTURES && (
             <select className="scene-dev" inert={about ? "" : undefined} value={s.devDayKey} onChange={(e) => s.setDevDayKey(e.target.value)}>
               <option value="live">Live: NYC (last 24 h)</option>
               {PHASE0_DAYS.map((d) => (

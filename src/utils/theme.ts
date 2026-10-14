@@ -314,6 +314,7 @@ export const motion = {
   easeTauMs: 60000 / BPM / 2, // the eased inputs' time constant, half a beat: the sky's inputs, the gauges and the playhead's glide at rest settle within about a beat
   blurMs: 500, // mood word swap at tier boundaries
   popoverMs: 180, // the calendar popover in and out: opacity with a 4 px settle (2026-09-15)
+  settleEase: "cubic-bezier(0.2, 0.8, 0.2, 1)", // the calendar's arrival, the popover's and the phone sheet's (index.css --settle-ease): quick out, long settle
   pageBeats: 1.5, // the middle band slides between the scene and the monitor over this many beats (D-43): the same span as the sun's glide, the dissolve and the graph morph
   pageRestScale: 0.9, // how small a page is while it is not the one showing (Shoro, 2026-09-17): the section that is leaving shrinks to this as it goes and the one arriving grows from it, so the two read as faces of one thing turning rather than two flat cards sliding past each other
 } as const;

@@ -228,7 +228,7 @@ function SunDisc({ sunPosition, brightness, deg }: { sunPosition: [number, numbe
   );
 }
 
-// Dev-only handle so the renderer and scene can be inspected from the console (?dev=1 harness only).
+// A handle so the renderer and scene can be inspected from the console: rendered on the dev server only (Shoro, 2026-10-14).
 function DevHandle({ composerRef, fx }: { composerRef: React.RefObject<EffectComposerImpl>; fx: Fx }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
@@ -304,7 +304,7 @@ export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style,
         <Exposure value={params.exposure} live={live} />
         <Grade fx={fx} bloom={params.bloomIntensity} saturation={saturation} particles={particles} grain={grain} />
         <SkyWatchdog composerRef={composerRef} fx={fx} snapshot={snapshot} />
-        <DevHandle composerRef={composerRef} fx={fx} />
+        {import.meta.env.DEV && <DevHandle composerRef={composerRef} fx={fx} />}
         {/* Preetham always draws beneath (opaque, renderOrder 0); Hosek draws over it with alpha = hosekAlpha and is unmounted once fully faded, so night costs one dome, not two. */}
         {hosekAlpha < 1 && (
           <Sky

@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from "react-dom";
 import { useTheme, themeColors, families, typeScale, space, CONTROL, motion, NIGHT_GROUND } from "../utils/theme";
 import { chipStyle } from "./chip";
-import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, NAV_ARROWS, NAV_DAY_LIST, CAL_AVAILABLE_UNTIL, PICK_OR_DATE, DAY_SHEET } from "../content";
+import { PINS, NAV_LIVE, NAV_CALENDAR, NAV_LAST_24H, NAV_ARROWS, NAV_DAY_LIST, CAL_AVAILABLE_UNTIL, PICK_OR_DATE, DAY_SHEET, CALENDAR_WEEKDAYS } from "../content";
 import { Sheet } from "./Sheet";
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from "./icons";
 import { setPopoverOpen, markOutsideDismiss } from "./popoverStore";
@@ -53,7 +53,7 @@ const popoverStyle = (c: ReturnType<typeof themeColors>, visible: boolean, touch
   ...(touch ? { "--ctl-inner": `${CONTROL.touch}px` } : {}),
   position: "fixed", padding: space.sm, zIndex: 20, fontFamily: families.ui, letterSpacing: CONTROL.chipTracking, fontSize: typeScale.caption.size, color: c.textSecondary, width: `min(${touch ? TOUCH_POPOVER_WIDTH : POPOVER_WIDTH}px, calc(100vw - ${parseInt(space.sm) * 2}px))`, whiteSpace: "normal",
   // In and out (2026-09-15): opacity with a 4 px settle from above, motion.popoverMs, origin at the top where it hangs from the bar; .scene-popover in index.css drops the transition under prefers-reduced-motion.
-  opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(-4px) scale(0.98)", transformOrigin: "top center", transition: `opacity ${motion.popoverMs}ms ease, transform ${motion.popoverMs}ms cubic-bezier(0.2, 0.8, 0.2, 1)`, pointerEvents: visible ? "auto" : "none",
+  opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(-4px) scale(0.98)", transformOrigin: "top center", transition: `opacity ${motion.popoverMs}ms ease, transform ${motion.popoverMs}ms ${motion.settleEase}`, pointerEvents: visible ? "auto" : "none",
 });
 
 // Dismissal: Escape, or a press outside both the popover and its anchor. Choosing a day closes it already (the callers watch `date`).
@@ -104,7 +104,7 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
         <button className="scene-chip" style={chip(false)} onClick={() => shiftMonth(1)} disabled={!last || view >= last.slice(0, 7)} aria-label={NAV_ARROWS.nextMonth}><ChevronRightIcon /></button>
       </div>
       <div className="scene-cal-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: space.xxs, fontFamily: families.data, letterSpacing: 0 }}>
-        {["S", "M", "T", "W", "T", "F", "S"].map((dd, i) => (
+        {CALENDAR_WEEKDAYS.map((dd, i) => (
           <span key={i} style={{ textAlign: "center", color: c.textFaint }}>{dd}</span>
         ))}
         {grid.map((iso, i) => {

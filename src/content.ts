@@ -24,8 +24,10 @@ export const SOURCE_LINE_TYPICAL_NO2 = "NO₂ is typical, not live."; // D-18 di
 export const SOURCE_SUFFIX_CITYWIDE = "citywide"; // the borough has no monitor for this channel and carries the citywide value (D-16)
 export const SOURCE_SUFFIX_TYPICAL = "typical"; // live NO₂ is a typical profile from the archive (D-18)
 // The entry (D-61, 2026-09-17): the one screen before the tool, held while the live air is being read. The title is also the Fallback screens'. Both approved by Shoro as written, 2026-10-12.
+const PIECE_TITLE = "New York AQI Synth"; // the piece's name, as the entry screen and the About overlay title it
+
 export const ENTRY = {
-  title: "New York AQI Synth",
+  title: PIECE_TITLE,
   line: "Reading the air…",
 } as const;
 
@@ -85,6 +87,7 @@ export const NAV_LAST_24H = "Last 24h";
 // The day controls' accessible names (moved here unchanged from DayNav, 2026-10-12): the arrows step a day on the laptop row and a month in the calendar; "Day" names the list of preset days.
 export const NAV_ARROWS = { prevDay: "previous day", nextDay: "next day", prevMonth: "previous month", nextMonth: "next month" } as const;
 export const NAV_DAY_LIST = "Day";
+export const CALENDAR_WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"] as const; // the calendar's column heads, Sunday first
 export const CAL_AVAILABLE_UNTIL = "EPA data available till {date}";
 export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the presets and the calendar (Shoro, 2026-09-15) // under the calendar (Shoro, 2026-09-15) // the date chip's label when live (Shoro, 2026-09-15)
 
@@ -92,14 +95,16 @@ export const PICK_OR_DATE = "or choose a date"; // phone day picker, between the
 export const VIEW_LABELS = { scene: "Scene", monitor: "Monitor" } as const; // the two page icons' accessible names
 export const VIEW_ROW_LABEL = "Page"; // the page icons' row, its accessible name (moved here unchanged from PageIndicator, 2026-10-12)
 export const MONITOR_LABELS = { routing: "Routing", scale: "Scale", tone: "Tone", beats: "Beats", brightness: "Brightness", detune: "Detune", reverb: "Reverb" } as const;
-export const SOURCE_LABELS = { pm25: "PM2.5", o3: "O₃", no2: "NO₂" } as const; // the same subscripts as the graph tabs
+export const SOURCE_LABELS = { pm25: TRACK_LABELS.pm25, o3: TRACK_LABELS.o3, no2: TRACK_LABELS.no2 } as const; // the graph tabs' own labels, subscripts and all
 export const SOURCE_JOIN = " · "; // between two sources on one pill: "PM2.5 · NO₂"
 // Harmonicity and modulation index folded into one listener-facing word per tier (§3.5 tier table); indexed like TIER_NAMES.
 export const TONE_WORDS = ["Clean", "Smooth", "Warm", "Edged", "Metallic", "Harsh"] as const; // six (D-44); the first two are Shoro's of 2026-09-16 (were Pure, Clean)
 // The scale names as the card shows them, keyed by the engine's own names (scales.ts).
 export const SCALE_DISPLAY: Record<string, string> = { "Major Pentatonic": "Pentatonic", Major: "Major", Dorian: "Dorian", Phrygian: "Phrygian", Locrian: "Locrian", Chromatic: "Chromatic" };
-export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", detuneShort: "st", o3: "ppb", pm25: "µg/m³" } as const; // detuneShort is the same unit for the narrowest phones, where "semitones" runs past the card (Shoro, 2026-09-17); index.css picks between them
+export const MONITOR_UNITS = { beats: "/ 16", detune: "semitones", detuneShort: "st", o3: TRACK_UNITS.o3, pm25: TRACK_UNITS.pm25 } as const; // detuneShort is the same unit for the narrowest phones, where "semitones" runs past the card (Shoro, 2026-09-17); index.css picks between them
 export const MONITOR_REST = "—"; // a value the held hour lacks
+// What a screen reader hears from the monitor's gauges, which draw their values rather than print them; {n} is the number. Written in the gauges until 2026-10-14, word for word.
+export const GAUGE_READOUT = { ladder: "step {n} of 6", meterAqi: "AQI {n}", lane: "{n} of 16" } as const;
 
 // The hero's two cards (2026-09-16): the number under "AQI · now" on Live or "AQI · Oct 29" on an archive day, the word and sentence under "Breath". Approved by Shoro as written, 2026-10-12.
 export const HERO_AQI_LABEL = "AQI · {when}";
@@ -108,7 +113,7 @@ export const HERO_BREATH_LABEL = "Breath";
 
 // The About overlay (D-56, 2026-09-16): Shoro's copy, verbatim (rewritten by him the same day). Opened from the Patch notes button; a full-viewport scrim with the text laid on it in a liner-notes layout. {weeks} is computed from the archive's last available day, the calendar footer's own value.
 export const ABOUT = {
-  title: "New York AQI Synth",
+  title: PIECE_TITLE,
   intro: "Ever seen a smoggy sky out of your window and felt like you could just smell the air quality? Well, I wondered if I could hear it instead. This website turns New York City\u2019s air quality index (AQI) data into sound so that you can affront more than just your nose and eyes on those smoggy days.",
   groups: [
     [

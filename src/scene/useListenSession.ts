@@ -18,8 +18,8 @@ import { PINS } from "../content";
 import { getCurrentAll, forgetLive, getAnchors, getDay, type Borough, type CurrentSnapshot, type DaySeries, getArchiveLastDate, getLatestAvailableDate } from "../utils/nycOpenData";
 import { clamp01, easeInOutQuad, wrap, wrapDelta } from "../utils/math";
 
-// Dev-only fixture select (?dev=1): never renders for a visitor.
-export const DEV = new URLSearchParams(window.location.search).has("dev");
+// The Phase 0 fixture select (?dev=1), on the dev server only: in production the parameter does nothing (2026-10-14; it had worked on the live site for anyone who added it).
+export const DEV_FIXTURES = import.meta.env.DEV && new URLSearchParams(window.location.search).has("dev");
 
 
 // What the monitor page reads (D-43): the engine's state for the hour being heard, from the beat report while playing, and for the held hour at rest through the same engine functions (the tier from PM2.5 alone, §3.4; the bar's k and pattern from euclid.ts; σ from the hour's PM2.5 AQI through scales.ts detuneSigma). Nothing here is a second formula.
@@ -169,7 +169,7 @@ export function useListenSession(): ListenSession {
     return () => window.clearTimeout(id);
   }, [borough, liveSettled]);
 
-  const devFixture = DEV && devDayKey !== "live" ? PHASE0_DAYS.find((d) => d.key === devDayKey) : undefined;
+  const devFixture = DEV_FIXTURES && devDayKey !== "live" ? PHASE0_DAYS.find((d) => d.key === devDayKey) : undefined;
   const day: Day | null = devFixture ? devFixture.day : date ? (chosen?.hours ?? null) : (snapshot?.series[borough].hours ?? null);
   const live = !devFixture && !date;
 

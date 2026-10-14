@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from "react";
 import { useEased } from "../scene/useEased";
 import { useTheme, themeColors, motion, aqiScaleColor, aqiRampPosition } from "../utils/theme";
-import { MONITOR_REST, MONITOR_UNITS } from "../content";
+import { MONITOR_REST, MONITOR_UNITS, GAUGE_READOUT } from "../content";
 import type { PulseFeed } from "../scene/pulseFeed";
 import { DETUNE_MAX_CENTS } from "../engine/scales";
 import { HOURS_PER_BAR } from "../engine/tempo";
@@ -16,7 +16,7 @@ export function Ladder({ step, aqi, lift }: { step: number | null; aqi: number |
   const c = themeColors(useTheme());
   const lit = aqi == null ? c.textPrimary : aqiScaleColor(aqi, lift);
   return (
-    <div className="scene-ladder" role="img" aria-label={step == null ? MONITOR_REST : `step ${step + 1} of 6`}>
+    <div className="scene-ladder" role="img" aria-label={step == null ? MONITOR_REST : GAUGE_READOUT.ladder.replace("{n}", String(step + 1))}>
       {[0, 1, 2, 3, 4, 5].map((i) => <span key={i} className="scene-ladder-step" style={{ background: i === step ? lit : undefined }} />)}
     </div>
   );
@@ -26,7 +26,7 @@ export function Ladder({ step, aqi, lift }: { step: number | null; aqi: number |
 export function AQIBar({ aqi, lift }: { aqi: number | null; lift: number }) {
   const w = useEased(aqi == null ? 0 : aqiRampPosition(aqi), TAU, "aqi bar");
   return (
-    <div className="scene-meter" role="img" aria-label={aqi == null ? MONITOR_REST : `AQI ${aqi}`}>
+    <div className="scene-meter" role="img" aria-label={aqi == null ? MONITOR_REST : GAUGE_READOUT.meterAqi.replace("{n}", String(aqi))}>
       <span className="scene-meter-fill scene-aqi-bar" style={{ width: `${(w * 100).toFixed(2)}%`, background: aqi == null ? undefined : aqiScaleColor(aqi, lift), opacity: aqi == null ? 0 : 1 }} />
     </div>
   );
@@ -58,7 +58,7 @@ export function Lane({ steps, pulses, hour }: { steps: boolean[] | null; pulses:
   const pulse = useSyncExternalStore(pulses.subscribe, pulses.get);
   const sameBar = pulse != null && hour != null && Math.floor(pulse.hour / HOURS_PER_BAR) === Math.floor(hour / HOURS_PER_BAR);
   return (
-    <div className="scene-lane" role="img" aria-label={steps ? `${steps.filter(Boolean).length} of 16` : MONITOR_REST}>
+    <div className="scene-lane" role="img" aria-label={steps ? GAUGE_READOUT.lane.replace("{n}", String(steps.filter(Boolean).length)) : MONITOR_REST}>
       {Array.from({ length: 16 }, (_, i) => {
         const hit = steps?.[i] ?? false;
         const lit = sameBar && pulse!.step === i;

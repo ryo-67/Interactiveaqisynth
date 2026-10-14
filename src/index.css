@@ -884,7 +884,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-sheet-layer { position: absolute; inset: 0; pointer-events: auto; }
 .scene-sheet-scrim { position: absolute; top: calc(-1 * var(--win-t, 0px)); right: calc(-1 * var(--win-r, 0px)); bottom: calc(-1 * var(--win-b, 0px)); left: calc(-1 * var(--win-l, 0px)); border: none; padding: 0; background: rgba(var(--about-tint), 0.45); opacity: 0; transition: opacity 240ms ease; }
 .scene-sheet-layer[data-visible="true"] .scene-sheet-scrim { opacity: 1; }
-.scene-sheet { position: absolute; left: 0; right: 0; bottom: calc(-1 * var(--win-b, 0px)); max-height: calc(100% + var(--win-b, 0px)); padding: 0 16px calc(16px + var(--win-b, 0px)); border-radius: 24px 24px 0 0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1); box-sizing: border-box; }
+.scene-sheet { position: absolute; left: 0; right: 0; bottom: calc(-1 * var(--win-b, 0px)); max-height: calc(100% + var(--win-b, 0px)); padding: 0 16px calc(16px + var(--win-b, 0px)); border-radius: 24px 24px 0 0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 280ms var(--settle-ease); box-sizing: border-box; }
 .scene-sheet-layer[data-visible="true"] .scene-sheet { transform: translateY(0); }
 .scene-sheet-layer[data-reduced="true"] .scene-sheet { transform: none; opacity: 0; transition: opacity 200ms ease; }
 .scene-sheet-layer[data-reduced="true"][data-visible="true"] .scene-sheet { opacity: 1; }

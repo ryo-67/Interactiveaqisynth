@@ -77,6 +77,7 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
   const maskCache = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null); // the fill's alpha mask, keyed on the geometry alone (see the draw)
   const hairRef = useRef<HTMLCanvasElement | null>(null); // the firm hairlines, opaque white, reused across draws
   const faintRef = useRef<HTMLCanvasElement | null>(null); // the faint hairlines, opaque white, composited at their own alpha
+  const plotCacheRef = useRef<{ key: Record<string, unknown>; canvas: HTMLCanvasElement } | null>(null); // the plot without the playhead, and what it was drawn from (see the draw)
   const columnsRef = useRef<HTMLCanvasElement | null>(null); // the area fill's column colours, painted before they go through the mask; reused, like the caches' own canvases (2026-10-14: a rebuild allocated three plot-sized canvases)
   const playheadRef = useRef<number | null>(playheadHour);
   playheadRef.current = playheadHour;
@@ -192,22 +193,6 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       const { cssW, cssH, dpr, bufW, bufH, tabH, axisH, cssFaint, canvasTop } = geo;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cssW, cssH);
-      // The hairline layer (see rgba() above): same buffer, same transform, cleared each draw.
-      const hairCanvas = hairRef.current ?? (hairRef.current = document.createElement("canvas"));
-      if (hairCanvas.width !== bufW || hairCanvas.height !== bufH) { hairCanvas.width = bufW; hairCanvas.height = bufH; }
-      const hair = hairCanvas.getContext("2d")!;
-      hair.setTransform(dpr, 0, 0, dpr, 0, 0);
-      hair.clearRect(0, 0, cssW, cssH);
-      // Two weights, two layers, one colour: every hairline is the token's white, drawn opaque, and each layer is composited once at its token's alpha (textFaint for the firm lines, gridHair for the faint ones), so a hairline reads as the same lift over the panel whatever the panel's tint. The earlier single layer encoded the faint weight as a dimmer opaque grey, which is only equivalent over black: over the tinted frost that grey was darker than the panel on warm tints and invisible on cool ones (2026-09-15). Crossings within a layer are opaque, so nothing doubles; where a firm line crosses a faint one the faint layer is cut out beneath it.
-      const faintCanvas = faintRef.current ?? (faintRef.current = document.createElement("canvas"));
-      if (faintCanvas.width !== bufW || faintCanvas.height !== bufH) { faintCanvas.width = bufW; faintCanvas.height = bufH; }
-      const faint = faintCanvas.getContext("2d")!;
-      faint.setTransform(dpr, 0, 0, dpr, 0, 0);
-      faint.clearRect(0, 0, cssW, cssH);
-      const [fr, fg, fb, fa] = rgba(c.textFaint);
-      const ha = Number.isFinite(cssFaint) ? cssFaint : rgba(c.gridHair)[3];
-      const firmLine = `rgb(${fr},${fg},${fb})`;
-      hair.lineWidth = 1; faint.lineWidth = 1; faint.strokeStyle = firmLine;
 
       const n = day.length;
       // The AQI tab keeps a scale bar at the RIGHT, on the line's own fixed y-scale: the standard category colours as one smooth vertical gradient, with a marker at the value under the playhead (the latest hour at rest). Its column is reserved on EVERY tab, so the plot is the same width whichever tab is up and the lines land on the same x positions (2026-09-15); the bar is an addition beside the plot, not a change to it.
@@ -226,20 +211,6 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       ctx.font = `${labelPx}px ${families.data}`;
       const lh = labelPx + 4; // label line height inside the canvas
 
-      // Hour grid: a faint line at every reading through everything, a firmer one per four-hour bar (the bar lines), each running on past the axis as its own tick (5 px at bar starts, 3 otherwise) — one stroke, so the tick never sits on top of the line. Faint ones first, firm ones after, so a firm line covers rather than doubles.
-      const axisY = cssH - axisH; // the plot's baseline, the axis line
-      for (const pass of [false, true]) {
-        const layer = pass ? hair : faint;
-        layer.strokeStyle = firmLine;
-        for (let i = 0; i < n; i++) {
-          if ((i % 4 === 0) !== pass) continue;
-          const x = Math.round(plotX + i * colW) + 0.5;
-          layer.beginPath(); layer.moveTo(x, GRAPH.labelGutter); layer.lineTo(x, axisY + (pass ? 5 : 3)); layer.stroke();
-        }
-      }
-      // The plot's right edge, so the grid never runs under the scale bar.
-      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
-
       // Tracks: the one line track (the tab), drawn from the SHOWN frame. The shown frame is the target frame, or during a transition the blend of the frame last shown and the target (see Frame below): every value at a blend of its two normalized heights, every colour at a blend, every presence at a blend of its alphas, the scale's top at a blend. So a change of day morphs the line from the old shape to the new, and a change of tab morphs it from the old track to the new on a scale that rescales as it goes (D-37).
       const now = performance.now();
       const tr = transitionRef.current;
@@ -250,210 +221,256 @@ export function Graph({ day, aqi, playheadHour, running, live, tab, onTab, onSee
       if (canvas.dataset.scaleMax !== String(Math.round(tr.to.max))) canvas.dataset.scaleMax = String(Math.round(tr.to.max)); // the axis's ceiling, readable from outside (D-53): what a test or a hand on the console asks first
       const transitioning = tr.from != null;
       const fromFrame = tr.from, toFrame = tr.to;
-      const y0 = GRAPH.labelGutter; // the track's top: the label gutter, then the label line, then the plot
-      {
-        const { norm, alpha, max } = cur;
-        const curve = monotoneCurve(norm);
-        const inner = tabH - lh - 2;
-        const yOf = (f: number) => y0 + lh + (1 - Math.min(f, 1)) * inner; // f: a fraction of the shown scale
-        const liftNow = liftRef.current;
-        const grey = rgba(c.textSecondary).slice(0, 3) as [number, number, number];
-        // ONE vertical gradient for the line, the dots and the trailing dashes: the ramp's stops over the plot's height, each blended toward the grey by the tab morph's progress. The legend below is drawn from the same stops, so the two agree pixel for pixel at every height.
-        const lineGrad = ctx.createLinearGradient(0, yOf(0), 0, yOf(1));
-        if (cur.isAqi > 0.005) for (const s of aqiScaleStops(max, liftNow)) lineGrad.addColorStop(s.offset, lineColour(s.offset, max, liftNow, cur.isAqi, grey));
-        else { lineGrad.addColorStop(0, lineColour(0, max, liftNow, 0, grey)); lineGrad.addColorStop(1, lineColour(1, max, liftNow, 0, grey)); }
+      const axisY = cssH - axisH; // the plot's baseline, the axis line
+      // The plot is everything but the playhead, and while playing only the playhead moves, so the plot is drawn once and copied while nothing it is drawn from has changed: the measured geometry, the frame shown (a new one per target, a fresh blend every frame of a transition), the ramp's lift, the hour the AQI caret marks, the theme and the day (2026-10-14: it had been rebuilt every frame, three plot-sized layers and a gradient line each time).
+      const caretHi = cur.isAqi > 0.005 ? (playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : -1) : -2;
+      const key = { geo, cur, lift: liftRef.current, caretHi, c, day, live };
+      const cached = plotCacheRef.current;
+      if (!transitioning && cached && (Object.keys(key) as Array<keyof typeof key>).every((k) => cached.key[k] === key[k])) {
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = "copy"; ctx.drawImage(cached.canvas, 0, 0); ctx.restore();
+        ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip(); // the clip the plot's drawing leaves, which the playhead is drawn in
+      } else {
+        // The hairline layer (see rgba() above): same buffer, same transform, cleared each draw.
+        const hairCanvas = hairRef.current ?? (hairRef.current = document.createElement("canvas"));
+        if (hairCanvas.width !== bufW || hairCanvas.height !== bufH) { hairCanvas.width = bufW; hairCanvas.height = bufH; }
+        const hair = hairCanvas.getContext("2d")!;
+        hair.setTransform(dpr, 0, 0, dpr, 0, 0);
+        hair.clearRect(0, 0, cssW, cssH);
+        // Two weights, two layers, one colour: every hairline is the token's white, drawn opaque, and each layer is composited once at its token's alpha (textFaint for the firm lines, gridHair for the faint ones), so a hairline reads as the same lift over the panel whatever the panel's tint. The earlier single layer encoded the faint weight as a dimmer opaque grey, which is only equivalent over black: over the tinted frost that grey was darker than the panel on warm tints and invisible on cool ones (2026-09-15). Crossings within a layer are opaque, so nothing doubles; where a firm line crosses a faint one the faint layer is cut out beneath it.
+        const faintCanvas = faintRef.current ?? (faintRef.current = document.createElement("canvas"));
+        if (faintCanvas.width !== bufW || faintCanvas.height !== bufH) { faintCanvas.width = bufW; faintCanvas.height = bufH; }
+        const faint = faintCanvas.getContext("2d")!;
+        faint.setTransform(dpr, 0, 0, dpr, 0, 0);
+        faint.clearRect(0, 0, cssW, cssH);
+        const [fr, fg, fb, fa] = rgba(c.textFaint);
+        const ha = Number.isFinite(cssFaint) ? cssFaint : rgba(c.gridHair)[3];
+        const firmLine = `rgb(${fr},${fg},${fb})`;
+        hair.lineWidth = 1; faint.lineWidth = 1; faint.strokeStyle = firmLine;
 
-        // Baseline. Gridlines at the target's values, each at the height its value has on the SHOWN scale, so a value's line slides as the scale rescales rather than jumping; the labels cross-fade, the previous frame's out and the target's in.
-        hair.strokeStyle = firmLine;
-        hair.beginPath(); hair.moveTo(plotX, y0 + lh + inner + 0.5); hair.lineTo(plotRight, y0 + lh + inner + 0.5); hair.stroke();
-        for (const gv of toFrame.gridValues) {
-          const f = gv / max; if (f > 1.001) continue;
-          const gy = yOf(f);
-          hair.setLineDash([2, 5]); hair.beginPath(); hair.moveTo(plotX, gy + 0.5); hair.lineTo(plotRight, gy + 0.5); hair.stroke(); hair.setLineDash([]);
+        // Hour grid: a faint line at every reading through everything, a firmer one per four-hour bar (the bar lines), each running on past the axis as its own tick (5 px at bar starts, 3 otherwise) — one stroke, so the tick never sits on top of the line. Faint ones first, firm ones after, so a firm line covers rather than doubles.
+        for (const pass of [false, true]) {
+          const layer = pass ? hair : faint;
+          layer.strokeStyle = firmLine;
+          for (let i = 0; i < n; i++) {
+            if ((i % 4 === 0) !== pass) continue;
+            const x = Math.round(plotX + i * colW) + 0.5;
+            layer.beginPath(); layer.moveTo(x, GRAPH.labelGutter); layer.lineTo(x, axisY + (pass ? 5 : 3)); layer.stroke();
+          }
         }
-        const labelSets: Array<[number[], number]> = fromFrame ? [[fromFrame.gridValues, 1 - e], [toFrame.gridValues, e]] : [[toFrame.gridValues, 1]];
-        for (const [values, a] of labelSets) {
-          ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = c.textMuted;
-          // Only the labels that fit this plot's height, two and a half lines apart at least (fitTicks): at 1.75 a landscape plot of about 90 px still showed four labels stacked 23 apart; the gridlines above keep every value.
-          for (const gv of fitTicks(values, max, inner, labelPx * 2.5)) { const f = gv / max; const lab = String(gv); ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, yOf(f) + labelPx * 0.36); }
+        // The plot's right edge, so the grid never runs under the scale bar.
+        ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
+
+        const y0 = GRAPH.labelGutter; // the track's top: the label gutter, then the label line, then the plot
+        {
+          const { norm, alpha, max } = cur;
+          const curve = monotoneCurve(norm);
+          const inner = tabH - lh - 2;
+          const yOf = (f: number) => y0 + lh + (1 - Math.min(f, 1)) * inner; // f: a fraction of the shown scale
+          const liftNow = liftRef.current;
+          const grey = rgba(c.textSecondary).slice(0, 3) as [number, number, number];
+          // ONE vertical gradient for the line, the dots and the trailing dashes: the ramp's stops over the plot's height, each blended toward the grey by the tab morph's progress. The legend below is drawn from the same stops, so the two agree pixel for pixel at every height.
+          const lineGrad = ctx.createLinearGradient(0, yOf(0), 0, yOf(1));
+          if (cur.isAqi > 0.005) for (const s of aqiScaleStops(max, liftNow)) lineGrad.addColorStop(s.offset, lineColour(s.offset, max, liftNow, cur.isAqi, grey));
+          else { lineGrad.addColorStop(0, lineColour(0, max, liftNow, 0, grey)); lineGrad.addColorStop(1, lineColour(1, max, liftNow, 0, grey)); }
+
+          // Baseline. Gridlines at the target's values, each at the height its value has on the SHOWN scale, so a value's line slides as the scale rescales rather than jumping; the labels cross-fade, the previous frame's out and the target's in.
+          hair.strokeStyle = firmLine;
+          hair.beginPath(); hair.moveTo(plotX, y0 + lh + inner + 0.5); hair.lineTo(plotRight, y0 + lh + inner + 0.5); hair.stroke();
+          for (const gv of toFrame.gridValues) {
+            const f = gv / max; if (f > 1.001) continue;
+            const gy = yOf(f);
+            hair.setLineDash([2, 5]); hair.beginPath(); hair.moveTo(plotX, gy + 0.5); hair.lineTo(plotRight, gy + 0.5); hair.stroke(); hair.setLineDash([]);
+          }
+          const labelSets: Array<[number[], number]> = fromFrame ? [[fromFrame.gridValues, 1 - e], [toFrame.gridValues, e]] : [[toFrame.gridValues, 1]];
+          for (const [values, a] of labelSets) {
+            ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = c.textMuted;
+            // Only the labels that fit this plot's height, two and a half lines apart at least (fitTicks): at 1.75 a landscape plot of about 90 px still showed four labels stacked 23 apart; the gridlines above keep every value.
+            for (const gv of fitTicks(values, max, inner, labelPx * 2.5)) { const f = gv / max; const lab = String(gv); ctx.fillText(lab, plotX - GRAPH.axisGutterPad - ctx.measureText(lab).width, yOf(f) + labelPx * 0.36); }
+            ctx.restore();
+          }
+
+          // The area under the line: colour blends horizontally along the line (a stop at every hour's colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per shown frame and size, so the playhead's per-frame redraw does not rebuild it; a transition rebuilds it every frame, which is the cost of the fill following the morphing line.
+          const baseY = y0 + lh + inner;
+          // Keyed on the plot's geometry too (plotX, plotW, the track's y range): plotX is measured from the data font, and when that font arrives after the first draw the edge moves a couple of pixels; the line redraws at the new positions, and a fill cached under the old edge sat visibly off the line.
+          // Two caches (2026-09-16): the MASK depends on the geometry alone and the COLOUR on the ramp's lift and the theme as well. The lift eases for about a second after every beat, and with one cache the per-pixel mask loop over the whole plot rebuilt on each of those frames; now a lift change repaints only the columns, through the mask it already has.
+          const maskKey = `${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${cur.isAqi.toFixed(2)}|${norm.map((v, i) => (v == null ? "" : `${Math.round(v * 1000)}:${Math.round(alpha[i] * 100)}`)).join(",")}`;
+          const areaKey = `${maskKey}|${liftNow.toFixed(3)}|${c.textSecondary}`;
+          let area = areaCache.current;
+          if (!area || area.key !== areaKey) {
+            let mask = maskCache.current;
+            if (!mask || mask.key !== maskKey) {
+            const off = maskCache.current?.canvas ?? document.createElement("canvas"); // setting the size below clears it and resets its state, as a new canvas would be
+            off.width = Math.round(plotW * dpr); off.height = bufH; // the plot's own device pixels, blitted 1:1 below
+            const o = off.getContext("2d")!;
+            o.setTransform(dpr, 0, 0, dpr, 0, 0);
+            const fillAlpha = GRAPH.areaAlpha.channel + (GRAPH.areaAlpha.aqi - GRAPH.areaAlpha.channel) * cur.isAqi;
+            // Pass 1: the mask — the fade computed per pixel into an image buffer: alpha falls linearly from the fill alpha at the line's height in that column to 0 at the base, the line's height following the segment between the two readings continuously. Per-hour segments each had their own fade and read as bands; per-column canvas gradients were smooth in principle but the rasterizer quantizes each column's gradient with a different phase, a 3–4% ripple between neighbouring columns at high zoom. Written directly, the fade is exact. The top row gets the line's fractional coverage so the fill's edge sits on the line.
+            const mask = o.createImageData(off.width, off.height);
+            const md = mask.data;
+            const baseDev = baseY * dpr;
+            for (let px = 0; px < off.width; px++) {
+              const xc = (px + 0.5) / dpr; // the column's centre in CSS px, relative to the plot
+              const v = curve(Math.min(n - 1, Math.max(0, xc / colW)));
+              if (v == null) continue;
+              const yLine = yOf(v) * dpr;
+              if (yLine >= baseDev) continue;
+              const span = baseDev - yLine;
+              const first = Math.floor(yLine);
+              for (let y = first; y < off.height && y < baseDev; y++) {
+                const coverage = y === first ? first + 1 - yLine : 1; // the top pixel's fractional coverage by the fill
+                const depth = Math.max(0, y + 0.5 - yLine) / span; // 0 at the line, 1 at the base
+                md[(y * off.width + px) * 4 + 3] = Math.round(255 * fillAlpha * coverage * Math.max(0, 1 - depth));
+              }
+            }
+            o.putImageData(mask, 0, 0);
+            maskCache.current = { key: maskKey, canvas: off };
+            }
+            mask = maskCache.current!;
+            // Pass 2: the colour, through the mask — every column in the line's own colour at that column's height (the same rule as the line and the legend), at the presence blended between its two hours. Per column, so the fill's top edge is the line's colour even on a rise that crosses several categories within one hour; a gradient with one stop per hour blended two hues in sRGB across the hour and missed the ones between.
+            // The columns are painted on their own canvas and composited through a copy of the mask in ONE draw: source-in keeps only where the new paint and the canvas overlap and clears everything else, so column fills applied one by one through the mask left only the last column standing (2026-09-16).
+            const off = areaCache.current?.canvas ?? document.createElement("canvas");
+            off.width = mask.canvas.width; off.height = mask.canvas.height;
+            const o = off.getContext("2d")!;
+            o.drawImage(mask.canvas, 0, 0);
+            const col = columnsRef.current ?? (columnsRef.current = document.createElement("canvas"));
+            col.width = off.width; col.height = off.height;
+            const cc = col.getContext("2d")!;
+            cc.setTransform(dpr, 0, 0, dpr, 0, 0);
+            const colW1 = 1 / dpr;
+            for (let px = 0; px < off.width; px++) {
+              const xi = Math.min(n - 1, Math.max(0, (px + 0.5) / dpr / colW));
+              const v = curve(xi);
+              if (v == null) continue;
+              const i0 = Math.floor(xi), i1 = Math.min(n - 1, i0 + 1);
+              const pres = lerp(alpha[i0] ?? 0, alpha[i1] ?? 0, xi - i0);
+              cc.fillStyle = lineColour(v, max, liftNow, cur.isAqi, grey, pres);
+              cc.fillRect(px / dpr, 0, colW1, cssH);
+            }
+            o.globalCompositeOperation = "source-in";
+            o.drawImage(col, 0, 0);
+            area = { key: areaKey, canvas: off };
+            areaCache.current = area;
+          }
+          // The fill and the line are clipped to the plot itself: with the first and last readings on the bounds, the stroke's width and round caps would otherwise spill over the y-axis line and the right edge.
+          // From the column after the axis line to the column of the right edge line (both lines sit at Math.round(x) + 0.5, so they own exactly those columns): the fill meets both lines with no gap and never paints over them.
+          // The clip reaches under the bar's track: the line's last segment runs on to the track's far edge and the bar, drawn after, covers it (the fill is blitted at the plot's own width and stops at the edge).
+          ctx.save(); ctx.beginPath(); ctx.rect(plotX + 1, 0, Math.round(plotRight) - plotX - 1 + (cur.isAqi > 0.005 ? GRAPH.scaleTrackWidth : 0), cssH); ctx.clip();
+          // Blitted at its native size onto the plot's own device pixels, so nothing is resampled.
+          ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(area.canvas, Math.round(plotX * dpr), 0);
           ctx.restore();
-        }
 
-        // The area under the line: colour blends horizontally along the line (a stop at every hour's colour) AND fades vertically from each segment's own line height to the baseline. One fill carries one gradient, so this is two passes on an offscreen canvas — the vertical fades as an alpha mask, then the horizontal colour gradient drawn through it (source-in) — cached per shown frame and size, so the playhead's per-frame redraw does not rebuild it; a transition rebuilds it every frame, which is the cost of the fill following the morphing line.
-        const baseY = y0 + lh + inner;
-        // Keyed on the plot's geometry too (plotX, plotW, the track's y range): plotX is measured from the data font, and when that font arrives after the first draw the edge moves a couple of pixels; the line redraws at the new positions, and a fill cached under the old edge sat visibly off the line.
-        // Two caches (2026-09-16): the MASK depends on the geometry alone and the COLOUR on the ramp's lift and the theme as well. The lift eases for about a second after every beat, and with one cache the per-pixel mask loop over the whole plot rebuilt on each of those frames; now a lift change repaints only the columns, through the mask it already has.
-        const maskKey = `${n}|${cssW}|${cssH}|${dpr}|${plotX}|${plotW}|${y0}|${tabH}|${cur.isAqi.toFixed(2)}|${norm.map((v, i) => (v == null ? "" : `${Math.round(v * 1000)}:${Math.round(alpha[i] * 100)}`)).join(",")}`;
-        const areaKey = `${maskKey}|${liftNow.toFixed(3)}|${c.textSecondary}`;
-        let area = areaCache.current;
-        if (!area || area.key !== areaKey) {
-          let mask = maskCache.current;
-          if (!mask || mask.key !== maskKey) {
-          const off = maskCache.current?.canvas ?? document.createElement("canvas"); // setting the size below clears it and resets its state, as a new canvas would be
-          off.width = Math.round(plotW * dpr); off.height = bufH; // the plot's own device pixels, blitted 1:1 below
-          const o = off.getContext("2d")!;
-          o.setTransform(dpr, 0, 0, dpr, 0, 0);
-          const fillAlpha = GRAPH.areaAlpha.channel + (GRAPH.areaAlpha.aqi - GRAPH.areaAlpha.channel) * cur.isAqi;
-          // Pass 1: the mask — the fade computed per pixel into an image buffer: alpha falls linearly from the fill alpha at the line's height in that column to 0 at the base, the line's height following the segment between the two readings continuously. Per-hour segments each had their own fade and read as bands; per-column canvas gradients were smooth in principle but the rasterizer quantizes each column's gradient with a different phase, a 3–4% ripple between neighbouring columns at high zoom. Written directly, the fade is exact. The top row gets the line's fractional coverage so the fill's edge sits on the line.
-          const mask = o.createImageData(off.width, off.height);
-          const md = mask.data;
-          const baseDev = baseY * dpr;
-          for (let px = 0; px < off.width; px++) {
-            const xc = (px + 0.5) / dpr; // the column's centre in CSS px, relative to the plot
-            const v = curve(Math.min(n - 1, Math.max(0, xc / colW)));
-            if (v == null) continue;
-            const yLine = yOf(v) * dpr;
-            if (yLine >= baseDev) continue;
-            const span = baseDev - yLine;
-            const first = Math.floor(yLine);
-            for (let y = first; y < off.height && y < baseDev; y++) {
-              const coverage = y === first ? first + 1 - yLine : 1; // the top pixel's fractional coverage by the fill
-              const depth = Math.max(0, y + 0.5 - yLine) / span; // 0 at the line, 1 at the base
-              md[(y * off.width + px) * 4 + 3] = Math.round(255 * fillAlpha * coverage * Math.max(0, 1 - depth));
+          // The line, stroked with the vertical ramp gradient: its colour at any point is the legend's at that height. Each hour's segment is its own stroke at the lesser of its two ends' presence.
+          ctx.lineWidth = GRAPH.lineWidth.channel + (GRAPH.lineWidth.aqi - GRAPH.lineWidth.channel) * cur.isAqi;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.strokeStyle = lineGrad;
+          // Each hour's piece is the monotone curve sampled every few pixels (graphSeries.monotoneCurve), so the line is smooth between readings and never overshoots one; the fill's height follows the same curve.
+          const CURVE_STEP = 3; // css px between samples along the curve
+          for (let i = 1; i < n; i++) {
+            const a = norm[i - 1], b = norm[i];
+            const sa = Math.min(alpha[i - 1], alpha[i]);
+            if (a == null || b == null || sa <= 0.005) continue;
+            const x0 = plotX + (i - 1) * colW, x1 = plotX + i * colW;
+            ctx.globalAlpha = sa;
+            ctx.beginPath();
+            ctx.moveTo(x0, yOf(a));
+            const steps = Math.max(2, Math.ceil(colW / CURVE_STEP));
+            for (let s = 1; s <= steps; s++) {
+              const f = s / steps;
+              const v = curve(i - 1 + f);
+              ctx.lineTo(x0 + (x1 - x0) * f, yOf(v ?? (a + (b - a) * f)));
+            }
+            if (i === n - 1 && cur.isAqi > 0.005) ctx.lineTo(plotRight + GRAPH.scaleTrackWidth, yOf(b)); // the last segment runs straight on under the bar, which is drawn after it
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+          // Trailing hours not yet reported (a live channel AirNow has not published for the newest hours) hold the last value as a dotted flat line to the right edge: the line does not simply stop, and the dots say "not yet" rather than "zero".
+          let lastIdx = -1;
+          for (let i = n - 1; i >= 0; i--) if (alpha[i] > 0.5 && norm[i] != null) { lastIdx = i; break; }
+          if (lastIdx >= 0 && lastIdx < n - 1) {
+            const y = yOf(norm[lastIdx]!);
+            ctx.save();
+            ctx.setLineDash([2, 4]);
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = alpha[lastIdx];
+            ctx.strokeStyle = cur.isAqi > 0.5 ? lineGrad : c.textMuted;
+            ctx.beginPath(); ctx.moveTo(plotX + lastIdx * colW, y); ctx.lineTo(plotRight, y); ctx.stroke();
+            ctx.restore();
+          }
+          // Isolated points (a reporting hour between two nulls) still show.
+          for (let i = 0; i < n; i++) {
+            const v = norm[i];
+            if (v == null || alpha[i] <= 0.005) continue;
+            if ((i === 0 || alpha[i - 1] <= 0.5) && (i === n - 1 || alpha[i + 1] <= 0.5)) {
+              ctx.globalAlpha = alpha[i];
+              ctx.fillStyle = lineGrad;
+              ctx.fillRect(plotX + i * colW - 1, yOf(v) - 1, 2, 2);
+              ctx.globalAlpha = 1;
             }
           }
-          o.putImageData(mask, 0, 0);
-          maskCache.current = { key: maskKey, canvas: off };
-          }
-          mask = maskCache.current!;
-          // Pass 2: the colour, through the mask — every column in the line's own colour at that column's height (the same rule as the line and the legend), at the presence blended between its two hours. Per column, so the fill's top edge is the line's colour even on a rise that crosses several categories within one hour; a gradient with one stop per hour blended two hues in sRGB across the hour and missed the ones between.
-          // The columns are painted on their own canvas and composited through a copy of the mask in ONE draw: source-in keeps only where the new paint and the canvas overlap and clears everything else, so column fills applied one by one through the mask left only the last column standing (2026-09-16).
-          const off = areaCache.current?.canvas ?? document.createElement("canvas");
-          off.width = mask.canvas.width; off.height = mask.canvas.height;
-          const o = off.getContext("2d")!;
-          o.drawImage(mask.canvas, 0, 0);
-          const col = columnsRef.current ?? (columnsRef.current = document.createElement("canvas"));
-          col.width = off.width; col.height = off.height;
-          const cc = col.getContext("2d")!;
-          cc.setTransform(dpr, 0, 0, dpr, 0, 0);
-          const colW1 = 1 / dpr;
-          for (let px = 0; px < off.width; px++) {
-            const xi = Math.min(n - 1, Math.max(0, (px + 0.5) / dpr / colW));
-            const v = curve(xi);
-            if (v == null) continue;
-            const i0 = Math.floor(xi), i1 = Math.min(n - 1, i0 + 1);
-            const pres = lerp(alpha[i0] ?? 0, alpha[i1] ?? 0, xi - i0);
-            cc.fillStyle = lineColour(v, max, liftNow, cur.isAqi, grey, pres);
-            cc.fillRect(px / dpr, 0, colW1, cssH);
-          }
-          o.globalCompositeOperation = "source-in";
-          o.drawImage(col, 0, 0);
-          area = { key: areaKey, canvas: off };
-          areaCache.current = area;
-        }
-        // The fill and the line are clipped to the plot itself: with the first and last readings on the bounds, the stroke's width and round caps would otherwise spill over the y-axis line and the right edge.
-        // From the column after the axis line to the column of the right edge line (both lines sit at Math.round(x) + 0.5, so they own exactly those columns): the fill meets both lines with no gap and never paints over them.
-        // The clip reaches under the bar's track: the line's last segment runs on to the track's far edge and the bar, drawn after, covers it (the fill is blitted at the plot's own width and stops at the edge).
-        ctx.save(); ctx.beginPath(); ctx.rect(plotX + 1, 0, Math.round(plotRight) - plotX - 1 + (cur.isAqi > 0.005 ? GRAPH.scaleTrackWidth : 0), cssH); ctx.clip();
-        // Blitted at its native size onto the plot's own device pixels, so nothing is resampled.
-        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.drawImage(area.canvas, Math.round(plotX * dpr), 0);
-        ctx.restore();
-
-        // The line, stroked with the vertical ramp gradient: its colour at any point is the legend's at that height. Each hour's segment is its own stroke at the lesser of its two ends' presence.
-        ctx.lineWidth = GRAPH.lineWidth.channel + (GRAPH.lineWidth.aqi - GRAPH.lineWidth.channel) * cur.isAqi;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        ctx.strokeStyle = lineGrad;
-        // Each hour's piece is the monotone curve sampled every few pixels (graphSeries.monotoneCurve), so the line is smooth between readings and never overshoots one; the fill's height follows the same curve.
-        const CURVE_STEP = 3; // css px between samples along the curve
-        for (let i = 1; i < n; i++) {
-          const a = norm[i - 1], b = norm[i];
-          const sa = Math.min(alpha[i - 1], alpha[i]);
-          if (a == null || b == null || sa <= 0.005) continue;
-          const x0 = plotX + (i - 1) * colW, x1 = plotX + i * colW;
-          ctx.globalAlpha = sa;
-          ctx.beginPath();
-          ctx.moveTo(x0, yOf(a));
-          const steps = Math.max(2, Math.ceil(colW / CURVE_STEP));
-          for (let s = 1; s <= steps; s++) {
-            const f = s / steps;
-            const v = curve(i - 1 + f);
-            ctx.lineTo(x0 + (x1 - x0) * f, yOf(v ?? (a + (b - a) * f)));
-          }
-          if (i === n - 1 && cur.isAqi > 0.005) ctx.lineTo(plotRight + GRAPH.scaleTrackWidth, yOf(b)); // the last segment runs straight on under the bar, which is drawn after it
-          ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-        // Trailing hours not yet reported (a live channel AirNow has not published for the newest hours) hold the last value as a dotted flat line to the right edge: the line does not simply stop, and the dots say "not yet" rather than "zero".
-        let lastIdx = -1;
-        for (let i = n - 1; i >= 0; i--) if (alpha[i] > 0.5 && norm[i] != null) { lastIdx = i; break; }
-        if (lastIdx >= 0 && lastIdx < n - 1) {
-          const y = yOf(norm[lastIdx]!);
-          ctx.save();
-          ctx.setLineDash([2, 4]);
-          ctx.lineWidth = 1;
-          ctx.globalAlpha = alpha[lastIdx];
-          ctx.strokeStyle = cur.isAqi > 0.5 ? lineGrad : c.textMuted;
-          ctx.beginPath(); ctx.moveTo(plotX + lastIdx * colW, y); ctx.lineTo(plotRight, y); ctx.stroke();
-          ctx.restore();
-        }
-        // Isolated points (a reporting hour between two nulls) still show.
-        for (let i = 0; i < n; i++) {
-          const v = norm[i];
-          if (v == null || alpha[i] <= 0.005) continue;
-          if ((i === 0 || alpha[i - 1] <= 0.5) && (i === n - 1 || alpha[i + 1] <= 0.5)) {
-            ctx.globalAlpha = alpha[i];
-            ctx.fillStyle = lineGrad;
-            ctx.fillRect(plotX + i * colW - 1, yOf(v) - 1, 2, 2);
-            ctx.globalAlpha = 1;
-          }
-        }
-        ctx.restore(); // back to the wider clip, so the y values in the gutter stay drawable
-        // AQI: the scale bar at the right, fading in with the tab. One smooth gradient through the category colours on the fixed 0–500 ruler; the marker sits at the value under the playhead, and eases with it.
-        // Drawn AFTER the line (2026-09-15): the line runs on under the bar (see the clip and the last segment below) and the bar covers its end with the ramp's own colour at that height, so the line merges into the bar and no cap, join or fill edge can show at the seam.
-        if (cur.isAqi > 0.005) {
-          ctx.restore(); // out of the plot clip
-          ctx.save(); ctx.globalAlpha = cur.isAqi;
-          const barX = cssW - barW;
-          const barTop = GRAPH.labelGutter, barBottom = yOf(0);
-          const grad = ctx.createLinearGradient(0, barBottom, 0, yOf(1));
-          for (const s of aqiScaleStops(max, liftNow)) grad.addColorStop(s.offset, s.color); // over the SHOWN scale (D-53): the legend is the axis's own ruler and re-fits with it, mid-morph included
-          const trackW = GRAPH.scaleTrackWidth, trackX = barX;
-          ctx.fillStyle = grad;
-          ctx.fillRect(trackX, barTop, trackW, barBottom - barTop);
-          const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (alpha[i] > 0.5) return i; return -1; })();
-          const cv = hi >= 0 ? norm[hi] : null;
-          if (cv != null && alpha[hi] > 0.005) {
-            // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. On the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base on the column's outer edge.
-            // Drawn to the volume slider's knob recipe (theme.ts KNOB): an opaque white fill, lit from above, with a soft shadow beneath and a hairline edge. One fill, one shadow: strokes over an anti-aliased fill this small doubled its outline.
-            ctx.globalAlpha = cur.isAqi * alpha[hi];
-            const my = yOf(cv);
-            const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX + trackW + GRAPH.scaleCaretGap;
-            const caret = () => { ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.lineTo(tipX + d, my + h / 2); ctx.closePath(); };
-            const knob = ctx.createLinearGradient(0, my - h / 2, 0, my + h / 2);
-            knob.addColorStop(0, KNOB.top); knob.addColorStop(1, KNOB.bottom);
-            ctx.save();
-            ctx.shadowColor = `rgba(0,0,0,${KNOB.shadowAlpha})`; ctx.shadowBlur = 3; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 1;
-            ctx.fillStyle = knob;
-            caret(); ctx.fill();
+          ctx.restore(); // back to the wider clip, so the y values in the gutter stay drawable
+          // AQI: the scale bar at the right, fading in with the tab. One smooth gradient through the category colours on the fixed 0–500 ruler; the marker sits at the value under the playhead, and eases with it.
+          // Drawn AFTER the line (2026-09-15): the line runs on under the bar (see the clip and the last segment below) and the bar covers its end with the ramp's own colour at that height, so the line merges into the bar and no cap, join or fill edge can show at the seam.
+          if (cur.isAqi > 0.005) {
+            ctx.restore(); // out of the plot clip
+            ctx.save(); ctx.globalAlpha = cur.isAqi;
+            const barX = cssW - barW;
+            const barTop = GRAPH.labelGutter, barBottom = yOf(0);
+            const grad = ctx.createLinearGradient(0, barBottom, 0, yOf(1));
+            for (const s of aqiScaleStops(max, liftNow)) grad.addColorStop(s.offset, s.color); // over the SHOWN scale (D-53): the legend is the axis's own ruler and re-fits with it, mid-morph included
+            const trackW = GRAPH.scaleTrackWidth, trackX = barX;
+            ctx.fillStyle = grad;
+            ctx.fillRect(trackX, barTop, trackW, barBottom - barTop);
+            const hi = playheadRef.current != null ? Math.min(n - 1, Math.floor(playheadRef.current)) : (() => { for (let i = n - 1; i >= 0; i--) if (alpha[i] > 0.5) return i; return -1; })();
+            const cv = hi >= 0 ? norm[hi] : null;
+            if (cv != null && alpha[hi] > 0.005) {
+              // The marker is a caret at the track's right, pointing left at the value: a reading, not a control. On the 4 px grid (GRAPH.scaleCaret tall, half as deep), its tip GRAPH.scaleCaretGap from the track; its base on the column's outer edge.
+              // Drawn to the volume slider's knob recipe (theme.ts KNOB): an opaque white fill, lit from above, with a soft shadow beneath and a hairline edge. One fill, one shadow: strokes over an anti-aliased fill this small doubled its outline.
+              ctx.globalAlpha = cur.isAqi * alpha[hi];
+              const my = yOf(cv);
+              const h = GRAPH.scaleCaret, d = GRAPH.scaleCaret / 2, tipX = trackX + trackW + GRAPH.scaleCaretGap;
+              const caret = () => { ctx.beginPath(); ctx.moveTo(tipX, my); ctx.lineTo(tipX + d, my - h / 2); ctx.lineTo(tipX + d, my + h / 2); ctx.closePath(); };
+              const knob = ctx.createLinearGradient(0, my - h / 2, 0, my + h / 2);
+              knob.addColorStop(0, KNOB.top); knob.addColorStop(1, KNOB.bottom);
+              ctx.save();
+              ctx.shadowColor = `rgba(0,0,0,${KNOB.shadowAlpha})`; ctx.shadowBlur = 3; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 1;
+              ctx.fillStyle = knob;
+              caret(); ctx.fill();
+              ctx.restore();
+              ctx.lineWidth = 0.5; ctx.lineJoin = "round"; ctx.strokeStyle = `rgba(0,0,0,${KNOB.hairlineAlpha})`; caret(); ctx.stroke(); // the hairline edge
+            }
             ctx.restore();
-            ctx.lineWidth = 0.5; ctx.lineJoin = "round"; ctx.strokeStyle = `rgba(0,0,0,${KNOB.hairlineAlpha})`; caret(); ctx.stroke(); // the hairline edge
+            ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip(); // the wider clip again, matching the one the restore below leaves
           }
-          ctx.restore();
-          ctx.save(); ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip(); // the wider clip again, matching the one the restore below leaves
+
         }
 
-      }
-
-      // X axis: the plot's baseline is the axis line (a second line here sat two pixels under it once the pulse row went, 2026-09-15); the ticks come from the hour grid above; two labels only, drawn after the hairlines are composited below.
-      // Every hairline is in the layer now; composite it once, BENEATH everything drawn so far (the line, the area, the labels): the hairlines are the bottom of the stack and the line is the top. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
-      faint.save(); faint.setTransform(1, 0, 0, 1, 0, 0); faint.globalCompositeOperation = "destination-out"; faint.drawImage(hairCanvas, 0, 0); faint.restore();
-      ctx.save();
-      ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
-      ctx.globalCompositeOperation = "destination-over";
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.globalAlpha = fa; ctx.drawImage(hairCanvas, 0, 0);
-      if (ha > 0) { ctx.globalAlpha = ha; ctx.drawImage(faintCanvas, 0, 0); }
-      ctx.restore();
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (n > 0) {
-        ctx.fillStyle = c.textMuted;
-        // The date is on the left label only for the live window, whose readings straddle two days; a chosen day is named by the picker already, so its label is just the time.
-        const axisLabelY = cssH - axisH / 2 + labelPx * 0.36; // centred in the axis row (2026-09-16): on the row's floor the plot's bottom read as cramped against the top's gutter (Shoro)
-        ctx.fillText(readingLabel(day[0].ts, live), plotX + 2, axisLabelY);
-        const right = live ? HERO_AQI_NOW : readingLabel(day[n - 1].ts, false);
-        ctx.fillText(right, plotRight - ctx.measureText(right).width - 2, axisLabelY);
+        // X axis: the plot's baseline is the axis line (a second line here sat two pixels under it once the pulse row went, 2026-09-15); the ticks come from the hour grid above; two labels only, drawn after the hairlines are composited below.
+        // Every hairline is in the layer now; composite it once, BENEATH everything drawn so far (the line, the area, the labels): the hairlines are the bottom of the stack and the line is the top. Clipped to the plot's right edge like the grid was, so nothing runs under the scale bar.
+        faint.save(); faint.setTransform(1, 0, 0, 1, 0, 0); faint.globalCompositeOperation = "destination-out"; faint.drawImage(hairCanvas, 0, 0); faint.restore();
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, plotRight + 1, cssH); ctx.clip();
+        ctx.globalCompositeOperation = "destination-over";
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = fa; ctx.drawImage(hairCanvas, 0, 0);
+        if (ha > 0) { ctx.globalAlpha = ha; ctx.drawImage(faintCanvas, 0, 0); }
+        ctx.restore();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        if (n > 0) {
+          ctx.fillStyle = c.textMuted;
+          // The date is on the left label only for the live window, whose readings straddle two days; a chosen day is named by the picker already, so its label is just the time.
+          const axisLabelY = cssH - axisH / 2 + labelPx * 0.36; // centred in the axis row (2026-09-16): on the row's floor the plot's bottom read as cramped against the top's gutter (Shoro)
+          ctx.fillText(readingLabel(day[0].ts, live), plotX + 2, axisLabelY);
+          const right = live ? HERO_AQI_NOW : readingLabel(day[n - 1].ts, false);
+          ctx.fillText(right, plotRight - ctx.measureText(right).width - 2, axisLabelY);
+        }
+        // Keep the plot for the frames that follow: the canvas as it stands, before the playhead.
+        const store = cached?.canvas ?? document.createElement("canvas");
+        if (store.width !== bufW || store.height !== bufH) { store.width = bufW; store.height = bufH; }
+        const sc = store.getContext("2d")!;
+        sc.globalCompositeOperation = "copy"; sc.drawImage(canvas, 0, 0);
+        plotCacheRef.current = { key, canvas: store };
       }
 
       // Playhead: the eased hour, one line through every track, with the hour's values printed at its head.

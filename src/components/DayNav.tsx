@@ -35,8 +35,8 @@ function usePopoverPosition(open: boolean, anchorRef: React.RefObject<HTMLDivEle
       const r = anchorRef.current?.getBoundingClientRect();
       if (r && r.width > 0) {
         const w = Math.min(width, window.innerWidth - margin * 2);
-        // Narrow viewports centre it in the viewport; wider ones centre it on the picker bar's own vertical centreline (2026-09-15), kept inside the viewport.
-        const left = window.innerWidth < 576 ? (window.innerWidth - w) / 2 : Math.max(margin, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - margin));
+        // Centred on the picker bar's own vertical centreline (2026-09-15), kept inside the viewport. (A narrow window used to centre it in the viewport below 576 px; the popover only exists from the tablet's 768 up, where phones get the day sheet, so that case never came.)
+        const left = Math.max(margin, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - margin));
         const top = r.bottom + gap;
         setPos((p) => (p.left === left && p.top === top ? p : { left, top }));
       }

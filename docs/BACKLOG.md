@@ -143,6 +143,19 @@ Phase 0 closed 2026-08-27 (STRATEGY D-17). Phase 1 is open.
 | DAT-14 | P1 | TODO | Rebuild the current-year archive snapshot | `public/data/*-2026.json` ends 2026-08-01 and `ARCHIVE_LAST_DATE` is 2026-07-20, the last day with complete PM2.5 — both correct as written, but the snapshot is about seven weeks behind today. Re-run `scripts/build-current-year.ts`, commit, and move the constant (CLAUDE.md) |
 | DOC-04 | P2 | DONE 2026-09-17 | GitHub project description and topics | Drafted in docs/GITHUB.md and applied by Shoro the same day: description, homepage moved to aqi-synth.vercel.app, seventeen topics. The repository had none of the three |
 
+## The 2026-10-14 simplify pass
+
+On branch `refactor/simplify`. Tiers 1 to 3 change nothing a visitor sees or hears; tier 4 is structural, one item at a time, each approved by Shoro on its own.
+
+| ID | Priority | Status | Task | Notes |
+|---|---|---|---|---|
+| CLN-14 | P2 | DONE 2026-10-14 (9b04a4f, 8a1ca5d, 19a34d1, 7aaa168) | Simplify pass, tiers 1 to 3: dead code, duplicated helpers, waste per frame and per render | About 1,000 lines of frozen Tailwind build out of index.css and the unimported globals.css; unused exports, props, tokens and state; one home each for clamp/lerp/ease, colour, date, channel provenance, the status pill, the pill button and enter/exit timing; listeners attached once, pooled routing dots, reused graph canvases, no sky sampling in a background tab; SynthEngine.setStartHour and stop() deleted (uncalled). Layout identical to main at four layouts with About open and closed |
+| CLN-15 | P2 | DONE 2026-10-14 (faaa246, 1dec3ba, 50aafcd, d89bb06, d47c5ca) | Tier 4: the efficiency items that needed structure, and the page status as one value | First load no longer downloads the 574 KB current-year snapshot to learn the hold; a pulse hit renders the lane, not the page (scene/pulseFeed.ts); the graph measures its layout when it can change, not every frame; the page status is one union (scene/pageStatus.ts); the sun transition is derived during render (one page render fewer per frame while playing, 3.3 to 2.4, and BUG-68 fixed with it) |
+| CLN-16 | P3 | TODO | Split `--glass-on` into one variable per reason | One inherited variable fades the material for four separate reasons (the entry reveal, the off page at rest, the reduced-motion page fade, the About scrim), and they work against each other through inheritance: index.css's `.scene-root:not([data-entered])` rule is a workaround for it. One variable per reason, multiplied in `.glass`. Needs its own comprehensive test pass before it ships (Shoro, 2026-10-14): the glass rules that keep Firefox from banding (D-59) are delicate |
+| CLN-17 | P3 | TODO | Move the inline styles behind the `!important` overrides into classes | 31 `!important` in index.css, mostly there to beat a React inline style. Many files. Needs its own comprehensive test pass before it ships (Shoro, 2026-10-14) |
+| CLN-18 | P2 | TODO | Key the layout CSS on `data-layout` alone | `layoutFor` (utils/layout.ts, D-63) writes the layout, but index.css still has 18 screen-width `@media` rules beside 96 `data-layout` ones, so the phone-landscape rules undo the laptop ones. One visible change expected: a 1280×480 window gets the padding its layout calls for. A layout change: through plan mode (Shoro, 2026-10-14) |
+| CLN-19 | P3 | TODO | Split ScenePage (608 lines), Graph (533) and useListenSession (466) | For example the paging and drag into a hook, the graph's drawing into a plain module, the live and day loading apart from the engine wiring. After CLN-16 to CLN-18, which shrink them first (Shoro, 2026-10-14) |
+
 ## Docs
 
 | ID | Priority | Status | Task | Notes |

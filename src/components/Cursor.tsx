@@ -1,5 +1,5 @@
 // Cursor — the page's own pointer (CURSOR in theme.ts), drawn in the DOM so its states can move rather than snap: a ring that grows over anything clickable, and over the sky or the graph grows further while a glyph fades in at its centre — play or pause for the sky (from the sky's data-cursor, which the scene sets), the drag arrows for the graph. While the pointer is down the ring closes to a filled dot: the press is shown here, once, for every clickable, rather than by each element's own pressed fill; where a glyph sits in the ring the ring fades out as it closes, leaving the icon. A CSS cursor image cannot animate, which is why this is an element that follows the pointer; the native cursor is hidden while it runs (index.css, html.has-cursor) and returns if it unmounts. Fine pointers only. Glyphs are Lucide's (icons.tsx).
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, memo } from "react";
 import { createPortal } from "react-dom";
 import { PlayIcon, PauseIcon, MoveHorizontalIcon, MoveUpIcon, MoveDownIcon, MoveLeftIcon, MoveRightIcon } from "./icons";
 import { CURSOR } from "../utils/theme";
@@ -7,7 +7,7 @@ import { CURSOR } from "../utils/theme";
 type Mode = "ring" | "pointer" | "play" | "pause" | "drag" | "move-up" | "move-down" | "move-left" | "move-right" | "hidden"; // the four move arrows: a page drag in progress (ScenePage, body data-drag), whatever is under the pointer
 const CLICKABLE = "button:not(:disabled), [role=\"button\"], [role=\"option\"], [role=\"tab\"], a, .scene-volume";
 
-export function Cursor() {
+export const Cursor = memo(function Cursor() {
   const ref = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<Mode>("hidden");
   const [pressed, setPressed] = useState(false);
@@ -70,4 +70,4 @@ export function Cursor() {
     </div>,
     document.body,
   );
-}
+});

@@ -1,5 +1,5 @@
 // SkyView — one physically based sky, rendered with the real drei <Sky>, <Stars>, and postprocessing <Bloom>. Used by the /scene-test harness and (next sprint) by the scene itself. Static: no engine, no clock; the caller passes the hour.
-import React, { useLayoutEffect, useMemo, useCallback, useRef, useEffect } from "react";
+import React, { useLayoutEffect, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import { Canvas, useThree, useFrame, invalidate } from "@react-three/fiber";
 import { Sky } from "@react-three/drei/core/Sky"; // the one component, from its own module (2026-09-16): drei's index pulls in three-stdlib's WebGL capabilities probe, which makes a throwaway context at load that Firefox later reclaims and reports as "WebGL context was lost"
 import { EffectComposer } from "@react-three/postprocessing";
@@ -257,7 +257,7 @@ function Exposure({ value, live }: { value: number; live: boolean }) {
 // No multisampling (2026-09-16): the composer renders every pass into its own targets, which are never multisampled, and the sky has no geometry edges to smooth (a dome, point stars, a textured sun sprite); the multisampled default buffer only cost memory bandwidth on every frame.
 const GL_CONFIG = { antialias: false, toneMapping: ACESFilmicToneMapping, preserveDrawingBuffer: true } as const;
 
-export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0, canvasRef }: Props) {
+export const SkyView = memo(function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style, live = true, model = "auto", albedo = 0.1, disc = false, discDeg = SUN_DISC.angularDiameterDeg, facing = "north", hour = 0, saturation = SKY_GRADE.saturation, particles = 0, grain = 0, canvasRef }: Props) {
   // The grade's effects, once per canvas; the composer's children are one memoized element so its pass chain is never rebuilt (see Fx).
   // ORDER (2026-09-15, measured): lens; tone mapping; bloom; saturation; aberration; noise. This is the order the sky was tuned against. The wrappers re-appended every re-created effect at the end of the list, so after the first eased change the chain settled into this order, with tone mapping BEFORE the bloom and the grade: the bloom's blur is taken from the HDR input of its pass and added onto the mapped image with nothing mapping it again, so the sun's glow goes to white — that is the glow every exposure and bloom value was judged on. The physically ordered chain (bloom and grade before tone mapping) is what showed on a fresh mount before any change, and reads as the dim, washed-out sky. The lens comes first, in its own pass (CONVOLUTION), so the frame it refracts is the raw sky and nothing it re-samples is lost.
   const fx = useMemo(makeFx, []);
@@ -329,4 +329,4 @@ export function SkyView({ frameTop = 0, params, sunPosition, starOpacity, style,
       </Canvas>
     </div>
   );
-}
+});

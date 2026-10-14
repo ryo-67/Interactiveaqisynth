@@ -3,7 +3,7 @@
 // A FLOOR as well as a ceiling (Shoro: it flickered and could not be judged). It stays at least MIN_MS whatever the feed does, so a cached answer cannot flash it, and it goes at MAX_MS whatever the feed does, since the fetch behind it has its own 30-second ceiling and nobody should watch a title for that long; the live line carries the rest from inside.
 // The scene does not appear from behind it, it comes UP with it (Shoro, 2026-09-17): the page's material and the sky are both at nothing while this is held and blend to full as it lifts, so the two cross rather than one being pulled off the other. ScenePage does that from onLift.
 // It is only ever the FIRST moment. A later fetch — the retry on the live line — never brings it back; by then the visitor is inside and the page should not be taken away from them.
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, memo } from "react";
 import { Glass } from "./Glass";
 import { useTheme, themeColors, families, typeScale, motion, GLASS, REDUCED_MOTION } from "../utils/theme";
 import { ENTRY } from "../content";
@@ -20,7 +20,7 @@ export const ENTRY_PANEL_VARS = { "--glass-fill": GLASS.fill, "--glass-fill-alph
 export const entryTitleStyle = (c: ReturnType<typeof themeColors>): React.CSSProperties => ({ margin: 0, fontFamily: families.serifItalic, fontStyle: "italic", fontWeight: 400, fontSize: `calc(var(--heading-size, ${typeScale.heading.size}) * 0.7)`, lineHeight: 1.2, color: c.textPrimary });
 export const entryLineStyle = (c: ReturnType<typeof themeColors>): React.CSSProperties => ({ margin: 0, fontFamily: families.uiCaps, fontSize: typeScale.caption.size, lineHeight: 1.5, color: c.textMuted });
 
-export function Entry({ ready, onLift, onGone }: { ready: boolean; onLift: () => void; onGone: () => void }) {
+export const Entry = memo(function Entry({ ready, onLift, onGone }: { ready: boolean; onLift: () => void; onGone: () => void }) {
   const c = themeColors(useTheme());
   const [done, setDone] = useState(false);
   const [lifting, setLifting] = useState(false);
@@ -53,4 +53,4 @@ export function Entry({ ready, onLift, onGone }: { ready: boolean; onLift: () =>
       </Glass>
     </div>
   );
-}
+});

@@ -1,5 +1,5 @@
 // SourceLine — footer line three (§5.2): the source in use, muted, as fact (Shoro, 2026-09-16: AirNow while Live is selected, EPA on any other day), and only when it applies the one disclosure that matters: live NO2 is a typical archive day (D-18). Whether a channel is typical is read from the hour records' source flags, never from a hardcoded list.
-import React from "react";
+import React, { memo } from "react";
 import { useTheme, themeColors, families, typeScale } from "../utils/theme";
 import { SOURCE_LINE_LIVE, SOURCE_LINE_ARCHIVE, SOURCE_URL_AIRNOW, SOURCE_URL_EPA, SOURCE_BORROWED, SOURCE_AREA_READING, SOURCE_LINE_TYPICAL_NO2, SOURCE_LABELS, BOROUGH_LONG } from "../content";
 import { channelProvenance, CHANNELS } from "../utils/channelSource";
@@ -28,7 +28,7 @@ function linkSources(line: string, style: React.CSSProperties): React.ReactNode[
   return out;
 }
 
-export function SourceLine({ borough, hours, fallback, live }: Props) {
+export const SourceLine = memo(function SourceLine({ borough, hours, fallback, live }: Props) {
   const c = themeColors(useTheme());
   // Links read as the line does; the underline appears on hover and keyboard focus only (index.css .source-link). AA is the text colour's.
   const linkStyle: React.CSSProperties = { color: "inherit", textUnderlineOffset: 2 };
@@ -68,4 +68,4 @@ export function SourceLine({ borough, hours, fallback, live }: Props) {
       )}
     </div>
   );
-}
+});

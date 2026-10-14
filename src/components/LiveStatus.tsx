@@ -5,7 +5,7 @@
 // LOADING is held back for a moment (SETTLE_MS) the FIRST time, so a feed that answers quickly never flashes a message; on a retry it appears at once, because it is the answer to a press. Once it is up it stays at least HOLD_MS, so a retry that fails in ten milliseconds still reads as having been asked.
 // UNAVAILABLE stays until it is resolved rather than timing out: the page behind it is the placeholder, a dash where the number goes and no plot at all, which on its own says nothing about why. It offers the two things worth doing — play the last day the archive holds, or ask AirNow again — and it does neither on its own (Shoro, 2026-09-17: offer, do not act), so nothing moves under the visitor.
 // It is not dismissible and needs no dismiss: choosing a day takes the page off Live and the line goes with it, and coming back to Live brings it back if the feed is still down, which is the truth of the matter.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import { usePresence } from "./usePresence";
 import { StatusPill, type StatusAction } from "./StatusPill";
 import { motion } from "../utils/theme";
@@ -17,7 +17,7 @@ const SETTLE_MS = motion.beatMs; // one beat of silence before a loading line fi
 const HOLD_MS = motion.beatMs * 2; // and once asked, the least the loading face holds before the error may come back: one beat to morph into it and one to be read, or a feed that fails in half a second reverses before it has arrived
 type Face = "loading" | "error";
 
-export function LiveStatus({ status, onArchive, onRetry, archiveReady }: { status: "loading" | "ready" | "unavailable"; onArchive: () => void; onRetry: () => void; archiveReady: boolean }) {
+export const LiveStatus = memo(function LiveStatus({ status, onArchive, onRetry, archiveReady }: { status: "loading" | "ready" | "unavailable"; onArchive: () => void; onRetry: () => void; archiveReady: boolean }) {
   const [up, setUp] = useState(false); // whether the line should be up; its arrival and departure are usePresence's
   const { mounted, visible: shown } = usePresence(up, FADE_MS);
   const [face, setFace] = useState<Face>("loading");
@@ -49,4 +49,4 @@ export function LiveStatus({ status, onArchive, onRetry, archiveReady }: { statu
   ];
   // The word swaps: one track opens as the other closes, the two cross-fading across the change.
   return <StatusPill tone={face} shown={shown} words={[{ text: LIVE_STATUS.loading, on: !error }, { text: LIVE_STATUS.unavailable, on: error }]} actions={actions} actionsInert={!error} />; // the collapsed buttons take no focus and are not read out
-}
+});

@@ -58,6 +58,7 @@ function viewFromUrl(): View {
   const v = qs.get("view") as View | null;
   return v && VIEWS.includes(v) ? v : "scene";
 }
+const FILL: React.CSSProperties = { width: "100%", height: "100%" }; // the sky fills its box; one object, so the memoised sky does not re-render for a new one
 const PAGE_MS = motion.beatMs * motion.pageBeats; // the slide between pages (D-43)
 const SWIPE_LOCK_PX = 8; // movement before a drag commits to an axis
 const SWIPE_PX = 48; // a travel along the pages' axis that counts as a swipe (D-45)
@@ -71,10 +72,11 @@ export default function ScenePage() {
   const s = useListenSession();
   // The status line (2026-10-12): the one spot above the footer where the page says what state it is in, one line at a time. Which state, and the order they win in, is the session's (pageStatus.ts); this gives each its words and buttons. ?mock=<name> on the dev server forces a state (utils/mock.ts).
   const { date, latestDate, setDate, retryDay, togglePlay } = s;
+  const toLatest = useCallback(() => { if (latestDate) setDate(latestDate); }, [latestDate, setDate]); // "Play a past day": the archive's last day
   const mocked = useMemo(() => mockStatus(MOCK, date), [date]);
   const status = mocked ?? s.status;
   const statusLine = useMemo((): { tone: "error" | "quiet"; message: string; actions?: StatusAction[] } | "live" | null => {
-    const toArchive: StatusAction = { label: LIVE_STATUS.toArchive, icon: <CalendarIcon size={14} />, onPress: () => latestDate && setDate(latestDate) };
+    const toArchive: StatusAction = { label: LIVE_STATUS.toArchive, icon: <CalendarIcon size={14} />, onPress: toLatest };
     const toLive: StatusAction = { label: STATUS.toLive, icon: <ChevronRightIcon size={14} />, onPress: () => setDate(null) };
     switch (status.kind) {
       case "no-sound": return { tone: "error", message: STATUS.noSound, actions: [{ label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: togglePlay }] }; // inside the press, which the browser needs to start audio
@@ -84,7 +86,7 @@ export default function ScenePage() {
       case "no-readings": return { tone: "quiet", message: STATUS.noReadings, actions: latestDate ? [toArchive] : [] };
       case "none": return null;
     }
-  }, [status, latestDate, setDate, retryDay, togglePlay]);
+  }, [status, latestDate, setDate, retryDay, togglePlay, toLatest]);
   const [sheetHost, setSheetHost] = useState<HTMLDivElement | null>(null);
   const layout = useLayout(); // D-63: one rule for every layout decision on the page (utils/layout.ts)
   const phone = isPhoneLayout(layout); // the phone's controls: the day sheet, no sky tap-to-play, no page cursor
@@ -208,6 +210,7 @@ export default function ScenePage() {
   // What the key and wheel handlers below read, current as of this render, so they are attached once rather than on every render (they were re-attached hundreds of times a second while playing, 2026-10-14).
   const pagingRef = useRef({ vertical, switchView });
   pagingRef.current = { vertical, switchView };
+  const onView = useCallback((v: View) => pagingRef.current.switchView(v), []); // one function for the page indicators, so they can skip the page's renders
   // The arrows along the pages' axis switch pages (only Space and Escape were bound); not while a control that uses them (the volume slider) has focus. Above the phone width the wheel does too: a scroll of more than WHEEL_PX in one direction, then nothing more until the slide is over, so a trackpad's inertia does not carry the page back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -307,10 +310,13 @@ export default function ScenePage() {
   const o3nEased = useEased(skyChannels.o3 ?? 0, tau, "o3n");
 
 
-  const view = useMemo(() => {
-    // During a change of day the sun is the transition's interpolated position (D-31); otherwise the loaded day's date and the clock place it.
+  // During a change of day the sun is the transition's interpolated position (D-31); otherwise the loaded day's date and the clock place it. Apart from the inputs below, so an eased value settling does not rebuild the sun or hand the sky a new vector.
+  const ang = useMemo(() => {
     const sun = s.sunDay ?? { date: "2023-07-12", tz: -4 };
-    const ang = s.sunOverride ?? sunAnglesAt(sun.date, clock, NYC_LAT, NYC_LON, sun.tz);
+    return s.sunOverride ?? sunAnglesAt(sun.date, clock, NYC_LAT, NYC_LON, sun.tz);
+  }, [s.sunDay, s.sunOverride, clock]);
+  const sunVector = useMemo(() => sunPositionVector(ang), [ang]);
+  const view = useMemo(() => {
     // MAPPING (PM2.5 → aerosol path, O3 → rayleigh + bloom, clock → exposure + fade): skyParamsFor is the one mapping, shared with the harness.
     const params = skyParamsFor(pm25nEased, o3nEased, ang.elevationDeg);
     // MAPPING (PM2.5 → plume density): the engine's own smoothed value while playing (§5.2: the scene never re-derives the smoothing); the rest hour's normalized value otherwise (the paused or seeked hour of the loaded day, else its latest).
@@ -327,8 +333,8 @@ export default function ScenePage() {
     const warm = Math.max(smokeShare, golden); // the tint keys on the same share as the alpha: a moderate haze leaves the panel navy, a grey or orange sky turns it umber
     const mix = (a: string, b: string) => mixRgb(parseRgb(a), parseRgb(b), warm).map(Math.round).join(", ");
     const glass = { alpha: GLASS.fillAlphaNight + (GLASS.fillAlphaDay - GLASS.fillAlphaNight) * daylight, fill: mix(GLASS.fill, GLASS.fillWarm), lift: GLASS.liftNight * (1 - daylight) };
-    return { params, sun: sunPositionVector(ang), stars: starOpacity(ang.elevationDeg, pm25nEased), smoke, regime, saturation, night: nightBlend(ang.elevationDeg), golden, glass };
-  }, [s.sunDay, s.sunOverride, clock, pm25nEased, o3nEased, smokeEased, regime]);
+    return { params, sun: sunVector, stars: starOpacity(ang.elevationDeg, pm25nEased), smoke, regime, saturation, night: nightBlend(ang.elevationDeg), golden, glass };
+  }, [ang, sunVector, pm25nEased, o3nEased, smokeEased, regime]);
   const goldenEased = useEased(view.golden, tau, "golden hour");
   // The last line of defence before the renderer: every number handed to the sky is checked; a non-finite one is named in the console once and the last good value stands in. Whatever produces the washed-out sky, it will be named here or in the sky's own watchdog.
   const lastGood = useRef<{ params: typeof view.params; sun: typeof view.sun; stars: number; saturation: number; lens: number; grain: number; clock: number } | null>(null);
@@ -403,6 +409,7 @@ export default function ScenePage() {
   const graphLift = useEased(rampLiftFor(panels.graph.luminance), tau, "graph ramp lift");
   const scaleLift = useEased(rampLiftFor(panels.scale.luminance), tau, "scale card ramp lift");
   const toneLift = useEased(rampLiftFor(panels.tone.luminance), tau, "tone card ramp lift");
+  const monitorLifts = useMemo(() => ({ scale: scaleLift, tone: toneLift }), [scaleLift, toneLift]);
   if (DEV) (window as unknown as Record<string, unknown>).__panel = { samples: skySamples, predicted: panels, lifts: { hero: heroLift, aqi: aqiLift, graph: graphLift, scale: scaleLift, tone: toneLift }, page, hour, playing, beat }; // a handle for measurement, like the sky's __sky
 
   // The dissolve: when the session reports a change of day made while playing, copy the WebGL sky's last frame into the overlay before the new day renders, then fade it out over DISSOLVE_BEATS.
@@ -452,7 +459,7 @@ export default function ScenePage() {
         {!FX_OFF.has("nocursor") && !aboutShown && <Cursor />} {/* the page's cursor stands down while the About overlay is up (theme.ts ABOUT): the native one returns */}
         {/* The cursor over the sky is the transport's affordance: the play glyph while paused, pause while playing (Cursor.tsx reads data-cursor). While a popover is open the sky shows the ring and the press that dismisses the popover is not a play/pause (popoverStore). */}
         <div ref={skyBoxRef} className="scene-sky" inert={about ? "" : undefined} data-cursor={phone ? undefined : popoverOpen ? "ring" : playing ? "pause" : "play"} style={{ position: "absolute", inset: 0 }} onPointerDown={onDragDown} onPointerMove={onDragMove} onPointerUp={onDragUp} onPointerCancel={onDragUp} onClick={phone ? undefined : () => { if (consumeSuppressedClick() || performance.now() - swipedAt.current < 400) return; s.togglePlay(); }} role={phone ? undefined : "button"} aria-label={phone ? undefined : SKY_TOGGLE_LABEL} tabIndex={-1}>
-          <SkyView canvasRef={skyCanvasRef} frameTop={skyFrameTop} params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={{ width: "100%", height: "100%" }} />
+          <SkyView canvasRef={skyCanvasRef} frameTop={skyFrameTop} params={safe.params} sunPosition={safe.sun} starOpacity={safe.stars} albedo={HOSEK_ALBEDO} disc={DISC} facing={FACING} hour={safe.clock} saturation={safe.saturation} particles={safe.lens} grain={safe.grain} live={playing} style={FILL} />
           {/* The dissolve (D-32): on a change of day while playing, the last rendered sky is copied here and faded out over the new one. Sits above the WebGL sky and below the DOM layers, which ease on their own. */}
           <canvas ref={dissolveCanvasRef} aria-hidden data-dissolve style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0 }} />
           {!FX_OFF.has("nonight") && <NightLayer blend={nightEased} density={view.smoke} />}
@@ -528,14 +535,14 @@ export default function ScenePage() {
               <div className="scene-page scene-page-monitor" data-page="monitor" aria-hidden={page !== "monitor"} inert={page !== "monitor" ? "" : undefined}>
                 <h2 className="scene-sr-only">{VIEW_LABELS.monitor}</h2>
                 <div className="scene-page-inner">
-                  <Monitor m={s.monitor} pulses={s.pulses} lifts={{ scale: scaleLift, tone: toneLift }} setRef={setPanelRef} suffixes={suffixes} />
+                  <Monitor m={s.monitor} pulses={s.pulses} lifts={monitorLifts} setRef={setPanelRef} suffixes={suffixes} />
                 </div>
               </div>
             </div>
             {/* The page control on laptop (D-43): a glass pill 16 px left of the section and centred on it, the two icons stacked along the pages' axis. It lives in the band so its centre is the band's, which is the section's (the pages centre their content in the band), not the page's. Below laptop it sits in the transport group beside the volume. */}
             {laptop && (
               <Glass material="glass" className="scene-pill scene-views-pill scene-views-side">
-                <PageIndicator view={page} onView={switchView} vertical />
+                <PageIndicator view={page} onView={onView} vertical />
               </Glass>
             )}
             {/* On laptop the transport stands in the whitespace left of the section, stacked, its top on the page pill's top, the page pill mirrored to the right (Shoro, 2026-09-16); the volume slider is vertical there (index.css .scene-transport-side). Below laptop both live in the bottom bar. */}
@@ -555,7 +562,7 @@ export default function ScenePage() {
           <footer className="scene-bottom">
             {/* What the live feed is doing, while Live is the chosen day and it has not answered (D-60). It rides the footer's top edge, so it sits above the whole bar at every breakpoint — above the Patch notes row on laptop, above the transport row as well below it — and takes no room in the column, so nothing moves when it appears or goes. Held back until the entry screen has gone (Shoro, 2026-09-17), or it would be waiting behind it. */}
             {/* LiveStatus stays mounted on Live (not only while it has something to say) so it can fade itself out when AirNow answers; any other state takes the spot from it. */}
-            {entryGone && (statusLine && statusLine !== "live" ? <StatusLine key={statusLine.message} {...statusLine} /> : s.live && <LiveStatus status={s.liveStatus} archiveReady={s.latestDate != null} onArchive={() => s.latestDate && s.setDate(s.latestDate)} onRetry={s.retryLive} />)}
+            {entryGone && (statusLine && statusLine !== "live" ? <StatusLine key={statusLine.message} {...statusLine} /> : s.live && <LiveStatus status={s.liveStatus} archiveReady={s.latestDate != null} onArchive={toLatest} onRetry={s.retryLive} />)}
             {!laptop && (
               <div className="scene-transport" inert={about ? "" : undefined}>
                 <Glass material="glass" className="scene-pill scene-icon-pill">
@@ -565,7 +572,7 @@ export default function ScenePage() {
                   <VolumeSlider onVolume={s.setVolume} />
                 </Glass>
                 <Glass material="glass" className="scene-pill scene-views-pill">
-                  <PageIndicator view={page} onView={switchView} vertical={false} />
+                  <PageIndicator view={page} onView={onView} vertical={false} />
                 </Glass>
               </div>
             )}

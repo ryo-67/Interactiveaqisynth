@@ -1,5 +1,5 @@
 // Transport controls (§5.3): a play/pause icon button and a volume slider, each its own glass pill in the page, both 28 tall inside 40-tall pills. Lucide glyphs (icons.tsx), tokens only. The gesture that starts audio must be the button's own click (Tone.start inside the call stack), so the toggle is wired straight to the session's togglePlay.
-import React, { useState, useRef, useLayoutEffect, forwardRef } from "react";
+import React, { useState, useRef, useLayoutEffect, forwardRef, memo } from "react";
 import { useTheme, themeColors, CONTROL } from "../utils/theme";
 import { TRANSPORT_PLAY, TRANSPORT_PAUSE, TRANSPORT_VOLUME, ABOUT_LABEL, ABOUT } from "../content";
 import { PlayIcon, PauseIcon, NotebookTextIcon, MinimizeIcon, XIcon } from "./icons";
@@ -11,7 +11,7 @@ function sliderToDb(v: number): number {
   return v <= 0.001 ? -60 : 20 * Math.log10(v);
 }
 
-export function PlayButton({ playing, onToggle }: { playing: boolean; onToggle: () => void }) {
+export const PlayButton = memo(function PlayButton({ playing, onToggle }: { playing: boolean; onToggle: () => void }) {
   const c = themeColors(useTheme());
   const s = `var(--ctl-inner, ${CONTROL.inner}px)`;
   return (
@@ -29,9 +29,9 @@ export function PlayButton({ playing, onToggle }: { playing: boolean; onToggle: 
       </span>
     </button>
   );
-}
+});
 
-export function VolumeSlider({ onVolume }: { onVolume: (db: number) => void }) {
+export const VolumeSlider = memo(function VolumeSlider({ onVolume }: { onVolume: (db: number) => void }) {
   const [vol, setVol] = useState(0.65);
   return (
     <input
@@ -43,11 +43,11 @@ export function VolumeSlider({ onVolume }: { onVolume: (db: number) => void }) {
       style={{ width: `var(--slider-width, ${CONTROL.sliderWidth}px)`, height: `var(--ctl-inner, ${CONTROL.inner}px)`, margin: 0, display: "block", "--vol": `${(vol * 100).toFixed(1)}%` } as React.CSSProperties}
     />
   );
-}
+});
 
 // The Patch notes button (Shoro, 2026-09-16): a frosted pill in the credit's exact shape, padding and type, Lucide's notebook-text before the label, behaving as the play button does (the hover and pressed fills, the cursor's press). It opens the About overlay (D-56) and is itself the way out of it: while the overlay is up it becomes "Exhale" on laptop (the glyph dissolving into Lucide's minimize, the label cross-fading into the new one inside a cell whose width carries the pill from one to the other, the labels cut by the pill's own edge) and a round dismiss at the row's centre below laptop (the glyph into a close mark, the label going with the width, the pill sliding over). The one element morphs in place, stacked above the overlay (index.css .scene-patch, z-index 31 in the scaffold the overlay is drawn in): a twin drawn over the overlay on open was mounted and measured in the same frame it had to morph, and now and then it skipped the morph. A slot the pill's resting size holds its place in the bar's layout, so the row does not re-centre as the pill narrows.
 type AboutForm = "exhale" | "dismiss" | "icon";
-export const AboutButton = forwardRef<HTMLButtonElement, { onPress?: () => void; open?: boolean; form?: AboutForm }>(function AboutButton({ onPress, open = false, form = "exhale" }, ref) {
+export const AboutButton = memo(forwardRef<HTMLButtonElement, { onPress?: () => void; open?: boolean; form?: AboutForm }>(function AboutButton({ onPress, open = false, form = "exhale" }, ref) {
   const c = themeColors(useTheme());
   const glassRef = useRef<HTMLDivElement>(null);
   const probePatch = useRef<HTMLSpanElement>(null);
@@ -112,4 +112,4 @@ export const AboutButton = forwardRef<HTMLButtonElement, { onPress?: () => void;
       </Glass>
     </div>
   );
-});
+}));

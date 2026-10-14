@@ -1,6 +1,6 @@
 // BoroughToggle — one row of words (§5.2 item 1), always one line, centred. No chrome: every word is set in caps with the same tracking; the selected borough changes to the same face's bold italic, not case or size, so both states share one baseline. When the row is wider than its pill it scrolls horizontally rather than wrapping.
 import { BOROUGH_SHORT, BOROUGH_LONG, BOROUGH_TAB_NAME, BOROUGH_ROW_LABEL } from "../content";
-import React from "react";
+import React, { memo } from "react";
 import { useTheme, themeColors, families, typeScale, CONTROL } from "../utils/theme";
 import { BOROUGHS, type Borough } from "../utils/nycOpenData";
 
@@ -10,7 +10,7 @@ interface Props {
   onSelect: (b: Borough) => void;
 }
 
-export function BoroughToggle({ selected, onSelect }: Props) {
+export const BoroughToggle = memo(function BoroughToggle({ selected, onSelect }: Props) {
   const c = themeColors(useTheme());
   return (
     <div
@@ -72,4 +72,4 @@ export function BoroughToggle({ selected, onSelect }: Props) {
       })}
     </div>
   );
-}
+});

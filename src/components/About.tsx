@@ -1,6 +1,6 @@
 // About — the liner notes (D-56, 2026-09-16): what the piece is, how each pollutant becomes sound, what the sky and the air are drawn from, where the data comes from, and who made it. Opened from the Patch notes button. Not a panel over the page but the page receding behind a scrim: a full-viewport backdrop blur of everything beneath (the sky, the plume, the panels, all still moving under it: theme.ts ABOUT) under a dark tint that holds AA for the text on the brightest sky (ABOUT.tintAlpha). The reading is one left-aligned column in the page's own type (the heading face for the title, the caption caps for the labels, the body size for everything else), ending as a letter does, the credit at the column's right with its links, glyphs alone, in a row beneath (below laptop, centred); it rises a few pixels as it dissolves in with the scrim, all at once. Under prefers-reduced-motion the fade is ABOUT.reducedMs.
 // The way out is the Patch notes button itself (Shoro, 2026-09-16; Transport.tsx AboutButton morphs in place, stacked above this overlay). The overlay is drawn inside the scaffold, not in a portal, so that stacking is one z-order. A mask band across the scroll surface's bottom, the button's row, keeps the reading from showing behind it below laptop. Escape and a press on the scrim close the overlay too. Focus goes to the title on open and back to the button on close; everything else in the scaffold is inert behind it (ScenePage). The overlay scrolls on its own; the page never does.
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, memo } from "react";
 import { useTheme, themeColors, families, typeScale, CONTROL, ABOUT as T, REDUCED_MOTION, ABOUT_FADE_MS } from "../utils/theme";
 import { ABOUT, CREDIT_URL, LINKEDIN_URL, GITHUB_URL, PORTFOLIO_RECORD_URL, RECORD_LINK } from "../content";
 import { chipStyle } from "./chip";
@@ -29,7 +29,7 @@ function keepTogether(line: string, phrase: string): React.ReactNode {
   return (<>{line.slice(0, i)}<span style={{ whiteSpace: "nowrap" }}>{phrase}</span>{line.slice(i + phrase.length)}</>);
 }
 
-export function About({ open, onClose, anchorRef, latestDate }: Props) {
+export const About = memo(function About({ open, onClose, anchorRef, latestDate }: Props) {
   const c = themeColors(useTheme());
   const { mounted, visible } = usePresence(open, ABOUT_FADE_MS);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -126,4 +126,4 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
       </div>
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 // Monitor — the second scene page (D-43): the synthesizer's state as a bento of frosted cards, each labelled with the measurement that drives it, so a visitor can see that synthesis is happening and which pollutant is doing what. Reads the session's MonitorState (the beat report while playing, the held hour at rest) and re-derives nothing: the tier, the pattern and σ are the engine's own; the meters show the normalized values the engine's mappings take as input (§3.6), not the Hz or the wet they become.
 // Every value moves on the beat: meters ease over half a beat like the sky's inputs (Gauges.tsx, useEased), the ladders' lit step and the lane's hits fade over one beat (index.css).
-import React from "react";
+import React, { memo } from "react";
 import { Card } from "./Card";
 import { Routing } from "./Routing";
 import { Ladder, Meter, DetuneBand, Lane } from "./Gauges";
@@ -32,7 +32,7 @@ function Value({ children, unit }: { children: React.ReactNode; unit?: React.Rea
   );
 }
 
-export function Monitor({ m, pulses, lifts, setRef, suffixes }: Props) {
+export const Monitor = memo(function Monitor({ m, pulses, lifts, setRef, suffixes }: Props) {
   const tone = TONE_WORDS[m.tierIndex] ?? TONE_WORDS[0];
   return (
     <div className="scene-monitor">
@@ -71,5 +71,5 @@ export function Monitor({ m, pulses, lifts, setRef, suffixes }: Props) {
       </Card>
     </div>
   );
-}
+});
 

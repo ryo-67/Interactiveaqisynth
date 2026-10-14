@@ -1,5 +1,5 @@
 // DayNav — scrubbing older days (§2.2, UX-03 as page-level navigation): pagination one day at a time, the measured pins as chips, and a hand-built month calendar. Range is January 2020 to the archive's last available day (the static archive plus the live-year route; EPA lags real time, so yesterday is never assumed); "Live" returns to the last 24 hours. No component libraries; tokens only; copy from content.ts.
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, memo } from "react";
 import { createPortal } from "react-dom";
 import { useTheme, themeColors, families, typeScale, space, CONTROL, motion, NIGHT_GROUND } from "../utils/theme";
 import { chipStyle } from "./chip";
@@ -142,7 +142,7 @@ function CalendarGrid({ date, latestDate, onPick }: { date: string | null; lates
 // The labels that size the phone chip: Last 24h, the presets, and the longest date the calendar can produce.
 const WIDEST_DATE_LABEL = "Sep 30, 2026"; // the longest label a date chip can show in the monospaced data face: a two-digit day and the year
 const WIDTH_LABELS = [NAV_LAST_24H, ...PINS.map((p) => p.name), WIDEST_DATE_LABEL];
-export function DayPicker({ date, onChange, loading, latestDate, sheetHost }: Props & { sheetHost: HTMLElement | null }) { // sheetHost: where the day sheet mounts (D-65; ScenePage); null only until it has
+export const DayPicker = memo(function DayPicker({ date, onChange, loading, latestDate, sheetHost }: Props & { sheetHost: HTMLElement | null }) { // sheetHost: where the day sheet mounts (D-65; ScenePage); null only until it has
   const c = themeColors(useTheme());
   const chip = (active: boolean) => chipStyle(c, active);
   const [open, setOpen] = useState(false);
@@ -192,9 +192,9 @@ export function DayPicker({ date, onChange, loading, latestDate, sheetHost }: Pr
       )}
     </div>
   );
-}
+});
 
-export function DayNav({ date, onChange, loading, latestDate, touch = false }: Props) {
+export const DayNav = memo(function DayNav({ date, onChange, loading, latestDate, touch = false }: Props) {
   const c = themeColors(useTheme());
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -251,10 +251,10 @@ export function DayNav({ date, onChange, loading, latestDate, touch = false }: P
       )}
     </div>
   );
-}
+});
 
 // PinStrip — the measured days as chips (§2.2), its own pill in the scaffold, always one row.
-export function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
+export const PinStrip = memo(function PinStrip({ date, onChange }: { date: string | null; onChange: (date: string | null) => void }) {
   const c = themeColors(useTheme());
 
   // One row, always (2026-09-15): the chips never wrap, so the pill's fit-content is exact and needs no script; when the day group cannot hold this pill beside the date pill, the group wraps the whole pill onto its own row (index.css). A chip folding onto a second line inside the pill read as an overflow.
@@ -277,4 +277,4 @@ export function PinStrip({ date, onChange }: { date: string | null; onChange: (d
       })}
     </div>
   );
-}
+});

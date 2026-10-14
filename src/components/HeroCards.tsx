@@ -1,5 +1,5 @@
 // HeroCards — the hero as two widgets with the monitor's exact anatomy (Shoro, 2026-09-16; §5.2 items 2 and 3): label, value, gauge. The AQI card: the number under "AQI · now" on Live or "AQI · Oct 29" on an archive day, and beneath it one bar in the number's own colour on the six-category EPA ramp. The Breath card: the tier word in white over the five-step ladder the scale and tone cards carry, its lit step in the tier's colour on the ramp (the ladder is where the colour lives; the word stays white). The word changes only at tier boundaries, with a 0.5 s blur (§5.4); the number never animates. The mood sentence went with this: the gauge says what it said.
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, memo } from "react";
 import { Card, cardLabelStyle } from "./Card";
 import { AQINumber } from "./AQINumber";
 import { Ladder, AQIBar } from "./Gauges";
@@ -29,7 +29,7 @@ interface AQIProps {
 }
 
 // The number card. Its label names the day the number is for: "now" on Live (the current AQI, the NowCast composite at the latest hour), the day's date on an archive day (its official daily AQI), both from engine/aqi.ts (D-42). The bar beneath is the number's category colour.
-export function AQICard({ value, date, lift = 0, cardRef }: AQIProps) {
+export const AQICard = memo(function AQICard({ value, date, lift = 0, cardRef }: AQIProps) {
   const c = themeColors(useTheme());
   const probe = useRef<HTMLDivElement>(null);
   const width = useProbeWidth(probe);
@@ -46,7 +46,7 @@ export function AQICard({ value, date, lift = 0, cardRef }: AQIProps) {
       <AQIBar aqi={value} lift={lift} />
     </Card>
   );
-}
+});
 
 interface BreathProps {
   aqi: number | null; // the AQI the word describes: colours the word and the lit step on the same scale as the graph (D-27)
@@ -56,7 +56,7 @@ interface BreathProps {
 }
 
 // The breath card: the word over the ladder, the scale and tone cards' anatomy.
-export function BreathCard({ tierIndex, aqi, lift = 0, cardRef }: BreathProps) {
+export const BreathCard = memo(function BreathCard({ tierIndex, aqi, lift = 0, cardRef }: BreathProps) {
   const c = themeColors(useTheme());
   const probe = useRef<HTMLDivElement>(null);
   const width = useProbeWidth(probe);
@@ -86,4 +86,4 @@ export function BreathCard({ tierIndex, aqi, lift = 0, cardRef }: BreathProps) {
       <Ladder step={shown} aqi={aqi} lift={lift} />
     </Card>
   );
-}
+});

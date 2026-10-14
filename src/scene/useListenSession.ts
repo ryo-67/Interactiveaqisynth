@@ -6,6 +6,7 @@ import { skyFrameAspect } from "./useSafariWindow";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SynthEngine, type BeatInfo, type Day, type HourReading } from "../engine/SynthEngine";
 import { createPulseFeed, type PulseFeed } from "./pulseFeed";
+import { pageStatus, type PageStatus } from "./pageStatus";
 import { barK, barSteps } from "../engine/euclid";
 import { TIERS, detuneSigma, tierIndexOf } from "../engine/scales";
 import { pm25ToAQI, pm25Played, isMeasuredHour, seriesAQI } from "../engine/aqi";
@@ -44,8 +45,6 @@ export interface ListenSession {
   date: string | null;
   setDate: (d: string | null) => void;
   dayLoading: boolean;
-  dayWaiting: boolean; // the chosen day has been loading longer than a beat: the page says so (a current-year day from EPA can take a minute)
-  dayFailed: boolean; // the chosen day did not arrive (the archive file or the EPA month failed)
   retryDay: () => void;
   // ONE clock for everything that moves with the phrase: the beat's integer hour eased over one beat (§5.4), wrapping forward at the loop seam. The sun, the playhead and every graph track read this and nothing else.
   latestDate: string | null; // the last day the archive can play; null until known
@@ -62,14 +61,13 @@ export interface ListenSession {
   // What the live fetch is doing (D-60, 2026-09-17): "loading" until AirNow answers, "ready" once it has, "unavailable" when it could not be reached. It used to fail into a console warning and an empty page that never said why.
   liveStatus: "loading" | "ready" | "unavailable";
   retryLive: () => void;
-  liveEmpty: boolean; // live answered, with no measured PM2.5 or ozone in any hour: AirNow has nothing for the city (the typical NO2 alone is not a reading)
+  status: PageStatus; // what the line above the footer says, one state at a time in priority order (pageStatus.ts)
   anchors: PollutantAnchors; // the engine's anchors (falls back to Queens 2023 until the borough's land)
   day: Day | null;
   live: boolean;
   playing: boolean;
   beat: BeatInfo | null;
   togglePlay: () => void;
-  soundFailed: boolean; // Play was pressed and the audio did not start: the button went back to Play and the page says so
   setVolume: (db: number) => void;
   displayAqi: number | null;
   aqiHours: Array<number | null>; // the loaded day's current AQI hour by hour (engine/aqi.ts): the graph's AQI line
@@ -360,9 +358,10 @@ export function useListenSession(): ListenSession {
   const skyChannels = { pm25: held("pm25"), o3: held("o3"), no2: held("no2") };
 
   const liveEmpty = liveStatus === "ready" && snapshot != null && !snapshot.series.Citywide.hours.some((h) => h.pm25 != null || h.o3 != null); // the citywide series is the mean of every reporting borough, so empty there is empty everywhere
+  const status = useMemo(() => pageStatus({ soundFailed, date, dayFailed, dayWaiting, live, liveStatus, liveEmpty }), [soundFailed, date, dayFailed, dayWaiting, live, liveStatus, liveEmpty]); // memoised, so the page's line is rebuilt only when the state changes
 
   return {
-    borough, setBorough, date, setDate, latestDate, dayLoading, dayWaiting, dayFailed, retryDay, liveEmpty, soundFailed, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
+    borough, setBorough, date, setDate, latestDate, dayLoading, retryDay, status, playheadHour, playheadClock, sunDay: sunDayMemo, sunOverride: transition.sun, dissolve: transition.dissolve, paused, seek,
     snapshot, liveStatus, retryLive, anchors: a, day, live, playing, beat, togglePlay, setVolume,
     displayAqi, aqiHours, latest, rest, moodTier, moodAqi, monitor, pulses, skyChannels, devDayKey, setDevDayKey,
   };

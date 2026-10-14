@@ -33,6 +33,7 @@ import { StatusLine, type StatusAction } from "../components/StatusLine";
 import { CalendarIcon, RefreshIcon, ChevronRightIcon } from "../components/icons";
 import { labelOf } from "../utils/time";
 import { MOCK } from "../utils/mock";
+import { mockStatus } from "./pageStatus";
 import { Entry } from "../components/Entry";
 import { PHASE0_DAYS } from "../fixtures/phase0-days";
 import { ThemeContext, GLASS, MONITOR, HOSEK_ALBEDO, CAMERA_FACING, NYC_LAT, NYC_LON, SKY_GRADE, motion, GOLDEN, CONTROL, ABOUT as ABOUT_TOKENS, REDUCED_MOTION, ABOUT_FADE_MS, NIGHT_GROUND } from "../utils/theme";
@@ -65,23 +66,22 @@ const DISSOLVE_BEATS = 1.5; // the dissolve's length on a change of day while pl
 
 export default function ScenePage() {
   const s = useListenSession();
-  // The status line (2026-10-12): the one spot above the footer where the page says what state it is in, one line at a time. In order: sound that did not start (the visitor just pressed Play), a chosen day that did not arrive, the live feed's own line (LiveStatus, D-60), a chosen day still on its way, and a live answer with nothing measured in it. ?mock=<name> on the dev server forces a state (utils/mock.ts); without a chosen day a mocked day-state names a day that fits it (a current-year day past the snapshot for the EPA wait, the Wildfire pin for a failure).
+  // The status line (2026-10-12): the one spot above the footer where the page says what state it is in, one line at a time. Which state, and the order they win in, is the session's (pageStatus.ts); this gives each its words and buttons. ?mock=<name> on the dev server forces a state (utils/mock.ts).
   const { date, latestDate, setDate, retryDay, togglePlay } = s;
-  const soundFailed = s.soundFailed || MOCK === "no-sound";
-  const dayFailed = (date != null && s.dayFailed) || MOCK === "day-failed";
-  const dayWaiting = (date != null && s.dayWaiting) || MOCK === "day-loading";
-  const liveEmpty = (s.live && s.liveEmpty) || MOCK === "no-readings";
-  const liveLine = s.live && s.liveStatus !== "ready";
+  const mocked = useMemo(() => mockStatus(MOCK, date), [date]);
+  const status = mocked ?? s.status;
   const statusLine = useMemo((): { tone: "error" | "quiet"; message: string; actions?: StatusAction[] } | "live" | null => {
     const toArchive: StatusAction = { label: LIVE_STATUS.toArchive, icon: <CalendarIcon size={14} />, onPress: () => latestDate && setDate(latestDate) };
     const toLive: StatusAction = { label: STATUS.toLive, icon: <ChevronRightIcon size={14} />, onPress: () => setDate(null) };
-    if (soundFailed) return { tone: "error", message: STATUS.noSound, actions: [{ label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: togglePlay }] }; // inside the press, which the browser needs to start audio
-    if (dayFailed) return { tone: "error", message: STATUS.dayFailed.replace("{date}", labelOf(date ?? "2023-06-07")), actions: [{ label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: retryDay }, toLive] };
-    if (liveLine && !MOCK) return "live";
-    if (dayWaiting) return { tone: "quiet", message: STATUS.dayLoading.replace("{date}", labelOf(date ?? "2026-08-03")) };
-    if (liveEmpty) return { tone: "quiet", message: STATUS.noReadings, actions: latestDate ? [toArchive] : [] };
-    return null;
-  }, [soundFailed, dayFailed, liveLine, dayWaiting, liveEmpty, date, latestDate, setDate, retryDay, togglePlay]);
+    switch (status.kind) {
+      case "no-sound": return { tone: "error", message: STATUS.noSound, actions: [{ label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: togglePlay }] }; // inside the press, which the browser needs to start audio
+      case "day-failed": return { tone: "error", message: STATUS.dayFailed.replace("{date}", labelOf(status.date)), actions: [{ label: LIVE_STATUS.retry, icon: <RefreshIcon size={14} />, onPress: retryDay }, toLive] };
+      case "live-feed": return "live";
+      case "day-waiting": return { tone: "quiet", message: STATUS.dayLoading.replace("{date}", labelOf(status.date)) };
+      case "no-readings": return { tone: "quiet", message: STATUS.noReadings, actions: latestDate ? [toArchive] : [] };
+      case "none": return null;
+    }
+  }, [status, latestDate, setDate, retryDay, togglePlay]);
   const [sheetHost, setSheetHost] = useState<HTMLDivElement | null>(null);
   const layout = useLayout(); // D-63: one rule for every layout decision on the page (utils/layout.ts)
   const phone = isPhoneLayout(layout); // the phone's controls: the day sheet, no sky tap-to-play, no page cursor

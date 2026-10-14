@@ -185,6 +185,7 @@ export function useListenSession(): ListenSession {
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine || !day) return;
+    let superseded = false; // a later day or borough has taken over: this one must not reach the engine after it (BUG-71)
     (async () => {
       if (devFixture) {
         engine.setDay(devFixture.day, QUEENS_2023_ANCHORS);
@@ -192,10 +193,12 @@ export function useListenSession(): ListenSession {
       }
       // Anchors that fail to load fall back to the bundled ones (BUG-60): the day still plays, normalized against Queens 2023 rather than its borough, instead of the engine silently keeping the previous day.
       const a = await getAnchors(borough).catch((err) => { console.warn("[App] anchors failed, using the bundled ones:", err); return QUEENS_2023_ANCHORS; });
+      if (superseded) return;
       // Any switch — borough or day — keeps the phrase position: the music does not stop, the next beat reads the new air (§2.1, §2.2).
       engine.setDay(day, a, { keepPosition: true });
       setAnchors(a);
     })();
+    return () => { superseded = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day, borough, devDayKey, date]);
 

@@ -3,21 +3,12 @@
   :root, :host {
     --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    --spacing: .25rem;
-    --container-sm: 24rem;
-    --container-md: 28rem;
-    --container-2xl: 42rem;
-    --container-5xl: 64rem;
     --text-base: 1rem;
     --text-lg: 1.125rem;
     --text-xl: 1.25rem;
     --text-2xl: 1.5rem;
     --font-weight-normal: 400;
     --font-weight-medium: 500;
-    --radius-2xl: 1rem;
-    --animate-pulse: pulse 2s cubic-bezier(.4, 0, .6, 1) infinite;
-    --default-transition-duration: .15s;
-    --default-transition-timing-function: cubic-bezier(.4, 0, .2, 1);
     --default-font-family: var(--font-sans);
     --default-font-feature-settings: var(--font-sans--font-feature-settings);
     --default-font-variation-settings: var(--font-sans--font-variation-settings);
@@ -148,8 +139,6 @@
     letter-spacing: inherit;
     color: inherit;
     opacity: 1;
-    --lightningcss-light: initial;
-    --lightningcss-dark: ;
     color-scheme: light;
     background-color: #0000;
     border-radius: 0;
@@ -162,8 +151,6 @@
     letter-spacing: inherit;
     color: inherit;
     opacity: 1;
-    --lightningcss-light: initial;
-    --lightningcss-dark: ;
     color-scheme: light;
     background-color: #0000;
     border-radius: 0;
@@ -287,22 +274,6 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-  }
-
-  * {
-    border-color: var(--border);
-    outline-color: var(--ring);
-  }
-
-  @supports (color: color-mix(in lab, red, red)) {
-    * {
-      outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
-    }
-  }
-
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -343,40 +314,10 @@
   --background: #fff;
   --foreground: oklch(.145 0 0);
   --card: #fff;
-  --card-foreground: oklch(.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(.95 .0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --destructive-foreground: #fff;
   --border: #0000001a;
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: oklch(.708 0 0);
-  --chart-1: oklch(.646 .222 41.116);
-  --chart-2: oklch(.6 .118 184.704);
-  --chart-3: oklch(.398 .07 227.392);
-  --chart-4: oklch(.828 .189 84.429);
-  --chart-5: oklch(.769 .188 70.08);
-  --radius: .625rem;
-  --sidebar: oklch(.985 0 0);
-  --sidebar-foreground: oklch(.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(.985 0 0);
-  --sidebar-accent: oklch(.97 0 0);
-  --sidebar-accent-foreground: oklch(.205 0 0);
-  --sidebar-border: oklch(.922 0 0);
-  --sidebar-ring: oklch(.708 0 0);
 }
 
 html {
@@ -467,7 +408,7 @@ body { background-color: #05050a; }
   /* The section (2026-09-16): both pages' content is one column of this width, centred in the band — the hero-and-graph row fills it, the monitor's grid fills it — so the two pages are exactly as wide as each other at every breakpoint. Above the phone width the page pill stands in --pill-room to its left (the pill's 40 plus a 16 gap), and the section leaves that room on both sides so it stays centred. */
   --pill-room: 56px;
   --section-w: min(1040px, 100vw - 2 * var(--ui-pad) - 2 * var(--pill-room));
-  --display-size: 80px; --heading-size: 34px; --heading-line: 40px; --body-size: 15px; --body-line: 24px; /* display 96 → 64 (2026-09-15): the number shares a row with the word now */
+  --display-size: 80px; --heading-size: 34px; --heading-line: 40px; --body-size: 15px; /* display 96 → 64 (2026-09-15): the number shares a row with the word now */
   --ui-pad: 32px; --ui-gap: 20px;
   --panel-radius: 20px; --chip-radius: 8px; /* the frosted surfaces' corner and the small readouts' corner (Shoro, 2026-09-16): they step with the breakpoint like the padding, so a phone's 12 px-padded card does not carry a desktop corner; the pills are round at every size on their own */
   --grid-gap: var(--ui-gap); /* the monitor grid's gap, which the hero pair shares so it is exactly one row tall; phones step it to 12 and 8 */
@@ -534,7 +475,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-entered="true"] .scene-ui { --glass-on: 1; }
 
 /* The entry (D-61, 2026-09-17): the page's own material at the one moment there is nothing else in it. The sky is already rendering underneath, so this is the About overlay's treatment — a blur of what is there under the navy tint — with one frosted panel on it; it lifts over a beat and leaves. Above everything, including the overlay and the Patch notes pill, since nothing behind it is meant to be reached yet. */
-.scene-entry { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: calc(var(--ui-pad, 32px) + var(--win-t, 0px)) calc(var(--ui-pad, 32px) + var(--win-r, 0px)) calc(var(--ui-pad, 32px) + var(--win-b, 0px)) calc(var(--ui-pad, 32px) + var(--win-l, 0px)); /* the whole root, so its blur and tint run under both of Safari's bars, with the window's gaps added back as padding so the panel is centred where it was, in the window (BUG-57) */ background-color: rgba(var(--about-tint, 5, 6, 14), 0.72); -webkit-backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6)); backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6)); opacity: 1; transition: opacity var(--entry-ms, 667ms) ease; }
+.scene-entry { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: calc(var(--ui-pad, 32px) + var(--win-t, 0px)) calc(var(--ui-pad, 32px) + var(--win-r, 0px)) calc(var(--ui-pad, 32px) + var(--win-b, 0px)) calc(var(--ui-pad, 32px) + var(--win-l, 0px)); /* the whole root, so its blur and tint run under both of Safari's bars, with the window's gaps added back as padding so the panel is centred where it was, in the window (BUG-57) */ background-color: rgba(var(--about-tint), var(--about-alpha)); -webkit-backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6)); backdrop-filter: blur(var(--glass-blur, 20px)) saturate(var(--glass-saturate, 1.6)); opacity: 1; transition: opacity var(--entry-ms, 667ms) ease; }
 .scene-entry[data-lifting="true"] { opacity: 0; pointer-events: none; }
 .glass.frosted.scene-entry-panel { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 40px 24px; max-width: 100%; text-align: center; }
 .scene-entry-lane { width: 180px; margin-top: 10px; }
@@ -598,7 +539,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* The hero keeps its content height above the graph; the graph has a floor at its token plot height and takes the section's width. */
 /* ——— The two pages (D-43, reworked 2026-09-15; the push, Shoro, 2026-09-16): the band is a frame that never changes size — it takes the height the bars leave — and both pages live in it, absolutely placed. Above the phone width they stack vertically, the monitor a gap below the scene; on phones they sit side by side. A switch is one motion: the track carrying both pages PUSHES along that axis over --page-ms, eased in and out, at full material throughout (no fade, no drift: the two-motion switch with its dissolve was replaced 2026-09-16), driven frame by frame by the page so the sky's blur and the panels leave in one commit (ScenePage.tsx startPush). Nothing stops a page short of the bars any more (Shoro, 2026-09-17: remove the top and bottom edge clips). A page passes UNDER them, since the bars paint above the band, and where it crosses the page padding above the header or below the footer — 24 to 32 px — it simply shows. What was there before was a per-panel fade keyed to each panel's overlap with a bar (ScenePage stepPanels, gone); before that a gradient mask and a clip-path, neither of which can be used at all, since both make the band a backdrop root and every panel inside loses the sky its blur samples, measured in both engines. What carries the switch now is the SCALE: the page leaving shrinks to motion.pageRestScale and the page arriving grows from it, so the two read as faces of one thing turning, and the shrink pulls a passing page inward from the bars on its way. The frame's vertical bleed, --clip-pad-y, stays at 140 rather than the shadow's 40 — it does not move the track, whose height is the band's less the bleed either way, and it keeps the off page's rest position well beyond the frame. The horizontal axis needs neither: the pages leave by the viewport's edge. Sideways the frame still reaches --clip-pad, the shadow's 32. Under reduced motion the pages do not move; they cross-fade in place. ——— */
 /* The frame does NOT clip (Shoro, 2026-09-17). Its bleed is a fixed 140 while the header WRAPS: at one row the band starts at 92 and the frame's top edge sits 48 px above the window, out of sight, but between 1024 and 1407 the header takes two rows, the band starts at 152, and the frame's top lands at +12 — inside the window, where overflow: hidden drew a hard line across the full width twelve pixels down. Only ever at the top, since the footer is 40 px at every width and the bottom edge never reaches the window. The window's own edge is the only clip a travelling page should meet, and .scene-ui already provides it: its box IS the window. */
-.scene-mid { --clip-pad: 32px; --clip-pad-y: 140px; --page-gap: var(--ui-gap); --page-ease: cubic-bezier(0.65, 0, 0.35, 1); flex: 1 1 auto; position: relative; z-index: 0; min-height: 0; min-width: 0; margin: calc(-1 * var(--clip-pad-y)) calc(-1 * var(--clip-pad)); padding: var(--clip-pad-y) var(--clip-pad); }
+.scene-mid { --clip-pad: 32px; --clip-pad-y: 140px; --page-gap: var(--ui-gap); flex: 1 1 auto; position: relative; z-index: 0; min-height: 0; min-width: 0; margin: calc(-1 * var(--clip-pad-y)) calc(-1 * var(--clip-pad)); padding: var(--clip-pad-y) var(--clip-pad); }
 /* The band's edges (Shoro, 2026-09-16, the last cut): NO MASK. A gradient mask on the band was the graceful way to stop a page short of the bars, but a mask makes its element a backdrop root, so every panel inside the band stopped being able to sample the sky and the browser's blur died on all of them at once — which is exactly why the bars, which sit outside the band, kept their material while the panels lost theirs. A mask and a backdrop-filter cannot both own the same content. The edge was then drawn on the MATERIAL, each panel's --glass-on being its own overlap with the band's middle; that went too (Shoro, 2026-09-17) and nothing replaces it at the edge. Nothing is clipped, nothing is masked, nothing fades: a page keeps its full material for the whole move and the scale is what says it is leaving. */
 .scene-mid[data-moving="true"] .scene-playhead-chip { backdrop-filter: none; -webkit-backdrop-filter: none; }
 .scene-track { position: absolute; inset: var(--clip-pad-y) var(--clip-pad); }
@@ -742,7 +683,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 @media (max-width: 1023px) {
   .scene-ui {
     --ctl-gap-wide: 12px;
-    --display-size: 64px; --heading-size: 28px; --heading-line: 32px; --body-size: 14px; --body-line: 20px; /* display 72 → 56 → 64 (2026-09-15) */
+    --display-size: 64px; --heading-size: 28px; --heading-line: 32px; --body-size: 14px; /* display 72 → 56 → 64 (2026-09-15) */
     --ui-pad: 24px; --ui-gap: 16px;
     --panel-radius: 16px; --chip-radius: 6px;
   }
@@ -791,7 +732,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone"] .scene-ui {
   --ctl-pill: 44px; --ctl-inner: 44px; --ctl-gap-wide: 0px;
   --ui-pad: 16px; --ui-gap: 12px; --grid-gap: var(--ui-gap); /* ONE gap on a phone, 12 at every height and in landscape (Shoro, 2026-10-05: the spacing looked off, then 8 on short screens read as cramped): between the bars and the band, the hero cards, the hero and the graph, the synth cards, the top grid and the transport */
-  --display-size: 48px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px; --body-line: 20px;
+  --display-size: 48px; --heading-size: 24px; --heading-line: 28px; --body-size: 14px;
   --panel-radius: 16px; --chip-radius: 10px;
   --graph-faint-alpha: 0;
 }
@@ -847,7 +788,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-root[data-layout="phone-landscape"] .scene-ui {
   --ctl-pill: 44px; --ctl-inner: 44px; --ctl-gap-wide: 0px;
   --ui-pad: 12px; --ui-gap: 12px; --grid-gap: var(--ui-gap);
-  --display-size: 34px; --heading-size: 22px; --heading-line: 26px; --body-size: 13px; --body-line: 18px;
+  --display-size: 34px; --heading-size: 22px; --heading-line: 26px; --body-size: 13px;
   --panel-radius: 14px; --chip-radius: 10px;
   --graph-faint-alpha: 0;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -906,7 +847,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 .scene-patch-slot { position: relative; display: inline-flex; flex: 0 0 auto; }
 .scene-patch-size { display: inline-flex; }
 .glass.frosted.scene-patch { position: absolute; left: 0; top: 0; height: 100%; z-index: 31; padding: 0; overflow: hidden; border-radius: 999px; display: flex; align-items: center; width: max-content; transition: transform var(--about-ms, 667ms) ease; } /* its width is its content's; the label cell inside eases (Transport.tsx) */
-.scene-about-scrim { position: absolute; top: calc(-1 * var(--win-t, 0px)); right: calc(-1 * var(--win-r, 0px)); bottom: calc(-1 * var(--win-b, 0px)); left: calc(-1 * var(--win-l, 0px)); /* out of the window to the root's edges, under both of Safari's bars (BUG-57); the reading stays in the window */ --glass-on: 0; background-color: rgba(var(--about-tint, 5, 6, 14), calc(var(--about-alpha, 0.65) * var(--glass-on))); -webkit-backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); transition: --glass-on var(--about-ms) ease; }
+.scene-about-scrim { position: absolute; top: calc(-1 * var(--win-t, 0px)); right: calc(-1 * var(--win-r, 0px)); bottom: calc(-1 * var(--win-b, 0px)); left: calc(-1 * var(--win-l, 0px)); /* out of the window to the root's edges, under both of Safari's bars (BUG-57); the reading stays in the window */ --glass-on: 0; background-color: rgba(var(--about-tint), calc(var(--about-alpha) * var(--glass-on))); -webkit-backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); backdrop-filter: blur(calc(var(--glass-on) * var(--about-blur, 20px))) saturate(calc(1 + (var(--about-saturate, 1.4) - 1) * var(--glass-on))); transition: --glass-on var(--about-ms) ease; }
 .scene-about[data-visible="true"] .scene-about-scrim { --glass-on: 1; }
 .scene-about-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: calc(var(--about-pad) + 40px) var(--about-inline) calc(var(--about-pad) + 40px); box-sizing: border-box; user-select: text; }
 @media (max-width: 1023px) { .scene-about-scroll { padding-bottom: calc(var(--about-band) + 24px); -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--about-band) - 20px), transparent calc(100% - var(--about-band))); mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--about-band) - 20px), transparent calc(100% - var(--about-band))); } } /* the reading fades out over the dismiss button's row and no further: --about-band is the button's row and the padding under it (About.tsx), the 20 above it the ramp into it (Shoro, 2026-09-17: shorter than it was) */
@@ -941,7 +882,7 @@ html.has-cursor, html.has-cursor * { cursor: none !important; }
 /* ——— The day sheet (D-65; Sheet.tsx). Hosted in the scaffold above everything but the entry: its scrim reaches past the window to the screen's edges like the About scrim (BUG-57), and the panel rises from the window's bottom edge with its fill carried on under the toolbar. Portrait: the six days as a 3 × 2 grid of chips above the month. Landscape: the window's full height, the days beside the month; a six-week month scrolls inside by about a row. ——— */
 .scene-sheet-host { position: absolute; inset: 0; z-index: 35; pointer-events: none; }
 .scene-sheet-layer { position: absolute; inset: 0; pointer-events: auto; }
-.scene-sheet-scrim { position: absolute; top: calc(-1 * var(--win-t, 0px)); right: calc(-1 * var(--win-r, 0px)); bottom: calc(-1 * var(--win-b, 0px)); left: calc(-1 * var(--win-l, 0px)); border: none; padding: 0; background: rgba(var(--about-tint, 5, 6, 14), 0.45); opacity: 0; transition: opacity 240ms ease; }
+.scene-sheet-scrim { position: absolute; top: calc(-1 * var(--win-t, 0px)); right: calc(-1 * var(--win-r, 0px)); bottom: calc(-1 * var(--win-b, 0px)); left: calc(-1 * var(--win-l, 0px)); border: none; padding: 0; background: rgba(var(--about-tint), 0.45); opacity: 0; transition: opacity 240ms ease; }
 .scene-sheet-layer[data-visible="true"] .scene-sheet-scrim { opacity: 1; }
 .scene-sheet { position: absolute; left: 0; right: 0; bottom: calc(-1 * var(--win-b, 0px)); max-height: calc(100% + var(--win-b, 0px)); padding: 0 16px calc(16px + var(--win-b, 0px)); border-radius: 24px 24px 0 0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1); box-sizing: border-box; }
 .scene-sheet-layer[data-visible="true"] .scene-sheet { transform: translateY(0); }

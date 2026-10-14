@@ -77,8 +77,6 @@ export function About({ open, onClose, anchorRef, latestDate }: Props) {
   const fill = (s: string) => s.replace("{weeks}", weeks == null ? "…" : String(weeks));
   const vars = {
     "--about-ms": `${ABOUT_FADE_MS}ms`,
-    "--about-tint": T.tint,
-    "--about-alpha": String(T.tintAlpha),
     "--about-blur": T.blur,
     "--about-saturate": String(T.saturate),
     "--about-rise": `${T.rise}px`,

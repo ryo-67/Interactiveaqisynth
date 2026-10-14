@@ -2,6 +2,14 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-14 — The code simplified; three playback bugs fixed (CLN-14, CLN-15, BUG-68 to BUG-71)
+
+The codebase had grown by accretion: about 1,000 lines of a frozen Tailwind build that nothing used, helpers copied into every file that needed them (clamp about 30 times, hex parsing four times, the "is this hour measured" rule in four places), two status components that were one component pasted twice, and work redone every frame for no change on screen. Each copy was a place for a fix to be missed, and the per-frame waste was spent while the music played. The pass removed the dead code, gave each helper one home, and cut the waste: the page renders once fewer per frame while playing, a pulse hit redraws only its lane, the graph stops forcing a layout every frame, and first load no longer downloads a 574 KB file to learn a date it already had. The page's status became one value with its priority order written once, instead of five flags any combination of which could be represented. Nothing a visitor sees or hears was meant to change, and that was measured, not assumed: element boxes at four layouts, audio levels, render counts.
+
+Measuring the sun transition before rewriting it turned up a bug that was already there (BUG-68): on a change of day at rest the sky showed the new day's sun for a frame, then snapped back to start the glide. The rewrite answers the change before anything is drawn, so the glide starts where the sun is.
+
+Three bugs found during the pass are fixed. Pressing Play while AirNow had nothing, then choosing a day, left the button on Pause and the page silent (BUG-69): the press was dropped because there was no day to play yet, and is now kept until one arrives. The graph's playhead readout kept naming the previous tab after a tab switch (BUG-70). And a day or borough that a quicker switch had replaced still reached the engine for a moment (BUG-71). A fourth, the close button's width not animating, is parked for Shoro (BUG-72). The structural items left, the glass variable, the inline styles, the layout CSS and splitting the three largest files, are logged as CLN-16 to CLN-19, each to be done and tested on its own.
+
 ## 2026-10-13 — The record link loses its number (D-72)
 
 The record line printed the portfolio's number for this piece, but the portfolio numbers its records by date and renumbers them whenever an older one is filed, so any number printed here would go stale and point at the wrong entry in the reader's mind. The link already used the record's URL, which does not change; now the words carry no number either, and the site's name takes its place: "On file at shoro.space ↗", which Shoro approved as written. The rule is general: no page outside shoro.space prints a record number.

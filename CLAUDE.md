@@ -10,20 +10,20 @@ The sonification model (STRATEGY §3) is the intellectual core. Ozone's hourly c
 
 ## Current state of the repo (September 17, 2026)
 
-Be precise about what exists. Much of STRATEGY.md is still target state, but far less than it was: the sections below were last reconciled against the working tree on 2026-09-17.
+Be precise about what exists. Much of STRATEGY.md is still target state, but far less than it was: the sections below were last reconciled against the working tree on 2026-09-17, and the code facts again on 2026-10-14 after the simplify pass (BACKLOG CLN-14, CLN-15).
 
 Shipped and working:
 - React 18 + TypeScript + Vite (SWC), hand-written CSS in `src/index.css` (no Tailwind: only the export's reset and base layer remain, 2026-10-14), Tone.js, three.js via @react-three/fiber and postprocessing for the sky, Canvas 2D for the graph.
 - Vercel serverless routes under `api/`: `aqi/current.ts` (AirNow data endpoint, NYC bbox, per site), `aqi/historical.ts` (EPA AQS, current year only), `health.ts`, `aqi/diagnostic.ts`. Shared logic in `api/_lib/aqi.ts`. CDN caching via `Cache-Control: s-maxage`; `vercel.json` sets `maxDuration: 300` on the historical route.
 - Deployed at aqi.shoro.space from GitHub main (D-67; aqi-synth.vercel.app and interactive-aqi-synth.vercel.app 308-redirect to it). Env vars on Vercel: `AIRNOW_API_KEY`, `EPA_AQS_EMAIL`, `EPA_AQS_API_KEY`.
 - `/` is the scene (`src/scene/ScenePage.tsx`, D-40); `/scene` is an alias and `/scene-test` is the tuning harness. The earlier typographic page (`App.tsx`) is deleted.
-- Page states (D-69): one status line above the footer (`StatusLine`, or `LiveStatus` for the live feed) chosen in ScenePage from the session's state; `Fallback` screens for a thrown error (`ErrorBoundary` in `main.tsx`) and for no WebGL 2. `?mock=<state>` forces each on the dev server (`src/utils/mock.ts`).
+- Page states (D-69): one status line above the footer (`StatusLine`, or `LiveStatus` for the live feed), from the session's one status value, whose cases and priority order live in `src/scene/pageStatus.ts`; `Fallback` screens for a thrown error (`ErrorBoundary` in `main.tsx`) and for no WebGL 2. `?mock=<state>` forces each on the dev server (`src/utils/mock.ts`).
 - `src/content.ts` holds the prose (DSN-01). `src/utils/theme.ts` holds the tokens (DSN-02).
 - Copy: every string in `content.ts` is written or approved by Shoro (the last placeholders approved 2026-10-12). New copy goes in flagged PLACEHOLDER until Shoro approves it.
 - Search and AI-engine discoverability (D-66): `src/seo.ts` builds head tags, JSON-LD, a hidden crawler reading of the About text, robots.txt, sitemap.xml and llms.txt from `content.ts`; the Vite plugin in `vite.config.ts` writes them at build. The share image is `public/og.png`. `.github/workflows/indexnow.yml` pings IndexNow (Bing) once a push that can change the page is live, polling the live `/build.txt` for its commit (D-66a). The `SEO` block in `content.ts` is copy Shoro approved on 2026-10-12. When the About copy changes, the crawler text follows on the next build.
 - The engine is the Phase 0 engine, not the Figma one: `src/engine/SynthEngine.ts` with `contour.ts`, `euclid.ts`, `scales.ts`, `aqi.ts`. FM voices, Euclidean pulse, six tiers, fixed 90 BPM (SON-01 to SON-03, SON-05, SON-06 done).
 - The static archive is built and committed: `public/data/{borough}-{year}.json` for 2020 to the current-year snapshot, plus `anchors.json` — 44 files. `ARCHIVE_LAST_DATE` in `nycOpenData.ts` is 2026-07-20, which is genuinely the last day with complete PM2.5; the snapshot files run to 2026-08-01 with PM2.5 falling away after the 20th.
-- Tests exist: vitest, `npm test`, 10 files and 81 tests covering the AQI tables (including typical NO₂ kept out of the AQI, D-68), the Euclidean pulse, the monitor mapping, the graph series, solar position and time helpers. ESLint runs the two react-hooks rules and nothing else (`npm run lint`, CLN-09): correctness, not style.
+- Tests exist: vitest, `npm test`, 14 files and 104 tests covering the AQI tables (including typical NO₂ kept out of the AQI, D-68, and the API's copy of the tables matching the client's), the Euclidean pulse, the monitor mapping, the graph series, solar position, time helpers, channel provenance, the OKLCH conversion, the page status order and the archive hold. ESLint runs the two react-hooks rules and nothing else (`npm run lint`, CLN-09): correctness, not style.
 - The dead code is gone: `src/components/ui/`, `src/imports/`, `src/components/figma/`, `src/assets/`, `src/guidelines/` and the unused dependencies were all deleted (CLN-01 to CLN-05, CLN-07, CLN-08).
 
 Not yet done (see BACKLOG.md):
@@ -37,7 +37,7 @@ npm install
 npm run dev       # Vite dev server on port 55128, frontend only; without API keys the live feed fails and the page says so
 vercel dev        # frontend + serverless functions with real APIs (needs .env with the three keys)
 npm run build     # production build to build/
-npm test          # vitest, 81 tests
+npm test          # vitest, 104 tests
 npm run lint      # eslint: react-hooks rules only, correctness not style. Zero problems is the expected state.
 
 # npx tsc --noEmit  # vite build does NOT typecheck; run this too before calling a change done
@@ -102,6 +102,7 @@ Data
 Code
 - TypeScript strict. Functional components. No component libraries. Tokens from `theme.ts` only. All prose from `content.ts`.
 - Delete, don't disable. Dead code goes.
+- Write maintainable, human-readable, clean code, and nothing else (Shoro, 2026-10-14). What that means here, from the simplify pass: one home for each helper, never a second copy (`utils/math.ts`, `time.ts`, `oklch.ts`, `channelSource.ts`); one value for one state, a union rather than a set of flags (`scene/pageStatus.ts`); derive during render rather than copy props into state from an effect; no work per frame or per render that does not change what is drawn or heard, and a high-frequency signal goes to the one component that reads it (`scene/pulseFeed.ts`), not into page state; a long-lived loop reads current values through refs; an async effect cancels in its cleanup; names say what a thing is and comments say why. A refactor is measured against the code it replaces (layout, sound, renders) before it is called equivalent.
 - Architectural problems get architectural fixes. The timeline gap (BUG-03) is two sources in one array; fix the structure, not the scrubber.
 - api/ has its own CommonJS tsconfig; the root tsconfig scopes to src/. Vercel's function builder uses the nearest tsconfig.
 - vercel dev does not reproduce the production function build; after every push that touches api/, hit /api/health and /api/aqi/current on the deployed URL before calling it done.

@@ -107,6 +107,8 @@ async function snapshotLastDate(borough: Borough): Promise<string | null> {
 
 // The last day the archive offers. Held at 2026-07-20 for now (Shoro, 2026-09-15): EPA's PM2.5 for New York stops at 07:00 on July 21 while ozone and NO2 run to August 1, and a day without particles has no tier to play. The snapshot still holds the later days; they are served if asked (as the NowCast context for July 20's evening) but never offered. Lift when the snapshot is rebuilt with later PM2.5.
 export const ARCHIVE_LAST_DATE = "2026-07-20";
+// The hold is set from this year's snapshot and committed with it, so while the hold is this year's it is the answer, and the snapshot (about 600 KB a borough) is not downloaded just to learn its last day: first load fetched it for a date it then clamped to this constant (2026-10-14). nycOpenData.test.ts checks every borough's snapshot reaches the hold. In a new year, before the hold moves, the snapshot is asked as before.
+const holdIsThisYear = (): boolean => Number(ARCHIVE_LAST_DATE.slice(0, 4)) === new Date().getFullYear();
 
 interface HistoricalResponse {
   status: string;
@@ -157,6 +159,7 @@ export async function getDay(borough: Borough, date: string): Promise<DaySeries>
 
 // The last day the archive can play, in two stages. The static archive's last day answers at once (its last hour's date); the current year then refines it to the last day EPA has published, which lags real time by days to weeks, by loading months backwards from the current one until one has data (the same loads getDay uses, so the month a visitor lands in is already in memory). Yesterday is never assumed: a day is available only if it has hours.
 export async function getArchiveLastDate(borough: Borough): Promise<string> {
+  if (holdIsThisYear()) return ARCHIVE_LAST_DATE;
   const snap = await snapshotLastDate(borough);
   if (snap) return snap < ARCHIVE_LAST_DATE ? snap : ARCHIVE_LAST_DATE;
   const year = new Date().getFullYear() - 1;
@@ -165,6 +168,7 @@ export async function getArchiveLastDate(borough: Borough): Promise<string> {
 }
 // The route is asked only about months the snapshot does not already cover: from this month back to the snapshot's own month, and no further, since everything before is on the CDN.
 export async function getLatestAvailableDate(borough: Borough): Promise<string | null> {
+  if (holdIsThisYear()) return ARCHIVE_LAST_DATE; // the hold: nothing past it is offered, so neither the snapshot nor the route is asked
   const now = new Date();
   const year = now.getFullYear();
   const snap = await snapshotLastDate(borough);

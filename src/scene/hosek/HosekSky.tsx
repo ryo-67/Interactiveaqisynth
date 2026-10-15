@@ -15,10 +15,11 @@ void main() {
 }
 `;
 
+// opacity is the D-20 cross-fade: this dome draws over Preetham, and opacity is how much of it shows. (Notes like this one stay out of the shader strings: a shader's source is published as written, comments included; vite.config.ts.)
 const fragmentShader = /* glsl */ `
 uniform vec3 A, B, C, D, E, F, G, H, I, Z;
 uniform vec3 sunDirection;
-uniform float opacity; // the D-20 cross-fade: this dome draws over Preetham, and this is how much of it shows
+uniform float opacity; // how much of this dome shows over the sky beneath
 varying vec3 vWorldDirection;
 
 vec3 hosekWilkie(float cosTheta, float gamma, float cosGamma) {

@@ -7,8 +7,8 @@ import { NIGHT_GROUND } from "./utils/theme";
 
 /** The AI search and assistant agents, named and welcomed in robots.txt: they read the page to answer a question and cite it, which is the point (OpenAI's search index and its user fetches, Anthropic's, Perplexity's). Google-Extended too (Shoro, 2026-10-15): one token covers both Gemini's training and its grounding in the Gemini app, and being offered as a link there is worth the training. */
 export const AI_SEARCH_AGENTS = ["OAI-SearchBot", "ChatGPT-User", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Perplexity-User", "Google-Extended"] as const;
-/** Model training, kept out (D-73, Shoro, 2026-10-15): OpenAI's GPTBot and Anthropic's ClaudeBot (each company's training crawler, separate from its search one above), Applebot-Extended (Apple's foundation models; Apple's search unaffected), CCBot (Common Crawl, whose corpus trains many models). */
-export const AI_TRAINING_CRAWLERS = ["GPTBot", "ClaudeBot", "Applebot-Extended", "CCBot"] as const;
+/** Model training, kept out (D-73, Shoro, 2026-10-15): OpenAI's GPTBot and Anthropic's ClaudeBot (each company's training crawler, separate from its search one above), Applebot-Extended (Apple's foundation models; Apple's search unaffected), CCBot (Common Crawl, whose corpus trains many models), Meta-ExternalAgent (Meta's) and Bytespider (ByteDance's). The rule (Shoro): search and AI search are welcome, training is not. */
+export const AI_TRAINING_CRAWLERS = ["GPTBot", "ClaudeBot", "Applebot-Extended", "CCBot", "Meta-ExternalAgent", "Bytespider"] as const;
 
 /** Kept out of search: the serverless routes and the tuning harness. vercel.json sends X-Robots-Tag: noindex on the same paths. */
 export const DISALLOW = ["/api/", "/scene-test"] as const;

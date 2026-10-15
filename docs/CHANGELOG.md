@@ -4,7 +4,7 @@ Why, not just what. Newest first.
 
 ## 2026-10-15 — Training crawlers kept out; AI search still welcome (D-73)
 
-robots.txt had welcomed every AI crawler alike, the ones that train models with the ones that answer questions. The page is meant to be found and cited when someone asks about it, not to be training data, and OpenAI, Anthropic, Google, Apple and Common Crawl each document their training crawler apart from their search one, so the two can be told apart. GPTBot, ClaudeBot, Google-Extended, Applebot-Extended and CCBot are now refused the whole site; ChatGPT's, Claude's and Perplexity's search and user agents keep the same access as before. One cost, chosen knowingly: Google-Extended also governs grounding in the Gemini app, so the page will no longer be offered as a link there. Google Search and its AI Overviews are unaffected.
+robots.txt had welcomed every AI crawler alike, the ones that train models with the ones that answer questions. The page is meant to be found and cited when someone asks about it, not to be training data, and OpenAI, Anthropic, Google, Apple and Common Crawl each document their training crawler apart from their search one, so the two can be told apart. GPTBot, ClaudeBot, Applebot-Extended and CCBot are now refused the whole site; ChatGPT's, Claude's and Perplexity's search and user agents keep the same access as before. Google-Extended stays allowed: Google uses the one token for both Gemini's training and its grounding in the Gemini app, and being offered as a link there is worth more than keeping the page out of Gemini's training.
 
 ## 2026-10-15 — The published site carries no internal notes
 

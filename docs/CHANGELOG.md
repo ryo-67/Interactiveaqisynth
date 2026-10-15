@@ -2,6 +2,14 @@
 
 Why, not just what. Newest first.
 
+## 2026-10-15 — Training crawlers kept out; AI search still welcome (D-73)
+
+robots.txt had welcomed every AI crawler alike, the ones that train models with the ones that answer questions. The page is meant to be found and cited when someone asks about it, not to be training data, and OpenAI, Anthropic, Google, Apple and Common Crawl each document their training crawler apart from their search one, so the two can be told apart. GPTBot, ClaudeBot, Google-Extended, Applebot-Extended and CCBot are now refused the whole site; ChatGPT's, Claude's and Perplexity's search and user agents keep the same access as before. One cost, chosen knowingly: Google-Extended also governs grounding in the Gemini app, so the page will no longer be offered as a link there. Google Search and its AI Overviews are unaffected.
+
+## 2026-10-15 — The published site carries no internal notes
+
+The page source showed bug numbers, dates and design reasoning from index.html's comments, the favicon's, and two shaders'. They stay in the repository as documentation and are stripped from the build, and the build now fails if one gets through.
+
 ## 2026-10-14 — Simplify pass 2: one home for what had two, and less work per frame (CLN-20, CLN-21; BUG-73)
 
 The first pass removed what was dead and merged what was copied wholesale; a second look, against the clean-code rule added the same day, found the copies that were harder to see because they spanned the halves of the piece. The tempo was written three times, in the engine and in the visual beat, so the sound and the picture could drift; EPA's category lines were kept once by the colour ramp and once by the sound's tiers, which code assumed agreed; the archive's file names and EPA's month window were spelled out by the scripts that write public/data and again by the page that reads it, as was the typical-NO2 table's key by its writer and its reader. Each now has one home, with tests that pin it to what the copies computed (one caught an object sorting EPA's parameter codes into a different order). Unused CSS left by the Figma export, unused fields and exports, and a branch of the phone's day picker no visitor could reach are gone. Debugging handles, among them a fixture menu that had worked on the live site for anyone who added ?dev=1, now exist on the dev server only.

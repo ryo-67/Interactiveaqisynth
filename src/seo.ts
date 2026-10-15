@@ -5,8 +5,10 @@ import { ARCHIVE_LAST_DATE } from "./utils/nycOpenData";
 import { weeksBehind } from "./utils/time";
 import { NIGHT_GROUND } from "./utils/theme";
 
-/** The AI search and assistant crawlers named and welcomed in robots.txt: the portfolio's list (OpenAI, Anthropic, Perplexity, Google's and Apple's AI uses, Common Crawl). Being read and cited by them is the point. */
-export const AI_CRAWLERS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Perplexity-User", "Google-Extended", "Applebot-Extended", "CCBot"] as const;
+/** The AI search and assistant agents, named and welcomed in robots.txt: they read the page to answer a question and cite it, which is the point (OpenAI's search index and its user fetches, Anthropic's, Perplexity's). */
+export const AI_SEARCH_AGENTS = ["OAI-SearchBot", "ChatGPT-User", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Perplexity-User"] as const;
+/** Model training, kept out (D-73, Shoro, 2026-10-15): OpenAI's GPTBot and Anthropic's ClaudeBot (each company's training crawler, separate from its search one above), Google-Extended (Gemini's training, and with it grounding in the Gemini app; Google Search and AI Overviews are Googlebot's and unaffected), Applebot-Extended (Apple's foundation models; Apple's search unaffected), CCBot (Common Crawl, whose corpus trains many models). */
+export const AI_TRAINING_CRAWLERS = ["GPTBot", "ClaudeBot", "Google-Extended", "Applebot-Extended", "CCBot"] as const;
 
 /** Kept out of search: the serverless routes and the tuning harness. vercel.json sends X-Robots-Tag: noindex on the same paths. */
 export const DISALLOW = ["/api/", "/scene-test"] as const;
@@ -152,10 +154,12 @@ ${ABOUT.made}
 `;
 }
 
-/** robots.txt: everyone welcome but the API and the harness; the AI crawlers named, with the same rules. */
+/** robots.txt: everyone welcome but the API and the harness; the AI search agents named, with the same rules; the training crawlers named and kept out entirely. */
 export function robotsTxt(): string {
-  const group = (agents: readonly string[]) => [...agents.map((a) => `User-agent: ${a}`), "Allow: /", ...DISALLOW.map((d) => `Disallow: ${d}`)].join("\n");
-  return `${group(["*"])}\n\n${group(AI_CRAWLERS)}\n\nSitemap: ${SITE_URL}/sitemap.xml\n`;
+  const agents = (list: readonly string[]) => list.map((a) => `User-agent: ${a}`);
+  const welcome = (list: readonly string[]) => [...agents(list), "Allow: /", ...DISALLOW.map((d) => `Disallow: ${d}`)].join("\n");
+  const refuse = (list: readonly string[]) => [...agents(list), "Disallow: /"].join("\n");
+  return `${welcome(["*"])}\n\n${welcome(AI_SEARCH_AGENTS)}\n\n${refuse(AI_TRAINING_CRAWLERS)}\n\nSitemap: ${SITE_URL}/sitemap.xml\n`;
 }
 
 /** sitemap.xml: the one page, dated by the build. */

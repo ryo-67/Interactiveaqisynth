@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ABOUT, SEO } from "./content";
-import { AI_CRAWLERS, DISALLOW, INDEXNOW_KEY, PERSON_ID, headTags, jsonLd, jsonLdScript, llmsTxt, robotsTxt, sitemapXml, staticReading, titleTag } from "./seo";
+import { AI_SEARCH_AGENTS, AI_TRAINING_CRAWLERS, DISALLOW, INDEXNOW_KEY, PERSON_ID, headTags, jsonLd, jsonLdScript, llmsTxt, robotsTxt, sitemapXml, staticReading, titleTag } from "./seo";
 import { weeksBehind } from "./utils/time";
 import seoSource from "./seo.ts?raw";
 import workflowSource from "../.github/workflows/indexnow.yml?raw";
@@ -67,10 +67,20 @@ describe("crawler text", () => {
 
 describe("robots and sitemap", () => {
   const r = robotsTxt();
-  it("names every AI crawler and keeps the API and the harness out", () => {
-    for (const a of AI_CRAWLERS) expect(r).toContain(`User-agent: ${a}`);
-    for (const d of DISALLOW) expect(r).toContain(`Disallow: ${d}`);
+  // The groups as a crawler reads them: consecutive User-agent lines share the rules that follow.
+  const groups = r.split("\n\n").map((g) => ({ agents: g.split("\n").filter((l) => l.startsWith("User-agent: ")).map((l) => l.slice(12)), rules: g.split("\n").filter((l) => /^(Allow|Disallow): /.test(l)) }));
+  const rulesFor = (agent: string) => groups.find((g) => g.agents.includes(agent))?.rules;
+  it("welcomes the AI search agents everywhere but the API and the harness", () => {
+    for (const a of AI_SEARCH_AGENTS) expect(rulesFor(a)).toEqual(["Allow: /", ...DISALLOW.map((d) => `Disallow: ${d}`)]);
+    expect(rulesFor("*")).toEqual(["Allow: /", ...DISALLOW.map((d) => `Disallow: ${d}`)]);
     expect(r).toContain("Sitemap: https://aqi.shoro.space/sitemap.xml");
+  });
+  it("keeps every training crawler out of the whole site", () => {
+    for (const a of AI_TRAINING_CRAWLERS) expect(rulesFor(a)).toEqual(["Disallow: /"]);
+  });
+  it("names no agent in two groups", () => {
+    const named = groups.flatMap((g) => g.agents);
+    expect(new Set(named).size).toBe(named.length);
   });
   it("sitemap lists the page with its date", () => {
     expect(sitemapXml("2026-10-12")).toContain("<loc>https://aqi.shoro.space/</loc><lastmod>2026-10-12</lastmod>");
